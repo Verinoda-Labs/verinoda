@@ -40,7 +40,7 @@ what you need before changing it. The improvement checklist pane (D175) is descr
 | `hooks/*.test.ts` | the tests, run by `claude plugin test` |
 
 A new feature follows `assist`: its logic that needs no `$` goes in a file of its own with its own tests, and `register.tsx`
-gets as little as wires it in. `register.tsx` is 1,240 lines; do not grow it by a feature's whole body.
+gets as little as wires it in. `register.tsx` is about 1,270 lines; do not grow it by a feature's whole body.
 
 ## Checks: all three pass before you say it is done
 
@@ -48,8 +48,8 @@ Run from the repository root.
 
 ```
 claude plugin validate claude-mods/verinoda-live        # ends with "Validation passed"
-claude plugin test claude-mods/verinoda-live            # 88 pass, 0 fail in 5 files before your change
-npx --yes -p typescript tsc -p claude-mods/verinoda-live   # exit 0 and no output
+claude plugin test claude-mods/verinoda-live            # 124 pass, 0 fail in 6 files (88 in 5 before the improvement list)
+npx --yes -p typescript tsc -p claude-mods/verinoda-live --noEmit   # exit 0 and no output (without --noEmit it writes .js files beside the sources)
 ```
 
 `validate` also lists what the module hooks, calls, reads and writes: read that list after a change, it is the quickest
