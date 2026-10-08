@@ -17140,6 +17140,85 @@ not in `CORE_DIRECT`: listing it would add standing context to every request.
 `tests/test_locate.py` (signals on temporary git repositories, the command line, the worker) and
 `tests/test_locate_daemon.py` (routes, token, idle end, a real detached start and stop).
 
+## 148. The improvement checklist pane (D175, 2026-10-08)
+
+### 148.1 Why
+
+People ask "make this better" without saying what should change. A model that guesses changes things nobody asked
+for; one that asks open questions tires the person. The pane turns the vague request into a ranked list the person
+can recognise their wish in, marks nothing for them, and lets the model work only on what they chose
+(`claude-mods/verinoda-live/IMPROVE-PANE.md` is the brief this step follows).
+
+### 148.2 Decisions
+
+- The trigger is the command `/verinoda-improve [what to look at]`; the model never opens the list on its own. The
+  setting `improveOffer` (off) adds one line to the system prompt so a "make it nicer" gets an offer of the list
+  instead of a guess.
+- Two tools, `improve_propose` and `improve_report`, registered only for a person (not in `claude -p`) and only once
+  the command ran, a list is in play or `improveOffer` is on; both listed in front (`isDeferred: false`). Their input
+  is validated in the hook, an optional field of the wrong type is read as absent, and a report with any invalid
+  outcome records nothing.
+- Nothing is selected at the start; an item without a decision is "not decided", never "keep" and never recorded. A
+  `problem` item shows its evidence or says it has none (`kanıtsız`); a `taste` item not judged from a rendered view
+  says it is a guess (`tahmin`). "Check first" asks for an investigation, and a confirmed problem goes back into the list
+  (`doğrulandı`) with the model's proposed fix, to be chosen again.
+- The first sight is the seven best ranked items; a decision, a verified item or the open item stay shown, a folded
+  group opens with one button.
+- The state is one `$.state` key, `improve`; `/clear` resets it. Step 1 writes nothing to `$.store`, runs no Verinoda
+  command and changes no Python.
+- **Where the code is.** `hooks/improve.ts` holds everything that needs no `$`, `hooks/improve-pane.tsx` the pane and the
+  hooks of events nobody else hooks. The host's checks decided the rest: a second hook without a matcher on an event the
+  mod already hooks (`session.start`, `prompt.compose`, `turn.complete`) is refused, and `$` is never followed across an
+  import, so those three call a few lines in `register.tsx` (the command's registration, the tools' registration, the
+  turn's end, the review submit) and import only the pure helpers; an atom is read where it is declared, so `improve` is
+  declared in both files.
+- **The review prompt goes out from `turn.complete`, not from the command.** The host refuses a `$.prompt.submit` made
+  from a `command.run` hook ("it would wait on the turn this hook is holding; submit from a later event"); one started in
+  the background there never reached the prompt hook in the test engine. The command sets `queue: 'review'`; the end of
+  the command's own turn submits the prompt (`asUser`, never awaited). A selection and a report request are submitted from
+  a pressed button, which the host delivers. The mod's own prompts pass its `prompt.submit` hook untouched (before
+  `startTask`), so no auto-context and no search gate is started by them.
+- A turn is the mod's own only when its `turn.start` text starts with the first line of the prompt that was just
+  submitted; `turn` is cleared when a prompt is submitted, so only the newest prompt's turn counts, and a subagent's end
+  never does.
+
+### 148.3 Measured
+
+The tests (below): 124 in six files, 88 earlier and 36 new, all pass; `claude plugin validate` passes and sees the new
+hooks, calls and the `improve` state key; `tsc --noEmit` is clean. **No real session was run.** Nothing here measures
+whether the list helps (the brief's measure is a real session on vague requests against plain chat: turns spent
+correcting, changes nobody asked for, what the person had to read, time and tokens). The share of shown items that get
+selected is not a measure and is not shown as one.
+
+### 148.4 Not done
+
+- Step 2 (single-choice groups for alternatives that exclude each other, items nested under an outcome, a free-text
+  redirection that redoes the list and keeps the selections, conflict and dependency warnings) and the later steps
+  (previews and a screenshot loop for `taste`, a remembered "keep").
+- Only a person can check: the pane beside the transcript (or above the prompt in a narrow terminal); focus, Tab, Enter
+  and the hotkeys in a real terminal; scrolling a 20-item list at 40 columns; that the review starts by itself, which
+  rests on the command's own turn raising a `turn.complete` (the engine's message says so; the test engine does not raise
+  one, so the tests raise it); that the model changes only what was chosen and calls `improve_report`; that sending while
+  the model is still writing does not show `Sonuç bildirilmedi` early; `improveOffer` in `/config`.
+- Of the brief's unknowns: whether `$.prompt.submit` may be awaited inside `command.run` is answered (refused, above);
+  what `isInteractive` is in a session the desktop app hosts, whether an `Input` redrawn with the same `value` is
+  emptied (the draft is kept in the state, one write per keystroke: no slowness seen in the tests, not measured in a
+  terminal), whether `turn.start`'s `text` is exactly what was submitted when another plugin rewrites prompts,
+  whether `$.state` survives `/clear` (reset on `session.end` either way) and whether a pane a model's tool call opens
+  is placed in a narrow terminal (both answers are handled) are not checked.
+- In the test engine a pane redraws what a tool call or a turn event changed when it is next read (`find`, `drawn`), so a
+  test reads before it presses.
+
+### 148.5 Tests
+
+`claude-mods/verinoda-live/hooks/improve.test.ts`: the proposed list (order, cuts, fallbacks, every refusal, optional
+fields of the wrong type), the first sight, marks and suffixes, decisions, the three prompts, reports (each status, a
+confirmed item, a partial report, every refusal), the command in a scripted and an interactive session, the tools listed
+in front, the mod's own prompts through the prompt hook, the three groups drawn, a pane not placed, rows and details, the
+own-item field, send and `stop-waiting`, a proposal during `sent` and during `choosing`, outcomes and the mod's turn (an
+earlier or other turn changes nothing), a review turn with no list, a confirmed report, the command's four cases, a
+submit that did not enter (review, selection, report), `improveOffer`, `/clear`, desktop and mobile, and a 30-column pane.
+
 ## Sources
 
 - **Retrieval:**

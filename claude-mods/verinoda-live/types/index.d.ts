@@ -60,11 +60,57 @@ export type CheckInfo = {
   at: number // ms
 }
 
+// The improvement checklist pane (D175): one list the model proposed and the person marks, then what came of it.
+export type ImproveGroup = 'problem' | 'improvement' | 'taste' | 'own'
+export type ImproveDecision = 'none' | 'apply' | 'keep' | 'check'
+export type ImproveStatus = 'waiting' | 'applied' | 'partial' | 'failed' | 'not_confirmed' | 'unreported'
+
+export type ImproveItem = {
+  id: string // the model's id, or u1, u2, ... for the person's own
+  group: ImproveGroup
+  title: string // an own item: the person's text
+  observation: string
+  why: string
+  change: string
+  cost: string // '' when none was given
+  evidence: string[]
+  seen: boolean // taste: judged from a rendered view
+  verified: boolean // a check confirmed it
+  checked: string // the note of the check that confirmed it, else ''
+  decision: ImproveDecision // an own item: always 'apply'
+  sentAs: 'apply' | 'check' | null // what it was last sent as
+  outcome: { status: ImproveStatus; note: string; evidence: string[] } | null
+}
+
+export type ImproveState = {
+  phase: 'idle' | 'reviewing' | 'choosing' | 'sent'
+  subject: string
+  items: ImproveItem[] // the model's in rank order, then the person's own
+  open: string | null // the item whose details are shown
+  unfolded: ImproveGroup[] // groups whose folded items were opened
+  extra: string[] // changes the model reported that were not on the list
+  draft: string // what the own-item field holds
+  ownSeq: number // the last number given to an own item; never reused in a session
+  expect: '' | 'review' | 'selection' | 'report' // the prompt that was submitted and whose turn has not started
+  queue: '' | 'review' // the review prompt waits for the command's own turn to end: the host refuses a submit from a command's hook
+  turn: string | null // the id of the mod's own turn in flight
+  note: '' | 'no-list' | 'not-sent'
+}
+
 declare module 'claude-code' {
   // The tools the mod registers (feature `tool`), so a `tool.call` hook can name them and read their arguments.
   interface McpToolInputs {
     'mcp__verinoda-live__locate': { text: string; files?: string[] }
     'mcp__verinoda-live__coupled': { files: string[] }
+    'mcp__verinoda-live__improve_propose': {
+      subject: string
+      items: { id: string; group: 'problem' | 'improvement' | 'taste'; title: string; observation: string; why: string;
+        change: string; cost?: string; evidence?: string[]; seen?: boolean }[]
+    }
+    'mcp__verinoda-live__improve_report': {
+      outcomes: { id: string; status: 'applied' | 'partial' | 'failed' | 'confirmed' | 'not_confirmed'; note: string; change?: string; evidence?: string[] }[]
+      extra_changes?: string[]
+    }
   }
 
   interface PluginState {
@@ -81,6 +127,7 @@ declare module 'claude-code' {
       reviewing: string | null // the short sha of the commit under review
       expanded: boolean // the review summary shown whole
       assist: string // the assist setting: a preset (off, inject, tool, full, strict) or a list of features
+      improve: ImproveState // the improvement checklist pane's whole state
     }
   }
 }

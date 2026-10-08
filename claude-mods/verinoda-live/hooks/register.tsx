@@ -1,12 +1,14 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AutoMode, CheckInfo, ContextInfo, IndexKind, IndexState, Notice, ReviewInfo } from '../types'
+import type { AutoMode, CheckInfo, ContextInfo, ImproveState, IndexKind, IndexState, Notice, ReviewInfo } from '../types'
 import {
   ASSIST_USAGE, assistFeatures, assistPrompt, COUPLED_TOOL, coupledNote, isBlockedSearch, isSourceFile, LOCATE_TOOL, parseAssist,
   renderLocate, TOOL_SPECS,
 } from './assist'
 import type { Features, Located } from './assist'
+import { IMPROVE_SPECS, initialImprove, reviewPrompt, undoSend } from './improve'
+import { COMMAND as IMPROVE_COMMAND, endOfTurn, improveSections, mod as improveMod, registerImprove } from './improve-pane'
 import { frameRows, MASCOT_HEIGHT, MASCOT_WIDTH } from './mascot'
 import type { MascotProps, Mood } from './mascot'
 
@@ -93,6 +95,8 @@ const lastReview = atom({ plugin: 'verinoda-live', key: 'lastReview' } as const,
 const reviewing = atom({ plugin: 'verinoda-live', key: 'reviewing' } as const, null as string | null)
 const expanded = atom({ plugin: 'verinoda-live', key: 'expanded' } as const, false)
 const assist = atom({ plugin: 'verinoda-live', key: 'assist' } as const, 'off')
+// the improvement list's state (D175); ./improve-pane.tsx declares the same source, because the scan reads an atom where it is used
+const improve = atom({ plugin: 'verinoda-live', key: 'improve' } as const, initialImprove())
 
 // Where Verinoda is, settled at session start from the plugin's settings (`userConfig`), else found: the project is
 // the nearest folder at or above the session's with a .verinoda index; the CLI is the project's own .venv one if it
@@ -635,6 +639,12 @@ async function registerAssistTools($: EngineInterface): Promise<void> {
   }
 }
 
+async function registerImproveTools($: EngineInterface): Promise<void> {
+  for (const spec of IMPROVE_SPECS) {
+    await $.tool.register({ name: spec.name, description: spec.description, inputSchema: spec.inputSchema as unknown as Record<string, unknown> })
+  }
+}
+
 // A path as the lookups spell it: relative to the project, slashes forward.
 function toRel(root: string, file: string): string {
   const p = file.replace(/\\/g, '/')
@@ -848,6 +858,8 @@ export function rowsOf(text: string, columns: number): number {
 }
 
 export const register: Register = (on, options) => {
+  registerImprove(on)
+
   on('session.start', async ($, e, next) => {
     live.cwd = await $.session.cwd()
     cfg.auto = asMode(options.auto)
@@ -855,6 +867,11 @@ export const register: Register = (on, options) => {
     live.root = await findRoot($, typeof options.root === 'string' ? options.root.trim() : '', live.cwd)
     if (live.root !== undefined) await resolveTools($, live.root, options)
     await loadSettings($, e.isInteractive !== false)
+    // the improvement list (D175): its command is always there, its tools only for a person and when a list is in play or offered
+    improveMod.interactive = e.isInteractive !== false
+    improveMod.offered = options.improveOffer === true
+    await $.command.register(IMPROVE_COMMAND)
+    if (improveMod.interactive && (improveMod.offered || (await read($, improve)).phase !== 'idle')) await registerImproveTools($)
     await $.command.register({ name: 'verinoda-update', description: 'Re-index the files edited this session now.' })
     await $.command.register({ name: 'verinoda-assist', description: 'Where a change belongs: locate files, what changes together, a tool and the first search (off, inject, tool, full, strict).' })
     await $.command.register({ name: 'verinoda-auto', description: 'Code questions: nudge (start with Verinoda analyze), search (attach results) or off.' })
@@ -881,8 +898,9 @@ export const register: Register = (on, options) => {
   on('prompt.compose', async ($, e, next) => {
     const out = await next(e)
     const f = await features($)
-    if (!f.prompt || !inProject()) return out
-    return { sections: [...out.sections, { id: 'verinoda-live:assist', text: assistPrompt(f), scope: 'session' as const }] }
+    const sections = improveSections(out.sections)
+    if (!f.prompt || !inProject()) return sections === out.sections ? out : { sections }
+    return { sections: [...sections, { id: 'verinoda-live:assist', text: assistPrompt(f), scope: 'session' as const }] }
   })
 
   // The tools answer a plain string: any other shape fails the engine's check of a plugin's tool result.
@@ -968,6 +986,8 @@ export const register: Register = (on, options) => {
 
   // A code question typed in the project gets the nudge (or, in search mode, Verinoda's results) as context.
   on('prompt.submit', async ($, e, next) => {
+    // the improvement list's own prompts (D175) are the person's decision, sent as theirs: no task, no context
+    if (e.origin?.kind === 'plugin' && e.origin.name === 'verinoda-live') return next(e)
     const isUser = isPersonsPrompt(e.origin)
     if (isUser) startTask(e.text)
     if (live.root === undefined || !isUser || !isInside(live.cwd, live.root)) return next(e)
@@ -994,7 +1014,15 @@ export const register: Register = (on, options) => {
   })
 
   // One re-index per turn, not per edit; left running so the turn ends at once.
-  on('turn.complete', ($, e, next) => {
+  on('turn.complete', async ($, e, next) => {
+    const improving = await read($, improve)
+    if (e.agentId === undefined && improving.turn !== null && e.turnId === improving.turn) await update($, improve, endOfTurn)
+    // the improvement review waits for the command's own turn to end: a submit from the command's hook is refused by the host
+    if (e.agentId === undefined && improving.queue === 'review') {
+      await update($, improve, (s: ImproveState) => ({ ...s, queue: '' as const, expect: 'review' as const, turn: null, note: '' as const }))
+      const failed = () => update($, improve, (s: ImproveState) => (s.expect === 'review' ? undoSend(s, 'review') : s))
+      background($.prompt.submit({ text: reviewPrompt(improving.subject), asUser: true }).then(r => (r.drop === undefined ? undefined : failed()), failed))
+    }
     if (e.agentId === undefined && live.pending.size > 0 && !live.isRunning) background(reindex($))
     return next(e)
   })

@@ -1,6 +1,8 @@
 # The improvement checklist pane: step 1 (backlog 13.9)
 
-Status: to build. Decided 2026-10-04. This is the brief for whoever builds it. Read `AGENTS.md` beside this file first: it
+Status: step 1 built 2026-10-08 (D175, `docs/DESIGN.md` section 148); not yet tried in a real session. Decided 2026-10-04. This was the brief
+for whoever builds it; where the build departs from it, section 148.2 says so (the review prompt is submitted from `turn.complete`,
+because the host refuses a `$.prompt.submit` made from a `command.run` hook; the state gained `queue`). Read `AGENTS.md` beside this file first: it
 holds how the mod is laid out, the three checks, how the tests work and the facts about the host this brief leans on.
 
 ## What it is for

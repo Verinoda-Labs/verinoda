@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D174)
+## Upgrading from 0.4.0 (D137-D175)
 
 ### D137: Trigram regex index
 
@@ -497,6 +497,16 @@ per-repository background process (`verinoda/locate_daemon.py`) that keeps the g
 127.0.0.1 only, asks for a random token kept in `.verinoda/locate-daemon.json` (with `.verinoda/locate-daemon.log`;
 both disposable), and ends by itself after 10 minutes without a request. `--json` carries the compact text a model
 reads as `text`.
+
+### D175: The improvement checklist pane
+
+`verinoda-live` 0.6.0 (the Claude Code mod in `claude-mods/verinoda-live/`) adds `/verinoda-improve [what to look at]`, a
+second Turkish pane (`İyileştirme`) and two tools for the model, `improve_propose` and `improve_report`: a vague request
+becomes a ranked list the person marks (apply, keep, check first), and Claude works only on what was chosen. A new
+setting, `improveOffer` (off), adds one line to the system prompt so that "make it nicer" gets an offer of the list. The
+Python package, the index and the schema are unchanged; nothing is stored. Nothing of it runs, and neither tool is listed,
+until the command (or the setting); a scripted session (`claude -p`) gets none of it. Reload the mod (or start Claude Code
+with `--plugin-dir claude-mods/verinoda-live`) to take it in.
 
 ## Upgrading from 0.3.2 (D60-D136)
 

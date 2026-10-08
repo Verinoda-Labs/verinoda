@@ -1,7 +1,7 @@
 # Working on verinoda-live (for coding agents)
 
 verinoda-live is a Claude Code mod: a plugin of function hooks that runs inside the session beside the agent. This note is
-what you need before changing it. The feature to build next is specified in `IMPROVE-PANE.md` beside this file.
+what you need before changing it. The improvement checklist pane (D175) is described in `IMPROVE-PANE.md` beside this file; its step 2 is still to build.
 
 ## What a mod is
 
@@ -34,6 +34,7 @@ what you need before changing it. The feature to build next is specified in `IMP
 |---|---|
 | `hooks/register.tsx` | the wiring: every `on(...)`, the session state (atoms), the module state (`live`, `cfg`), the pane's drawing |
 | `hooks/assist.ts` | the pure part of the assist features (parsing, rendering, tool specs); `hooks/assist.test.ts` tests it and its wiring |
+| `hooks/improve.ts`, `hooks/improve-pane.tsx` | the improvement list: its pure part (`improve.test.ts` tests it and its wiring) and its pane and hooks; `register.tsx` calls a few lines of it |
 | `hooks/mascot.tsx` | a `Client` module: the animated mascot |
 | `types/index.d.ts` | the contract: `PluginState['verinoda-live']` (every `$.state` key) and `McpToolInputs` (the tools' arguments) |
 | `hooks/*.test.ts` | the tests, run by `claude plugin test` |
@@ -139,6 +140,17 @@ An `Input` a feature draws is typed into with `await $.ui.input({ plugin: 'verin
 11. On the terminal a focused pane gives Tab to walk its elements, Enter to press, the arrows to scroll (the engine owns the
     scroll), and a Button's `hotkey` (one digit or one lowercase letter). The person gives it the keyboard with ctrl+x tab or a
     click; `$.ui.open({ focus: true })` is a request the surface may refuse.
+
+12. **`$` is never followed across an import**, and **a second matcher-less hook on an event the module already hooks is
+    refused** (`claude plugin validate` says so). A feature in a file of its own registers hooks only for events nothing else
+    hooks (or with a matcher of its own); for `session.start`, `prompt.compose` and `turn.complete` the few lines that need `$`
+    stay in `register.tsx`, and an atom is read where it is declared (declare it in each file that reads it).
+13. **`$.prompt.submit` from a `command.run` hook is refused by the host** ("it would wait on the turn this hook is holding;
+    submit from a later event (turn.complete)"); started in the background it never reached the prompt hook in the test
+    engine. From a pressed button it is delivered. The improvement list's review prompt goes out when the command's own turn
+    ends.
+14. In the test engine a mounted pane redraws what a tool call or a turn event changed when it is next read (`find`,
+    `drawn`): read before you press. The engine raises no `turn.complete` for a command; a test raises it.
 
 ## What you cannot check, and must say so
 
