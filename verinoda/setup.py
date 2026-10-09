@@ -369,6 +369,15 @@ def setup_project(path: Path | str = ".", *, agents: str | list[str] = "auto", s
             "this Verinoda install is hardlinked or editable; a sandboxed agent (Codex on Windows) may not be "
             "able to import it and will fall back to MCP. Reinstall with the command in the README "
             "(`uv tool install --force --reinstall-package verinoda --link-mode copy ...`)")
+    outer = enclosing_project(repo)
+    if outer is not None:  # D179: a session there is served that project, never this one
+        report["enclosing_project"] = str(outer)
+        report["warnings"].append(
+            f"this folder is inside {outer}, which has its own Verinoda index: an agent session started there (or "
+            f"in a folder of it without its own MCP entry) is served {outer} only, not this project. Start the "
+            f"session here, or serve both from one server: `{cli} projects add \"{outer}\"` and `{cli} projects "
+            f"add \"{repo}\"`, then start the server with `mcp serve --all-projects` (every tool then takes "
+            "`project`)")
     if cli != "verinoda" and "server" not in report:  # no agent line says why the steps name another command
         report["warnings"].append(f"the steps below run this build as `{cli}`: {launcher.get('why')}")
     first = _first_question(repo)
@@ -381,6 +390,20 @@ def setup_project(path: Path | str = ".", *, agents: str | list[str] = "auto", s
                                 f"after big edits `{cli} update .`; if anything looks wrong `{cli} doctor`")
     report["ok"] = all(a["ok"] for a in report["agents"]) and not res.get("error")
     return report
+
+
+def enclosing_project(repo: Path) -> Path | None:
+    """The nearest folder above ``repo`` with its own ``.verinoda`` (below the home folder), or None. An MCP
+    server registered there with ``--repo-of`` serves that folder to a session started anywhere inside it
+    (:func:`verinoda.mcp.server.repo_of_config`), so a field test's agent got the outer project's answers."""
+    from verinoda.paths import ATLAS_DIRNAME, _is_home_or_above
+
+    for p in Path(repo).resolve().parents:
+        if _is_home_or_above(p):
+            return None
+        if (p / ATLAS_DIRNAME).is_dir():
+            return p
+    return None
 
 
 def _first_question(repo: Path) -> str | None:

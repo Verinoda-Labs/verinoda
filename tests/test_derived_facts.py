@@ -230,6 +230,26 @@ def test_cli_json_and_the_query_lead(proj, capsys):
     assert out["facts"][0]["status"] == "stale" and out["facts"][0]["note"]
 
 
+def test_a_query_with_a_fact_lead_changes_no_file(proj, capsys):
+    repo, st = proj
+    c = _claim(repo, st, "a.py", "a() returns 1")
+    facts.add_derived(st, repo, "answer-of-a", claims=[c["id"]])
+    st.close()  # the last connection: its -wal and -shm are gone, as they are between two commands
+
+    def files():
+        return {p.relative_to(repo).as_posix(): (p.stat().st_mtime_ns, p.read_bytes())
+                for p in repo.rglob("*") if p.is_file() and ".git" not in p.relative_to(repo).parts}
+
+    before = files()
+    code, out = _run(capsys, "query", "what is the answer of a", "--repo", str(repo), "--json", "--read-only")
+    assert code == 0 and out["facts"][0]["fact"] == "answer-of-a" and "facts_error" not in out
+    assert files() == before  # D177: not the database, not its header, no -shm/-wal left behind
+    # without --read-only the leads are still read without a write; only the freshness caches may be kept
+    code, out = _run(capsys, "query", "what is the answer of a", "--repo", str(repo), "--json")
+    changed = {k for k, v in files().items() if before.get(k) != v}
+    assert code == 0 and changed <= {".verinoda/atlas.db"} and bool(changed) == bool(out.get("index_writes"))
+
+
 def test_analyze_lists_the_facts_a_question_names(proj):
     from verinoda import analysis
     from verinoda.analysis_view import lean, render_text

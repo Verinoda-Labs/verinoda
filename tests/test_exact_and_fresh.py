@@ -13,6 +13,7 @@ import os
 os.environ.setdefault("GRAPHIFY_OUT", ".verinoda/index")
 
 import json  # noqa: E402
+import re  # noqa: E402
 import shutil  # noqa: E402
 import subprocess  # noqa: E402
 import sys  # noqa: E402
@@ -26,12 +27,15 @@ from verinoda import (  # noqa: E402
     analysis,
     architecture_map,
     buildlock,
+    cli,
     copies,
     freshness,
     index,
     naming,
     question_plan,
+    readonly,
     retrieval,
+    search_index,
     workflow,
 )
 from verinoda.store import open_store  # noqa: E402
@@ -520,6 +524,77 @@ def test_files_the_snapshot_never_lists_are_not_reported_so_update_clears_the_no
     finally:
         st.close()
     assert not up.get("error") and freshness.check(proj)["count"] == 0
+
+
+def _tree(root: Path) -> dict[str, tuple[int, bytes]]:
+    return {p.relative_to(root).as_posix(): (p.stat().st_mtime_ns, p.read_bytes())
+            for p in root.rglob("*") if p.is_file() and ".git" not in p.relative_to(root).parts}
+
+
+def test_a_read_only_check_writes_nothing_and_a_default_one_says_what_it_wrote(proj, capsys):
+    # D177: a field test saw files written under .verinoda/index after a query; the check's two caches
+    (proj / "app" / "billing.py").write_text(_module("billing") + "\n# edited\n", encoding="utf-8")
+    _write(proj, "app/sub/deep.py", "X = 1\n")      # a new folder: git is asked about it
+    before = _tree(proj)
+    ro = freshness.check(proj, record=False)
+    assert ro["files"] == ["app/billing.py", "app/sub/deep.py"] and "wrote" not in ro
+    assert _tree(proj) == before
+    capsys.readouterr()
+    assert cli.main(["query", "billing", "--repo", str(proj), "--json", "--read-only"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["stale_count"] == 2 and "index_writes" not in out
+    assert _tree(proj) == before
+    rw = freshness.check(proj)
+    assert rw["files"] == ro["files"]
+    # the edited file at least; files written just before the fixture's scan are hashed once too
+    assert re.fullmatch(r"\.verinoda/atlas\.db \(file_stat: the hashes of \d+ file\(s\)\)", rw["wrote"][0])
+    assert rw["wrote"][1:] == [".verinoda/index/fresh_ignored.json"]
+    with readonly.scope() as wrote:  # a query lists them under index_writes
+        assert freshness.check(proj)["files"] == ro["files"]
+    assert wrote and wrote[0].startswith(".verinoda/atlas.db (file_stat: the hashes of ")
+
+
+def test_a_read_only_query_after_the_graph_was_rewritten_builds_in_memory_and_answers_the_same(proj, capsys):
+    # D177: a graph rewritten after the search index and the receiver sidecar (a background update, an upgrade)
+    # makes a query bring both up to date on disk; read-only, it builds them in memory and changes no file
+    gp = proj / ".verinoda" / "index" / "graph.json"
+    gp.write_text(gp.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    before = _tree(proj)
+    capsys.readouterr()
+    assert cli.main(["query", "where is the ledger total computed", "--repo", str(proj), "--json",
+                     "--read-only"]) == 0
+    ro = json.loads(capsys.readouterr().out)
+    assert _tree(proj) == before
+    search_index._HANDLES.clear()  # as in a new process: the index built in memory above is not reused
+    assert cli.main(["query", "where is the ledger total computed", "--repo", str(proj), "--json"]) == 0
+    rw = json.loads(capsys.readouterr().out)
+    written = {k for k, v in _tree(proj).items() if before.get(k) != v}
+    assert {".verinoda/index/search.db", ".verinoda/index/receiver_calls.json"} <= written, written
+    listed = {w.split(" (")[0] for w in rw["index_writes"]}
+    assert {".verinoda/index/search.db", ".verinoda/index/receiver_calls.json"} <= listed <= written
+    assert ro["items"] and [(i["file"], i["lines"]) for i in ro["items"]] == [(i["file"], i["lines"])
+                                                                              for i in rw["items"]]
+
+
+def test_an_index_built_in_memory_is_kept_only_for_its_own_graph(proj):
+    gp = proj / ".verinoda" / "index" / "graph.json"
+    gp.write_text(gp.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    search_index._HANDLES.clear()
+    with readonly.scope(True):
+        h1 = search_index.open_for(index.load(proj))
+        assert h1.memory is not None and search_index.open_for(index.load(proj)) is h1
+        gp.write_text(gp.read_text(encoding="utf-8") + "\n", encoding="utf-8")  # rewritten again: same path
+        h2 = search_index.open_for(index.load(proj))
+    assert h2 is not h1 and h2.memory is not None
+
+
+def test_a_read_only_query_never_indexes(tmp_path):
+    repo = tmp_path / "fresh"
+    _write(repo, "a.py", "def a():\n    return 1\n")
+    _git(repo, "init", "-q")
+    with pytest.raises(SystemExit, match="a read-only query never indexes"):
+        cli.main(["query", "a", "--repo", str(repo), "--read-only"])
+    assert not (repo / ".verinoda").exists()
 
 
 def test_a_project_inside_a_larger_repository_follows_its_ignore_rules_too(tmp_path):

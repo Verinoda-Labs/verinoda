@@ -669,8 +669,18 @@ def _decode(row: sqlite3.Row | None) -> dict | None:
 class Store:
     """Thin data-access layer. Business rules live in claims/evidence modules."""
 
-    def __init__(self, path: Path | str):
+    def __init__(self, path: Path | str, *, readonly: bool = False):
         self.path = str(path)
+        self.readonly = readonly
+        if readonly:  # D177: a reader (query's fact leads) changes no file
+            # Not mode=ro: on a WAL database a read-only connection creates atlas.db-shm and -wal and, unable to
+            # delete them, leaves them behind (measured). A read-write connection that never writes removes them
+            # when it closes; mode=rw never creates a missing database, and query_only refuses any write.
+            self.conn = sqlite3.connect(Path(self.path).resolve().as_uri() + "?mode=rw", uri=True, timeout=30)
+            self.conn.row_factory = sqlite3.Row
+            self.conn.execute("PRAGMA query_only = ON")
+            self._check_schema()
+            return
         if self.path != ":memory:":
             Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(self.path, timeout=30)
@@ -700,6 +710,22 @@ class Store:
             self.conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_written_by', ?)",
                               (server_version(),))
         self.conn.commit()
+
+    def _check_schema(self) -> None:
+        """A read-only store cannot migrate: a schema of another version is refused, never read as this one."""
+        try:
+            row = self.conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
+        except sqlite3.OperationalError:
+            row = None
+        current = int(row[0]) if row else 0
+        if current > SCHEMA_VERSION:
+            by = self.conn.execute("SELECT value FROM meta WHERE key='schema_written_by'").fetchone()
+            self.conn.close()
+            raise SchemaTooNew(current, by[0] if by else None)
+        if current < SCHEMA_VERSION:
+            self.conn.close()
+            raise NotInitialised(f"{self.path} has schema v{current}, this Verinoda reads v{SCHEMA_VERSION}; "
+                                 "run `verinoda update` once to migrate it")
 
     def close(self) -> None:
         self.conn.close()
@@ -950,15 +976,18 @@ class NotInitialised(FileNotFoundError):
     """The project has no Verinoda state yet (read-only commands never create it)."""
 
 
-def open_store(repo: Path, *, create: bool = True) -> Store:
+def open_store(repo: Path, *, create: bool = True, readonly: bool = False) -> Store:
     """Open ``<repo>/.verinoda/atlas.db``.
 
     ``create=False`` is for commands that only read or annotate existing state:
     they must not scatter ``.verinoda`` directories into arbitrary folders.
+    ``readonly=True`` (implies ``create=False``) opens it so that no file is written (D177).
     """
     from verinoda.paths import db_path, ensure_atlas
 
-    if not create and not db_path(repo).is_file():
+    if (readonly or not create) and not db_path(repo).is_file():
         raise NotInitialised(f"{repo} has no Verinoda state; run `verinoda scan {repo}` first")
+    if readonly:
+        return Store(db_path(repo), readonly=True)
     ensure_atlas(repo)
     return Store(db_path(repo))

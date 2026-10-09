@@ -906,7 +906,7 @@ def attach_leads(result: dict, repo: Path, question: str) -> dict:
     try:
         if not db_path(repo).is_file():
             return result
-        st = open_store(repo, create=False)
+        st = open_store(repo, readonly=True)  # D177: a query writes no file
         try:
             found = leads(st, question, repo=repo)
         finally:

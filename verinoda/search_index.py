@@ -1330,7 +1330,10 @@ def open_for(g, *, sync: bool = True) -> Handle:
     db = db_path_for(g)
     key = str(db)
     cached = _HANDLES.get(key)
-    if cached is not None and cached.memory is not None and cached.meta.get("_graph") == str(g.path):
+    # an index built in memory stands for the graph it was built from (a rewritten graph.json at the same
+    # path, read-only in a long-running server, D177, gets a new one)
+    if (cached is not None and cached.memory is not None and cached.meta.get("_graph") == str(g.path)
+            and same_graph(g.path, cached.meta.get("graph"))):
         return cached
     notes: list[str] = []
     for attempt in (0, 1):
@@ -1354,9 +1357,15 @@ def open_for(g, *, sync: bool = True) -> Handle:
                 conn.close()
         if attempt or not sync:
             break
+        from verinoda import readonly
+
+        if readonly.active():  # D177: an outdated search.db is not brought up to date by a read-only question
+            notes.append("search index describes another graph; read-only: built in memory, search.db left as it is")
+            break
         try:
             res = update(g.root, g, db=db)
             notes.append(f"search index {res['mode']} update ({res['files_indexed']} files, {res['seconds']} s)")
+            readonly.note(f"{readonly.shown(db, g.root)} (brought up to date with the graph: {res['mode']} update)")
         except (OSError, sqlite3.Error) as exc:
             notes.append(f"search index not writable ({type(exc).__name__}); built in memory")
             break

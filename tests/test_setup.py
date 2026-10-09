@@ -81,6 +81,30 @@ def test_setup_indexes_and_is_safe_to_rerun(project):
     assert again["ok"] and again["index"]["mode"] in ("noop", "incremental", "full")
 
 
+def test_setup_with_no_agent_writes_only_its_own_folder(project):
+    # D177: a field test's knowledge folder got .claude/, .codex/, .agents/ and .mcp.json; --agents none writes none
+    before = {p.relative_to(project).as_posix() for p in project.rglob("*") if ".git" not in p.parts}
+    setup_mod.setup_project(project, agents="none")
+    after = {p.relative_to(project).as_posix() for p in project.rglob("*") if ".git" not in p.parts}
+    assert {p.split("/")[0] for p in after - before} == {".verinoda"}
+    assert not (project / ".verinoda" / "install-manifest.json").exists()
+
+
+def test_setup_says_when_the_project_is_inside_another_indexed_one(project):
+    # D179: an MCP server registered for the outer folder serves it to every session started inside it
+    inner = project / "notes"
+    inner.mkdir()
+    (inner / "cell.md").write_text("# Cell\nThe cell is the unit of life.\n", encoding="utf-8")
+    assert setup_mod.enclosing_project(inner) is None and setup_mod.enclosing_project(project) is None
+    setup_mod.setup_project(project, agents="none")
+    assert setup_mod.enclosing_project(inner) == project.resolve()
+    rep = setup_mod.setup_project(inner, agents="none")
+    assert rep["enclosing_project"] == str(project.resolve())
+    note = next(w for w in rep["warnings"] if "which has its own Verinoda index" in w)
+    assert "projects add" in note and "--all-projects" in note
+    assert "enclosing_project" not in setup_mod.setup_project(project, agents="none")
+
+
 def test_setup_auto_installs_only_the_agents_found(project, tmp_path, monkeypatch):
     from verinoda.agents import installer
 

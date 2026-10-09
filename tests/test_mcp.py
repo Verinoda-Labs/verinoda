@@ -327,7 +327,7 @@ def test_registered_tools_have_descriptions_and_typed_params(repo):
         assert ro is (t.name in READ_ONLY), t.name
     by_name = {t.name: getattr(t, "input_schema", None) or getattr(t, "inputSchema") for t in listed}
     assert set(by_name["map_view"]["properties"]["view"]["enum"]) == set(mcp_server.VIEWS)
-    assert set(by_name["project_query"]["properties"]["format"]["enum"]) == {"text", "json"}
+    assert set(by_name["project_query"]["properties"]["format"]["enum"]) == {"text", "json", "sentences"}  # D180
     assert by_name["project_query"]["properties"]["format"]["default"] == "text"
     net = by_name["reference_resolve"]["properties"]["network"]
     assert {"off", "cache", "on"} in [set(o.get("enum", [])) for o in net.get("anyOf", [net])]
@@ -461,7 +461,26 @@ def test_project_query_text_and_json_equal_core(repo, tools):
     bad = tools.project_query("   ")
     assert bad["error"] == "invalid_argument" and bad["hint"] and bad["tool"] == "project_query"
     fmt = tools.project_query(QUESTION, format="yaml")
-    assert fmt["error"] == "invalid_argument" and set(fmt["valid"]) == {"text", "json"}
+    assert fmt["error"] == "invalid_argument" and set(fmt["valid"]) == {"text", "json", "sentences"}
+
+
+def test_project_query_writes_no_file_when_queries_are_read_only(fresh_repo, monkeypatch):
+    # D177: query.read_only (or VERINODA_QUERY_READ_ONLY) keeps the freshness check from keeping its caches
+    (fresh_repo / "orders" / "repository.py").write_text("def save_order(o):\n    return o\n", encoding="utf-8")
+
+    def tree():
+        return {p.relative_to(fresh_repo).as_posix(): (p.stat().st_mtime_ns, p.read_bytes())
+                for p in fresh_repo.rglob("*") if p.is_file() and ".git" not in p.relative_to(fresh_repo).parts}
+
+    monkeypatch.setenv("VERINODA_QUERY_READ_ONLY", "1")
+    before = tree()
+    t = AtlasTools(fresh_repo)
+    res = t.project_query(QUESTION, format="json")
+    assert res["stale_files"] == ["orders/repository.py"] and "index_writes" not in res
+    assert tree() == before
+    monkeypatch.setenv("VERINODA_QUERY_READ_ONLY", "0")
+    res = t.project_query(QUESTION, format="json")  # the same question again: it lists what it wrote
+    assert res["index_writes"][0].startswith(".verinoda/atlas.db (file_stat: the hashes of ")
 
 
 def test_project_query_follows_the_question_shape_budget_when_it_is_on(repo, monkeypatch):
@@ -1908,3 +1927,31 @@ def test_session_dedup_remembers_only_what_was_printed(fresh_repo):
     long_ = next(h for h in hits if h.b - h.a >= 3)
     part = retrieval.render_text(res, 6000, seen={long_.file: [(long_.a, long_.a)]})
     assert "already returned earlier" not in part and f"## {long_.file}:{long_.a}-{long_.b}" in part
+
+def test_a_usage_log_has_one_line_per_call_with_what_the_agent_received(repo, tmp_path, monkeypatch):
+    # D178: per-call characters for a test run; nothing is added to the result
+    anyio = pytest.importorskip("anyio")
+    from verinoda import usage
+
+    log = tmp_path / "usage.jsonl"
+
+    async def body():  # a new server each time: a session does not repeat what it returned
+        srv = mcp_server.build_server(repo)
+        a = await srv.call_tool("project_query", {"question": QUESTION, "max_items": 3})
+        b = await srv.call_tool("run_tool", {"name": "node_inspect", "arguments": {"name": "place_order"}})
+        return a, b
+
+    plain = anyio.run(body)
+    assert not log.exists()  # no variable, no log
+    monkeypatch.setenv("VERINODA_USAGE_LOG", str(log))
+    metered = anyio.run(body)
+    def received(res) -> str:
+        return "".join(c.text for c in res.content)
+
+    assert [received(r) for r in metered] == [received(r) for r in plain]
+    rows = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+    assert [(r["surface"], r["name"]) for r in rows] == [("mcp", "project_query"), ("mcp", "run_tool:node_inspect")]
+    assert [r["result_chars"] for r in rows] == [len(received(r)) for r in metered]
+    assert rows[0]["result_tokens_est"] == usage.tokens_est(rows[0]["result_chars"]) and rows[0]["seconds"] >= 0
+    total = usage.summarize(log)["total"]
+    assert total["calls"] == 2 and total["result_chars"] == sum(r["result_chars"] for r in rows)

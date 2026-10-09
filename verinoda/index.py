@@ -2691,8 +2691,9 @@ def _read_sidecar(repo: Path, *, facts_only: bool = False) -> dict | None:
     return None
 
 
-def refresh_receiver_sidecar(repo: Path, g: Graph | None = None) -> dict:
-    """Recompute ``receiver_calls.json`` for the current graph (per-file facts reused by sha256)."""
+def refresh_receiver_sidecar(repo: Path, g: Graph | None = None, *, write: bool = True) -> dict:
+    """Recompute ``receiver_calls.json`` for the current graph (per-file facts reused by sha256). ``write=False``
+    keeps it in memory: the result's ``sidecar`` (a read-only question, D177)."""
     repo = Path(repo).resolve()
     g = g or load(repo, augment=False)
     old = _read_sidecar(repo, facts_only=True) or {}
@@ -2734,14 +2735,17 @@ def refresh_receiver_sidecar(repo: Path, g: Graph | None = None) -> dict:
                "mixins": [[u, v, d] for u, v, d in mixins], "datapack": [[u, v, d] for u, v, d in functions],
                "cross_service": _cross_service(g, old.get("cross_service")),
                "data_schema": _data_schema(g, old.get("data_schema"))}
-    write_json_atomic(receiver_calls_path(repo), sidecar)
+    if write:
+        write_json_atomic(receiver_calls_path(repo), sidecar)
     cross = sidecar["cross_service"]["counts"]
     tables = sidecar["data_schema"].get("counts") or {}
     return {"edges": len(edges), "files_parsed": parsed, "files_reused": len(files) - parsed,
             **({"registers": len(regs)} if regs else {}), **({"mixins": len(mixins)} if mixins else {}),
             **({"datapack": len(functions)} if functions else {}),
             **({"cross_service": cross} if cross["routes"] or cross["clients"] else {}),
-            **({"data_schema": tables} if tables.get("tables") or tables.get("injections") else {})}
+            **({"data_schema": tables} if tables.get("tables") or tables.get("injections") else {}),
+            # as a reader of the file would see it (JSON keys are strings): the same edges either way
+            **({} if write else {"sidecar": json.loads(json.dumps(sidecar))})}
 
 
 def apply_receiver_calls(g: Graph) -> int:
@@ -2753,9 +2757,14 @@ def apply_receiver_calls(g: Graph) -> int:
     side = _read_sidecar(g.root)
     if side and same_graph(g.path, side.get("graph")):
         return _apply_sidecar(g, side)
+    from verinoda import readonly
+
+    if readonly.active() and g.path == graph_path(g.root):  # D177: the same edges, the stale file left as it is
+        return _apply_sidecar(g, refresh_receiver_sidecar(g.root, g, write=False)["sidecar"])
     try:
         if g.path == graph_path(g.root):
             refresh_receiver_sidecar(g.root, g)
+            readonly.note(f"{readonly.shown(receiver_calls_path(g.root), g.root)} (recomputed for the graph)")
             side = _read_sidecar(g.root)
             if side and same_graph(g.path, side.get("graph")):
                 return _apply_sidecar(g, side)

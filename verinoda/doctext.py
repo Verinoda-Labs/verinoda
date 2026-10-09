@@ -131,8 +131,10 @@ def _read_cache(path: Path, sha: str) -> dict | None:
 
 
 def _write_cache(path: Path, sha: str, rec: dict) -> None:
+    from verinoda import readonly
+
     f = _cache_file(path, sha)
-    if f is None:
+    if f is None or readonly.active():  # D177: a read-only question converts again next time, keeps nothing
         return
     try:
         f.parent.mkdir(parents=True, exist_ok=True)
@@ -140,7 +142,8 @@ def _write_cache(path: Path, sha: str, rec: dict) -> None:
         tmp.write_text(json.dumps({"v": VERSION, **rec}, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, f)
     except OSError:
-        pass
+        return
+    readonly.note(f"{readonly.shown(f, f.parents[3])} (the text view of {Path(path).name})")
 
 
 # -- the view --------------------------------------------------------------------------------------

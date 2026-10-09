@@ -145,19 +145,31 @@ def _memo(repo: str, snap: str) -> tuple[Path, set[str], set[str]]:
     return p, set(memo.get("ignored") or ()), set(memo.get("kept") or ())
 
 
-def _save_memo(p: Path, snap: str, ignored: set[str], kept: set[str]) -> None:
+def _save_memo(p: Path, snap: str, ignored: set[str], kept: set[str]) -> bool:
     try:
         tmp = p.with_name(p.name + ".tmp")
         tmp.write_text(json.dumps({"v": _MEMO_VERSION, "snapshot": snap, "ignored": sorted(ignored),
                                    "kept": sorted(kept)}), encoding="utf-8")
         tmp.replace(p)
     except OSError:
-        pass
+        return False
+    return True
 
 
-def _ignored(repo: str, snap: str, rels: list[str]) -> set[str]:
+def _remember(repo: str, p: Path, snap: str, ignored: set[str], kept: set[str], wrote: list[str] | None) -> None:
+    """Keep git's answers for the next check, unless the check is read-only (``wrote`` None, D177)."""
+    from verinoda import readonly
+
+    if wrote is not None and _save_memo(p, snap, ignored, kept):
+        name = readonly.shown(p, repo)
+        if name not in wrote:
+            wrote.append(name)
+
+
+def _ignored(repo: str, snap: str, rels: list[str], wrote: list[str] | None = None) -> set[str]:
     """The folders (``dir/``) among ``rels`` git ignores, remembered per snapshot (asked once per path):
-    a new folder git ignores is not walked."""
+    a new folder git ignores is not walked. ``wrote`` None: nothing is remembered (D177); else the
+    file the answers were kept in is added to it."""
     if not rels:
         return set()
     p, ignored, kept = _memo(repo, snap)
@@ -168,11 +180,11 @@ def _ignored(repo: str, snap: str, rels: list[str]) -> set[str]:
             return ignored & set(rels)
         ignored |= got
         kept |= set(ask) - got
-        _save_memo(p, snap, ignored, kept)
+        _remember(repo, p, snap, ignored, kept, wrote)
     return ignored & set(rels)
 
 
-def _new_listed(repo: str, snap: str, rels: list[str]) -> list[str]:
+def _new_listed(repo: str, snap: str, rels: list[str], wrote: list[str] | None = None) -> list[str]:
     """The new files among ``rels`` that the snapshot's own rule would list (:func:`_git_listed`,
     remembered per snapshot; git is asked even without a ``.git`` here, as ``list_files`` does for a
     project inside a larger repository; when git cannot tell, the folder rule of a tree that is not
@@ -187,7 +199,7 @@ def _new_listed(repo: str, snap: str, rels: list[str]) -> list[str]:
             return sorted(r for r in rels if r in kept or (r not in ignored and not set(r.split("/")) & _SKIP_DIRS))
         kept |= {r for r, ok in got.items() if ok}
         ignored |= {r for r, ok in got.items() if not ok}
-        _save_memo(p, snap, ignored, kept)
+        _remember(repo, p, snap, ignored, kept, wrote)
     return sorted(r for r in rels if r in kept)
 
 
@@ -201,14 +213,24 @@ def _skip(name: str, skip_dirs=_GIT_SKIP_DIRS) -> bool:
     return name in skip_dirs or name.endswith(_SKIP_SUFFIXES) or name.endswith(".egg-info")
 
 
-def check(repo: Path, *, with_new: bool = True) -> dict:
+def check(repo: Path, *, with_new: bool = True, record: bool | None = None) -> dict:
     """``{"checked", "snapshot", "count", "files", "modified", "added", "removed", "seconds"}``.
 
     ``files``: every changed path (modified, then added, then removed), repository-relative.
     ``checked`` is False (with ``why``) when there is no snapshot to compare with; nothing is
     then claimed about freshness.
+
+    The check keeps two caches for the next one: the hashes of the files it had to read
+    (``atlas.db`` ``file_stat``) and git's answers about new paths (``fresh_ignored.json``).
+    What it wrote is listed in ``wrote`` (and noted in the scope, :mod:`verinoda.readonly`);
+    ``record=False`` writes neither and no file at all (D177): the next check reads those files
+    and asks git again. ``None``: record unless a read-only scope is active.
     """
+    from verinoda import readonly
     from verinoda.paths import db_path
+
+    if record is None:
+        record = not readonly.active()
 
     t0 = time.perf_counter()
     repo = Path(repo).resolve()
@@ -276,12 +298,14 @@ def check(repo: Path, *, with_new: bool = True) -> dict:
             except OSError:
                 continue
     modified = []
+    wrote: list[str] | None = [] if record else None
+    hashed: list[str] = []
     if suspect:
-        now = hash_files(repo, sorted(suspect))
+        now = hash_files(repo, sorted(suspect), record=record, recorded=hashed)
         modified = sorted(r for r in suspect if r in now and now[r] != known[r][0])
         removed += [r for r in suspect if r not in now]
     if new_dirs:
-        ignored_dirs = _ignored(root, snap, sorted(d + "/" for d in new_dirs))
+        ignored_dirs = _ignored(root, snap, sorted(d + "/" for d in new_dirs), wrote)
         for d in sorted(new_dirs):
             if d + "/" in ignored_dirs:
                 continue
@@ -301,11 +325,15 @@ def check(repo: Path, *, with_new: bool = True) -> dict:
 
         own = own_filter(repo)
         new = [r for r in new if not own(r)]
-    new = _new_listed(root, snap, sorted(new))
+    new = _new_listed(root, snap, sorted(new), wrote)
     files = modified + new + sorted(removed)
+    if hashed:
+        wrote.insert(0, f"{readonly.shown(db, repo)} (file_stat: the hashes of {len(hashed)} file(s))")
+    for w in wrote or ():
+        readonly.note(w)
     return {"checked": True, "snapshot": snap, "count": len(files), "files": files,
             "modified": len(modified), "added": len(new), "removed": len(removed),
-            "seconds": round(time.perf_counter() - t0, 4)}
+            "seconds": round(time.perf_counter() - t0, 4), **({"wrote": wrote} if wrote else {})}
 
 
 def note(fresh: dict, *, shown: int = SHOWN) -> str | None:

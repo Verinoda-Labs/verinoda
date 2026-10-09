@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D175)
+## Upgrading from 0.4.0 (D137-D180)
 
 ### D137: Trigram regex index
 
@@ -507,6 +507,38 @@ setting, `improveOffer` (off), adds one line to the system prompt so that "make 
 Python package, the index and the schema are unchanged; nothing is stored. Nothing of it runs, and neither tool is listed,
 until the command (or the setting); a scripted session (`claude -p`) gets none of it. Reload the mod (or start Claude Code
 with `--plugin-dir claude-mods/verinoda-live`) to take it in.
+
+### D177: What a question writes
+
+Nothing to migrate. `verinoda query --read-only` (or `query.read_only: true` in `.verinoda/config.json`, which the MCP
+`project_query` reads too, or `VERINODA_QUERY_READ_ONLY=1`) writes no file: the freshness check keeps no cache, an outdated
+search index and receiver sidecar are built in memory, and a project without an index is refused instead of indexed.
+Without it a query behaves as before, and its JSON (and `project_query` with `format: "json"`) gains `index_writes`, the
+files the question wrote, when there are any; a program that compared the whole result should ignore that key. The fact
+leads of a query open `atlas.db` read-only in both modes: an `atlas.db` of an older schema gives `facts_error` ("run
+`verinoda update` once") instead of being migrated by a query. An in-memory search index (a read-only index directory, or
+read-only mode) is rebuilt when the graph file is rewritten at the same path. `verinoda setup --agents none` writes only
+`.verinoda/` (as before; the help says so now).
+
+### D178: What each call cost
+
+Nothing to migrate and nothing changes unless `VERINODA_USAGE_LOG` is set: then every MCP tool call and CLI command
+appends one JSON line to that file (characters of the arguments and of what the agent received, seconds, tokens estimated
+as characters / 4), and `verinoda usage [FILE]` totals it. Results are unchanged. Set the variable in the environment the
+agent starts Verinoda from (for an MCP server, the `env` of its entry or the shell that starts the agent).
+
+### D179: A project inside another indexed project
+
+Nothing to migrate. `verinoda setup` in a folder that lies inside another folder with its own `.verinoda` adds a note
+and `enclosing_project` to its report: a session started in the outer folder is served the outer project only; to reach
+both from one session, register them with `verinoda projects add` and serve them with `mcp serve --all-projects`.
+
+### D180: Sentences that answer a question
+
+Nothing to migrate. `verinoda query "<q>" --sentences` (and the MCP `project_query` with `format="sentences"`) returns
+the sentences of the ranked prose files that hold the question's words, each once with `file:line`, instead of passages;
+code and data files are not read in that mode. The `format` argument of `project_query` gains the value `sentences`; a
+client that validated it against `text` and `json` only should add it.
 
 ## Upgrading from 0.3.2 (D60-D136)
 

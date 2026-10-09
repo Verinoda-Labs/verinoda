@@ -298,3 +298,45 @@ def test_nested_transactions_commit_once_and_roll_back_together(st):
         st.link(ids["claim"], eid, "qualifies")
     assert eid in {e["id"] for e in st.claim_evidence(ids["claim"])}
     assert st._tx_depth == 0
+
+
+def _files(root: Path) -> dict[str, tuple[int, int, bytes]]:
+    return {p.relative_to(root).as_posix(): (p.stat().st_mtime_ns, p.stat().st_size, p.read_bytes())
+            for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def test_a_readonly_store_reads_and_changes_no_file(tmp_path):
+    repo = tmp_path / "ro proj #1"
+    repo.mkdir()
+    st = open_store(repo)
+    ids = _seed(st)
+    st.close()
+    before = _files(repo)
+    ro = open_store(repo, readonly=True)
+    try:
+        assert ro.claim(ids["claim"])["text"] == "x"
+        with pytest.raises(sqlite3.OperationalError, match="readonly|read-only|query_only"):
+            ro.conn.execute("INSERT INTO meta(key, value) VALUES ('x', 'y')")
+    finally:
+        ro.close()
+    # D177: no -shm/-wal left behind (a mode=ro connection to a WAL database leaves both), nothing rewritten
+    assert _files(repo) == before
+
+
+def test_a_readonly_store_never_creates_or_migrates(tmp_path):
+    repo = tmp_path / "empty"
+    repo.mkdir()
+    with pytest.raises(storemod.NotInitialised):
+        open_store(repo, readonly=True)
+    assert not (repo / ".verinoda").exists()
+    p = tmp_path / "old.db"
+    conn = sqlite3.connect(p)
+    conn.executescript(storemod._MIGRATIONS[1])
+    conn.execute("INSERT INTO meta(key, value) VALUES ('schema_version', '1')")
+    conn.commit()
+    conn.close()
+    with pytest.raises(storemod.NotInitialised, match="verinoda update"):
+        Store(p, readonly=True)
+    conn = sqlite3.connect(p)
+    assert _version(conn) == 1  # left as it was
+    conn.close()

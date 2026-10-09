@@ -204,7 +204,7 @@ class _StatCache:
             return sha
         return None
 
-    def put(self, rows: list[tuple[str, int, int, str, int]]) -> None:
+    def put(self, rows: list[tuple[str, int, int, str, int]]) -> bool:
         try:
             conn = sqlite3.connect(str(self.db), timeout=0.5)
             try:
@@ -216,16 +216,19 @@ class _StatCache:
             finally:
                 conn.close()
         except sqlite3.Error:
-            pass  # a busy or read-only database only costs re-hashing next time
+            return False  # a busy or read-only database only costs re-hashing next time
+        return True
 
 
 def hash_files(repo: Path, rels: list[str] | None = None, *, store: Store | None = None,
-               use_cache: bool = True) -> dict[str, str]:
+               use_cache: bool = True, record: bool = True, recorded: list[str] | None = None) -> dict[str, str]:
     """sha256 of each file (all listed files by default), reusing stat-cached hashes.
 
     The cache lives in the project's ``atlas.db`` (``store`` or the one under
     ``.verinoda``); without one every file is hashed. See the module docstring
-    for when a cached hash is trusted.
+    for when a cached hash is trusted. ``record=False`` reads the cache but adds
+    nothing to it (a read-only check, D177); ``recorded`` receives the paths
+    whose hash was written to it.
     """
     repo = Path(repo).resolve()
     rels = list_files(repo) if rels is None else rels
@@ -247,8 +250,8 @@ def hash_files(repo: Path, rels: list[str] | None = None, *, store: Store | None
         except OSError:
             continue
         fresh_rows.append((r, st.st_size, st.st_mtime_ns, out[r], time.time_ns()))
-    if cache and fresh_rows:
-        cache.put(fresh_rows)
+    if cache and fresh_rows and record and cache.put(fresh_rows) and recorded is not None:
+        recorded.extend(r[0] for r in fresh_rows)
     return out
 
 

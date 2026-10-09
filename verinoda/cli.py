@@ -161,13 +161,18 @@ def _waiting_note(holder: dict | None) -> None:
           f"(at most {buildlock.CLI_WAIT_SECONDS / 60:.0f} min)...", file=sys.stderr, flush=True)
 
 
-def _need_graph(repo: Path) -> None:
+def _need_graph(repo: Path, *, build: bool = True) -> None:
+    """Stop unless ``repo`` has an index; the first question builds one (:func:`_auto_index`) unless ``build`` is
+    False (a read-only query, D177)."""
+    from verinoda.paths import graph_path
+
     try:
-        indexed = _auto_index(repo)
+        indexed = _auto_index(repo) if build else graph_path(repo).exists()
     except RuntimeError as e:  # the first-use build failed (a repository with no code files, say)
         raise SystemExit(f"error: {repo} could not be indexed: {e}") from None
     if not indexed:
-        why = "" if (repo / ".git").exists() else " (not a git work tree, so it is not indexed on its own)"
+        why = (" (a read-only query never indexes)" if not build else "" if (repo / ".git").exists()
+               else " (not a git work tree, so it is not indexed on its own)")
         raise SystemExit(f"error: {repo} has no index yet - run `verinoda scan {repo}` first{why}")
 
 
@@ -1330,25 +1335,48 @@ def cmd_health(args) -> int:
 
 
 def cmd_query(args) -> int:
-    from verinoda import freshness, index, query_filters, retrieval
+    from verinoda import freshness, index, query_filters, readonly, retrieval
 
     repo = _repo(args)
-    _need_graph(repo)
-    g = index.load(repo)
-    chars = args.max_chars or retrieval.question_chars(args.question, repo)
-    try:
-        res = retrieval.retrieve(g, args.question, retrieval.Budget(max_items=args.max_items, max_chars=chars),
-                                 filters=True)
-    except query_filters.FilterError as exc:
-        raise SystemExit(f"error: {exc}") from None
-    retrieval.attach_freshness(res, g, freshness.check(repo))  # never silently answer from an older tree
-    from verinoda import facts
+    read_only = args.read_only or retrieval.read_only_enabled(repo)  # D177: no file written, not even caches
+    _need_graph(repo, build=not read_only)
+    with readonly.scope(read_only) as wrote:
+        g = index.load(repo)
+        chars = args.max_chars or retrieval.question_chars(args.question, repo)
+        if args.sentences:  # D180: the sentences that hold the question's words, each once with its file and line
+            return _query_sentences(args, g, repo, chars, wrote)
+        try:
+            res = retrieval.retrieve(g, args.question, retrieval.Budget(max_items=args.max_items, max_chars=chars),
+                                     filters=True)
+        except query_filters.FilterError as exc:
+            raise SystemExit(f"error: {exc}") from None
+        retrieval.attach_freshness(res, g, freshness.check(repo))  # never silently answer from an older tree
+        from verinoda import facts
 
-    facts.attach_leads(res, repo, args.question)  # named facts the question names: leads with their status
+        facts.attach_leads(res, repo, args.question)  # named facts the question names: leads with their status
+    if wrote:  # what this question kept on disk for the next one (none when read-only)
+        res["index_writes"] = list(wrote)
     if args.json:
         _write(_dump(res))
     else:  # the skeleton-first plain text a model reads (docs/DESIGN.md D20)
         _write(retrieval.render_text(res, budget_chars=chars))
+    return 0
+
+
+def _query_sentences(args, g, repo: Path, chars: int, wrote: list[str]) -> int:
+    from verinoda import freshness, query_filters, retrieval, sentences
+
+    try:
+        res = sentences.find(g, args.question, max_items=args.max_items)
+    except query_filters.FilterError as exc:
+        raise SystemExit(f"error: {exc}") from None
+    retrieval.attach_freshness(res, g, freshness.check(repo))
+    if wrote:
+        res["index_writes"] = list(wrote)
+    if args.json:
+        _write(_dump(res))
+    else:
+        _write("\n".join([sentences.render(res, max_chars=chars), *retrieval.stale_lines(res)]))
     return 0
 
 
@@ -1601,6 +1629,21 @@ def cmd_export(args) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     _emit(args, res, lambda r: print(graph_export.render(r)))
+    return 0
+
+
+def cmd_usage(args) -> int:
+    """Totals of a ``VERINODA_USAGE_LOG`` file per tool and command (D178)."""
+    from verinoda import usage
+
+    path = Path(args.log) if args.log else usage.log_path()
+    if path is None:
+        raise SystemExit(f"error: name the log file, or set {usage.LOG_ENV}")
+    if not path.is_file():
+        raise SystemExit(f"error: {path} does not exist (nothing was logged: is {usage.LOG_ENV} set where the "
+                         "agent starts Verinoda?)")
+    res = usage.summarize(path)
+    _emit(args, res, lambda r: _write(usage.render(r)))
     return 0
 
 
@@ -4821,8 +4864,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("path", nargs="?", default=".")
     sp.add_argument("--agents", default="auto",
                     help="auto (claude/codex found on PATH), all (every supported agent found: claude, codex, "
-                         "cursor, gemini, copilot, kiro, continue, aider), none, or a comma list such as "
-                         "claude,cursor")
+                         "cursor, gemini, copilot, kiro, continue, aider), none (only .verinoda/ is written: no "
+                         "skill, MCP entry or install manifest), or a comma list such as claude,cursor")
     sp.add_argument("--scope", choices=["project", "user"], default="project")
     sp.add_argument("--no-mcp", action="store_true", help="skills only, no MCP registration")
     sp.add_argument("--allow-home", action="store_true", help="allow setting up the home directory itself")
@@ -5082,6 +5125,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--max-chars", type=int, default=None,
                     help="character budget (default 6000; with query.shape_budget on, 4800 for a single-clause "
                          "question)")
+    sp.add_argument("--sentences", action="store_true",
+                    help="the sentences of the ranked prose files that hold the question's words, each once with "
+                         "file:line, instead of passages (--max-items caps them)")
+    sp.add_argument("--read-only", action="store_true",
+                    help="write no file, not even the freshness check's caches (also: query.read_only in "
+                         ".verinoda/config.json, or VERINODA_QUERY_READ_ONLY=1); without it --json lists what "
+                         "the check wrote under index_writes")
     sp = add("locate", cmd_locate, "the files an issue text probably touches: the likely ones (retrieval) and the ones "
                                    "that change together with them (git history of each file, imports, includes, "
                                    "same-stem partners, same-name twins); --serve: a worker for many questions")
@@ -5151,6 +5201,9 @@ def build_parser() -> argparse.ArgumentParser:
                                ".verinoda-wiki.json names), each with its Mermaid diagrams")
     sp.add_argument("--markdown", action="store_true", help="every page as Markdown with its diagrams")
     sp.add_argument("--page", action="append", metavar="ID", help="only this page, as Markdown; repeatable")
+    sp = add("usage", cmd_usage, "totals of a VERINODA_USAGE_LOG file: calls, result characters, estimated tokens "
+                                 "and seconds per MCP tool and CLI command", repo=False)
+    sp.add_argument("log", nargs="?", help="the log file (default: $VERINODA_USAGE_LOG)")
     sp = add("backlog", cmd_backlog, "a backlog item and the code comments that cite it, or the items that explain "
                                      "a line or symbol (docs/BACKLOG.md rows and headings)")
     sp.add_argument("target", help="an item id (69.3), path/File.java:LINE[-LINE], or a symbol")
@@ -6220,6 +6273,30 @@ def main(argv: list[str] | None = None) -> int:
     if not getattr(args, "fn", None):
         parser.print_help()
         return 0
+    from verinoda import usage
+
+    if usage.log_path() is None or args.fn is cmd_usage:
+        return _run_command(args)
+    import time
+
+    out, err, t0, code = usage.CountingStream(sys.stdout), usage.CountingStream(sys.stderr), time.perf_counter(), 1
+    sys.stdout, sys.stderr = out, err
+    exit_text = 0
+    try:
+        code = _run_command(args)
+        return code
+    except SystemExit as exc:
+        code = exc.code if isinstance(exc.code, int) else 1
+        exit_text = len(exc.code) + 1 if isinstance(exc.code, str) else 0  # printed by Python on the way out
+        raise
+    finally:  # D178: one line per command, what the agent reads of it (standard output and error)
+        sys.stdout, sys.stderr = out._inner, err._inner
+        usage.record("cli", args.fn.__name__.removeprefix("cmd_").replace("_", "-"), usage.chars(" ".join(argv)),
+                     out.chars + err.chars + exit_text, time.perf_counter() - t0,
+                     error=f"exit {code}" if code else None, extra={"stderr_chars": err.chars + exit_text})
+
+
+def _run_command(args) -> int:
     from verinoda.store import SchemaTooNew
 
     try:

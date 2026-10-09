@@ -138,6 +138,7 @@ VERDICTS = ("confirmed", "qualified", "corrected", "unresolved")
 RESEARCH_KINDS = ("auto", "official_doc", "standard", "paper", "secondary", "reference_repo")
 NETWORK_MODES = ("off", "cache", "on")
 QUERY_FORMATS = ("text", "json")
+PROJECT_QUERY_FORMATS = (*QUERY_FORMATS, "sentences")  # D180
 DECISION_ACTIONS = ("list", "record", "import", "guard", "accept", "waive", "supersede", "link", "answer")
 # what changes what is enforced, and the user's answers to a brief: the user's own words
 DECISION_NEEDS_USER = ("record", "guard", "accept", "waive", "supersede", "link", "answer")
@@ -776,7 +777,8 @@ class AtlasTools:
         return f"started (pid {self._background.pid}); the next question sees the new index"
 
     def _freshness(self) -> dict:
-        """Files changed since the index (:func:`verinoda.freshness.check`); never fails a tool."""
+        """Files changed since the index (:func:`verinoda.freshness.check`); never fails a tool. In a read-only
+        scope the check keeps no cache (D177)."""
         from verinoda import freshness
 
         try:
@@ -826,16 +828,31 @@ class AtlasTools:
                 _file_stat(Path(str(db) + "-wal")), _file_stat(lexmod.lexicon_path(self.repo)),
                 tuple((f, _file_stat(g.root / f)) for f in files))
 
+    def _sentences(self, g, q: str, n: int, fresh: dict, budget: int) -> dict:
+        from verinoda import query_filters, retrieval, sentences
+
+        try:
+            res = sentences.find(g, q, max_items=n)
+        except query_filters.FilterError as exc:
+            raise ToolFailure("invalid_argument", str(exc), "filters: path:GLOB lang:NAME symbol:NAME /regex/, "
+                                                            "AND OR NOT, -filter, parentheses") from None
+        retrieval.attach_freshness(res, g, fresh)
+        chars = min(budget, max(800, int((self.max_chars - 200) * 0.85)))
+        text = "\n".join([sentences.render(res, max_chars=chars), *retrieval.stale_lines(res)])
+        return {"format": "text", "question": q, "text": text}
+
     def project_query(self, question: str, max_items: int = 8, format: str = "text") -> dict:
         def go():
             from verinoda import query_filters, retrieval
 
             q = _text(question, "question")
             n = _clamp(max_items, 1, 25, "max_items")
-            fmt = _choice(format, QUERY_FORMATS, "format")
+            fmt = _choice(format, PROJECT_QUERY_FORMATS, "format")
             g = self._graph()
             fresh = self._freshness()
             budget = retrieval.question_chars(q, self.repo)
+            if fmt == "sentences":  # D180: the sentences that hold the question's words, as plain text
+                return self._sentences(g, q, n, fresh, budget)
             # the budget follows the config / environment, and stale files change the answer's notes: both key the memo
             key = (q, n, fmt, budget, tuple(fresh.get("files") or ()))
             hit = self._query_memo.get(key)
@@ -874,7 +891,16 @@ class AtlasTools:
             if dedup:
                 self._note_returned(returned)
             return {"format": "text", "question": q, "text": text}
-        return self._run("project_query", go, need="graph")
+
+        def scoped():
+            from verinoda import readonly, retrieval
+
+            with readonly.scope(retrieval.read_only_enabled(self.repo)) as wrote:  # D177: query.read_only
+                out = go()
+            if wrote and out.get("format") != "text":  # this call's own writes, never a remembered answer's
+                out = {**out, "index_writes": list(wrote)}
+            return out
+        return self._run("project_query", scoped, need="graph")
 
     def locate(self, text: str, anchors: list[str] | None = None, max_files: int = 8, max_chars: int = 1800,
                format: str = "text") -> dict:
@@ -2662,6 +2688,33 @@ def is_text_result(res: Any) -> bool:
             and "error" not in res)
 
 
+def _metered(name: str, fn: Callable) -> Callable:
+    """``fn`` that, with ``VERINODA_USAGE_LOG`` set, logs each call's argument and result characters and its time
+    (:mod:`verinoda.usage`, D178); the result is returned as it was. ``run_tool`` is logged under the tool it ran."""
+    import functools
+    import inspect
+
+    from verinoda import usage
+
+    @functools.wraps(fn)
+    def call(**kwargs):
+        if usage.log_path() is None:
+            return fn(**kwargs)
+        t0 = time.perf_counter()
+        res = fn(**kwargs)
+        text = usage.wire_text(res)
+        err = getattr(res, "is_error", None)
+        if err is None and isinstance(res, dict):
+            err = bool(res.get("error"))
+        shown = f"{GATEWAY}:{kwargs.get('name')}" if name == GATEWAY else name
+        usage.record("mcp", shown, usage.chars(kwargs), len(text), time.perf_counter() - t0,
+                     error="error" if err else None)
+        return res
+
+    call.__signature__ = inspect.signature(fn)  # type: ignore[attr-defined]
+    return call
+
+
 def _result_wrapper(major: int) -> Callable[[dict], Any]:
     """How a tool's dict reaches the wire.
 
@@ -2734,6 +2787,7 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
     def add(name: str, fn, description: str) -> None:
         if hub is not None:
             fn = hub.wrap(name, fn, emit)
+        fn = _metered(name, fn)
         kwargs: dict[str, Any] = {"name": name, "description": description,
                                   "structured_output": False}  # no output schema: results are open objects
         ann = _tool_annotations(name)
@@ -2766,8 +2820,9 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
         question: Annotated[str, Field(description="Question, symbol or file names to look up; filters narrow it: "
                                                    "path:GLOB lang: symbol: is:vendored /regex/ AND OR NOT.")],
         max_items: Annotated[int, Field(description="Maximum code locations to return (1-25).")] = 8,
-        format: Annotated[Literal["text", "json"], Field(description="'text' (default): plain text for reading, "
-                                                                      "skeleton first; 'json': structured items.")]
+        format: Annotated[Literal["text", "json", "sentences"], Field(
+            description="'text' (default): plain text, skeleton first; 'json': items; 'sentences': the prose "
+                        "sentences, file:line.")]
         = "text",
     ) -> dict[str, Any]:
         return emit(t.project_query(question, max_items=max_items, format=format))

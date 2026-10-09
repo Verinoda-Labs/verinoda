@@ -17219,6 +17219,243 @@ own-item field, send and `stop-waiting`, a proposal during `sent` and during `ch
 earlier or other turn changes nothing), a review turn with no list, a confirmed report, the command's four cases, a
 submit that did not enter (review, selection, report), `improveOffer`, `/clear`, desktop and mobile, and a 30-column pane.
 
+## 149. What a question writes: a read-only query, and what setup writes (D177, 2026-10-10)
+
+D176 is skipped: the unmerged branch `claude/kind-maxwell-8qm8wm` uses it for `verinoda improve`.
+
+### 149.1 Why
+
+A field test on a biology corpus (round 6, `docs/SYMBIOSIS-GAPS.md` on the branch `biyo-platform-test-gaps`, items 5 and
+6) reported two things. An agent saw files written under `kb/.verinoda/index` after a `verinoda query`, which it did not
+expect of a question (not measured there). And `verinoda setup` in the knowledge-base folder wrote `.claude/`, `.codex/`,
+`.agents/`, `.mcp.json` and an install manifest, with absolute paths in `.mcp.json`. Backlog rows 20.6 and 20.5 asked to
+measure what a query writes first, then for a read-only mode and a report of any write; and for setup without side
+files and with relative paths.
+
+### 149.2 Decisions
+
+- **What a query wrote, before this change** (measured, below): the store opened for the fact leads ran `PRAGMA
+  journal_mode = WAL` and `CREATE TABLE IF NOT EXISTS meta`; the freshness check kept two caches for the next check, the
+  hashes of the files it had to read (`atlas.db`, table `file_stat`) and git's answers about new paths
+  (`.verinoda/index/fresh_ignored.json`); a graph rewritten after the search index (by a background `update --fast`, an
+  upgrade) made the query bring `search.db` up to date in place and recompute `receiver_calls.json`; a git work tree with
+  no index was indexed on the first question (`cli._auto_index`).
+- **The fact leads always open the store read-only.** `Store(readonly=True)` / `open_store(readonly=True)`: a URI with
+  `mode=rw` (it never creates a missing database) and `PRAGMA query_only`; no `.verinoda` folder or `.gitignore` is made,
+  no migration runs, and a schema of another version is refused (newer: `SchemaTooNew`; older: "run `verinoda update`
+  once"). Not `mode=ro`: on a WAL database a read-only connection creates `atlas.db-shm` and `atlas.db-wal` and, unable to
+  delete them, leaves them behind (measured); a read-write connection that never writes removes them when it closes. The
+  leads were already computed without a write (`facts.leads`).
+- **The caches stay on by default and are reported.** Read-only for every query would cost each later query of a changed
+  tree the hashes and the git calls again, and each process an in-memory search index after a graph rewrite; that cost is
+  not measured on a large repository, so it is a choice: `verinoda query --read-only`, `query.read_only: true` in
+  `.verinoda/config.json` (it reaches the MCP `project_query` too) or `VERINODA_QUERY_READ_ONLY=1`. Without it, the JSON
+  of `query` and of `project_query` (`format: "json"`) lists what the question wrote in `index_writes`, one line per file
+  with why (`.verinoda/index/search.db (brought up to date with the graph: incremental update)`). The text form does not
+  print it.
+- **One scope, read by each place that writes** (`verinoda/readonly.py`): context variables, so one MCP call's scope never
+  reaches another's. Inside a read-only scope the freshness check reads its caches and adds nothing to them
+  (`freshness.check(record=)`, `snapshot.hash_files(record=)`), an outdated search index is built in memory for the
+  process (the path already taken when `.verinoda/index` cannot be written) and `search.db` is left as it is, the receiver
+  sidecar is computed in memory (`index.refresh_receiver_sidecar(write=False)`: the same edges, through a JSON round
+  trip as a reader of the file sees them), the text view of a PDF or Office file not read before is converted and not
+  cached (`doctext`), and a project without an index is not indexed ("a read-only query never indexes"). Each write made outside read-only is noted in the scope (`readonly.note`), which is how `index_writes` is
+  complete rather than the freshness check's alone.
+- **An index built in memory is kept only for its own graph.** It was kept for the graph's path: a graph rewritten at the
+  same path in a long-running server would have been answered from the old in-memory index for good, a case read-only
+  makes common. It is now rebuilt when the graph is not the one it was built from (`same_graph`).
+- **`analyze` keeps writing.** It brings a stale index up to date before it answers and records its claims; that is what
+  it is for. It has no read-only mode.
+- **Setup (20.5): nothing to build.** `verinoda setup --agents none` already writes only `.verinoda/` (no skill, no MCP
+  entry, no install manifest; measured); the help text now says so. The `.mcp.json` setup writes for Claude Code holds no
+  project path when its program is this build (`--repo-of .mcp.json`, D68): its one absolute path is the program, kept
+  absolute on purpose because a bare `verinoda` would be looked up on the agent's PATH, which may hold another build. A
+  Codex project config keeps `--repo <project>` (where Codex starts its servers is not verified). No `--no-agent-files`
+  flag was added beside `--agents none`.
+
+### 149.3 Measured
+
+On a two-topic Markdown corpus (`setup --agents none`, a fresh index), before the change: `query` changed no row of
+`atlas.db` (a hash per table before and after) while the file's modification time moved in one of two runs; a trace of
+the SQL showed only the two statements above. A `mode=ro` connection to that database left `atlas.db-shm` (32,768 bytes)
+and `atlas.db-wal` (0 bytes) behind; five opens of a read-write connection that only read changed nothing. On a git work
+tree with one file edited, one new folder and a graph rewritten after the index, the default `query` changed four
+files, `receiver_calls.json`, `search.db`, `atlas.db` (the hashes of three files) and `fresh_ignored.json`, and its
+`index_writes` lists exactly those four; with `--read-only` no file under the project changed (modification time, size
+and content), and the answer's items (file and lines) were the same. `analyze` on a stale index changed 15 files under
+`.verinoda/` (the refresh). `setup --agents claude` wrote `.claude/skills/verinoda/SKILL.md`, `.mcp.json` and
+`.verinoda/install-manifest.json` besides `.verinoda/`; its `.mcp.json` named the program by absolute path and the project
+by `--repo-of .mcp.json`. **Not measured:** the time a read-only query costs on a large repository after its tree
+changed (hashing and git again on each query, the search index built in memory in each process); which of the writes the
+field test's agent saw (its corpus was not available here).
+
+### 149.4 Not done
+
+- No read-only mode for `analyze`, `trace`, `locate`, `map` and the other read commands; they keep the freshness caches
+  and do not list them (`index_writes` is on `query` and `project_query` only).
+- No `--no-agent-files` flag (`--agents none` is it); the program's path in `.mcp.json` stays absolute.
+- The MCP text form of `project_query` and the CLI text do not mention the writes.
+
+### 149.5 Tests
+
+`tests/test_store.py` (a read-only store reads, refuses a write and leaves every file as it was, no `-shm`/`-wal`; never
+creates a `.verinoda` folder, never migrates an older schema); `tests/test_derived_facts.py` (a query with a fact lead
+changes no file with `--read-only`, and without it only `atlas.db`, listed); `tests/test_exact_and_fresh.py` (a read-only
+check finds the same changes and writes nothing, a default one lists its two caches; a read-only query after the graph
+was rewritten changes no file and gives the same items as a default one, which writes and lists `search.db` and
+`receiver_calls.json`; an in-memory index is rebuilt for a rewritten graph at the same path; a read-only query never
+indexes); `tests/test_mcp.py` (`project_query` with `VERINODA_QUERY_READ_ONLY=1` changes no file; without it the same question
+lists the hashes it kept in `index_writes`); `tests/test_doctext.py` (a document's text view is not cached inside a
+read-only scope, and its cache is listed outside one).
+
+## 150. What each call cost: a usage log (D178, 2026-10-10)
+
+### 150.1 Why
+
+The same field test (item 7) could not answer "is Verinoda cheap": the agents' reports gave the tokens of a whole stage,
+and what one Verinoda call added was not in them. It asked for per-call usage (tokens in and out, result size) in a field
+(backlog 20.7).
+
+### 150.2 Decisions
+
+- **A log, not a field in the result.** With `VERINODA_USAGE_LOG=<file>` set where the agent starts Verinoda, every MCP
+  tool call and every CLI command appends one JSON line: `surface` (`mcp`, `cli`), `name` (the tool, `run_tool:<tool>` for
+  a tool reached through the gateway, the command), `args_chars`, `result_chars`, `seconds`, an error mark, the estimates
+  and the process id. Nothing is written without the variable. A field in every result was not added: it would cost
+  every call some of the tokens it measures, it would change every result a program or a benchmark compares, and a
+  plain-text MCP answer (`project_query`'s default) reaches the agent as its text alone, so a field there would never be
+  seen by the agent or its transcript.
+- **What the agent received is what is counted.** MCP: the text of the content blocks the server sends (`usage.wire_text`:
+  under mcp 2.x the compact JSON or the plain text exactly; under mcp 1.x the SDK serialises the dict itself, so the count
+  is the compact JSON, an approximation). CLI: the characters written to standard output and standard error (an agent's
+  shell tool shows both), plus the message of a `SystemExit` that Python prints on the way out (`stderr_chars` separately).
+  Arguments: the call's arguments as compact JSON, or the command line.
+- **Tokens are an estimate and say so.** `result_tokens_est` / `args_tokens_est` are characters / 4, the estimate
+  Verinoda already uses (`context_tokens_est` in `analyze`); the model's tokenizer is not available offline, and Turkish
+  or code-heavy text is usually more tokens than that. Every total carries the note.
+- **`verinoda usage [FILE]`** totals a log per surface and name (calls, characters, estimated tokens, seconds, errors),
+  largest first; unreadable lines are counted, not guessed. Reading the log is not logged.
+- The meter wraps each registered MCP tool (`server._metered`, after the project hub's wrapper) and `cli.main`; the
+  result is returned unchanged.
+
+### 150.3 Measured
+
+On the two-topic corpus of D177: three CLI commands gave three lines, and a `trace` that failed was marked `exit 2`;
+the counted characters matched what the command wrote (386 characters on disk for 381 counted: the five line ends
+Windows writes as two characters). In the MCP test, the two lines' `result_chars` equal the characters of the content the
+client received, and the received content was the same with the log on and off. **Not measured:** what Verinoda costs
+per call on a real corpus (this only makes it measurable); the gap between characters / 4 and the model's token count.
+
+### 150.4 Not done
+
+- No usage field in the results, CLI or MCP (above); no token count by the model's own tokenizer.
+- The agent's own input tokens around a call (the tool's description in its context, its reasoning) are not Verinoda's
+  to see; only the call's arguments and result are counted.
+- Under mcp 1.x the MCP count is the compact JSON of the result, not checked against what that SDK sends.
+
+### 150.5 Tests
+
+`tests/test_mcp.py` (a log line per call through the SDK server, `run_tool` under the tool it ran, `result_chars` equal
+to the content the client received, results unchanged with the log on); `tests/test_usage.py` (no variable, no log; a
+CLI command's line with its standard output and error and its exit; a `SystemExit` message counted; totals per tool,
+unreadable lines, the `usage` command, and that reading the log is not logged).
+
+## 151. A project inside another indexed project: setup says so (D179, 2026-10-10)
+
+### 151.1 Why
+
+In the same field test (item 4) the Symbiosis agent queried `mcp__verinoda__project_query` and got about 13,000 candidates
+from the main repository and none from its `symbiosis/` folder; after `verinoda setup` in the knowledge folder, a
+session in another folder still could not use that index (backlog 20.4).
+
+### 151.2 Decisions
+
+- **The cause** (read in the code, not reproduced on the field test's machine): a Claude Code project entry starts the
+  server with `--repo-of .mcp.json`, and the server serves the nearest folder at or above the session's folder whose
+  `.mcp.json` registers it (`server.repo_of_config`, D68). A session started in the outer repository, or in a folder of it
+  without its own entry, is served the outer repository, whatever indexes sit inside it. A session started in a project
+  that has its own entry is served that project.
+- **Not changed: a call never opens a project it names.** D164 serves several projects from one server only when they are
+  given (`--projects A,B`, `--all-projects`, the registry of `verinoda projects add`), and refuses a path outside them; a
+  per-call project root on a single-project server would open whatever folder a call names, which that rule refuses on
+  purpose (trust and profile are per project). The route that already exists is named instead.
+- **`setup` says it.** When a folder above the project (below the home folder) has its own `.verinoda`,
+  `setup.enclosing_project` finds it and setup adds `enclosing_project` to its report and a note: a session started
+  there is served that folder only; start the session in this project, or register both (`verinoda projects add`) and
+  start the server with `mcp serve --all-projects`, after which every tool takes `project`.
+
+### 151.3 Measured
+
+The note on a two-folder tree (an indexed outer folder with a Markdown folder inside, set up second). **Not measured:**
+whether an agent follows the note; the field test's own session layout (which folder its session started in) is not
+known here; nothing was run against an MCP client for this change.
+
+### 151.4 Not done
+
+- No automatic binding: a session in the outer folder still gets the outer project unless the server is started with
+  `--projects` / `--all-projects`; setup does not rewrite the outer folder's `.mcp.json`.
+- The note is in `setup` only; `doctor` and the MCP server's start do not repeat it.
+
+### 151.5 Tests
+
+`tests/test_setup.py`: `enclosing_project` finds an indexed folder above and nothing for a top-level project; setup's
+note and `enclosing_project` key for a project inside another, none for the outer one; `setup --agents none` adds only
+`.verinoda/` (D177).
+
+## 152. Sentences that answer a question: `query --sentences` (D180, 2026-10-10)
+
+### 152.1 Why
+
+In the field test (item 2) questions such as "which sentences say to learn Y before X" returned `topics.json` rows and
+unrelated passages, 5,000-5,300 characters for six results, and not the sentence that said it (backlog 20.2). A query
+returns passages: a symbol's lines, a data file's rows, at most three prose passages (`MAX_PROSE_ITEMS`), each with the
+lines around its hits. On a corpus of prose the reader wants the sentence.
+
+### 152.2 Decisions
+
+- **A mode of `query`, not a new command**: `verinoda query "<q>" --sentences` (with `--json`, `--max-items`, the
+  filters and `--read-only`), and the MCP `project_query` with `format="sentences"` (plain text). The core menu keeps its
+  tools and arguments; `format` gains one value.
+- **Ranked as a query is, read as prose** (`verinoda/sentences.py`): the question is ranked by `search_index.rank` (the
+  filters apply), and the prose files among the ranked units (`retrieval.PROSE_SUFFIXES`: Markdown, text,
+  reStructuredText, AsciiDoc and the text view of PDF and Office files) are read in rank order, at most 20. Code and data
+  files are counted (`files_not_prose`) and not read: a `topics.json` row is not a sentence.
+- **Sentences**: a paragraph is a run of lines (a blank line, a heading, a list item and a table row each end one;
+  fenced code is left out), split after `.`, `!`, `?` or `…` (closing quotes kept) when the next word does not start in
+  lower case and the word before the point is not an abbreviation or a lone letter ("e.g.", "Örn.", "9. sınıf" go on).
+  Each sentence keeps the line it starts and ends on. Headings are not returned.
+- **Which sentences**: one that holds enough of the question's content words, all of one or two, two of three or more.
+  A word is held when the sentence holds one of its tokens or a variant the query expanded it to (the Turkish stem
+  expansions: "dokudan" is held by "dokuları"). Ranked by the number of words held, then the weight of the terms held,
+  then the file's rank and the line. A sentence found in several places is listed once, with the other places
+  (`also_at`). At most `--max-items` (10), with how many more; a sentence over 400 characters is cut and marked.
+- **A sentence is a lead.** It holds the words; whether it says what the question asks (an order, a direction) is not
+  checked. That is 20.1's relation claims, not done here.
+- Staleness is said as a query says it (`stale_count`, the changed files), and the mode runs inside the query's
+  read-only scope and usage line (D177, D178).
+
+### 152.3 Measured
+
+On a three-topic Turkish corpus (`tests/test_sentences.py`): "dokudan önce hangi konu öğrenilmeli" returned "Dokuları
+öğrenmeden önce hücreyi öğrenmek gerekir." (`konular/hucre.md:3-4`) first and the order sentence of `doku.md` second,
+no heading and no `topics.json` row; the plain query on the same files returned two prose passages (whole files) and the `topics.json` row. The
+splitter is checked on headings, wrapped lines, list items, fenced code, abbreviations, an ordinal, a decimal and a
+closing quote. **Not measured:** the field test's corpus and gold (the sentences an agent needed against those
+returned), and the size of the answer against the measured 5,000 characters on that corpus; an English question over
+a Turkish corpus finds nothing (no translation).
+
+### 152.4 Not done
+
+- No relation reading (direction, kind); no translation between the question's and the corpus's language.
+- Code comments and docstrings are not read as sentences, nor text fields inside data files.
+- A word the stemmer does not tie to the question's ("sistemleri" for "sistemi") is not held.
+
+### 152.5 Tests
+
+`tests/test_sentences.py`: the splitter; a Turkish question through its suffixes, headings left out, the data file not
+read; a sentence listed once with its other place, the cap and `more`; filters narrowing the files read; the CLI text
+and JSON, and the MCP `format="sentences"`. `tests/test_mcp.py`: the `format` values.
+
 ## Sources
 
 - **Retrieval:**

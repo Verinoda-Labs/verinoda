@@ -497,6 +497,22 @@ def shape_budget_enabled(repo: Path | str | None = None) -> bool:
         return False
 
 
+def read_only_enabled(repo: Path | str | None = None) -> bool:
+    """Does a query write no file (D177)? ``VERINODA_QUERY_READ_ONLY`` (1/0) wins, else the project's
+    ``query.read_only``; off by default: the freshness check then keeps its caches (``index_writes``)."""
+    env = os.environ.get("VERINODA_QUERY_READ_ONLY")
+    if env is not None and env.strip():
+        return env.strip().lower() in ("1", "true", "on", "yes")
+    if repo is None:
+        return False
+    from verinoda.paths import load_config
+
+    try:
+        return bool((load_config(Path(repo)).get("query") or {}).get("read_only"))
+    except Exception:  # noqa: BLE001 - an unreadable config keeps the default
+        return False
+
+
 def question_chars(question: str, repo: Path | str | None = None) -> int:
     """The default character budget of the text for ``question`` (see :data:`QUERY_CHARS`)."""
     if not shape_budget_enabled(repo):

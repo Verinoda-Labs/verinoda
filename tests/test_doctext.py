@@ -44,6 +44,22 @@ def test_pdf_view_has_a_titled_heading_per_page(tmp_path):
     assert not any(ln.startswith("# Page 2") for ln in rec["lines"])
 
 
+def test_a_read_only_question_keeps_no_text_view_and_a_default_one_says_it_did(tmp_path):
+    # D177: the text view of a document not read before is converted in memory, not cached, inside read-only
+    from verinoda import readonly
+
+    (tmp_path / ".verinoda").mkdir()
+    (tmp_path / "docs").mkdir()
+    p = write_pdf(tmp_path / "docs" / "spec.pdf", [["Payment retry policy", "Retries use exponential backoff."]])
+    with readonly.scope(True) as wrote:
+        assert "Retries use exponential backoff." in doctext.text_lines(p)
+    assert wrote == [] and not (tmp_path / ".verinoda" / "index" / "doctext").exists()
+    doctext._MEMO.clear()
+    with readonly.scope() as wrote:
+        assert doctext.text_lines(p)
+    assert len(wrote) == 1 and wrote[0].startswith(".verinoda/index/doctext/") and "(the text view of spec.pdf)" in wrote[0]
+
+
 def test_docx_view_keeps_headings_paragraphs_and_tables(tmp_path):
     p = write_docx(tmp_path / "d.docx", [("Heading1", "Order pipeline"), ("", "Orders are validated."),
                                          ("Balk2", "Fiyatlandırma"), ("", "İndirim uygulanır.")],
