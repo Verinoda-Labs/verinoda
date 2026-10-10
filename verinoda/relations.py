@@ -40,7 +40,9 @@ CUES = {
     "sonra": {"sonra", "sonrasinda", "ardindan"},
     "for": {"icin"},
     "understand": ("anlamak", "ogrenmek", "kavramak", "calismak", "bilmek"),
-    "prereq_noun": ("onkosul", "kosul", "temel", "sart", "gerekli", "onsart"),
+    # bare "temel" is mostly the adjective "basic" ("hücrenin temel kavramları"): only its noun forms count
+    "prereq_noun": ("onkosul", "kosul", "temeli", "temelidir", "temelini", "temeldir", "temelinde", "sart",
+                    "gerekli", "onsart"),
     "require_verb": ("gerektir", "dayan", "gerekir", "gerekmektedir"),
     "built_on": ("kurulur", "kuruludur", "insa"),
     "passage": ("gecil", "gecis", "ilerlen", "gecmek", "gecer"),
@@ -52,7 +54,7 @@ CUES = {
     "en_prereq": ("prerequisite", "basis", "foundation", "underlie", "precede"),
     "en_follows": ("follow",),
 }
-_MEDEN = re.compile(r"m[ae]d[ae]n$")                     # öğrenmeden, bilmeden, anlamadan
+_MEDEN = re.compile(r"(?<=\w\w)m[ae]d[ae]n$")            # öğrenmeden, bilmeden, anlamadan; not the noun "maden"
 _NEG = re.compile(r"(?:m[ae]z|m[ae]m[ae]l[ie]|m[ae]m[ae]kt[ae]d[ie]r)$")
 _NEG_WORDS = {"olmaz", "degil", "degildir", "not", "never", "cannot", "dont", "doesnt"}
 _HEADS = ("konu", "unite", "bolum", "kavram", "baslik", "ders")
@@ -63,7 +65,9 @@ _NOMINAL = re.compile(r"^(?:lar|ler)?(?:lari|leri|si|su|i|u)?"
                       r"(?P<case>nden|ndan|nde|nda|nin|nun|den|dan|ten|tan|yle|yla|ile|de|da|te|ta|yi|yu|ni|nu|"
                       r"ye|ya|ne|na|in|un|le|la|i|u|e|a)?(?:ki)?(?:dir|dur|tir|tur)?$")
 _EN_NOMINAL = re.compile(r"^(?:s|es)?$")
-_TOKEN = re.compile(r"\w+(?:['’]\w+)?")
+_TOKEN = re.compile(r"\w+(?:['’]\w+)?|[;:]")
+# where a clause ends: a negation counts only in the clause of the relation it would turn
+_BOUNDARY = {";", ":", "ama", "ancak", "fakat", "oysa", "but", "however", "whereas"}
 _SOFT = {"p": "b", "t": "d", "k": "g"}
 
 
@@ -360,6 +364,17 @@ def _negated(words: list[str]) -> bool:
     return any(w in _NEG_WORDS or (len(w) > 4 and _NEG.search(w)) for w in words)
 
 
+def _clause(words: list[str], lo: int, hi: int) -> list[str]:
+    """The words of the clause(s) holding positions ``lo``..``hi``: up to the boundaries around them."""
+    a = lo
+    while a > 0 and words[a - 1] not in _BOUNDARY:
+        a -= 1
+    b = max(hi, lo)
+    while b < len(words) and words[b] not in _BOUNDARY:
+        b += 1
+    return words[a:b]
+
+
 def _other(ms: list[Mention], m: Mention) -> Mention | None:
     rest = [x for x in ms if x is not m and x.topic != m.topic]
     return min(rest, key=lambda x: abs(x.start - m.start)) if rest else None
@@ -394,7 +409,7 @@ def _r_meden(ms, words):
             continue
         if p + 1 < len(words) and words[p + 1] in CUES["once"]:
             return Relation(y, x, "prerequisite", "tr-meden-once")       # before learning x, y: y comes first
-        if _negated(words[p + 1:]):
+        if _negated(_clause(words, p + 1, p + 1)):
             return Relation(x, y, "prerequisite", "tr-meden-negated")    # without x, no y: x comes first
     return None
 
@@ -531,7 +546,10 @@ def read_sentence(sentence: str, matcher: _Matcher, file_topic: str | None = Non
         rel = rule(ms, words)
         if rel is None:
             continue
-        if rel.rule != "tr-meden-negated" and _negated(words):
+        # a negation turns the relation only in its own clause ("...öğrenilmelidir; Organ bilinmez" does not)
+        at = [m for m in (rel.earlier, rel.later) if m.start < len(words)]
+        scope = _clause(words, min(m.start for m in at), max(m.end for m in at)) if at else words
+        if rel.rule != "tr-meden-negated" and _negated(scope):
             if rel.rule not in ORDER_RULES:
                 return None, len(named)          # "B, A'yı gerektirmez": no requirement is stated
             rel = Relation(rel.later, rel.earlier, rel.kind, rel.rule, negated=True)

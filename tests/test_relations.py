@@ -63,6 +63,19 @@ def test_no_relation_without_a_cue_or_with_a_negated_requirement(matcher, senten
     assert rel is None and n == named
 
 
+def test_words_that_only_look_like_cues(matcher):
+    # bare "temel" is the adjective "basic", not "the basis of"
+    assert relations.read_sentence("Hücrenin temel kavramları önemlidir.", matcher, "Doku")[0] is None
+    # "maden" (mineral) is a noun, not a verb's "-meden"
+    assert relations.read_sentence("Hücre ve doku maden yataklarında incelenmez.", matcher)[0] is None
+    # a negation turns only its own clause
+    rel, _ = relations.read_sentence("Doku konusundan önce Hücre konusu öğrenilmelidir; Organ konusu bilinmez.",
+                                     matcher)
+    assert (rel.earlier.topic, rel.later.topic) == ("Hücre", "Doku") and not rel.negated
+    rel, _ = relations.read_sentence("Organ konusu, doku konusunu gerektirir, ama mitoz bilinmez.", matcher)
+    assert (rel.earlier.topic, rel.later.topic) == ("Doku", "Organ") and not rel.negated
+
+
 def test_names_are_matched_with_noun_endings_only_and_the_longest_first(matcher):
     def named(s):
         return [m.topic for m in relations.mentions(s, matcher)[0]]

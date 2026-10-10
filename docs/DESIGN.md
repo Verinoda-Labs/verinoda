@@ -17496,7 +17496,12 @@ from a topics file.
   `en-requires`, `en-required-for`, `en-prerequisite`, `en-follows`; then `support` and `shared`. Every relation carries
   the rule that read it, so stage B can promote rules one by one.
 - **Negation**: a negated order rule is flipped ("Hücreyi öğrenmeden önce dokuya geçilmez": cell first), a negated
-  requirement rule states nothing ("B, A'yı gerektirmez"); what is left is `weak_inference`.
+  requirement rule states nothing ("B, A'yı gerektirmez"); what is left is `weak_inference`. A negation counts only in
+  the clause of the relation (a `;` or `:`, or *ama, ancak, fakat, oysa, but, however, whereas*, ends a clause):
+  "…öğrenilmelidir; Organ bilinmez" leaves the first clause's order as it is.
+- **Words that only look like cues** (found in review, before any real corpus): bare *temel* is mostly the adjective
+  "basic" ("hücrenin temel kavramları"), so only its noun forms (*temeli, temelidir, temelini, temeldir, temelinde*) are
+  the cue; `-meden` / `-madan` needs a verb stem before it, so the noun *maden* (mineral) is not read as one.
 - **Statuses**: a rule that fired gives `strong_inference`, never more: order and direction are invisible to word cues
   (D31) and a heuristic result is `strong_inference` at most (the backlog's rule). `weak_inference` when one end is the
   file's own topic, the sentence is negated, or two sentences give one pair opposite orders (both kept, marked
@@ -17514,10 +17519,10 @@ from a topics file.
 
 Sentences written for the tests, not taken from the synthetic corpus: the 18 order cases and 5 no-relation cases of
 `tests/test_relations.py` read as stated (written by the same person as the rules: they show the rules do what they say
-for those phrasings). On the synthetic corpus of the 20.8 measurement (`gen.py`, kept with its results outside the
-repository at `C:\Users\ozcin\verinoda-measurements\20.8-option-c-2026-10-10\`): 46 of 46 planted edges at 40 files and
-460 of 460 at 400 files, none reversed, none wrong; the "birlikte sorulabilir" distractor was never read as a relation (40
-and 400 co-mentions); 0.23 s and 0.36 s in one process. **This is self-consistency, not the field test**: gen.py's five
+for those phrasings). On the synthetic corpus of the 20.8 measurement (its generator, `gen.py`, and the scripts are kept
+with their results outside the repository; not under `benchmarks/results/`): 46 of 46 planted edges at 40 files and 460
+of 460 at 400 files, none reversed, none wrong, before and after the review fixes above; the "birlikte sorulabilir"
+distractor was never read as a relation (40 and 400 co-mentions); 0.23-0.29 s and 0.36-0.46 s in one process. **This is self-consistency, not the field test**: gen.py's five
 sentence templates are among the patterns the rules were written for. **Not measured:** the field test's corpus and gold
 (on the branch `biyo-platform-test`, which is not on the remote), the precision of each rule on free prose, and whether an
 agent or the product does better with the view.
@@ -17533,8 +17538,9 @@ agent or the product does better with the view.
 ### 153.5 Tests
 
 `tests/test_relations.py`: the order each held-out sentence states and the rule that read it (Turkish endings and cues, a
-negation that flips, the file's own topic, English); no relation without a cue or with a negated requirement; names with
-noun endings only and the longest first, an apostrophe, the head noun's case; `shared` on its own cue; the five shapes of
+negation that flips, the file's own topic, English); no relation without a cue or with a negated requirement; words
+that only look like cues (adjective *temel*, the noun *maden*) and a negation in another clause; names with noun endings
+only and the longest first, an apostrophe, the head noun's case; `shared` on its own cue; the five shapes of
 a topics file and the refused ones; the view's joined sources, the file's own topic, a conflict, the topics file and code
 files not read, co-mentions; one topic by name or alias, an unknown one, a kind, `corpus.topics`, the CLI text and JSON; a
 topics file outside the project and a missing one.
