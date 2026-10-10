@@ -64,3 +64,10 @@ edit); with it every Verinoda-arm session called `analyze` first and `code_check
 changed the gold file in 4 of 4 instances and every patch applies to the base commit; the Verinoda arm cost about 2.5 times
 more per session ($0.42 against $0.17 for four) and took 24-90 s against 10-24 s. Four easy instances show no difference
 in either direction, and the resolved share was not measured.
+
+## Result (2026-10-10)
+
+The 100-instance run is in `benchmarks/results/swebench-lite-100-2026-10-10/` (README, `summary.json`, the sessions and the
+predictions). The resolved share was **not measured**; the proxies show the Verinoda arm used Verinoda in all 100 sessions, at
+about 60 % more dollars and 2.3 more turns per instance, with no visible difference in the patches' files (90 of 100 pairs changed
+the same files; the gold file was covered in 92 against 90). The evaluation of `predictions-*.jsonl` is backlog row 21.1.

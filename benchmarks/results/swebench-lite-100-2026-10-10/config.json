@@ -1,0 +1,5 @@
+{"work": "<WORK>/work", "model": "claude-sonnet-5-5",
+ "plugin_dir": "<REPO>/claude-mods/verinoda-live", "mod_options": {"auto": "nudge"},
+ "verinoda_bin": ["<REPO>/.venv/Scripts"], "drop_path": ["<USER>/.local/bin"],
+ "arms": ["none", "verinoda_guided"], "arm_workers": {"none": 3, "verinoda_guided": 2},
+ "timeout_s": 2400, "max_turns": 100, "max_budget_usd": 3}

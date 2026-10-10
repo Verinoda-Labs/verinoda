@@ -1,0 +1,177 @@
+{
+ "instances": 100,
+ "pairs": 100,
+ "sessions": 200,
+ "none": {
+  "patch_nonempty": 100,
+  "applies_to_base": 100,
+  "covers_all_gold_files": 90,
+  "touches_a_gold_file": 90,
+  "with_extra_files": 13,
+  "touched_test_files": 0,
+  "session_errors": 0,
+  "cost_usd_total": 7.94,
+  "median_turns": 5.0,
+  "median_seconds": 35.8,
+  "median_patch_lines": 20.0,
+  "input_tokens_total": 13108949,
+  "output_tokens_total": 153400,
+  "verinoda_calls": 0
+ },
+ "verinoda_guided": {
+  "patch_nonempty": 100,
+  "applies_to_base": 99,
+  "covers_all_gold_files": 92,
+  "touches_a_gold_file": 92,
+  "with_extra_files": 9,
+  "touched_test_files": 0,
+  "session_errors": 0,
+  "cost_usd_total": 12.88,
+  "median_turns": 7.0,
+  "median_seconds": 91.19999999999999,
+  "median_patch_lines": 20.5,
+  "input_tokens_total": 20268182,
+  "output_tokens_total": 184271,
+  "analyze_called": 100,
+  "code_check_called": 98,
+  "verinoda_before_first_code_tool": 100,
+  "no_verinoda_call": 0
+ },
+ "paired_guided_minus_plain": {
+  "dollars": {
+   "mean_difference": 0.0494,
+   "ci95": [
+    0.0429,
+    0.0556
+   ],
+   "guided_more": 98,
+   "same": 0,
+   "guided_less": 2
+  },
+  "turns": {
+   "mean_difference": 2.3,
+   "ci95": [
+    1.86,
+    2.73
+   ],
+   "guided_more": 89,
+   "same": 4,
+   "guided_less": 7
+  },
+  "seconds": {
+   "mean_difference": 44.521,
+   "ci95": [
+    28.66,
+    60.351
+   ],
+   "guided_more": 80,
+   "same": 0,
+   "guided_less": 20
+  },
+  "input tokens": {
+   "mean_difference": 71592.33,
+   "ci95": [
+    56809.06,
+    85301.57
+   ],
+   "guided_more": 96,
+   "same": 0,
+   "guided_less": 4
+  },
+  "output tokens": {
+   "mean_difference": 308.71,
+   "ci95": [
+    134.56,
+    495.02
+   ],
+   "guided_more": 80,
+   "same": 0,
+   "guided_less": 20
+  },
+  "patch lines": {
+   "mean_difference": 1.26,
+   "ci95": [
+    -0.33,
+    2.99
+   ],
+   "guided_more": 35,
+   "same": 43,
+   "guided_less": 22
+  },
+  "extra files": {
+   "mean_difference": -0.04,
+   "ci95": [
+    -0.1,
+    0.01
+   ],
+   "guided_more": 2,
+   "same": 92,
+   "guided_less": 6
+  }
+ },
+ "same_file_set": 90,
+ "identical_patch": 31,
+ "gold_cover_differs": [
+  "sympy__sympy-18087",
+  "sympy__sympy-13031",
+  "scikit-learn__scikit-learn-25500",
+  "mwaskom__seaborn-2848",
+  "sympy__sympy-13915",
+  "sympy__sympy-15346"
+ ],
+ "applies_differs": [
+  "sympy__sympy-15346"
+ ],
+ "by_repo": {
+  "django": {
+   "n": 35,
+   "guided_cost": 3.64,
+   "plain_cost": 2.04
+  },
+  "sympy": {
+   "n": 32,
+   "guided_cost": 5.12,
+   "plain_cost": 3.48
+  },
+  "sphinx-doc": {
+   "n": 8,
+   "guided_cost": 0.95,
+   "plain_cost": 0.57
+  },
+  "psf": {
+   "n": 2,
+   "guided_cost": 0.23,
+   "plain_cost": 0.17
+  },
+  "mwaskom": {
+   "n": 2,
+   "guided_cost": 0.23,
+   "plain_cost": 0.14
+  },
+  "scikit-learn": {
+   "n": 10,
+   "guided_cost": 1.24,
+   "plain_cost": 0.63
+  },
+  "pytest-dev": {
+   "n": 5,
+   "guided_cost": 0.62,
+   "plain_cost": 0.39
+  },
+  "matplotlib": {
+   "n": 4,
+   "guided_cost": 0.54,
+   "plain_cost": 0.32
+  },
+  "pydata": {
+   "n": 1,
+   "guided_cost": 0.2,
+   "plain_cost": 0.11
+  },
+  "astropy": {
+   "n": 1,
+   "guided_cost": 0.12,
+   "plain_cost": 0.08
+  }
+ }
+}

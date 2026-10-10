@@ -1,0 +1,302 @@
+{
+ "sphinx-doc__sphinx-8801:verinoda_guided": {
+  "setup_seconds": 34.5
+ },
+ "django__django-16873:verinoda_guided": {
+  "setup_seconds": 146.5
+ },
+ "sympy__sympy-23262:verinoda_guided": {
+  "setup_seconds": 234.6
+ },
+ "sphinx-doc__sphinx-7738:verinoda_guided": {
+  "setup_seconds": 38.9
+ },
+ "psf__requests-1963:verinoda_guided": {
+  "setup_seconds": 10.8
+ },
+ "django__django-14730:verinoda_guided": {
+  "setup_seconds": 182.7
+ },
+ "sympy__sympy-17139:verinoda_guided": {
+  "setup_seconds": 223.6
+ },
+ "sympy__sympy-20049:verinoda_guided": {
+  "setup_seconds": 241.2
+ },
+ "sympy__sympy-17630:verinoda_guided": {
+  "setup_seconds": 242.2
+ },
+ "mwaskom__seaborn-3010:verinoda_guided": {
+  "setup_seconds": 15.4
+ },
+ "scikit-learn__scikit-learn-14092:verinoda_guided": {
+  "setup_seconds": 65.3
+ },
+ "django__django-13658:verinoda_guided": {
+  "setup_seconds": 157.7
+ },
+ "django__django-13315:verinoda_guided": {
+  "setup_seconds": 154.7
+ },
+ "sympy__sympy-13647:verinoda_guided": {
+  "setup_seconds": 192.6
+ },
+ "sphinx-doc__sphinx-10451:verinoda_guided": {
+  "setup_seconds": 45.0
+ },
+ "sympy__sympy-14396:verinoda_guided": {
+  "setup_seconds": 180.6
+ },
+ "sympy__sympy-21627:verinoda_guided": {
+  "setup_seconds": 243.6
+ },
+ "django__django-11019:verinoda_guided": {
+  "setup_seconds": 131.2
+ },
+ "scikit-learn__scikit-learn-14983:verinoda_guided": {
+  "setup_seconds": 66.2
+ },
+ "django__django-11620:verinoda_guided": {
+  "setup_seconds": 141.8
+ },
+ "django__django-12286:verinoda_guided": {
+  "setup_seconds": 143.7
+ },
+ "sympy__sympy-13971:verinoda_guided": {
+  "setup_seconds": 197.0
+ },
+ "django__django-15790:verinoda_guided": {
+  "setup_seconds": 153.3
+ },
+ "django__django-11564:verinoda_guided": {
+  "setup_seconds": 131.2
+ },
+ "scikit-learn__scikit-learn-13439:verinoda_guided": {
+  "setup_seconds": 54.4
+ },
+ "django__django-14016:verinoda_guided": {
+  "setup_seconds": 150.3
+ },
+ "django__django-16229:verinoda_guided": {
+  "setup_seconds": 165.4
+ },
+ "sympy__sympy-13895:verinoda_guided": {
+  "setup_seconds": 200.8
+ },
+ "django__django-12856:verinoda_guided": {
+  "setup_seconds": 137.1
+ },
+ "sympy__sympy-20212:verinoda_guided": {
+  "setup_seconds": 238.2
+ },
+ "django__django-13401:verinoda_guided": {
+  "setup_seconds": 146.2
+ },
+ "pytest-dev__pytest-11143:verinoda_guided": {
+  "setup_seconds": 21.8
+ },
+ "django__django-12983:verinoda_guided": {
+  "setup_seconds": 131.6
+ },
+ "pytest-dev__pytest-11148:verinoda_guided": {
+  "setup_seconds": 24.9
+ },
+ "django__django-15789:verinoda_guided": {
+  "setup_seconds": 170.8
+ },
+ "django__django-16255:verinoda_guided": {
+  "setup_seconds": 180.6
+ },
+ "sympy__sympy-15678:verinoda_guided": {
+  "setup_seconds": 217.7
+ },
+ "django__django-16816:verinoda_guided": {
+  "setup_seconds": 157.9
+ },
+ "sympy__sympy-19254:verinoda_guided": {
+  "setup_seconds": 236.4
+ },
+ "django__django-13028:verinoda_guided": {
+  "setup_seconds": 145.8
+ },
+ "django__django-11815:verinoda_guided": {
+  "setup_seconds": 138.7
+ },
+ "sympy__sympy-16281:verinoda_guided": {
+  "setup_seconds": 221.2
+ },
+ "scikit-learn__scikit-learn-11281:verinoda_guided": {
+  "setup_seconds": 73.4
+ },
+ "sympy__sympy-11870:verinoda_guided": {
+  "setup_seconds": 190.5
+ },
+ "sphinx-doc__sphinx-8627:verinoda_guided": {
+  "setup_seconds": 38.7
+ },
+ "sympy__sympy-14317:verinoda_guided": {
+  "setup_seconds": 201.0
+ },
+ "django__django-13925:verinoda_guided": {
+  "setup_seconds": 144.3
+ },
+ "sympy__sympy-18087:verinoda_guided": {
+  "setup_seconds": 221.8
+ },
+ "sympy__sympy-13146:verinoda_guided": {
+  "setup_seconds": 121.0
+ },
+ "sympy__sympy-13031:verinoda_guided": {
+  "setup_seconds": 117.6
+ },
+ "sympy__sympy-18621:verinoda_guided": {
+  "setup_seconds": 258.8
+ },
+ "sphinx-doc__sphinx-8282:verinoda_guided": {
+  "setup_seconds": 48.7
+ },
+ "sympy__sympy-18532:verinoda_guided": {
+  "setup_seconds": 287.9
+ },
+ "django__django-15902:verinoda_guided": {
+  "setup_seconds": 231.4
+ },
+ "sympy__sympy-15345:verinoda_guided": {
+  "setup_seconds": 288.7
+ },
+ "matplotlib__matplotlib-25442:verinoda_guided": {
+  "setup_seconds": 157.6
+ },
+ "psf__requests-2674:verinoda_guided": {
+  "setup_seconds": 16.0
+ },
+ "pytest-dev__pytest-7432:verinoda_guided": {
+  "setup_seconds": 23.4
+ },
+ "scikit-learn__scikit-learn-25500:verinoda_guided": {
+  "setup_seconds": 92.9
+ },
+ "django__django-14608:verinoda_guided": {
+  "setup_seconds": 184.7
+ },
+ "sympy__sympy-19007:verinoda_guided": {
+  "setup_seconds": 281.9
+ },
+ "mwaskom__seaborn-2848:verinoda_guided": {
+  "setup_seconds": 15.3
+ },
+ "sympy__sympy-20154:verinoda_guided": {
+  "setup_seconds": 279.2
+ },
+ "django__django-14667:verinoda_guided": {
+  "setup_seconds": 188.1
+ },
+ "django__django-14752:verinoda_guided": {
+  "setup_seconds": 176.8
+ },
+ "django__django-14997:verinoda_guided": {
+  "setup_seconds": 170.7
+ },
+ "scikit-learn__scikit-learn-13584:verinoda_guided": {
+  "setup_seconds": 88.1
+ },
+ "matplotlib__matplotlib-22835:verinoda_guided": {
+  "setup_seconds": 152.3
+ },
+ "matplotlib__matplotlib-26020:verinoda_guided": {
+  "setup_seconds": 155.0
+ },
+ "sphinx-doc__sphinx-8721:verinoda_guided": {
+  "setup_seconds": 59.4
+ },
+ "django__django-13768:verinoda_guided": {
+  "setup_seconds": 185.7
+ },
+ "sympy__sympy-13915:verinoda_guided": {
+  "setup_seconds": 225.9
+ },
+ "django__django-14915:verinoda_guided": {
+  "setup_seconds": 173.0
+ },
+ "django__django-13158:verinoda_guided": {
+  "setup_seconds": 166.7
+ },
+ "pydata__xarray-3364:verinoda_guided": {
+  "setup_seconds": 24.5
+ },
+ "scikit-learn__scikit-learn-13142:verinoda_guided": {
+  "setup_seconds": 60.2
+ },
+ "sympy__sympy-21847:verinoda_guided": {
+  "setup_seconds": 286.6
+ },
+ "sympy__sympy-14308:verinoda_guided": {
+  "setup_seconds": 238.5
+ },
+ "sympy__sympy-15346:verinoda_guided": {
+  "setup_seconds": 275.0
+ },
+ "django__django-14999:verinoda_guided": {
+  "setup_seconds": 213.3
+ },
+ "astropy__astropy-14182:verinoda_guided": {
+  "setup_seconds": 127.0
+ },
+ "matplotlib__matplotlib-23964:verinoda_guided": {
+  "setup_seconds": 147.6
+ },
+ "sympy__sympy-18057:verinoda_guided": {
+  "setup_seconds": 301.2
+ },
+ "sphinx-doc__sphinx-11445:verinoda_guided": {
+  "setup_seconds": 74.9
+ },
+ "django__django-11039:verinoda_guided": {
+  "setup_seconds": 213.5
+ },
+ "pytest-dev__pytest-7373:verinoda_guided": {
+  "setup_seconds": 22.2
+ },
+ "pytest-dev__pytest-8906:verinoda_guided": {
+  "setup_seconds": 21.8
+ },
+ "django__django-15819:verinoda_guided": {
+  "setup_seconds": 181.4
+ },
+ "django__django-16379:verinoda_guided": {
+  "setup_seconds": 182.3
+ },
+ "sympy__sympy-16988:verinoda_guided": {
+  "setup_seconds": 280.2
+ },
+ "scikit-learn__scikit-learn-10949:verinoda_guided": {
+  "setup_seconds": 92.3
+ },
+ "scikit-learn__scikit-learn-15512:verinoda_guided": {
+  "setup_seconds": 50.2
+ },
+ "scikit-learn__scikit-learn-14894:verinoda_guided": {
+  "setup_seconds": 42.9
+ },
+ "sphinx-doc__sphinx-7686:verinoda_guided": {
+  "setup_seconds": 33.2
+ },
+ "django__django-11630:verinoda_guided": {
+  "setup_seconds": 111.2
+ },
+ "django__django-16041:verinoda_guided": {
+  "setup_seconds": 122.8
+ },
+ "sympy__sympy-13480:verinoda_guided": {
+  "setup_seconds": 152.1
+ },
+ "django__django-14855:verinoda_guided": {
+  "setup_seconds": 126.2
+ },
+ "sympy__sympy-19487:verinoda_guided": {
+  "setup_seconds": 227.1
+ },
+ "sympy__sympy-20639:verinoda_guided": {
+  "setup_seconds": 223.0
+ }
+}
