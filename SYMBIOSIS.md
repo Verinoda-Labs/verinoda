@@ -54,6 +54,27 @@ claude --plugin-dir <this repository>/claude-mods/verinoda-live
 
 Then `/verinoda-panel`; `/verinoda-auto nudge` if you want the agent to start from Verinoda (see above for what it costs).
 
+## Verinoda in a product: at build time, not at run time
+
+Verinoda is used where a product is built, not where it runs (D183). A product made with it, such as the knowledge base
+of the biology field test (`docs/SYMBIOSIS-GAPS.md`), ships what Verinoda produced as its own data and answers with its
+own code; it does not import Verinoda while it runs. On a synthetic corpus of the field test's size
+(`benchmarks/results/field-test-synthetic-2026-10-10/`), depending on Verinoda at run time cost about 0.45 s per cold
+call (0.08-0.22 s for a standard-library stand-in), 38-42 MB of memory (15-17 MB), 63 packages and 293 MB to install,
+an index update of 1-5 s after each change of the corpus, and about 15-25 % more characters per answer when a model
+reads it (Verinoda itself calls no model). What it bought there, the sentence that answers ranked higher (mean
+reciprocal rank 0.44 against 0.35 on 40 files, 0.27 against 0.06 on 400), comes from its ranking, which a build step
+keeps:
+
+```
+verinoda relations --topics topics.json --json > data/relations.json
+verinoda query "Doku konusundan önce ne öğrenilmeli" --sentences --json > data/evidence/doku.json
+```
+
+Depend on Verinoda at run time only when the corpus changes while the product runs (the answers then follow the files and
+say when they changed) or when the questions are too open to compute before. Synthetic and self-made, these numbers are
+not the field test's; the field test's corpus and gold were not measured.
+
 ## Develop it
 
 `claude plugin validate claude-mods/verinoda-live` and `claude plugin test claude-mods/verinoda-live` (35 tests on the
@@ -75,3 +96,5 @@ Verinoda Symbiosis, Verinoda ile Claude Code'u birlikte çalıştırır. **verin
 - Bunların hepsini hareketli mor maskotlu, Türkçe bir panelde gösterir.
 
 Kurulum için yukarıdaki üç satır yeterli. Kurulumdan sonra `/verinoda-panel`; ajanın Verinoda'dan başlamasını isterseniz `/verinoda-auto nudge`.
+
+Verinoda'yla yapılan bir ürün (biyoloji saha testindeki bilgi tabanı gibi) Verinoda'yı derleme anında kullanır: ürettiği veriyi (ilişkiler, kanıt cümleleri) kendi verisi olarak taşır, çalışırken Verinoda'yı yüklemez. Sentetik bir korpusta çalışma zamanı bağımlılığı soru başına ~0,45 s, ~40 MB bellek, 63 paket / 293 MB kurulum ve her korpus değişikliğinde 1-5 s dizin güncellemesi demekti; kazancı olan daha iyi sıralama derleme adımında da korunur. Çalışma zamanı bağımlılığı yalnızca korpus ürün çalışırken değişiyorsa önerilir.

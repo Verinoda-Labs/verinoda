@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D182)
+## Upgrading from 0.4.0 (D137-D183)
 
 ### D137: Trigram regex index
 
@@ -554,6 +554,12 @@ Nothing to migrate and nothing changes without them. `evidence.rules` in `.verin
 `{"name": "both-named", "require": "both_named", "else": "weak_inference"}`); a rule can never raise a status, and a
 broken one is reported on standard error and in `rule_errors` instead of being applied. `relations --no-rules` shows the
 statuses before the rules.
+
+### D183: Verinoda in a product: at build time, not at run time
+
+Nothing to migrate: a documentation decision. `SYMBIOSIS.md` says how a product uses Verinoda (it ships what Verinoda
+produced as data, from `relations --json` and `query --sentences --json`, and does not import Verinoda while it runs) and
+when a run-time dependency pays (a corpus that changes while the product runs). No run-time package was added.
 
 ## Upgrading from 0.3.2 (D60-D136)
 

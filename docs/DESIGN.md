@@ -17594,6 +17594,48 @@ text's "lowered by"; a rule that would raise leaves the status; `min_sources` wi
 `no_conflict`, two rules in order; six broken rules (a verified `else`, an unknown condition, `applies_to: claims`, no
 name, an `else` of another word, `min_sources: 0`) reported, not applied, not fatal; a config without rules.
 
+## 155. Verinoda in a product: at build time, not at run time (D183, 2026-10-10)
+
+### 155.1 Why
+
+The field test's product ran `query.py` on the standard library and did not load Verinoda while it ran; Verinoda's part
+was making the data and helping develop it. That is no defect, but it bounds what "a Verinoda product" means (backlog
+20.8). Three ways were put to the user: write the boundary down, ship a small run-time subset with no dependencies, or
+have the product depend on the whole package. The user asked what the third would cost in tokens and time and what it
+would buy in answer quality, then chose the first.
+
+### 155.2 Decisions
+
+- **Written down** in `SYMBIOSIS.md` ("Verinoda in a product", and the Turkish summary): Verinoda is used where a product
+  is built; the product ships what Verinoda produced (the relations of `verinoda relations --json`, the sentences of
+  `query --sentences --json`) as its own data and answers with its own code. The section gives the two build-step
+  commands and the measured cost of the alternative.
+- **When to depend on it at run time anyway**: when the corpus changes while the product runs (answers then follow the
+  files and say when they changed) or the questions are too open to compute before.
+- **No run-time subset**: a dependency-free check that a quoted line is still in its file would be a public interface to
+  keep stable, and `search.db`'s schema, an internal detail that changes between versions, would become a contract; it
+  waits for a product that needs it.
+
+### 155.3 Measured
+
+`benchmarks/results/field-test-synthetic-2026-10-10/` (synthetic, made and measured by the same person; not the field
+test): a new process per question cost about 0.45 s with Verinoda against 0.08-0.22 s for a standard-library stand-in,
+13-29 ms against 0.8-8 ms in one process, 38-42 MB against 15-17 MB of memory; a plain install is 63 packages and 293 MB
+of site-packages; the index takes 1.3 s / 6.3 s to build and 0.95 s / 4.7 s to update after one edit (40 / 400 files).
+Verinoda calls no language model on this path; when a model reads the answer, its median grew from about 218 to 277
+estimated tokens (40 files) and from 276 to 322 (400 files). The gain was in ranking: evidence recall 0.57 against 0.46
+and 0.35 against 0.28, the first evidence line's reciprocal rank 0.44 against 0.35 and 0.27 against 0.06; a build step
+keeps it. **Not measured:** the field test's corpus, its product and its gold.
+
+### 155.4 Not done
+
+- The run-time subset (above); a command that packs a product's data in one step (the two commands are run by the
+  product's own build).
+
+### 155.5 Tests
+
+None: a documentation decision. `tests/test_docs.py` checks the relative links of the documents it owns.
+
 ## Sources
 
 - **Retrieval:**
