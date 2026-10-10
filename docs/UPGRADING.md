@@ -545,7 +545,8 @@ client that validated it against `text` and `json` only should add it.
 Nothing to migrate. New command `verinoda relations [TOPIC]`: prerequisite, support and shared relations between the
 topics of a prose corpus, read from cue words, each with the sentence at `file:line` and the rule that read it. It needs a
 topics file: `--topics FILE`, or `"corpus": {"topics": "topics.json"}` in `.verinoda/config.json`. Nothing is stored and
-`analyze` is unchanged; there is no MCP tool for it yet.
+`analyze` is unchanged; there is no MCP tool for it yet. The Claude Code skill allows `verinoda relations` without asking
+(`Bash` and `PowerShell`); re-run `verinoda setup` (or `verinoda install --agent claude`) in a project to bring it.
 
 ### D182: Evidence rules that only lower a status
 

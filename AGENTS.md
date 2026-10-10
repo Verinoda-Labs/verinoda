@@ -20,9 +20,15 @@ runs beside the agent in a session.
 - **Lint only the files you changed**: `ruff check` followed by those files. Never `ruff --fix` or a formatter over a folder:
   a broad fix once rewrote 88 result files.
 - Python tests: `.venv/Scripts/python.exe -m pytest tests/test_<area>.py -q` for what you changed (`pytest tests` is the whole
-  suite). Two tests failed before your change and are not yours: `tests/test_agents.py::test_skill_templates_are_complete`
-  for `claude` and for `codex` (a template is 243 and 242 lines long where the test allows fewer than 240). Check on a clean
-  checkout before you blame your change for any other failure.
+  suite, about 35 minutes). No `.venv` in a fresh clone: `uv venv .venv -p 3.12` then
+  `uv pip install --python .venv -e ".[mcp,precise]" pytest hypothesis ruff`. Six tests failed on a clean checkout before
+  your change (Windows 11, Python 3.12, 2026-10-10) and are not yours: `tests/test_agents.py::test_skill_templates_are_complete`
+  for `claude` and for `codex` (a template body is 243 and 242 lines long where the test allows fewer than 240),
+  `tests/test_consolidate.py::test_the_later_verification_is_kept`, `tests/test_grep_ast.py::test_bounds_are_said`,
+  `tests/test_query_language.py::test_budgets_cut_the_answer_and_say_so` and
+  `tests/test_tq_measured.py::test_an_edit_to_a_module_naming_imports_hides_measured`; `tests/test_asof.py::test_recorded_time`
+  fails now and then in a whole-suite run and passes alone. Check on a clean checkout (a `git worktree` of `HEAD`, run from
+  its folder so it imports its own code) before you blame your change for any other failure.
 - When a backlog item ships: add a section to `docs/DESIGN.md` under the next `D` number (why, decisions, measured, not done,
   tests), add a note to `docs/UPGRADING.md`, and delete the item's row from `docs/BACKLOG.md` (a row whose item shipped only
   in part is cut down to what is left). Code comments cite the `D` number, never a backlog id.
