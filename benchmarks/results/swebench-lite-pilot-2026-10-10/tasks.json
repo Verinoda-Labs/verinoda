@@ -1,0 +1,71 @@
+{
+ "seed": "20261010:",
+ "tasks": [
+  {
+   "id": "sphinx-doc__sphinx-8801",
+   "repo": "sphinx-doc/sphinx",
+   "base_commit": "7ca279e33aebb60168d35e6be4ed059f4a68f2c1",
+   "version": "3.5",
+   "problem_statement": "autodoc: The annotation only member in superclass is treated as \"undocumented\"\n**Describe the bug**\r\nautodoc: The annotation only member in superclass is treated as \"undocumented\".\r\n\r\n**To Reproduce**\r\n\r\n```\r\n# example.py\r\nclass Foo:\r\n    \"\"\"docstring\"\"\"\r\n    attr1: int  #: docstring\r\n\r\n\r\nclass Bar(Foo):\r\n    \"\"\"docstring\"\"\"\r\n    attr2: str  #: docstring\r\n```\r\n```\r\n# index.rst\r\n.. autoclass:: example.Bar\r\n   :members:\r\n   :inherited-members:\r\n```\r\n\r\n`Bar.attr1` is not documented. It will be shown if I give `:undoc-members:` option to the autoclass directive call. It seems the attribute is treated as undocumented.\r\n\r\n**Expected behavior**\r\nIt should be shown.\r\n\r\n**Your project**\r\nNo\r\n\r\n**Screenshots**\r\nNo\r\n\r\n**Environment info**\r\n- OS: Mac\r\n- Python version: 3.9.1\r\n- Sphinx version: HEAD of 3.x\r\n- Sphinx extensions: sphinx.ext.autodoc\r\n- Extra tools: No\r\n\r\n**Additional context**\r\nNo\r\n\n",
+   "gold_files": [
+    "sphinx/ext/autodoc/importer.py"
+   ],
+   "test_files": [
+    "tests/roots/test-ext-autodoc/target/uninitialized_attributes.py",
+    "tests/test_ext_autodoc_autoclass.py"
+   ],
+   "fail_to_pass": [
+    "tests/test_ext_autodoc_autoclass.py::test_uninitialized_attributes"
+   ]
+  },
+  {
+   "id": "django__django-16873",
+   "repo": "django/django",
+   "base_commit": "fce90950bef348803fa7cc3e6bc65f4bce429b82",
+   "version": "5.0",
+   "problem_statement": "Template filter `join` should not escape the joining string if `autoescape` is `off`\nDescription\n\t\nConsider the following template code snippet:\n{% autoescape off %}\n{{ some_list|join:some_var }}\n{% endautoescape %}\nin this case, the items inside some_list will not be escaped (matching the expected behavior) but some_var will forcibly be escaped. From the docs for autoescape or join I don't think this is expected behavior.\nThe following testcase illustrates what I think is a bug in the join filter (run inside the template_tests/filter_tests folder):\nfrom django.template.defaultfilters import escape\nfrom django.test import SimpleTestCase\nfrom ..utils import setup\nclass RegressionTests(SimpleTestCase):\n\t@setup({\"join01\": '{{ some_list|join:some_var }}'})\n\tdef test_join01(self):\n\t\tsome_list = [\"<p>Hello World!</p>\", \"beta & me\", \"<script>Hi!</script>\"]\n\t\tsome_var = \"<br/>\"\n\t\toutput = self.engine.render_to_string(\"join01\", {\"some_list\": some_list, \"some_var\": some_var})\n\t\tself.assertEqual(output, escape(some_var.join(some_list)))\n\t@setup({\"join02\": '{% autoescape off %}{{ some_list|join:some_var }}{% endautoescape %}'})\n\tdef test_join02(self):\n\t\tsome_list = [\"<p>Hello World!</p>\", \"beta & me\", \"<script>Hi!</script>\"]\n\t\tsome_var = \"<br/>\"\n\t\toutput = self.engine.render_to_string(\"join02\", {\"some_list\": some_list, \"some_var\": some_var})\n\t\tself.assertEqual(output, some_var.join(some_list))\nResult of this run in current main is:\n.F\n======================================================================\nFAIL: test_join02 (template_tests.filter_tests.test_regression.RegressionTests.test_join02)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n File \"/home/nessita/fellowship/django/django/test/utils.py\", line 443, in inner\n\treturn func(*args, **kwargs)\n\t\t ^^^^^^^^^^^^^^^^^^^^^\n File \"/home/nessita/fellowship/django/tests/template_tests/utils.py\", line 58, in inner\n\tfunc(self)\n File \"/home/nessita/fellowship/django/tests/template_tests/filter_tests/test_regression.py\", line 21, in test_join02\n\tself.assertEqual(output, some_var.join(some_list))\nAssertionError: '<p>Hello World!</p>&lt;br/&gt;beta & me&lt;br/&gt;<script>Hi!</script>' != '<p>Hello World!</p><br/>beta & me<br/><script>Hi!</script>'\n----------------------------------------------------------------------\nRan 2 tests in 0.007s\n",
+   "gold_files": [
+    "django/template/defaultfilters.py"
+   ],
+   "test_files": [
+    "tests/template_tests/filter_tests/test_join.py"
+   ],
+   "fail_to_pass": [
+    "test_autoescape_off (template_tests.filter_tests.test_join.FunctionTests.test_autoescape_off)",
+    "test_join_autoescape_off (template_tests.filter_tests.test_join.JoinTests.test_join_autoescape_off)"
+   ]
+  },
+  {
+   "id": "sympy__sympy-23262",
+   "repo": "sympy/sympy",
+   "base_commit": "fdc707f73a65a429935c01532cd3970d3355eab6",
+   "version": "1.11",
+   "problem_statement": "Python code printer not respecting tuple with one element\nHi,\r\n\r\nThanks for the recent updates in SymPy! I'm trying to update my code to use SymPy 1.10 but ran into an issue with the Python code printer. MWE:\r\n\r\n\r\n```python\r\nimport inspect\r\nfrom sympy import lambdify\r\n\r\ninspect.getsource(lambdify([], tuple([1])))\r\n```\r\nSymPy 1.9 and under outputs:\r\n```\r\n'def _lambdifygenerated():\\n    return (1,)\\n'\r\n```\r\n\r\nBut SymPy 1.10 gives\r\n\r\n```\r\n'def _lambdifygenerated():\\n    return (1)\\n'\r\n```\r\nNote the missing comma after `1` that causes an integer to be returned instead of a tuple. \r\n\r\nFor tuples with two or more elements, the generated code is correct:\r\n```python\r\ninspect.getsource(lambdify([], tuple([1, 2])))\r\n```\r\nIn SymPy  1.10 and under, outputs:\r\n\r\n```\r\n'def _lambdifygenerated():\\n    return (1, 2)\\n'\r\n```\r\nThis result is expected.\r\n\r\nNot sure if this is a regression. As this breaks my program which assumes the return type to always be a tuple, could you suggest a workaround from the code generation side? Thank you. \n",
+   "gold_files": [
+    "sympy/utilities/lambdify.py"
+   ],
+   "test_files": [
+    "sympy/utilities/tests/test_lambdify.py"
+   ],
+   "fail_to_pass": [
+    "test_issue_14941"
+   ]
+  },
+  {
+   "id": "sphinx-doc__sphinx-7738",
+   "repo": "sphinx-doc/sphinx",
+   "base_commit": "c087d717f6ed183dd422359bf91210dc59689d63",
+   "version": "3.1",
+   "problem_statement": "overescaped trailing underscore on attribute with napoleon\n**Describe the bug**\r\nAttribute name `hello_` shows up as `hello\\_` in the html (visible backslash) with napoleon.\r\n\r\n**To Reproduce**\r\nSteps to reproduce the behavior:\r\n\r\nempty `__init__.py`\r\n`a.py` contains\r\n```python\r\nclass A:\r\n    \"\"\"\r\n    Attributes\r\n    ----------\r\n    hello_: int\r\n        hi\r\n    \"\"\"\r\n    pass\r\n```\r\nrun `sphinx-quickstart`\r\nadd `'sphinx.ext.autodoc', 'sphinx.ext.napoleon'` to extensions in conf.py.\r\nadd `.. autoclass:: a.A` to index.rst\r\nPYTHONPATH=. make clean html\r\nopen _build/html/index.html in web browser and see the ugly backslash.\r\n\r\n**Expected behavior**\r\nNo backslash, a similar output to what I get for\r\n```rst\r\n    .. attribute:: hello_\r\n        :type: int\r\n\r\n        hi\r\n```\r\n(the type shows up differently as well, but that's not the point here)\r\nOlder versions like 2.4.3 look ok to me.\r\n\r\n**Environment info**\r\n- OS: Linux debian testing\r\n- Python version: 3.8.3\r\n- Sphinx version: 3.0.4\r\n- Sphinx extensions:  sphinx.ext.autodoc, sphinx.ext.napoleon\r\n- Extra tools:\n",
+   "gold_files": [
+    "sphinx/ext/napoleon/docstring.py"
+   ],
+   "test_files": [
+    "tests/test_ext_napoleon_docstring.py"
+   ],
+   "fail_to_pass": [
+    "tests/test_ext_napoleon_docstring.py::NumpyDocstringTest::test_underscore_in_attribute"
+   ]
+  }
+ ]
+}

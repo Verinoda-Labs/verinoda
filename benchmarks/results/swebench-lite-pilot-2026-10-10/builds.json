@@ -1,0 +1,14 @@
+{
+ "sphinx-doc__sphinx-8801:verinoda_guided": {
+  "setup_seconds": 34.5
+ },
+ "django__django-16873:verinoda_guided": {
+  "setup_seconds": 146.5
+ },
+ "sympy__sympy-23262:verinoda_guided": {
+  "setup_seconds": 234.6
+ },
+ "sphinx-doc__sphinx-7738:verinoda_guided": {
+  "setup_seconds": 38.9
+ }
+}
