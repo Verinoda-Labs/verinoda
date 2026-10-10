@@ -1640,11 +1640,13 @@ def cmd_relations(args) -> int:
     with readonly.scope(args.read_only or retrieval.read_only_enabled(repo)) as wrote:
         try:
             res = relations.find(repo, args.topic, topics_file=args.topics, kind=args.kind,
-                                 max_items=args.max_items, co_mentions=args.co_mentions)
+                                 max_items=args.max_items, co_mentions=args.co_mentions, rules=not args.no_rules)
         except relations.TopicsError as exc:
             raise SystemExit(f"error: {exc}") from None
     if wrote:
         res["index_writes"] = list(wrote)
+    for e in res.get("rule_errors") or []:  # D182: a broken rule is said, never applied, never fatal
+        print(f"warning: evidence rule not applied: {e}", file=sys.stderr)
     _emit(args, res, lambda r: _write(relations.render(r)))
     return 0
 
@@ -5228,6 +5230,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--max-items", type=int, default=50)
     sp.add_argument("--co-mentions", action="store_true",
                     help="also list the sentences that name two topics without a cue this reads")
+    sp.add_argument("--no-rules", action="store_true",
+                    help="do not apply the evidence rules of evidence.rules (they can only lower a status)")
     sp.add_argument("--read-only", action="store_true", help="write no file (as query --read-only)")
     sp = add("usage", cmd_usage, "totals of a VERINODA_USAGE_LOG file: calls, result characters, estimated tokens "
                                  "and seconds per MCP tool and CLI command", repo=False)

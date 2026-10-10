@@ -17539,6 +17539,50 @@ a topics file and the refused ones; the view's joined sources, the file's own to
 files not read, co-mentions; one topic by name or alias, an unknown one, a kind, `corpus.topics`, the CLI text and JSON; a
 topics file outside the project and a missing one.
 
+## 154. Evidence rules that only lower a status (D182, 2026-10-10)
+
+### 154.1 Why
+
+The field test's product counted an edge as proven only when one sentence names both topics; Verinoda's statuses did not
+know that rule, so the product's "proven" and Verinoda's status said different things (backlog 20.3). The user chose rules
+that can only lower a status.
+
+### 154.2 Decisions
+
+- **`evidence.rules`** in `.verinoda/config.json` (or the user's config, as every setting): each rule has a `name`,
+  `applies_to` (`relations`, the default), `require` (`both_named`: a source sentence names both topics, not only the
+  file's own topic; `direction_known`: not `shared`; `no_conflict`; `{"min_sources": N}`; or a list, all of which must
+  hold), `else` (`strong_inference`, `weak_inference` or `unknown`) and optionally `kinds`. A relation a rule's `require`
+  fails on gets at most its `else`; a relation already below it is left as it is. Each lowered relation names the rules in
+  `lowered_by`, the text says "lowered by", and the result lists the rules applied.
+- **Never raised**: an `else` naming a verified status, an unknown condition, another `applies_to`, a rule without a name
+  or an `else` outside the three statuses is a rule error. It is listed in `rule_errors` and on standard error, never
+  applied, and the command still succeeds.
+- **No trust needed**: rules are not among the settings a repository may set only when the user trusts it
+  (`paths.PROTECTED_SETTINGS`), because a rule a cloned repository ships can only make its answers more cautious.
+- `relations --no-rules` shows the statuses before the rules (for measuring them). Rules apply to `verinoda relations`
+  only (D181); rules on `analyze` claims wait for stage B of 20.1, when relation claims exist.
+
+### 154.3 Measured
+
+The tests only: the product's rule (`both_named`, `else: unknown`) lowers a relation read only through the file's own
+topic and leaves one stated by a sentence naming both; a rule never raises (a `strong_inference` cap leaves a
+`weak_inference` relation); `kinds` and a list of conditions; six broken rules reported and not applied. **Not
+measured:** whether the product's and Verinoda's statuses agree on the field test's corpus with the rule set (the gold is
+not on the remote).
+
+### 154.4 Not done
+
+- Rules on `analyze` claims (stage B of 20.1); conditions beyond the four (a rule over the sentence's wording, a list of
+  accepted cue rules).
+
+### 154.5 Tests
+
+`tests/test_evidence_rules.py`: the product's rule lowering what it does not accept and nothing else, `--no-rules`, the
+text's "lowered by"; a rule that would raise leaves the status; `min_sources` with `kinds`, `direction_known` with
+`no_conflict`, two rules in order; six broken rules (a verified `else`, an unknown condition, `applies_to: claims`, no
+name, an `else` of another word, `min_sources: 0`) reported, not applied, not fatal; a config without rules.
+
 ## Sources
 
 - **Retrieval:**

@@ -554,11 +554,13 @@ def _file_topic(lines: list[str], rel: str, topics: list[Topic]) -> str | None:
 
 
 def find(repo: Path, topic: str | None = None, *, topics_file: str | None = None, kind: str | None = None,
-         max_items: int = 50, co_mentions: bool = False) -> dict:
+         max_items: int = 50, co_mentions: bool = False, rules: bool = True) -> dict:
     """``{"topics_file", "topics", "focus", "relations": [{"from", "to", "kind", "status", "sources", "conflict",
-    "evidence": [{"file", "line", "end_line", "text", "rule", "implicit", "negated"}]}], "more", "files_read",
-    "files_not_prose", "truncated", "co_mentions"}``."""
-    from verinoda import search_index, sentences
+    "evidence": [{"file", "line", "end_line", "text", "rule", "implicit", "negated"}], "lowered_by"?}], "more",
+    "files_read", "files_not_prose", "truncated", "co_mentions", "evidence_rules"?, "rule_errors"?}``. ``rules``: apply
+    the user's evidence rules (:mod:`verinoda.evidence_rules`, D182), which can only lower a status."""
+    from verinoda import evidence_rules, search_index, sentences
+    from verinoda.paths import load_config
     from verinoda.retrieval import PROSE_SUFFIXES
     from verinoda.snapshot import list_files
 
@@ -610,6 +612,8 @@ def find(repo: Path, topic: str | None = None, *, topics_file: str | None = None
         status = WEAK if conflict else max(each, key=STATUS_RANK.get)
         rows.append({"from": a, "to": b, "kind": k, "status": status, "sources": len(fd.evidence),
                      "conflict": conflict, "evidence": fd.evidence})
+    rule_list, rule_errors = evidence_rules.load(load_config(repo)) if rules else ([], [])
+    evidence_rules.apply(rows, rule_list)   # D182: a product's own terms, applied only downwards
     if focus:
         rows = [r for r in rows if focus in (r["from"], r["to"])]
     if kind:
@@ -620,6 +624,10 @@ def find(repo: Path, topic: str | None = None, *, topics_file: str | None = None
            "files_not_prose": len(files) - len(prose), "truncated": truncated, "co_mentions": co}
     if co_mentions:
         out["co_mention_examples"] = co_examples
+    if rule_list:
+        out["evidence_rules"] = [r.name for r in rule_list]
+    if rule_errors:
+        out["rule_errors"] = rule_errors
     return out
 
 
@@ -632,7 +640,7 @@ def render(res: dict) -> str:
         ev = r["evidence"][0]
         where = f"{ev['file']}:{ev['line']}" + (f"-{ev['end_line']}" if ev["end_line"] != ev["line"] else "")
         notes = [ev["rule"]] + (["implicit"] if ev["implicit"] else []) + (["negated"] if ev["negated"] else []) \
-            + (["conflict"] if r["conflict"] else [])
+            + (["conflict"] if r["conflict"] else []) + [f"lowered by {n}" for n in r.get("lowered_by") or []]
         out.append(f"{r['from']} {arrow} {r['to']}  {r['kind']}  {r['status']}  {where}  \"{ev['text']}\"  "
                    f"[{', '.join(notes)}]")
         if r["sources"] > 1:
@@ -650,6 +658,10 @@ def render(res: dict) -> str:
             out.append(f"  {c['file']}:{c['line']}  \"{c['text']}\"")
     if res["truncated"]:
         out.append(f"only the first {MAX_FILES} prose files were read")
+    if res.get("evidence_rules"):
+        out.append(f"evidence rules applied (they only lower): {', '.join(res['evidence_rules'])}")
+    for e in res.get("rule_errors") or []:
+        out.append(f"evidence rule not applied: {e}")
     out.append("read from cue words: strong_inference at most, weak_inference when one end is the file's own topic, "
                "the sentence is negated or two sentences disagree; the quoted sentence is at the line shown")
     return "\n".join(out)
