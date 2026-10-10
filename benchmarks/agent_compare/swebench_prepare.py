@@ -1,6 +1,6 @@
 """Select the instances of DESIGN_SWEBENCH.md and prepare their working copies.
 
-    python benchmarks/agent_compare/swebench_prepare.py DATA.parquet WORK_DIR N [--arms none,verinoda_guided]
+    python benchmarks/agent_compare/swebench_prepare.py DATA.parquet WORK_DIR N [--arms none,verinoda_guided] [--workers N]
 
 DATA.parquet: SWE-bench_Lite's test split. WORK_DIR gets ``tasks.json`` (the N first instances of the fixed order,
 with the files the gold patch and the test patch change) and one checkout per instance and arm,
@@ -15,12 +15,14 @@ import json
 import re
 import shutil
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from guard_run import git_env, run
+from guard_run import _force_remove, git_env, run
 
 SEED = "20261010:"
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -43,9 +45,13 @@ def select(parquet: Path, n: int) -> list[dict]:
 
 def fetch(task: dict, dest: Path) -> None:
     """A checkout of the repository at the base commit (one commit deep)."""
-    if dest.exists():
-        return
     env = git_env()
+    if dest.exists():  # one a killed run left half done is fetched again
+        head = run(["git", "rev-parse", "HEAD"], dest, env)[1].strip()
+        dirty = run(["git", "status", "--porcelain", "--untracked-files=no"], dest, env)[1].strip()
+        if head == task["base_commit"] and not dirty:
+            return
+        shutil.rmtree(dest, onerror=_force_remove)
     dest.mkdir(parents=True)
     # the machine's Git may convert line endings (autocrlf): the files must be exactly the blobs, as in SWE-bench's images
     for argv in (["git", "init", "-q"], ["git", "config", "core.longpaths", "true"],
@@ -55,7 +61,7 @@ def fetch(task: dict, dest: Path) -> None:
                  ["git", "checkout", "-q", "--detach", "FETCH_HEAD"]):
         rc, _, err, _ = run(argv, dest, env, timeout=1800)
         if rc != 0:
-            shutil.rmtree(dest, ignore_errors=True)
+            shutil.rmtree(dest, onerror=_force_remove)
             raise RuntimeError(f"{' '.join(argv)} in {dest}: {err[-400:]}")
 
 
@@ -79,23 +85,31 @@ def main() -> int:
     (work / "tasks.json").write_text(json.dumps({"seed": SEED, "tasks": tasks}, indent=1), encoding="utf-8")
     builds_path = work / "builds.json"
     builds = json.loads(builds_path.read_text(encoding="utf-8")) if builds_path.exists() else {}
-    for t in tasks:
+    lock = threading.Lock()
+
+    def prepare(t: dict) -> None:
         base = work / "copies" / t["id"] / "none"
         t0 = time.perf_counter()
         fetch(t, base)
         print(f"{t['id']}: checkout ready ({round(time.perf_counter() - t0, 1)} s)", flush=True)
         for arm in arms:
-            if arm == "none":
-                continue
-            dest = work / "copies" / t["id"] / arm
-            if dest.exists() and f"{t['id']}:{arm}" in builds:
-                continue
-            shutil.rmtree(dest, ignore_errors=True)
-            shutil.copytree(base, dest)
             key = f"{t['id']}:{arm}"
-            builds[key] = setup_verinoda(dest)
-            builds_path.write_text(json.dumps(builds, indent=1), encoding="utf-8")
-            print(f"{key}: set up ({builds[key]['setup_seconds']} s)", flush=True)
+            dest = work / "copies" / t["id"] / arm
+            if arm == "none" or (dest.exists() and key in builds):
+                continue
+            if dest.exists():
+                shutil.rmtree(dest, onerror=_force_remove)
+            shutil.copytree(base, dest)
+            info = setup_verinoda(dest)
+            with lock:
+                builds[key] = info
+                builds_path.write_text(json.dumps(builds, indent=1), encoding="utf-8")
+            print(f"{key}: set up ({info['setup_seconds']} s)", flush=True)
+
+    workers = int(sys.argv[sys.argv.index("--workers") + 1]) if "--workers" in sys.argv else 1
+    with ThreadPoolExecutor(workers) as pool:
+        for fut in [pool.submit(prepare, t) for t in tasks]:
+            fut.result()
     print("prepared", len(tasks), "instances", flush=True)
     return 0
 
