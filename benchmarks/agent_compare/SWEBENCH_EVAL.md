@@ -3,6 +3,10 @@
 **Step-by-step instructions for the person who runs it, in Turkish: `SWEBENCH_DOCKER_TALIMAT.md`.** `swebench_compare.py` compares the
 two arms' reports.
 
+**Done for the 100-instance run (2026-10-10, `docs/DESIGN.md` D184):** both arms resolved 72 of 100 with the official harness in
+Docker; the reports and the paired comparison are in `benchmarks/results/swebench-lite-100-2026-10-10/`. The rest of this file is
+how to evaluate a new run.
+
 `swebench_run.py` writes `predictions-none.jsonl` and `predictions-verinoda_guided.jsonl` (SWE-bench format:
 `instance_id`, `model_name_or_path`, `model_patch`). **The share of instances resolved is the study's main measure and it
 is not measured until those files are evaluated with the official SWE-bench harness on a machine that can run it.** The

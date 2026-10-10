@@ -68,6 +68,11 @@ in either direction, and the resolved share was not measured.
 ## Result (2026-10-10)
 
 The 100-instance run is in `benchmarks/results/swebench-lite-100-2026-10-10/` (README, `summary.json`, the sessions and the
-predictions). The resolved share was **not measured**; the proxies show the Verinoda arm used Verinoda in all 100 sessions, at
-about 60 % more dollars and 2.3 more turns per instance, with no visible difference in the patches' files (90 of 100 pairs changed
-the same files; the gold file was covered in 92 against 90). The evaluation of `predictions-*.jsonl` is backlog row 21.1.
+predictions). The proxies show the Verinoda arm used Verinoda in all 100 sessions, at about 60 % more dollars and 2.3 more
+turns per instance, with no visible difference in the patches' files (90 of 100 pairs changed the same files; the gold file was
+covered in 92 against 90).
+
+**Resolved share (official SWE-bench evaluation in Docker, 2026-10-10, `docs/DESIGN.md` D184):** 72 of 100 in each arm; 66
+resolved in both, 6 in the plain arm only, 6 in the Verinoda arm only, 22 in neither; paired difference 0.00, bootstrap 95 %
+interval -0.07 to 0.07, exact McNemar p = 1.0. All 100 instances completed in both arms. No measured difference: a difference
+smaller than about 7 points is not ruled out. Reports and per-instance results are beside the predictions.

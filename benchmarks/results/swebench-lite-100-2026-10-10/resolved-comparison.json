@@ -1,0 +1,20 @@
+{
+ "instances": 100,
+ "resolved_plain": 72,
+ "resolved_guided": 72,
+ "share_plain": 0.72,
+ "share_guided": 0.72,
+ "both": 66,
+ "only_plain": 6,
+ "only_guided": 6,
+ "neither": 22,
+ "difference_guided_minus_plain": 0.0,
+ "ci95": [
+  -0.07,
+  0.07
+ ],
+ "mcnemar_exact_p": 1.0,
+ "not_completed_plain": [],
+ "not_completed_guided": [],
+ "claim": "no measured difference: the interval includes zero"
+}

@@ -17636,6 +17636,50 @@ keeps it. **Not measured:** the field test's corpus, its product and its gold.
 
 None: a documentation decision. `tests/test_docs.py` checks the relative links of the documents it owns.
 
+## 156. The SWE-bench Lite study's resolved share: the official evaluation (D184, 2026-10-10)
+
+### 156.1 Why
+
+The study of `benchmarks/agent_compare/DESIGN_SWEBENCH.md` (Claude Code alone against Claude Code with Verinoda Symbiosis,
+100 SWE-bench Lite instances, one session per instance and arm) wrote both arms' patches, but its main measure, the share of
+instances resolved, needs the official harness, which runs each instance in a Docker image; the Windows machine the study ran
+on had no Docker (backlog 21.1). Until it was measured, only proxies (the patch applies, it touches the gold files, cost) were
+reported, and they cannot say which arm solved more.
+
+### 156.2 Decisions
+
+- **The official harness, locally, not `sb-cli` or Modal**: Docker Engine was installed in WSL2 Ubuntu 24.04 on the same
+  Windows machine, and both prediction files were evaluated unchanged, as `SWEBENCH_DOCKER_TALIMAT.md` describes (`swebench`
+  5.0.2 with `--task-repo` swe-bench-tasks, `SWE-bench/SWE-bench_Lite`, run ids `swe100-none` and `swe100-guided`), after a
+  gold-patch check (`sympy__sympy-20590`, 1 / 1 resolved). The patches did not leave the machine.
+- **Published images where a build failed**: the harness builds each instance image from the task repository; builds failed
+  only when GitHub refused an anonymous clone under parallel load, and the harness then used the image published on Docker
+  Hub (53 instances of the plain arm, 45 of the Verinoda arm). The source differs between the arms in 8 instances, none of
+  them discordant; it is recorded per instance.
+- **Paired analysis as pre-registered**: `swebench_compare.py` (bootstrap 95 % interval, seed 20261010, exact McNemar).
+
+### 156.3 Measured
+
+`benchmarks/results/swebench-lite-100-2026-10-10/` (`report-*.json`, `per-instance-*.jsonl`, `resolved-comparison.json`,
+README): all 100 instances completed in both arms, no errors. **Resolved: 72 / 100 in each arm**; 66 in both, 6 in the plain
+arm only, 6 in the Verinoda arm only, 22 in neither. Paired difference 0.00, interval -0.07 to 0.07, McNemar p = 1.0: **no
+measured difference**; a difference below about 7 points is not ruled out. With the proxies (about 60 % more dollars and 2.3
+more turns per instance in the Verinoda arm), the steered use of Verinoda bought no measured gain in resolved instances on
+this sample. **Not measured:** the agents' own run-to-run variation (one session per instance and arm), use of Verinoda when
+the agent is not told to use it, agents that can run the projects' tests (no dependencies were installed, so the 72 % is not
+comparable with the leaderboard), and the other 200 Lite instances.
+
+### 156.4 Not done
+
+- A second session per instance and arm (`swebench_run.py`), which a borderline result would have needed; this one is not
+  borderline in either direction, it is level.
+- Building every image from the task repository: an authenticated clone inside the image build would avoid the fallback to
+  published images.
+
+### 156.5 Tests
+
+None: a measurement. The harness's own gold-patch check validated the set-up.
+
 ## Sources
 
 - **Retrieval:**

@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D183)
+## Upgrading from 0.4.0 (D137-D184)
 
 ### D137: Trigram regex index
 
@@ -561,6 +561,12 @@ statuses before the rules.
 Nothing to migrate: a documentation decision. `SYMBIOSIS.md` says how a product uses Verinoda (it ships what Verinoda
 produced as data, from `relations --json` and `query --sentences --json`, and does not import Verinoda while it runs) and
 when a run-time dependency pays (a corpus that changes while the product runs). No run-time package was added.
+
+### D184: The SWE-bench Lite study's resolved share
+
+Nothing to migrate: a measurement, no code changed. The 100-instance study's patches were evaluated with the official SWE-bench
+harness in Docker: both arms resolved 72 of 100 (no measured difference, 95 % interval -0.07 to 0.07). The reports and the
+per-instance results are in `benchmarks/results/swebench-lite-100-2026-10-10/`.
 
 ## Upgrading from 0.3.2 (D60-D136)
 
