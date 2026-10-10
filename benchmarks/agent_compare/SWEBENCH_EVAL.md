@@ -1,5 +1,8 @@
 # SWE-bench Lite study: how to evaluate the patches (run it where Docker or a cloud runner exists)
 
+**Step-by-step instructions for the person who runs it, in Turkish: `SWEBENCH_DOCKER_TALIMAT.md`.** `swebench_compare.py` compares the
+two arms' reports.
+
 `swebench_run.py` writes `predictions-none.jsonl` and `predictions-verinoda_guided.jsonl` (SWE-bench format:
 `instance_id`, `model_name_or_path`, `model_patch`). **The share of instances resolved is the study's main measure and it
 is not measured until those files are evaluated with the official SWE-bench harness on a machine that can run it.** The
