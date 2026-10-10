@@ -14,8 +14,8 @@ os.environ.setdefault("GRAPHIFY_OUT", ".verinoda/index")
 
 import json  # noqa: E402
 import re  # noqa: E402
-import sqlite3  # noqa: E402
 import shutil  # noqa: E402
+import sqlite3  # noqa: E402
 import subprocess  # noqa: E402
 import sys  # noqa: E402
 import threading  # noqa: E402
