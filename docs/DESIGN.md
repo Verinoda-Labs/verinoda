@@ -17225,7 +17225,7 @@ D176 is skipped: the unmerged branch `claude/kind-maxwell-8qm8wm` uses it for `v
 
 ### 149.1 Why
 
-A field test on a biology corpus (round 6, `docs/SYMBIOSIS-GAPS.md` on the branch `biyo-platform-test-gaps`, items 5 and
+A field test on a biology corpus (round 6, `docs/SYMBIOSIS-GAPS.md`, items 5 and
 6) reported two things. An agent saw files written under `kb/.verinoda/index` after a `verinoda query`, which it did not
 expect of a question (not measured there). And `verinoda setup` in the knowledge-base folder wrote `.claude/`, `.codex/`,
 `.agents/`, `.mcp.json` and an install manifest, with absolute paths in `.mcp.json`. Backlog rows 20.6 and 20.5 asked to

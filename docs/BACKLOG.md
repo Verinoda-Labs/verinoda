@@ -140,8 +140,8 @@ next steps. Stage B (incremental cross-file passes) is not started.
 ## 20 - Field-test gaps (biology corpus, round 6)
 
 From a field test of Symbiosis on a high-school biology corpus (31 to 41 topics, 12 queries, five rounds, a Symbiosis
-variant against one without Verinoda); the report is `docs/SYMBIOSIS-GAPS.md` on the branch
-`biyo-platform-test-gaps`, the raw records `biyo-platform/devtest/run6/` on `biyo-platform-test`. The sample is one
+variant against one without Verinoda); the report is `docs/SYMBIOSIS-GAPS.md`, the raw records
+`biyo-platform/devtest/run6/` on the branch `biyo-platform-test` (not on the remote yet). The sample is one
 corpus in one field, and the gold data was made by the product's designer in the same session, so it is not independent.
 Ordered by the report's priority. Shipped from this section: D177 (20.5, 20.6), D178 (20.7), D179 (20.4 in part), D180 (20.2), D181 (20.1 stage A), D182 (20.3 for relations).
 
