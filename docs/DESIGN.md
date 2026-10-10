@@ -17295,6 +17295,10 @@ field test's agent saw (its corpus was not available here).
   and do not list them (`index_writes` is on `query` and `project_query` only).
 - No `--no-agent-files` flag (`--agents none` is it); the program's path in `.mcp.json` stays absolute.
 - The MCP text form of `project_query` and the CLI text do not mention the writes.
+- A write-ahead log a crashed process left behind (or a copy taken while the database was open) is put into `atlas.db`
+  and removed by the next connection that closes last, a read-only one included: that is SQLite's recovery and is not
+  prevented (found when a test's copied project carried one; reproduced: the logged row is kept, and after it the
+  read-only check changes no file). With no log left over, which is the case between two commands, nothing is written.
 
 ### 149.5 Tests
 

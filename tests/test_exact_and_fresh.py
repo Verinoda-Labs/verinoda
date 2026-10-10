@@ -14,6 +14,7 @@ os.environ.setdefault("GRAPHIFY_OUT", ".verinoda/index")
 
 import json  # noqa: E402
 import re  # noqa: E402
+import sqlite3  # noqa: E402
 import shutil  # noqa: E402
 import subprocess  # noqa: E402
 import sys  # noqa: E402
@@ -531,11 +532,22 @@ def _tree(root: Path) -> dict[str, tuple[int, bytes]]:
             for p in root.rglob("*") if p.is_file() and ".git" not in p.relative_to(root).parts}
 
 
+def _settled(root: Path) -> dict[str, tuple[int, bytes]]:
+    """The tree as it is between two commands. The fixture's copy can be taken while another test holds the source
+    database open, and then carries its write-ahead log, as a crashed process leaves one; the first connection to
+    close puts it into atlas.db and removes it (SQLite's own recovery, the read path's or any other's, D177)."""
+    conn = sqlite3.connect(root / ".verinoda" / "atlas.db")
+    conn.execute("SELECT count(*) FROM meta").fetchone()
+    conn.close()
+    assert not list((root / ".verinoda").glob("atlas.db-*"))
+    return _tree(root)
+
+
 def test_a_read_only_check_writes_nothing_and_a_default_one_says_what_it_wrote(proj, capsys):
     # D177: a field test saw files written under .verinoda/index after a query; the check's two caches
     (proj / "app" / "billing.py").write_text(_module("billing") + "\n# edited\n", encoding="utf-8")
     _write(proj, "app/sub/deep.py", "X = 1\n")      # a new folder: git is asked about it
-    before = _tree(proj)
+    before = _settled(proj)
     ro = freshness.check(proj, record=False)
     assert ro["files"] == ["app/billing.py", "app/sub/deep.py"] and "wrote" not in ro
     assert _tree(proj) == before
@@ -559,7 +571,7 @@ def test_a_read_only_query_after_the_graph_was_rewritten_builds_in_memory_and_an
     # makes a query bring both up to date on disk; read-only, it builds them in memory and changes no file
     gp = proj / ".verinoda" / "index" / "graph.json"
     gp.write_text(gp.read_text(encoding="utf-8") + "\n", encoding="utf-8")
-    before = _tree(proj)
+    before = _settled(proj)
     capsys.readouterr()
     assert cli.main(["query", "where is the ledger total computed", "--repo", str(proj), "--json",
                      "--read-only"]) == 0
