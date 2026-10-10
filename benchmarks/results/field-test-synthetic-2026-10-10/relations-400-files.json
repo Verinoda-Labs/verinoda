@@ -1,0 +1,22 @@
+{
+ "files": 400,
+ "planted_edges": 460,
+ "read_edges": 460,
+ "correct": 460,
+ "precision": 1.0,
+ "recall": 1.0,
+ "reversed": 0,
+ "seconds": 2.08,
+ "co_mentions": 400,
+ "by_rule": {
+  "tr-uzerine-kurulur": 100,
+  "tr-ablative-once": 121,
+  "tr-ablative-sonra": 65,
+  "tr-anlamak-icin": 102,
+  "tr-onkosul": 72
+ },
+ "wrong_by_rule": {},
+ "statuses": {
+  "strong_inference": 460
+ }
+}

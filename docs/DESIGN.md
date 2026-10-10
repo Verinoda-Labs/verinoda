@@ -17523,11 +17523,12 @@ from a topics file.
 
 Sentences written for the tests, not taken from the synthetic corpus: the 18 order cases and 5 no-relation cases of
 `tests/test_relations.py` read as stated (written by the same person as the rules: they show the rules do what they say
-for those phrasings). On the synthetic corpus of the 20.8 measurement (its generator, `gen.py`, and the scripts are kept
-with their results outside the repository; not under `benchmarks/results/`): 46 of 46 planted edges at 40 files and 460
-of 460 at 400 files, none reversed, none wrong, before and after the review fixes above; the "birlikte sorulabilir"
-distractor was never read as a relation (40 and 400 co-mentions); 0.23-0.29 s and 0.36-0.46 s in one process. **This is self-consistency, not the field test**: gen.py's five
-sentence templates are among the patterns the rules were written for. **Not measured:** the field test's corpus and gold
+for those phrasings). On the synthetic corpus of the 20.8 measurement
+(`benchmarks/results/field-test-synthetic-2026-10-10/`: its generator, the scripts and the results): 46 of 46 planted
+edges at 40 files and 460 of 460 at 400 files, none reversed, none wrong, before and after the review fixes above; the
+"birlikte sorulabilir" distractor was never read as a relation (40 and 400 co-mentions); 0.23-0.42 s and 0.36-2.08 s in
+one process, with the machine's load. **This is self-consistency, not the field test**: gen.py's five sentence
+templates are among the patterns the rules were written for. **Not measured:** the field test's corpus and gold
 (on the branch `biyo-platform-test`, which is not on the remote), the precision of each rule on free prose, and whether an
 agent or the product does better with the view.
 
