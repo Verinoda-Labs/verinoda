@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D180)
+## Upgrading from 0.4.0 (D137-D181)
 
 ### D137: Trigram regex index
 
@@ -539,6 +539,13 @@ Nothing to migrate. `verinoda query "<q>" --sentences` (and the MCP `project_que
 the sentences of the ranked prose files that hold the question's words, each once with `file:line`, instead of passages;
 code and data files are not read in that mode. The `format` argument of `project_query` gains the value `sentences`; a
 client that validated it against `text` and `json` only should add it.
+
+### D181: Relations between the topics of a prose corpus
+
+Nothing to migrate. New command `verinoda relations [TOPIC]`: prerequisite, support and shared relations between the
+topics of a prose corpus, read from cue words, each with the sentence at `file:line` and the rule that read it. It needs a
+topics file: `--topics FILE`, or `"corpus": {"topics": "topics.json"}` in `.verinoda/config.json`. Nothing is stored and
+`analyze` is unchanged; there is no MCP tool for it yet.
 
 ## Upgrading from 0.3.2 (D60-D136)
 

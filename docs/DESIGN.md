@@ -17456,6 +17456,89 @@ a Turkish corpus finds nothing (no translation).
 read; a sentence listed once with its other place, the cap and `more`; filters narrowing the files read; the CLI text
 and JSON, and the MCP `format="sentences"`. `tests/test_mcp.py`: the `format` values.
 
+## 153. Relations between the topics of a prose corpus: `verinoda relations` (D181, 2026-10-10)
+
+### 153.1 Why
+
+The field test's critical item (backlog 20.1): `analyze` returned 13 claims for 5 topic pairs with a known order or support
+link, all of them definitions or places, no relation claim; the product wrote its prerequisite, support and shared-concept
+edges in its own rule layer, and its edge coverage (0.60 against 0.81 without Verinoda) and direction accuracy (0.12
+against 0.19) were below the variant without Verinoda. The user chose to go in two stages: first a read-only view whose
+rules can be measured one by one, then the rules that measure well become `analyze` claims (stage B); topic names come
+from a topics file.
+
+### 153.2 Decisions
+
+- **A view, not claims, in stage A** (`verinoda/relations.py`, `verinoda relations [TOPIC]`): computed from the files on
+  every call and stored nowhere, so nothing in it goes stale; `analyze` is unchanged.
+- **Topic names from a topics file**: `--topics FILE` or `corpus.topics` in `.verinoda/config.json`. Read: a JSON list
+  of names; a list of objects with `name|title|label|id` and `aliases|names|synonyms`; an object with a `topics` list
+  (other keys ignored); an object mapping each name to its aliases; a text file with one topic per line and aliases after
+  `|`. Anything else is refused with the shapes listed. The file must lie inside the project (as `--reference`), and it
+  is not read as prose itself.
+- **Every prose file is read, not ranked.** The measure the field test used is edge coverage; ranking would drop a file
+  that names a topic only through an alias. Prose is `retrieval.PROSE_SUFFIXES`; at most 5,000 files, and the result says
+  so when it stopped.
+- **Which topics a sentence names** (`mentions`): a Turkish name is matched with a noun's own endings only, in their order
+  (plural, third-person possessive, case, `-ki`, copula), its final p/t/k softened; `search_index._tr_inflection` was not
+  used because it takes any chain of endings, which finds "Organ" in "Organeller" and "Gen" in "genetik", both in such a
+  corpus. The longest name is matched first and its words consumed ("Hücre zarı" before "Hücre"). An apostrophe keeps the
+  ending apart ("DNA'nın"). When the name is bare, its case is read from the head noun after it ("Doku konusundan",
+  "ünitesine"). "bu konu" / "this topic" is the file's own topic, and so is the subject Turkish leaves out when a sentence
+  names only one topic ("Hücre konusundan sonra gelir."); the file's topic is its first heading, else its file name,
+  matched to a name or alias.
+- **Named rules over a cue table** (`CUES`, `RULES`, tried in order, the first that fires reads the sentence): Turkish
+  `tr-meden-once` ("X'i …-meden önce Y": X later), `tr-meden-negated` ("X'i …-meden Y'ye geçilmez": X earlier),
+  `tr-anlamak-icin` ("Y'yi anlamak için X'i bilmek gerekir"), `tr-ablative-once` / `tr-ablative-sonra` (the ablative
+  topic is later / earlier), `tr-onkosul` (the genitive or "için" topic of *ön koşul, temel, şart, gerekli* is later),
+  `tr-gerektirir`, `tr-dayanir`, `tr-uzerine-kurulur` (the subject is later), `tr-gecis` ("X'ten Y'ye geçilir"),
+  `tr-once-sonra` ("Önce X, sonra Y"); English `en-before`, `en-after` (between the names, or sentence-initial),
+  `en-requires`, `en-required-for`, `en-prerequisite`, `en-follows`; then `support` and `shared`. Every relation carries
+  the rule that read it, so stage B can promote rules one by one.
+- **Negation**: a negated order rule is flipped ("Hücreyi öğrenmeden önce dokuya geçilmez": cell first), a negated
+  requirement rule states nothing ("B, A'yı gerektirmez"); what is left is `weak_inference`.
+- **Statuses**: a rule that fired gives `strong_inference`, never more: order and direction are invisible to word cues
+  (D31) and a heuristic result is `strong_inference` at most (the backlog's rule). `weak_inference` when one end is the
+  file's own topic, the sentence is negated, or two sentences give one pair opposite orders (both kept, marked
+  `conflict`). `shared` needs its own cue (*ortak, ilişkili, bağlantılı, benzer, share, common, related*), never
+  *birlikte*: "sınavlarda birlikte sorulabilir" is not a link. Sentences that name two topics with no cue are counted as
+  co-mentions, not relations (`--co-mentions` lists them). The quoted sentence at `file:line` is a separate fact from the
+  relation's status: the sentence can be checked, the reading cannot.
+- **CLI only in stage A.** The core MCP menu has about ten characters left under its 4,600-character budget, and a tool
+  in the full profile needs its registration, annotations and the tests that enumerate tools; the field test's agent used
+  MCP, so stage B, whose claims `analyze` and `claim_list` return, carries it there.
+- The view runs inside the query's read-only scope (D177, `--read-only` or `query.read_only`) and gets its usage line
+  (D178).
+
+### 153.3 Measured
+
+Sentences written for the tests, not taken from the synthetic corpus: the 18 order cases and 5 no-relation cases of
+`tests/test_relations.py` read as stated (written by the same person as the rules: they show the rules do what they say
+for those phrasings). On the synthetic corpus of the 20.8 measurement (`gen.py`, kept with its results outside the
+repository at `C:\Users\ozcin\verinoda-measurements\20.8-option-c-2026-10-10\`): 46 of 46 planted edges at 40 files and
+460 of 460 at 400 files, none reversed, none wrong; the "birlikte sorulabilir" distractor was never read as a relation (40
+and 400 co-mentions); 0.23 s and 0.36 s in one process. **This is self-consistency, not the field test**: gen.py's five
+sentence templates are among the patterns the rules were written for. **Not measured:** the field test's corpus and gold
+(on the branch `biyo-platform-test`, which is not on the remote), the precision of each rule on free prose, and whether an
+agent or the product does better with the view.
+
+### 153.4 Not done
+
+- Stage B: relation claims of their own kind in `analyze` (history, staleness, `challenge`, MCP), only for rules that
+  measure well on gold.
+- One relation per sentence (the first rule); a sentence that chains three topics gives the pair next to its cue.
+- No reference resolution beyond "bu konu" and a left-out subject; the support and shared cue lists are short; English
+  negation is read from *not, never, cannot, n't* only; no translation between languages; no transitive closure.
+
+### 153.5 Tests
+
+`tests/test_relations.py`: the order each held-out sentence states and the rule that read it (Turkish endings and cues, a
+negation that flips, the file's own topic, English); no relation without a cue or with a negated requirement; names with
+noun endings only and the longest first, an apostrophe, the head noun's case; `shared` on its own cue; the five shapes of
+a topics file and the refused ones; the view's joined sources, the file's own topic, a conflict, the topics file and code
+files not read, co-mentions; one topic by name or alias, an unknown one, a kind, `corpus.topics`, the CLI text and JSON; a
+topics file outside the project and a missing one.
+
 ## Sources
 
 - **Retrieval:**

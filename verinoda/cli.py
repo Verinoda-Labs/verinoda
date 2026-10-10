@@ -1632,6 +1632,23 @@ def cmd_export(args) -> int:
     return 0
 
 
+def cmd_relations(args) -> int:
+    """Relations between the topics of a prose corpus, read from cue words (D181); nothing is stored."""
+    from verinoda import readonly, relations, retrieval
+
+    repo = _repo(args)
+    with readonly.scope(args.read_only or retrieval.read_only_enabled(repo)) as wrote:
+        try:
+            res = relations.find(repo, args.topic, topics_file=args.topics, kind=args.kind,
+                                 max_items=args.max_items, co_mentions=args.co_mentions)
+        except relations.TopicsError as exc:
+            raise SystemExit(f"error: {exc}") from None
+    if wrote:
+        res["index_writes"] = list(wrote)
+    _emit(args, res, lambda r: _write(relations.render(r)))
+    return 0
+
+
 def cmd_usage(args) -> int:
     """Totals of a ``VERINODA_USAGE_LOG`` file per tool and command (D178)."""
     from verinoda import usage
@@ -5201,6 +5218,17 @@ def build_parser() -> argparse.ArgumentParser:
                                ".verinoda-wiki.json names), each with its Mermaid diagrams")
     sp.add_argument("--markdown", action="store_true", help="every page as Markdown with its diagrams")
     sp.add_argument("--page", action="append", metavar="ID", help="only this page, as Markdown; repeatable")
+    sp = add("relations", cmd_relations, "relations between the topics of a prose corpus (prerequisite, support, "
+                                         "shared), read from cue words in sentences that name two topics, each with "
+                                         "the sentence at file:line; topic names come from a topics file")
+    sp.add_argument("topic", nargs="?", help="only the relations of this topic (a name or alias from the topics file)")
+    sp.add_argument("--topics", metavar="FILE", help="the topics file (default: corpus.topics in .verinoda/config.json)"
+                                                    "; JSON or one topic per line, aliases after '|'")
+    sp.add_argument("--kind", choices=["prerequisite", "support", "shared"])
+    sp.add_argument("--max-items", type=int, default=50)
+    sp.add_argument("--co-mentions", action="store_true",
+                    help="also list the sentences that name two topics without a cue this reads")
+    sp.add_argument("--read-only", action="store_true", help="write no file (as query --read-only)")
     sp = add("usage", cmd_usage, "totals of a VERINODA_USAGE_LOG file: calls, result characters, estimated tokens "
                                  "and seconds per MCP tool and CLI command", repo=False)
     sp.add_argument("log", nargs="?", help="the log file (default: $VERINODA_USAGE_LOG)")
