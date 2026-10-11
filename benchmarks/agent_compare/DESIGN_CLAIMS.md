@@ -239,3 +239,16 @@ history `git log -S` / `-L` cannot find at the sha) only; the counts stay 8 / 8 
 statements gave the checker a new detail to fault in every round; a task's gold is at most three short statements, each
 reproducible by one command. The writer's prompt also says that `rg` is not installed on this machine (use `grep`), so
 that `gold_sources` run. The gin tasks are being rewritten under these rules before any is committed.
+
+## Amendment 2026-10-11: N after the pilot, and the mechanical check
+
+The pilot (8 tasks x 2 arms x 1 repeat, `benchmarks/results/claims-pilot-2026-10-11/` once the hand check is in) ran
+without an error or a network lookup; every Verinoda-arm session called the tools. On the answerable pilot tasks the `none`
+arm's share of answers with a false fact claim was 0.25 (2 of 8): at or above the 10 % threshold, so **N stays at 40 as
+written** (30 answerable, 10 traps, 3 repeats). Blinding accuracy was 0.69 [0.44, 0.88], not failed. The mechanical
+citation check was found too strict: of 8 sampled `wrong` verdicts, 8 were correct citations (a backticked span matched
+whole, a hash taken as the identifier, a commit read by its message only). Fixed before the main run, as a property of the
+scorer and not of the hypothesis: identifiers are the tokens of backticked spans and plain words, hashes and extensions
+dropped; the question's own identifiers count for every claim of the answer; a commit is checked against its message and
+its diff. Re-applied to the pilot: 190 citations, 174 `confirmed`, 15 `missing`, 1 `wrong` in each arm. The judge's rows
+did not change. The person's hand check of 40 claims is pending at the time of this amendment.
