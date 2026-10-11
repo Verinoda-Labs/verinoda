@@ -10,7 +10,7 @@ a paragraph that loads and uses the tools first. Harness `claims_run.py`, scorer
 check, blind judge of the same model, paired bootstrap over tasks, seed 20261011).
 
 Files: `config.json`, `tasks.json`, `results.jsonl` (one row per session with the full answer; the 16 pilot rows carry
-`pilot: true`), `mechanical.jsonl` (every citation with its verdict), `judge.jsonl` (the judge's claims, grades, trap
+`pilot: true`), `traps-opaque/` (the 10 traps rerun with opaque copy names after the review: the same files for its 60 sessions), `mechanical.jsonl` (every citation with its verdict), `judge.jsonl` (the judge's claims, grades, trap
 verdicts and arm guesses), `summary.json` (every table below; `per_task` holds the task-level values), `summary-pilot.json`
 (the same on the 16 pilot sessions), `hand_check.json` / `hand_check.md` (the 40 claims for the person, no arm) and
 `hand_check_key.json` (the arms), `usage/` (the Verinoda arm's per-call usage logs, D178), `logs/`.
@@ -19,8 +19,9 @@ verdicts and arm guesses), `summary.json` (every table below; `per_task` holds t
 
 240 sessions (120 per arm), all completed: no session error, no network lookup detected, every Verinoda-arm session called
 `analyze` (120 of 120) and 118 called `run_tool` (`history_search` 79, `change_review` 39), 3 `project_query`. Claude Code
-2.1.296 (the harness's own version read failed; the CLI was read by hand at the time), model `claude-sonnet-5-5` in both
-arms and in the judge. The judge parsed 240 of 240 answers into 2,592 claims. Session cost: plain 6.97 USD, Verinoda 11.26 USD.
+2.1.296 (the harness's version read failed in the main run and says "unknown" in its rows; the CLI was read by hand at the
+time, and the traps rerun records 2.1.296 through the fixed read), model `claude-sonnet-5-5` in both arms and in the judge.
+The 60 sessions of the traps rerun (`traps-opaque/`) are not in the 240 and are reported apart. The judge parsed 240 of 240 answers into 2,592 claims. Session cost: plain 6.97 USD, Verinoda 11.26 USD.
 
 ## Primary measures (paired per task, a task's value the mean over its 3 repeats; bootstrap 95 % over tasks)
 
@@ -31,6 +32,15 @@ arms and in the judge. The judge parsed 240 of 240 answers into 2,592 claims. Se
 
 **No measured difference.** On the traps nothing is measured between the arms because nothing happened in either: all 60
 trap answers said the repository holds no answer. No trap was reclassified (`writer_errors` empty).
+
+**Confound, found by the review after the result was written.** Every session's prompt and working folder carried the task
+id, and the id names the kind: each trap session read `.../guzzle__guzzle-trap-1/none/r1` on its prompt's first line, just
+before the instruction to say "unknown". No assistant turn of the 240 transcripts mentions the word outside the path, but
+priming cannot be ruled out. The paired difference is symmetric across arms and stands; the absolute floor of the trap
+measure as taken does not. **The 10 traps were rerun with opaque copy names** (`traps-opaque/`, a hash of the id; 2 arms x 3
+repeats, 60 sessions, none errored, `analyze` in 30 of 30 Verinoda sessions): again 30 of 30 answers in each arm said the
+repository holds no answer, 0 confabulated, blinding 0.63 [0.52, 0.75]. So the floor holds without the leak. This rerun is a
+dated secondary analysis (`DESIGN_CLAIMS.md`, last amendment), not the pre-registered measure.
 
 **What the interval can rule out.** The pre-registered N rule read the pilot's plain-arm rate (0.25, 2 of 8 answers) and
 kept N at 40; the main run's plain-arm rate is 0.044. A halving of that rate is a difference of -0.022, well inside the
@@ -62,15 +72,25 @@ By kind (the primary measure of the kind; descriptive, 8 to 14 tasks each):
 
 ## What the false facts were
 
-12 claims in 9 answers were graded an incorrect fact. 7 of the 12 (both arms, every repeat of
+20 claims in 17 of the 240 answers were graded an incorrect fact (plain 819 fact claims, 5 incorrect, on the answerable
+tasks; Verinoda 852 and 7).
+
+On the answerable tasks: 12 claims in 9 answers. 7 of the 12 (plain repeats 1 and 2, every Verinoda repeat, of
 `fastapi__full-stack-fastapi-template-why-1`) assert an **absence**: "the repository states no rationale for reading the
 password from the body". The rationale exists: commit `546dc8b` (2019-05-28, "Update login.py to receive password as body
 ... for security"), an ancestor of the pinned sha, at the file's pre-move path; `git log -S` on the current path misses it,
 and both arms (Verinoda's `history_search` included) stopped there and stated the negative as a fact. The Verinoda arm's two
 other `why` false facts (`junegunn__fzf-why-1`, repeats 2 and 3) have the same shape: a search returned nothing and the
 answer asserted that nothing exists. The plain arm's other two are an `affects` claim that over-reaches ("all seven call
-sites and the test would need updating") and one that under-counts callers. So the stance both arms carry stops positive
-confabulation (no trap was answered, no invented commit) and does not stop a confident negative.
+sites and the test would need updating") and one that under-counts callers.
+
+On the traps: 8 claims in 8 answers that the judge rated `unknown_said` all the same, so they are not confabulated answers
+but false history stated on the way to "unknown": a wrong introducing commit (`gin-gonic__gin-trap-1`: plain repeat 1,
+Verinoda repeats 1 and 2), "the string first appears in b58db450" where the trap's reason names an older commit
+(`guzzle__guzzle-trap-1`, plain repeats 1 to 3), a wrong "last commit that touched it" (`fastapi__...-trap-1`, plain
+repeats 1 and 3). Plain 6 answers, Verinoda 2 (the rerun with opaque names: plain 5, Verinoda 1; descriptive, not a
+pre-registered measure). So the stance both arms carry stops invented answers (no trap was answered) and does not stop a
+confident false statement about history, negative or positive, made in passing.
 
 ## Blinding: failed, and the channel is known
 
@@ -85,7 +105,14 @@ the spec says, not discarded.
 ## Mechanical citation check
 
 2,448 citations (`path:line`, `path:a-b`, commit hashes) in the 240 answers; plain 1,099 confirmed / 22 wrong / 6 missing,
-Verinoda 1,266 / 35 / 20. The check was loosened twice after the pilot, both times as a property of the scorer and before
+Verinoda 1,266 / 35 / 20. **The confirmed share (96.6 %) is an upper bound.** The review perturbed confirmed citations: of
+150 location citations moved by 60 lines, 77 stayed `confirmed` (37 fell off the end of the file); of 120 commit citations
+swapped for a random commit of the same history, 65 stayed `confirmed`; the question's identifiers alone account for 23 and
+14 of those. The match is a case-insensitive-free substring with no word boundary, and a commit's whole patch is searched.
+A tighter check (word boundaries, no question identifiers for a commit, a backticked identifier or two plain ones required)
+would regenerate `mechanical.jsonl` and `summary.json`, measured files; that is the person's decision and was not done here.
+The check feeds the secondary uncited share only; no trap was reclassified by it, and reclassification now reads the
+asserting claim's own citations (fixed after the review; it never fired). The check was loosened twice after the pilot, both times as a property of the scorer and before
 the main run's scoring (identifiers read out of backticked spans, the question's own names counted, a commit's diff
 searched, bare and partial paths resolved to the tracked files that end with them; `DESIGN_CLAIMS.md`, amendments of
 2026-10-11); the pilot's first matcher had graded 8 of 8 sampled correct citations `wrong`. Of the 83 citations still not
@@ -112,8 +139,8 @@ characters (about 2,700 estimated tokens per call); `history_search` 79 calls, 3
 (the mod's guard), `mcp` 120 (the server's lifetime), `update` 5.
 
 Writing and checking the 40 tasks cost 6.64 USD (ten writers and their checkers) plus 1.77 USD for the first repository's
-trial that led to the amendment on traps and gold size. The judge's 240 sessions ran in the same account; their cost was not
-read out separately.
+trial that led to the amendment on traps and gold size; the traps rerun 4.58 USD. The judge's 300 sessions ran in the same
+account; their cost was not read out separately.
 
 ## Pilot
 
@@ -131,7 +158,11 @@ judge prompt is revised and every answer re-graded. Until then the judge's grade
 
 - **The stance against the tool.** Both arms carry the cite-or-say-unknown instruction by design, so the study cannot say
   whether the low false-fact rate (4 to 6 %) and the zero confabulation on traps come from the instruction or would hold
-  without it. One more arm (plain, no stance, the 10 traps x 3 repeats, about 2 USD) would answer that; it was not run.
+  without it. One more arm (plain, no stance, the 10 traps x 3 repeats, about 2 USD, with opaque copy names) would answer
+  that; it was not run.
+- **The person's hand check** of the 40 judged claims (below). Until it is in, the judge's grades are the only grades and
+  the report is not final.
+- **A tighter mechanical check** against the same answers (above); the confirmed share stands as an upper bound.
 - Verinoda offered without the guiding paragraph (measured five times before: never used).
 - Whether a person reading the answers trusts them more or reviews them faster.
 - A difference smaller than about 0.04 on answerable tasks (the interval's width), and any effect on code the agent writes.

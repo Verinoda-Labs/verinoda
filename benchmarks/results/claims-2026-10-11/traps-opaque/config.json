@@ -1,0 +1,38 @@
+{
+  "work": "C:/vbench-claims-traps",
+  "model": "claude-sonnet-5-5",
+  "plugin_dir": "C:/Users/ozcin/Desktop/verinoda-symbiosis/claude-mods/verinoda-live",
+  "mod_options": {
+    "auto": "nudge"
+  },
+  "verinoda_bin": [
+    "C:/Users/ozcin/Desktop/verinoda-symbiosis/.venv/Scripts"
+  ],
+  "drop_path": [
+    "C:/Users/ozcin/.local/bin"
+  ],
+  "arms": [
+    "none",
+    "verinoda_guided"
+  ],
+  "arm_workers": {
+    "none": 2,
+    "verinoda_guided": 2
+  },
+  "timeout_s": 1200,
+  "max_turns": 40,
+  "repeats": 3,
+  "judge_timeout_s": 300,
+  "only": [
+    "Graphify-Labs__graphify-trap-1",
+    "fastapi__full-stack-fastapi-template-trap-1",
+    "fastapi__sqlmodel-trap-1",
+    "expressjs__express-trap-1",
+    "axios__axios-trap-1",
+    "junegunn__fzf-trap-1",
+    "gin-gonic__gin-trap-1",
+    "sharkdp__bat-trap-1",
+    "google__gson-trap-1",
+    "guzzle__guzzle-trap-1"
+  ]
+}

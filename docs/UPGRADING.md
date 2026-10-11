@@ -574,7 +574,8 @@ Nothing to migrate: a measurement with its own harness (`benchmarks/agent_compar
 `claims_score.py`; no change to the package or the mod). On 40 why / when / what-it-affects questions over ten real
 repositories, with the same cite-or-say-unknown stance in both arms, Claude Code with Verinoda stated false facts in 0.056 of
 its answers against 0.044 without it (+0.011, 95 % interval -0.044 to +0.078: no measured difference), and neither arm
-confabulated on any of the 10 traps. Results in `benchmarks/results/claims-2026-10-11/`; the person's hand check of 40 claims
+confabulated on any of the 10 traps (also after the traps were rerun with opaque copy names, since the first run's prompts
+carried the task id and so the kind). Results in `benchmarks/results/claims-2026-10-11/`; the person's hand check of 40 claims
 is pending there.
 
 ## Upgrading from 0.3.2 (D60-D136)

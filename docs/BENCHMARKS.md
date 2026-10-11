@@ -39,8 +39,14 @@ grades them against the gold; a mechanical check grades every citation against t
   90); +0.011 [-0.044, +0.078]. **Traps (10): confabulated** 0 of 30 in each arm. No measured difference; no claim.
 - The pilot's plain rate (0.25, 2 of 8) kept N at 40 by the pre-registered rule; the main rate is 0.044, so a halving (-0.022)
   sits inside the interval and the result is weak evidence against an effect, not evidence of none.
-- 7 of the 12 false facts are the same absence assertion in both arms ("no rationale in the repository") about a rationale
-  that exists at the file's pre-move path; the stance stops invented answers and does not stop confident negatives.
+- A confound found by the review: every prompt carried the task id, which names the kind (`...-trap-1`). The paired
+  difference stands; the 10 traps were rerun with opaque copy names (`traps-opaque/`, 60 sessions): again 30 of 30
+  "unknown" in each arm. The confirmed share of citations (96.6 %) is an upper bound (perturbed citations stay confirmed
+  about half the time).
+- 20 incorrect fact claims in 17 answers; 7 are the same absence assertion in both arms ("no rationale in the repository")
+  about a rationale that exists at the file's pre-move path, 8 are false history stated on the way to "unknown" in trap
+  answers (plain 6 answers, Verinoda 2). The stance stops invented answers and does not stop a confident false statement
+  made in passing.
 - Blinding failed (judge right in 72 %, interval excludes 0.5): the `[tool]` mask itself marks the arm (4.06 masks per
   Verinoda answer, 0.12 per plain one). Reported with that caveat.
 - Cost: 1.66x dollars and 1.5x seconds per session with Verinoda (`analyze` about 2,700 estimated tokens per call, 120 calls).

@@ -18,6 +18,9 @@ karşı puanlar; atıflar mekanik doğrulanır.
 | 10 tuzak: uyduran cevap payı | 0,000 (30'da 0) | 0,000 (30'da 0) | 0 | 0 ile 0 |
 
 - **Ölçülen fark yok; iddia yok.** Tuzaklarda iki kolda da hiçbir şey olmadı: 60 cevabın 60'ı "depoda cevap yok" dedi.
+- **Karıştırıcı (gözden geçirmede bulundu):** her oturumun istemi görev kimliğini taşıyordu ve kimlik türü adlandırıyor
+  (`.../gin-trap-1/none/r1`). Eşleştirilmiş fark simetrik, ayakta; tuzak tabanı tek başına değil. 10 tuzak opak kopya
+  adlarıyla yeniden koşuldu (60 oturum, `traps-opaque/`): yine iki kolda 30/30 "bilinmiyor". Tarihli ikincil analiz.
 - Pilotun düz kol oranı (8'de 2 = 0,25) önceden kayıtlı kuralla N'i 40'ta tuttu; ana koşuda oran 0,044. Yarıya iniş (-0,022)
   aralığın içinde: sonuç gerçek bir etkiye karşı **zayıf** kanıt, yokluğunun kanıtı değil.
 - 12 yanlış iddianın 7'si iki kolda da aynı **yokluk iddiası** ("depoda gerekçe yok"); gerekçe dosyanın taşınma öncesi yolundaki
@@ -29,9 +32,10 @@ karşı puanlar; atıflar mekanik doğrulanır.
 - Ölçülmedi: duruşun kendisi mi aracı gereksiz kılıyor (iki kol da duruşu taşıyor; duruşsuz tek bir kol ~2 $'a cevaplar);
   Verinoda yalnız sunulduğunda; insanın güveni. Kişinin elle kontrolü (40 iddia) bekliyor.
 
-**Ne demek:** Bu depo kümesinde ve bu duruşla, bir öncü model ajana kod indeksi vermenin ölçülebilir bir getirisi yok: ne
-dosya bulmada (önceki çalışmalar), ne çözüm oranında (SWE-bench), ne yanlış iddia oranında (bu çalışma). Ajana dönük hat bu
-ölçümle kapanır; kalan açık hat, insana dönük denetim katmanı (aşağıda §5).
+**Ne demek:** Bu depo kümesinde ve bu duruşla, üç ayrı ölçüde de ölçülen bir fark yok: dosya bulma (önceki çalışmalar),
+çözüm oranı (SWE-bench, 72 = 72) ve yanlış iddia oranı (+0,011 [−0,044, +0,078]). Üçü de aralığıyla okunmalı: bu çalışmada
+yarıya iniş büyüklüğünde bir etki dışlanmadı, körleme başarısız ve elle kontrol bekliyor. Ajana dönük hatta kalan tek
+önceden kayıtlı deney test kanalı (§5, madde 1); o da fark göstermezse hat kapanır. Açık hat, insana dönük denetim katmanı.
 
 ## 1. SWE-bench Lite, 100 örnek
 
@@ -143,14 +147,16 @@ Ajan bildirimleri yalnızca toplam token verir. Bir Verinoda çağrısının ken
 
 ## 5. Önerilen sıra (2026-10-11'de yeniden yazıldı)
 
-Ajana dönük hat üç farklı ölçümde (dosya bulma, çözüm oranı, yanlış iddia) sıfır verdi. Aynı sorunun bir varyantını daha
-koşmak (örneğin "tek `analyze`, `code_check` yok" protokolü) önerilmez; sonucu bu üç ölçüm zaten söylüyor.
+Ajana dönük hat üç farklı ölçümde (dosya bulma, çözüm oranı, yanlış iddia) ölçülen bir fark vermedi; her birinde fark
+aralığın içinde kaldı. Aynı sorunun bir varyantını daha koşmak (örneğin "tek `analyze`, `code_check` yok" protokolü)
+önerilmez; üç aralık da aynı yöne işaret ediyor.
 
 1. **Ajan tarafında kalan tek açık deney: test kanalı.** SWE-bench çalışmasında iki kolda da proje testleri çalışmıyordu;
    literatürün en yüksek getiri dediği kanal hiç ölçülmedi. Aynı 100 örnek, bağımlılıkları kurulu Docker ortamında, önce
    düz, sonra Verinoda ile. Bu da sıfır verirse ajan hattı kapanır.
-2. **Duruş mu, araç mı?** Yanlış iddia çalışmasına duruşsuz bir düz kol ekle (10 tuzak × 3 tekrar, ~2 $). Düşük uydurma
-   oranının kaynağı talimatsa, ürünün ajana söyleyecek tek şeyi o beş cümledir.
+2. **Duruş mu, araç mı?** Yanlış iddia çalışmasına duruşsuz bir düz kol ekle (10 tuzak × 3 tekrar, opak kopya adlarıyla,
+   ~2 $). Düşük uydurma oranının kaynağı talimatsa, ürünün ajana söyleyecek tek şeyi o beş cümledir. Ayrıca mekanik atıf
+   kontrolünü sıkılaştırıp aynı cevaplara yeniden uygulamak (ölçülen dosyaları yeniden üretir; kişinin kararı).
 3. **İnsana dönük denetim katmanı.** Verinoda'nın ölçülmemiş tek değer iddiası: ajanın söylediğini kanıta bağlayan, inceleyen
    kişinin güvenebileceği bir katman. Ölçüsü insanla: inceleme süresi, yakalanan yanlış iddia, güven.
 4. Çağrı başına token kullanımı artık ölçülüyor (D178; `analyze` ~2.700 tahmini token / çağrı). Proje başına MCP bağlama ve

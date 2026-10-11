@@ -252,3 +252,26 @@ scorer and not of the hypothesis: identifiers are the tokens of backticked spans
 dropped; the question's own identifiers count for every claim of the answer; a commit is checked against its message and
 its diff. Re-applied to the pilot: 190 citations, 174 `confirmed`, 15 `missing`, 1 `wrong` in each arm. The judge's rows
 did not change. The person's hand check of 40 claims is pending at the time of this amendment.
+
+## Amendment 2026-10-11 (after the main run, from the final review): the task id in the prompt, the mechanical check, the traps rerun
+
+Found by the whole-branch review after the result was written, disclosed here before the result is cited:
+
+1. **Every session's prompt and working folder carried the task id, and the id names the kind.** The plan's layout
+   (`copies/<task id>/<arm>/r<n>`) put `.../guzzle__guzzle-trap-1/none/r1` on the prompt's first line of every trap session,
+   just before the instruction to say "unknown". No assistant turn of the 240 transcripts mentions the word outside the path,
+   but priming cannot be ruled out. The paired difference is symmetric across arms and stands; the absolute floor of the trap
+   measure (0 of 30 confabulated in each arm) and any sentence that rests on it do not. From this amendment on, a copy is
+   named by a hash of the id (`claims_tasks.copy_dir`). **The 10 traps are rerun with opaque names, 2 arms x 3 repeats, as a
+   dated secondary analysis** (`benchmarks/results/claims-2026-10-11/traps-opaque/`); the pre-registered trap measure is
+   reported as taken, with this confound beside it, and the rerun beside that.
+2. **The mechanical citation check over-confirms.** The review perturbed confirmed citations: of 150 location citations moved
+   by 60 lines, 77 stayed `confirmed` (37 fell off the file); of 120 commit citations swapped for a random commit of the same
+   history, 65 stayed `confirmed`. The confirmed share (96.6 %) is therefore an **upper bound** and is reported as one; it
+   feeds the secondary uncited share only, and no trap was reclassified. The check is not tightened in this study (tightening
+   would regenerate measured files, a decision for the person); what a tighter check should do is written under "not done".
+3. **Reclassification reads the asserting claim's own citations**, not any confirmed citation of the answer (latent: it never
+   fired in this run; fixed in the scorer, with a test).
+4. The false-fact accounting in the first README counted the answerable tasks only; the trap answers hold 8 more incorrect
+   fact claims (wrong introducing commits, in answers the judge rated `unknown_said`): 20 claims in 17 answers in all. The
+   README is corrected in the same commit as this amendment's result.

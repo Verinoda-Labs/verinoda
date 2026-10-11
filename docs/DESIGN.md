@@ -17727,20 +17727,31 @@ called in 120 of 120 Verinoda-arm sessions, the judge parsed 240 of 240 answers 
 - **Answerable tasks (30): share of answers with a false fact claim** 0.044 plain (4 of 90) against 0.056 with Verinoda
   (5 of 90); +0.011, 95 % interval -0.044 to +0.078: no measured difference. **Traps (10):** 0 of 30 confabulated in each
   arm; every trap answer said the repository holds no answer; no trap reclassified.
+- **A confound the whole-branch review found after the result was written:** every session's prompt and working folder
+  carried the task id, and the id names the kind (`.../gin-gonic__gin-trap-1/none/r1` on the prompt's first line). The
+  paired difference is symmetric and stands; the trap floor as taken does not. The 10 traps were rerun with opaque copy
+  names (a hash of the id; 60 sessions, none errored, `benchmarks/results/claims-2026-10-11/traps-opaque/`): again 30 of 30
+  answers in each arm said the repository holds no answer, 0 confabulated. A dated secondary analysis, not the pre-registered
+  measure. Copies are named by the hash from now on (`claims_tasks.copy_dir`).
 - The main run's plain rate (0.044) is far below the pilot's (0.25) that fixed N: a halving (-0.022) sits inside the
   interval, so this is weak evidence against an effect, not evidence of none.
 - Secondary: false inference 0 against 0.022 [0, +0.067]; incorrect facts over facts 0.0068 against 0.0098
   [-0.004, +0.012]; correct claims without a confirmed citation 0.180 against 0.145 [-0.078, +0.010]; inference share
   0.156 against 0.158. By kind: `affects` -0.048 [-0.119, 0] (the expected direction, no claim), `why` +0.125 [0, +0.292]
   (8 tasks), `when` 0, traps 0.
-- 7 of the 12 false fact claims are one absence assertion in both arms ("no rationale in the repository") about a rationale
-  that exists in commit `546dc8b` at the file's pre-move path; Verinoda's `history_search` stopped where `git log -S` did.
-  The stance stopped invented answers and did not stop confident negatives.
+- 20 incorrect fact claims in 17 of the 240 answers (plain 5 of 819 fact claims on the answerable tasks, Verinoda 7 of
+  852). On the answerable tasks 7 of 12 are one absence assertion in both arms ("no rationale in the repository") about a
+  rationale that exists in commit `546dc8b` at the file's pre-move path; Verinoda's `history_search` stopped where
+  `git log -S` did. On the traps 8 more (plain 6 answers, Verinoda 2) are false history stated on the way to "unknown" (a
+  wrong introducing commit, a wrong "first appears"). The stance stopped invented answers and did not stop a confident false
+  statement about history made in passing.
 - Blinding failed: the judge named the arm in 72 % of answers (interval 0.66 to 0.78). The channel is the mask: 4.06
   `[tool]` masks per Verinoda answer against 0.12 per plain one. Reported with the caveat, as pre-registered.
 - Cost: 1.66x dollars (median 0.093 against 0.056 USD) and 1.5x seconds per session with Verinoda; `analyze` about 2,700
   estimated tokens per call over 120 calls (the first per-call cost measured, D178). 2,448 citations: 96.6 % confirmed by
-  the mechanical check; a hand sample of 12 of the rest is about half genuine and half prose the identifier match cannot see.
+  the mechanical check, **an upper bound**: the review perturbed confirmed citations and 77 of 150 locations moved by 60
+  lines and 65 of 120 commits swapped for a random one stayed `confirmed`. The check feeds the secondary uncited share only
+  and reclassified no trap.
 - Writing and checking the tasks cost 6.64 USD plus 1.77 for the first repository's trial. **Not measured:** the person's
   hand check of 40 judged claims (pending; the report is not final until it is in and under 20 % disagreement); the stance
   against the tool; Verinoda offered without the paragraph; a person's trust in the answers.
@@ -17749,6 +17760,8 @@ called in 120 of 120 Verinoda-arm sessions, the judge parsed 240 of 240 answers 
 
 - A plain arm without the stance (10 traps x 3 repeats, about 2 USD), which would say whether the low false-fact rate and
   the zero confabulation come from the instruction alone. Named in the results README; not run.
+- A tighter mechanical check (word boundaries, no question identifiers for a commit, a backticked identifier or two plain
+  ones required) applied to the same answers: it would regenerate measured files, so it waits for the person's decision.
 - A larger N on the main run's rate, a judge of another model family, a blinding method that hides the use of a tool (the
   mask would have to remove the sentence, not the word), repositories over 1,000 files.
 - Nothing in the package or the mod changed: the study measured, it did not ship a feature.
