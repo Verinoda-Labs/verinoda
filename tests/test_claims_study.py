@@ -240,3 +240,43 @@ def test_neutralize_hides_the_tool_words():
     out = score_mod.neutralize("Verinoda's analyze (mcp__verinoda__analyze) says statically_verified; history_search found it")
     assert "erinoda" not in out and "analyze" not in out and "statically_verified" not in out and "history_search" not in out
     assert out.count(score_mod.NEUTRAL) == 5
+
+
+# -- Task 5: the blind judge --------------------------------------------------------------------------------------------------
+
+
+def test_judge_input_masks_the_answer_and_renders_the_gold():
+    t = _task()
+    s = score_mod.judge_input(t, "Verinoda analyze found it at gin.go:236")
+    assert "erinoda" not in s and "gin.go:236" in s and t["gold"][0]["statement"] in s and "abc1234" in s
+    trap = score_mod.judge_input(_task("trap"), "x")
+    assert "holds no answer" in trap and _task("trap")["unknown_reason"] in trap
+    assert "no tools" in s
+
+
+def test_parse_judge_takes_the_first_object_and_refuses_the_wrong_shape():
+    good = ('Here: {"claims": [{"text": "t", "grade": "correct", "stance": "fact", "cites": []}], "trap": null, '
+            '"arm_guess": "A"} done')
+    assert score_mod.parse_judge(good)["claims"][0]["grade"] == "correct"
+    assert score_mod.parse_judge('{"claims": "no"}') is None
+    assert score_mod.parse_judge('{"claims": [{"text": "t", "grade": "maybe", "stance": "fact", "cites": []}], "trap": null, '
+                                 '"arm_guess": "A"}') is None
+    assert score_mod.parse_judge("no json") is None
+    nested = '{"claims": [{"text": "a {b} c", "grade": "correct", "stance": "fact", "cites": []}], "trap": {"verdict": "unknown_said"}, "arm_guess": "B"}'
+    assert score_mod.parse_judge(nested)["trap"]["verdict"] == "unknown_said"
+
+
+def test_judge_retries_once_then_records_failure(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_run(argv, cwd, env=None, timeout=600, stdin=None):
+        calls.append(argv)
+        return 0, json.dumps({"result": "not json"}), "", 1.0
+
+    monkeypatch.setattr(score_mod, "run", fake_run)
+    out = score_mod.judge({"model": "claude-sonnet-5-5", "claude": "claude"}, _task(),
+                          {"id": "x", "arm": "none", "repeat": 1, "answer": "a"}, tmp_path)
+    assert len(calls) == 2 and out["judge_failed"] is True and out["judge"] is None
+    assert calls[0][calls[0].index("--tools") + 1] == "" and calls[0][calls[0].index("--max-turns") + 1] == "1"
+    assert "--allowedTools" not in calls[0]
+    assert out["id"] == "x" and out["arm"] == "none" and out["repeat"] == 1

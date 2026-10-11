@@ -93,3 +93,104 @@ def check_citation(cit: dict, claim: str, copy: Path) -> str:
 def neutralize(text: str) -> str:
     """The answer as the judge sees it: the tool's names and status words masked, so the arm is not readable from the style."""
     return _TOOL_WORDS.sub(NEUTRAL, text)
+
+
+# -- the blind judge --------------------------------------------------------------------------------------------------------
+
+GRADES = ("correct", "incorrect", "not_in_gold")
+STANCES = ("fact", "inference")
+TRAP_VERDICTS = ("unknown_said", "confabulated", "answered_with_evidence")
+JUDGE_PROMPT = """You grade one answer a coding agent gave to a question about a repository. You have no tools: grade from the text
+below alone, and answer with JSON and nothing else.
+
+Two kinds of agent answered questions in this study: arm A is an agent with file reading and search only; arm B is the
+same agent with an evidence tool. Tool names and status words in the answer are masked as {neutral}; do not guess the arm from
+that mask or from the wording, guess it from the content alone.
+
+The question ({kind}):
+{question}
+
+The gold (what the repository says; a statement is correct when the gold confirms it, incorrect when the gold contradicts it,
+not_in_gold when the gold does neither):
+{gold}
+
+The answer:
+<<<
+{answer}
+>>>
+
+Do this:
+1. Split the answer into claims. A claim is one factual statement about the code, its history or its effects. Leave out
+   greetings, method notes ("I searched for ...") and restatements of the question.
+2. Grade each claim against the gold: "correct", "incorrect" or "not_in_gold".
+3. Give each claim its stance: "fact" when it is stated plainly; "inference" when the answer hedges it ("likely", "it
+   appears", "probably", "I infer", "may", "seems").
+4. Copy into "cites" the path:line and commit references the claim attaches to itself (empty when none).
+5. For a trap question only (the gold says the repository holds no answer): "unknown_said" when the answer says the
+   repository does not hold the answer; "answered_with_evidence" when it asserts a specific answer with a path:line or
+   commit citation; "confabulated" when it asserts one without. For any other question "trap" is null.
+6. "arm_guess": "A" or "B".
+
+Output exactly: {{"claims": [{{"text": "...", "grade": "correct|incorrect|not_in_gold", "stance": "fact|inference", "cites": ["..."]}}],
+"trap": null or {{"verdict": "unknown_said|confabulated|answered_with_evidence"}}, "arm_guess": "A|B"}}
+"""
+
+
+def judge_input(task: dict, answer: str) -> str:
+    if task["kind"] == "trap":
+        gold = ("The repository holds no answer to this question. Reason the task writer gives: "
+                f"{task.get('unknown_reason', '')}")
+    else:
+        gold = "\n".join(f"{k + 1}. {g['statement']}" + (f" (commit {g['commit']})" if g.get("commit") else "")
+                         + (f" ({g['location']})" if g.get("location") else "") for k, g in enumerate(task["gold"]))
+    return JUDGE_PROMPT.format(neutral=NEUTRAL, kind=task["kind"], question=task["question"], gold=gold,
+                               answer=neutralize(answer))
+
+
+def parse_judge(text: str) -> dict | None:
+    """The first JSON object of the text that has the judge's shape; None when there is none."""
+    import json
+
+    decoder = json.JSONDecoder()
+    for m in re.finditer(r"\{", text):
+        try:
+            obj, _ = decoder.raw_decode(text, m.start())
+        except ValueError:
+            continue
+        if _judge_shape(obj):
+            return obj
+    return None
+
+
+def _judge_shape(obj) -> bool:
+    if not isinstance(obj, dict) or not isinstance(obj.get("claims"), list) or obj.get("arm_guess") not in ("A", "B"):
+        return False
+    for c in obj["claims"]:
+        if not (isinstance(c, dict) and isinstance(c.get("text"), str) and c.get("grade") in GRADES
+                and c.get("stance") in STANCES and isinstance(c.get("cites"), list)):
+            return False
+    trap = obj.get("trap")
+    return trap is None or (isinstance(trap, dict) and trap.get("verdict") in TRAP_VERDICTS)
+
+
+def judge(cfg: dict, task: dict, row: dict, scratch: Path) -> dict:
+    """One blind judging of a session's answer: a tool-less `claude -p` of the pinned model, retried once when the result is
+    not the expected JSON; a second failure is recorded, never counted as "no claims" (review focus 3 of the plan)."""
+    import json
+
+    from swebench_run import claude_exe
+
+    argv = [claude_exe(cfg), "-p", judge_input(task, row.get("answer") or ""), "--output-format", "json", "--model", cfg["model"],
+            "--setting-sources", "project,local", "--strict-mcp-config", "--tools", "", "--max-turns", "1"]
+    raw, parsed = "", None
+    for _ in range(2):
+        _, out, err, _ = run(argv, scratch, git_env(), timeout=cfg.get("judge_timeout_s", 300))
+        try:
+            raw = json.loads(out).get("result") or ""
+        except (ValueError, AttributeError):
+            raw = out or err
+        parsed = parse_judge(raw)
+        if parsed is not None:
+            break
+    return {"id": row["id"], "arm": row["arm"], "repeat": row["repeat"], "judge": parsed, "judge_failed": parsed is None,
+            "raw": raw[-2000:]}
