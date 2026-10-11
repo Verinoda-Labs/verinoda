@@ -194,3 +194,266 @@ def judge(cfg: dict, task: dict, row: dict, scratch: Path) -> dict:
             break
     return {"id": row["id"], "arm": row["arm"], "repeat": row["repeat"], "judge": parsed, "judge_failed": parsed is None,
             "raw": raw[-2000:]}
+
+
+# -- the summary and the decision rule --------------------------------------------------------------------------------------
+
+ARM_LETTER = {PLAIN: "A", GUIDED: "B"}
+COUNTS = ("fact_claims", "incorrect_facts", "correct_claims", "correct_uncited", "inference_claims", "claims")
+BINARY = ("false_fact", "false_inference", "confabulated")
+
+
+def _boot(diffs: list[float]) -> tuple[float, float, float]:
+    from swebench_score import boot
+
+    return boot(diffs, seed=SEED) if diffs else (0.0, 0.0, 0.0)
+
+
+def mechanical(row: dict, copy: Path) -> dict:
+    """Every citation of a session's answer with its verdict against the session's own working copy."""
+    text = row.get("answer") or ""
+    return {"id": row["id"], "arm": row["arm"], "repeat": row["repeat"],
+            "citations": [{**c, "verdict": check_citation(c, _sentence_around(text, c["raw"]), copy)} for c in citations(text)]}
+
+
+def _sentence_around(text: str, raw: str) -> str:
+    """The claim a citation belongs to, for the identifier match: the sentence or bullet line it sits in."""
+    at = text.find(raw)
+    if at < 0:
+        return text
+    start = max(text.rfind("\n", 0, at), text.rfind(". ", 0, at))
+    end = min(x for x in (text.find("\n", at), text.find(". ", at), len(text)) if x >= 0)
+    return text[start + 1:end]
+
+
+def _cited_confirmed(cites: list, mech: dict) -> bool:
+    """Does one of the claim's own citations have a `confirmed` verdict in the mechanical check?"""
+    for cite in cites:
+        for c in mech.get("citations", []):
+            if (c["raw"] in cite or cite in c["raw"]) and c["verdict"] == "confirmed":
+                return True
+    return False
+
+
+def answer_values(judged: dict, mech: dict, kind: str) -> dict | None:
+    """One answer's numbers from the judge's grades and the mechanical check; None when the judge failed on it. A false
+    inference is counted apart from a false fact (the spec's primary measure is the fact), a correct claim without a
+    confirmed citation is `correct_uncited`, and a trap answered with a confirmed citation is reclassified, not
+    confabulated (review focus 4 of the plan)."""
+    if judged.get("judge_failed") or not judged.get("judge"):
+        return None
+    claims = judged["judge"]["claims"]
+    facts = [c for c in claims if c["stance"] == "fact"]
+    incorrect_facts = [c for c in facts if c["grade"] == "incorrect"]
+    correct = [c for c in claims if c["grade"] == "correct"]
+    v = {"false_fact": int(bool(incorrect_facts)),
+         "false_inference": int(any(c["grade"] == "incorrect" and c["stance"] == "inference" for c in claims)),
+         "fact_claims": len(facts), "incorrect_facts": len(incorrect_facts), "correct_claims": len(correct),
+         "correct_uncited": sum(not _cited_confirmed(c.get("cites") or [], mech) for c in correct),
+         "inference_claims": sum(c["stance"] == "inference" for c in claims), "claims": len(claims),
+         "confabulated": None, "reclassified": False}
+    if kind == "trap":
+        trap = judged["judge"].get("trap") or {}
+        verdict = trap.get("verdict") or ("confabulated" if facts else "unknown_said")
+        if verdict == "answered_with_evidence" and any(c["verdict"] == "confirmed" for c in mech.get("citations", [])):
+            v["reclassified"] = True
+        else:
+            v["confabulated"] = int(verdict != "unknown_said")
+    return v
+
+
+def task_values(values: list[dict]) -> dict:
+    """A task's value in one arm: the mean over its repeats of each 0/1 field (a None left out), the sums of the counts."""
+    out: dict = {}
+    for f in BINARY:
+        xs = [v[f] for v in values if v.get(f) is not None]
+        out[f] = sum(xs) / len(xs) if xs else None
+    for f in COUNTS:
+        out[f] = sum(v[f] for v in values)
+    out["repeats"] = len(values)
+    out["reclassified"] = any(v["reclassified"] for v in values)
+    return out
+
+
+def _paired(per_task: dict, field: str, ids: list[str]) -> dict:
+    """The two arms' means of a task-level field over the tasks that have it in both arms, and the bootstrap of the
+    guided-minus-plain difference; `claim` only when the interval excludes zero."""
+    pairs = [(per_task[i][PLAIN][field], per_task[i][GUIDED][field]) for i in ids
+             if per_task[i][PLAIN].get(field) is not None and per_task[i][GUIDED].get(field) is not None]
+    if not pairs:
+        return {PLAIN: None, GUIDED: None, "difference": None, "ci95": None, "claim": False, "n_tasks": 0}
+    m, lo, hi = _boot([g - p for p, g in pairs])
+    return {PLAIN: round(sum(p for p, _ in pairs) / len(pairs), 4), GUIDED: round(sum(g for _, g in pairs) / len(pairs), 4),
+            "difference": round(m, 4), "ci95": [round(lo, 4), round(hi, 4)], "claim": bool(lo > 0 or hi < 0), "n_tasks": len(pairs)}
+
+
+def _rate(tv: dict, num: str, den: str) -> float | None:
+    return tv[num] / tv[den] if tv.get(den) else None
+
+
+def _median(xs: list) -> float | None:
+    import statistics
+
+    xs = [x for x in xs if x is not None]
+    return statistics.median(xs) if xs else None
+
+
+def _per_call(usage_dir: Path | None) -> dict:
+    """The Verinoda arm's usage logs (D178) summed per tool: what each call cost in characters and estimated tokens."""
+    import json
+
+    out: dict = {"note": "tokens are characters / 4, the log's estimate", "by_name": {}, "unreadable_lines": 0}
+    if usage_dir is None or not usage_dir.is_dir():
+        return out
+    for f in sorted(usage_dir.glob("*.jsonl")):
+        for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                u = json.loads(line)
+            except ValueError:
+                out["unreadable_lines"] += 1
+                continue
+            d = out["by_name"].setdefault(u.get("name", "?"), {"calls": 0, "result_chars": 0, "result_tokens_est": 0, "seconds": 0.0})
+            d["calls"] += 1
+            d["result_chars"] += int(u.get("result_chars") or 0)
+            d["result_tokens_est"] += int(u.get("result_tokens_est") or 0)
+            d["seconds"] = round(d["seconds"] + float(u.get("seconds") or 0), 1)
+    return out
+
+
+def summary(tasks: list[dict], rows: list[dict], judged: list[dict], mechs: list[dict], usage_dir: Path | None = None) -> dict:
+    """Everything the README reports, from the sessions, the judge's rows and the mechanical rows. Errored and empty sessions
+    are listed and left out before pairing (review focus 2 of the plan); a task without a valid repeat in an arm leaves the
+    pairs and is listed."""
+    kind_of = {t["id"]: t["kind"] for t in tasks}
+    ids = [t["id"] for t in tasks]
+    def key(r: dict) -> tuple:
+        return (r["id"], r["arm"], r["repeat"])
+
+    j_by = {key(j): j for j in judged}
+    m_by = {key(m): m for m in mechs}
+    valid = [r for r in rows if not r.get("is_error") and (r.get("answer") or "").strip()]
+    errored = [key(r) for r in rows if r not in valid]
+    failed = [key(r) for r in valid if key(r) not in j_by or j_by[key(r)].get("judge_failed")]
+    values: dict = {i: {PLAIN: [], GUIDED: []} for i in ids}
+    for r in valid:
+        v = answer_values(j_by.get(key(r), {"judge_failed": True}), m_by.get(key(r), {"citations": []}), kind_of[r["id"]])
+        if v is not None and r["arm"] in values[r["id"]]:
+            values[r["id"]][r["arm"]].append(v)
+    per_task = {i: {arm: task_values(vs) for arm, vs in by_arm.items()} for i, by_arm in values.items()}
+    paired_ids = [i for i in ids if per_task[i][PLAIN]["repeats"] and per_task[i][GUIDED]["repeats"]]
+    answerable = [i for i in paired_ids if kind_of[i] != "trap"]
+    traps = [i for i in paired_ids if kind_of[i] == "trap"]
+    for i in paired_ids:
+        for arm in (PLAIN, GUIDED):
+            tv = per_task[i][arm]
+            tv["incorrect_fact_rate"] = _rate(tv, "incorrect_facts", "fact_claims")
+            tv["correct_uncited_share"] = _rate(tv, "correct_uncited", "correct_claims")
+            tv["inference_share"] = _rate(tv, "inference_claims", "claims")
+    guesses = [int(j["judge"]["arm_guess"] == ARM_LETTER.get(j["arm"])) for j in judged
+               if j.get("judge") and (j["id"], j["arm"], j["repeat"]) in {key(r) for r in valid}]
+    acc, lo, hi = _boot([float(g) for g in guesses])
+    by_kind = {}
+    for kind in ("why", "when", "affects", "trap"):
+        kind_ids = [i for i in paired_ids if kind_of[i] == kind]
+        by_kind[kind] = _paired(per_task, "confabulated" if kind == "trap" else "false_fact", kind_ids)
+    cost = {}
+    for arm in (PLAIN, GUIDED):
+        a = [r for r in valid if r["arm"] == arm]
+        cost[arm] = {"sessions": len(a), "median_turns": _median([r.get("num_turns") for r in a]),
+                     "median_cost_usd": _median([r.get("cost_usd") for r in a]), "median_seconds": _median([r.get("seconds") for r in a]),
+                     "median_input_tokens": _median([r.get("input_tokens") for r in a]),
+                     "median_output_tokens": _median([r.get("output_tokens") for r in a]),
+                     "cost_usd_total": round(sum(r.get("cost_usd") or 0 for r in a), 2),
+                     "verinoda_calls": sum(r.get("verinoda_calls") or 0 for r in a),
+                     "usage_log_lines": sum(r.get("usage_log_lines") or 0 for r in a)}
+    cost["per_call"] = _per_call(usage_dir)
+    return {"sessions": len(rows), "valid_sessions": len(valid), "errored_sessions": errored, "judge_failed": failed,
+            "pairs": len(paired_ids), "dropped_tasks": [i for i in ids if i not in paired_ids],
+            "writer_errors": sorted(i for i in traps if per_task[i][PLAIN]["reclassified"] or per_task[i][GUIDED]["reclassified"]),
+            "primary": {"answerable_false_fact": _paired(per_task, "false_fact", answerable),
+                        "trap_confabulated": _paired(per_task, "confabulated", traps)},
+            "secondary": {"false_inference": _paired(per_task, "false_inference", answerable),
+                          "incorrect_fact_rate": _paired(per_task, "incorrect_fact_rate", answerable),
+                          "correct_uncited_share": _paired(per_task, "correct_uncited_share", answerable),
+                          "inference_share": _paired(per_task, "inference_share", paired_ids)},
+            "by_kind": by_kind,
+            "blinding": {"accuracy": round(acc, 4), "ci95": [round(lo, 4), round(hi, 4)], "failed": bool(lo > 0.5 or hi < 0.5),
+                         "n": len(guesses)},
+            "cost": cost, "per_task": per_task}
+
+
+def _sample_id(id: str, arm: str, repeat: int, k: int) -> str:
+    import hashlib
+
+    return hashlib.sha256(f"{SEED}:{id}:{arm}:{repeat}:{k}".encode()).hexdigest()[:10]
+
+
+def _all_claims(judged: list[dict]) -> list[dict]:
+    out = []
+    for j in judged:
+        if not j.get("judge"):
+            continue
+        for k, c in enumerate(j["judge"]["claims"]):
+            out.append({"sample_id": _sample_id(j["id"], j["arm"], j["repeat"], k), "id": j["id"], "repeat": j["repeat"],
+                        "claim_text": c["text"], "grade": c["grade"], "stance": c["stance"], "_arm": j["arm"]})
+    return out
+
+
+def hand_sample(judged: list[dict], n: int = 40, seed: int = SEED) -> list[dict]:
+    """The claims a person grades blind: half from each arm, drawn at random, shuffled, without the arm. The id is a hash
+    the key file resolves (`hand_key`), not a name a reader can decode."""
+    import random
+
+    rnd = random.Random(seed)
+    sample = []
+    for arm in (PLAIN, GUIDED):
+        pool = [c for c in _all_claims(judged) if c["_arm"] == arm]
+        sample += rnd.sample(pool, min(n // 2, len(pool)))
+    rnd.shuffle(sample)
+    return [{k: v for k, v in c.items() if k != "_arm"} for c in sample]
+
+
+def hand_key(judged: list[dict], sample: list[dict]) -> dict[str, str]:
+    wanted = {c["sample_id"] for c in sample}
+    return {c["sample_id"]: c["_arm"] for c in _all_claims(judged) if c["sample_id"] in wanted}
+
+
+def main() -> int:
+    import json
+
+    work = Path(sys.argv[1])
+    cfg = {"model": "claude-sonnet-5-5"}
+    if "--config" in sys.argv:
+        cfg.update(json.loads(Path(sys.argv[sys.argv.index("--config") + 1]).read_text(encoding="utf-8")))
+    elif (work / "config.json").is_file():
+        cfg.update(json.loads((work / "config.json").read_text(encoding="utf-8")))
+    tasks = json.loads((work / "tasks.json").read_text(encoding="utf-8"))["tasks"]
+    by_id = {t["id"]: t for t in tasks}
+    rows = [json.loads(x) for x in (work / "results.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
+    mechs = [mechanical(r, work / "copies" / r["id"] / r["arm"] / f"r{r['repeat']}") for r in rows]
+    (work / "mechanical.jsonl").write_text("".join(json.dumps(m, ensure_ascii=False) + "\n" for m in mechs), encoding="utf-8")
+    judge_file = work / "judge.jsonl"
+    judged = [json.loads(x) for x in judge_file.read_text(encoding="utf-8").splitlines() if x.strip()] if judge_file.exists() else []
+    if "--judge" in sys.argv:
+        done = {(j["id"], j["arm"], j["repeat"]) for j in judged if not j.get("judge_failed")}
+        scratch = work / "judge-scratch"
+        scratch.mkdir(exist_ok=True)
+        with judge_file.open("a", encoding="utf-8") as f:
+            for r in rows:
+                if (r["id"], r["arm"], r["repeat"]) in done or r.get("is_error") or not (r.get("answer") or "").strip():
+                    continue
+                j = judge(cfg, by_id[r["id"]], r, scratch)
+                judged.append(j)
+                f.write(json.dumps(j, ensure_ascii=False) + "\n")
+                print(f"judged {r['id']}:{r['arm']}:r{r['repeat']} claims={len(j['judge']['claims']) if j['judge'] else 'FAILED'}", flush=True)
+    s = summary(tasks, rows, judged, mechs, work / "usage")
+    (work / "summary.json").write_text(json.dumps(s, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    sample = hand_sample(judged)
+    (work / "hand_check.json").write_text(json.dumps(sample, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    (work / "hand_check_key.json").write_text(json.dumps(hand_key(judged, sample), indent=1) + "\n", encoding="utf-8")
+    print(json.dumps({k: s[k] for k in ("sessions", "valid_sessions", "pairs", "primary", "blinding")}, indent=1))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

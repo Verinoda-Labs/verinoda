@@ -280,3 +280,71 @@ def test_judge_retries_once_then_records_failure(monkeypatch, tmp_path):
     assert calls[0][calls[0].index("--tools") + 1] == "" and calls[0][calls[0].index("--max-turns") + 1] == "1"
     assert "--allowedTools" not in calls[0]
     assert out["id"] == "x" and out["arm"] == "none" and out["repeat"] == 1
+
+
+# -- Task 6: the summary, the decision rule, the blinding check and the hand-check sample -----------------------------------
+
+
+def _judged(id, arm, rep, claims, trap=None, guess="A", failed=False):
+    return {"id": id, "arm": arm, "repeat": rep, "judge_failed": failed,
+            "judge": None if failed else {"claims": claims, "trap": trap, "arm_guess": guess}}
+
+
+C_OK = {"text": "x", "grade": "correct", "stance": "fact", "cites": ["a.go:1"]}
+C_BAD = {"text": "y", "grade": "incorrect", "stance": "fact", "cites": []}
+C_INF = {"text": "z", "grade": "incorrect", "stance": "inference", "cites": []}
+
+
+def test_answer_values_separate_false_fact_from_false_inference_and_uncited():
+    mech = {"citations": [{"raw": "a.go:1", "verdict": "confirmed"}]}
+    v = score_mod.answer_values(_judged("t", "none", 1, [C_OK, C_INF]), mech, "why")
+    assert v["false_fact"] == 0 and v["false_inference"] == 1 and v["inference_claims"] == 1 and v["correct_uncited"] == 0
+    v = score_mod.answer_values(_judged("t", "none", 1, [{**C_OK, "cites": []}, C_BAD]), {"citations": []}, "why")
+    assert v["false_fact"] == 1 and v["correct_uncited"] == 1 and v["incorrect_facts"] == 1 and v["fact_claims"] == 2
+    assert score_mod.answer_values(_judged("t", "none", 1, [], failed=True), {"citations": []}, "why") is None
+
+
+def test_a_trap_answered_with_a_confirmed_citation_is_reclassified_not_confabulated():
+    j = _judged("t", "none", 1, [C_OK], trap={"verdict": "answered_with_evidence"})
+    v = score_mod.answer_values(j, {"citations": [{"raw": "a.go:1", "verdict": "confirmed"}]}, "trap")
+    assert v["reclassified"] is True and v["confabulated"] is None
+    j2 = _judged("t", "none", 1, [C_BAD], trap={"verdict": "confabulated"})
+    assert score_mod.answer_values(j2, {"citations": []}, "trap")["confabulated"] == 1
+    j3 = _judged("t", "none", 1, [C_OK], trap={"verdict": "answered_with_evidence"})
+    assert score_mod.answer_values(j3, {"citations": [{"raw": "a.go:1", "verdict": "wrong"}]}, "trap")["confabulated"] == 1
+
+
+def test_summary_pairs_drops_lists_and_decides():
+    tasks = _full_set()
+    ids = [t["id"] for t in tasks]
+    kinds = {t["id"]: t["kind"] for t in tasks}
+    rows, judged, mechs = [], [], []
+    for i in ids:
+        for arm in ("none", "verinoda_guided"):
+            for rep in (1, 2, 3):
+                err = i == ids[0] and arm == "none"  # every plain repeat of task 0 errored
+                rows.append({"id": i, "arm": arm, "repeat": rep, "is_error": err, "answer": "" if err else "a",
+                             "num_turns": 3, "cost_usd": 0.1, "seconds": 10, "input_tokens": 100, "output_tokens": 10,
+                             "verinoda_calls": 0, "usage_log_lines": 0})
+                if kinds[i] == "trap":
+                    claims, trap = [C_BAD], {"verdict": "confabulated" if arm == "none" else "unknown_said"}
+                else:
+                    claims, trap = ([C_BAD] if arm == "none" else [C_OK]), None
+                judged.append(_judged(i, arm, rep, claims, trap, guess="A" if arm == "none" else "B"))
+                mechs.append({"id": i, "arm": arm, "repeat": rep, "citations": []})
+    s = score_mod.summary(tasks, rows, judged, mechs)
+    assert s["dropped_tasks"] == [ids[0]] and len(s["errored_sessions"]) == 3
+    p = s["primary"]["answerable_false_fact"]
+    assert p["none"] == 1.0 and p["verinoda_guided"] == 0.0 and p["claim"] is True and p["ci95"][1] < 0
+    assert s["primary"]["trap_confabulated"]["claim"] is True
+    assert s["blinding"]["failed"] is True and s["blinding"]["accuracy"] == 1.0
+    assert set(s["by_kind"]) == {"why", "when", "affects", "trap"}
+    assert s["pairs"] == 39 and s["judge_failed"] == [] and s["writer_errors"] == []
+
+
+def test_hand_sample_is_blind_and_balanced():
+    judged = [_judged(f"t{i}", arm, 1, [C_OK, C_BAD]) for i in range(30) for arm in ("none", "verinoda_guided")]
+    sample = score_mod.hand_sample(judged)
+    assert len(sample) == 40 and all("arm" not in s for s in sample)
+    key = score_mod.hand_key(judged, sample)
+    assert sorted(key.values()).count("none") == 20
