@@ -131,3 +131,71 @@ def test_prompts_carry_the_rules_and_the_shape():
     c = tasks_mod.checker_prompt("gin-gonic/gin", Path("C:/w/gin"), [_task()])
     for must in ("leak", "gold_sources", "ten minutes", '"ok"', _task()["id"]):
         assert must in c, must
+
+
+# -- Task 3: the runner -----------------------------------------------------------------------------------------------------
+
+run_mod = _load("claims_run")
+SPEC = (ROOT / "benchmarks" / "agent_compare" / "DESIGN_CLAIMS.md").read_text(encoding="utf-8")
+
+
+def _spec_quote(first_words: str) -> str:
+    """The blockquote of the spec that starts with these words, joined to one line (the guide is indented under a list item)."""
+    block = []
+    on = False
+    for raw in SPEC.splitlines():
+        line = raw.lstrip()
+        if line.startswith("> ") and (on or line[2:].startswith(first_words)):
+            on = True
+            block.append(line[2:].strip())
+        elif on:
+            break
+    return " ".join(block)
+
+
+def test_the_stance_and_the_guide_are_the_specs_text_word_for_word():
+    assert run_mod.STANCE == _spec_quote("Answer the question below")
+    assert run_mod.GUIDE == _spec_quote("Load the Verinoda tools first")  # the amendment's paragraph, not the original
+    assert "ToolSearch" in run_mod.GUIDE
+
+
+def test_both_arms_get_the_same_stance_and_only_the_guided_arm_the_guide():
+    t = _task()
+    copy = Path("C:/w/copies/x/none/r1")
+    plain, guided = run_mod.prompt_for(t, copy, "none"), run_mod.prompt_for(t, copy, "verinoda_guided")
+    assert run_mod.STANCE in plain and run_mod.GUIDE not in plain and t["question"] in plain
+    assert guided.startswith(plain) and guided.endswith(run_mod.GUIDE)
+
+
+def test_session_argv_pins_the_model_the_tools_and_the_turn_limit():
+    cfg = {"model": "claude-sonnet-5-5", "claude": "claude", "plugin_dir": "P"}
+    argv = run_mod.session_argv("q", "none", Path("C:/w"), cfg)
+    assert argv[argv.index("--model") + 1] == "claude-sonnet-5-5"
+    assert argv[argv.index("--allowedTools") + 1] == "Bash Read Glob Grep"
+    assert argv[argv.index("--max-turns") + 1] == "40" and "--mcp-config" not in argv
+    g = run_mod.session_argv("q", "verinoda_guided", Path("C:/w"), cfg)
+    assert g[g.index("--allowedTools") + 1] == "Bash Read Glob Grep mcp__verinoda" and "--mcp-config" in g
+
+
+def test_pilot_is_the_first_eight_of_the_order_with_one_repeat():
+    tasks = _full_set()
+    items = run_mod.plan(tasks, {"arms": ["none", "verinoda_guided"], "pilot": True, "repeats": 3}, done=set())
+    assert len(items) == 16 and {i[2] for i in items} == {1}
+    assert [t["id"] for t, _, _ in items[::2]] == tasks_mod.order([t["id"] for t in tasks])[:8]
+    full = run_mod.plan(tasks, {"arms": ["none"], "repeats": 3}, done={(tasks[0]["id"], "none", 1)})
+    assert len(full) == 40 * 3 - 1
+
+
+def test_copy_for_is_a_shared_detached_clone_at_the_sha(tmp_path):
+    import subprocess
+
+    src = tmp_path / "src"
+    src.mkdir()
+    _git_repo(src, filename="f", content="x", message="m")
+    sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=src, capture_output=True, text=True, check=True).stdout.strip()
+    dest = tmp_path / "copy"
+    run_mod.copy_for(src, dest, sha)
+    assert (dest / "f").read_text(encoding="utf-8") == "x"
+    assert (dest / ".git" / "objects" / "info" / "alternates").exists()
+    run_mod.copy_for(src, dest, sha)  # a second call keeps a clean copy
+    assert (dest / "f").read_text(encoding="utf-8") == "x"

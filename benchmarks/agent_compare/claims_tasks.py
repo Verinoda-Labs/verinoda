@@ -25,7 +25,8 @@ from guard_run import git_env, run
 
 KINDS = {"why": 8, "when": 8, "affects": 14, "trap": 10}
 SEED = "20261011:"
-MANIFEST = Path(__file__).resolve().parents[1] / "realworld" / "manifest.json"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MANIFEST = REPO_ROOT / "benchmarks" / "realworld" / "manifest.json"
 REPOS: list[str] = [r["name"] for r in json.loads(MANIFEST.read_text(encoding="utf-8"))["repos"]]
 TRAP_GOLD = [{"statement": "unknown", "commit": None, "location": None}]
 _HEX = re.compile(r"^[0-9a-f]{7,40}$")
