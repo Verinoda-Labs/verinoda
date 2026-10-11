@@ -3,7 +3,37 @@
 Tarih: 2026-10-11. Kaynak: `benchmarks/results/**`, `docs/SYMBIOSIS-GAPS.md`, `docs/BACKLOG.md` (bölüm 13 ve 20).
 Bu belge ölçülenleri ve ölçülmeyenleri ayırır. Bir sayı burada yoksa, ölçülmediği anlamına gelir.
 
-## 1. En önemli sonuç: SWE-bench Lite, 100 örnek
+## En yeni sonuç (2026-10-11): yanlış iddia çalışması, Verinoda'nın tezi ölçüldü
+
+Ön kayıt: `benchmarks/agent_compare/DESIGN_CLAIMS.md`; sonuçlar: `benchmarks/results/claims-2026-10-11/` (D185). Önceki
+çalışmaların hepsi dosya bulma ya da çözüm oranı ölçüyordu; bu çalışma Verinoda'nın asıl iddiasını ölçer: ajan kanıtsız iddia
+yerine kanıtlı iddia ve `unknown` üretir mi. On gerçek depoda 40 "neden / ne zaman / neyi etkiler" sorusu (10'u depoda cevabı
+olmayan tuzak), altın git'ten ve Verinoda'sız yazıldı, oturumdan önce commit'lendi. İki kol, aynı "kanıt göster, bulamazsan
+bilinmiyor de" duruşu; tek fark araç. 3 tekrar, 240 oturum, hata 0. Kolu bilmeyen bir hakem cevabı iddialara ayırıp altına
+karşı puanlar; atıflar mekanik doğrulanır.
+
+| | yalnız Claude Code | Verinoda ile | fark | %95 aralık |
+|---|---|---|---|---|
+| Cevaplı 30 görev: yanlış düz iddia içeren cevap payı | 0,044 (90'da 4) | 0,056 (90'da 5) | +0,011 | -0,044 ile +0,078 |
+| 10 tuzak: uyduran cevap payı | 0,000 (30'da 0) | 0,000 (30'da 0) | 0 | 0 ile 0 |
+
+- **Ölçülen fark yok; iddia yok.** Tuzaklarda iki kolda da hiçbir şey olmadı: 60 cevabın 60'ı "depoda cevap yok" dedi.
+- Pilotun düz kol oranı (8'de 2 = 0,25) önceden kayıtlı kuralla N'i 40'ta tuttu; ana koşuda oran 0,044. Yarıya iniş (-0,022)
+  aralığın içinde: sonuç gerçek bir etkiye karşı **zayıf** kanıt, yokluğunun kanıtı değil.
+- 12 yanlış iddianın 7'si iki kolda da aynı **yokluk iddiası** ("depoda gerekçe yok"); gerekçe dosyanın taşınma öncesi yolundaki
+  commit'te (`546dc8b`) ve `git log -S` güncel yolda onu göremiyor. Verinoda'nın `history_search`'ü de aynı yere düştü. Duruş
+  uydurmayı durduruyor, kendinden emin olumsuzu durdurmuyor.
+- Körleme başarısız: hakem kolu %72 tanıyor (aralık 0,5'i dışlıyor); kanal maskenin kendisi (Verinoda cevabında ortalama 4
+  `[tool]` maskesi, düzde 0,1). Bu çekinceyle raporlandı.
+- Maliyet: Verinoda kolu oturum başına 1,66 kat dolar, 1,5 kat süre; `analyze` çağrı başına ~2.700 tahmini token.
+- Ölçülmedi: duruşun kendisi mi aracı gereksiz kılıyor (iki kol da duruşu taşıyor; duruşsuz tek bir kol ~2 $'a cevaplar);
+  Verinoda yalnız sunulduğunda; insanın güveni. Kişinin elle kontrolü (40 iddia) bekliyor.
+
+**Ne demek:** Bu depo kümesinde ve bu duruşla, bir öncü model ajana kod indeksi vermenin ölçülebilir bir getirisi yok: ne
+dosya bulmada (önceki çalışmalar), ne çözüm oranında (SWE-bench), ne yanlış iddia oranında (bu çalışma). Ajana dönük hat bu
+ölçümle kapanır; kalan açık hat, insana dönük denetim katmanı (aşağıda §5).
+
+## 1. SWE-bench Lite, 100 örnek
 
 Tasarım: `benchmarks/agent_compare/DESIGN_SWEBENCH.md` (önceden kayıtlı). Her örnek ve kol için bir `claude -p` oturumu,
 model `claude-sonnet-5-5`. Kollar: `none` (yalnız Claude Code) ve `verinoda_guided` (Verinoda indeksi, MCP sunucusu,
@@ -111,10 +141,17 @@ Ajan bildirimleri yalnızca toplam token verir. Bir Verinoda çağrısının ken
 - Bayat indeksin ajan davranışına etkisi.
 - Çağrı başına maliyet.
 
-## 5. Önerilen sıra
+## 5. Önerilen sıra (2026-10-11'de yeniden yazıldı)
 
-1. SWE-bench sonucunu ürün dili için tekrar ölç: Verinoda'yı yalnız gerektiğinde çağıran bir protokol (tek `analyze`, `code_check`
-   yok) ve aynı 100 örnek. Kazanç olmazsa maliyet artışı belgelenir.
-2. `analyze` için ilişki iddiası (BACKLOG 20.1 aşama B), gerçek bir corpus ve altın verisiyle.
-3. Çağrı başına token kullanımı (madde 7); maliyet ölçümü olmadan hiçbir maliyet iddiası yapılmaz.
-4. Proje başına MCP bağlama ve `setup` yan dosyaları (madde 4, 5).
+Ajana dönük hat üç farklı ölçümde (dosya bulma, çözüm oranı, yanlış iddia) sıfır verdi. Aynı sorunun bir varyantını daha
+koşmak (örneğin "tek `analyze`, `code_check` yok" protokolü) önerilmez; sonucu bu üç ölçüm zaten söylüyor.
+
+1. **Ajan tarafında kalan tek açık deney: test kanalı.** SWE-bench çalışmasında iki kolda da proje testleri çalışmıyordu;
+   literatürün en yüksek getiri dediği kanal hiç ölçülmedi. Aynı 100 örnek, bağımlılıkları kurulu Docker ortamında, önce
+   düz, sonra Verinoda ile. Bu da sıfır verirse ajan hattı kapanır.
+2. **Duruş mu, araç mı?** Yanlış iddia çalışmasına duruşsuz bir düz kol ekle (10 tuzak × 3 tekrar, ~2 $). Düşük uydurma
+   oranının kaynağı talimatsa, ürünün ajana söyleyecek tek şeyi o beş cümledir.
+3. **İnsana dönük denetim katmanı.** Verinoda'nın ölçülmemiş tek değer iddiası: ajanın söylediğini kanıta bağlayan, inceleyen
+   kişinin güvenebileceği bir katman. Ölçüsü insanla: inceleme süresi, yakalanan yanlış iddia, güven.
+4. Çağrı başına token kullanımı artık ölçülüyor (D178; `analyze` ~2.700 tahmini token / çağrı). Proje başına MCP bağlama ve
+   `setup` yan dosyaları (madde 4, 5) ürün hijyeni olarak kalır.

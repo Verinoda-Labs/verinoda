@@ -17680,6 +17680,87 @@ comparable with the leaderboard), and the other 200 Lite instances.
 
 None: a measurement. The harness's own gold-patch check validated the set-up.
 
+## 157. The false-claims study: what Verinoda is for, measured (D185, 2026-10-11)
+
+### 157.1 Why
+
+Every agent study of this folder before this one measured whether Verinoda helps the agent find files or resolve issues
+(D174's two studies, the assist study, the SWE-bench Lite study, D184), and every one found the agent alone at the ceiling
+with no measurable difference. None of them measured what Verinoda is for: claims that carry evidence and a status, and
+`unknown` where the evidence is missing. Repeating the file-recall question in another variant would not have changed its
+answer, so the question was changed: on why / when / what-it-affects questions about real repositories, does an agent using
+Verinoda state fewer false facts and say "unknown" more often where the repository holds no answer? Either outcome was
+accepted as progress before the first session (`benchmarks/agent_compare/DESIGN_CLAIMS.md`).
+
+### 157.2 Decisions
+
+- **Both arms carry the same stance.** The instruction to cite `path:line` or a commit, to mark inferences and to say
+  "unknown" is in every session of both arms word for word, so the only difference between the arms is the tool; the
+  Verinoda arm adds one paragraph that loads the tools (ToolSearch first: a deferred MCP tool is otherwise not called, the
+  SWE-bench pilot's lesson) and names which one to use for which kind. The consequence, accepted in advance: the study
+  cannot separate the stance from the tool.
+- **Tasks from git, without Verinoda, committed before the first session.** 40 tasks over the ten pinned real-world
+  repositories (full-depth single-branch clones at the manifest tag, so that no commit past the sha is reachable: an agent's
+  `git log --all` could otherwise cite a later commit's answer); 8 `why`, 8 `when`, 14 `affects` (where D174 measured the
+  agent alone collapsing), 10 traps. A writer agent per repository (headless `claude-opus-5-5`, cwd the clone, no MCP, no
+  skills, the user's `verinoda` off `PATH`) and a checker agent per repository; validation (`claims_tasks.validate`), a leak
+  check and a re-derivation of every `gold_sources` command. After the first repository's trial two rules were added by
+  dated amendment: a trap is a `why` or a `when` only (an `affects` "nothing depends on it" is an answer an agent derives and
+  cites), and a gold is at most three statements (a long gold gave the checker a new detail to fault every round).
+- **The unit is the claim, graded blind, and the primary measure is the false fact.** A judge session of the same model, no
+  tools, sees the question, the gold and the answer's text with tool names masked, splits the answer into claims, grades
+  each `correct` / `incorrect` / `not_in_gold` and `fact` / `inference`, gives a trap verdict, and guesses the arm (the
+  blinding check). A false claim marked as an inference is counted apart: marking uncertainty is the behaviour the study
+  wants. A trap the agent answers with a citation the mechanical check confirms is a writer's error, not a confabulation.
+- **The mechanical citation check is a scorer property and was fixed as one.** It was loosened twice after the pilot and
+  before the main run's scoring (identifiers read out of backticked spans, the question's names counted, a commit's diff
+  searched, bare and partial paths resolved to the tracked files that end with them), each time by dated amendment, each
+  time re-applied to the pilot without touching the judge's rows.
+- **Pilot, then the N rule.** The first 8 tasks of a hash-fixed order ran once; the pre-registered rule read the plain
+  arm's false-fact share (0.25, 2 of 8) against a 10 % threshold and kept N at 40.
+
+### 157.3 Measured
+
+`benchmarks/results/claims-2026-10-11/` (README with every table). 240 sessions, none errored, no network lookup, `analyze`
+called in 120 of 120 Verinoda-arm sessions, the judge parsed 240 of 240 answers into 2,592 claims.
+
+- **Answerable tasks (30): share of answers with a false fact claim** 0.044 plain (4 of 90) against 0.056 with Verinoda
+  (5 of 90); +0.011, 95 % interval -0.044 to +0.078: no measured difference. **Traps (10):** 0 of 30 confabulated in each
+  arm; every trap answer said the repository holds no answer; no trap reclassified.
+- The main run's plain rate (0.044) is far below the pilot's (0.25) that fixed N: a halving (-0.022) sits inside the
+  interval, so this is weak evidence against an effect, not evidence of none.
+- Secondary: false inference 0 against 0.022 [0, +0.067]; incorrect facts over facts 0.0068 against 0.0098
+  [-0.004, +0.012]; correct claims without a confirmed citation 0.180 against 0.145 [-0.078, +0.010]; inference share
+  0.156 against 0.158. By kind: `affects` -0.048 [-0.119, 0] (the expected direction, no claim), `why` +0.125 [0, +0.292]
+  (8 tasks), `when` 0, traps 0.
+- 7 of the 12 false fact claims are one absence assertion in both arms ("no rationale in the repository") about a rationale
+  that exists in commit `546dc8b` at the file's pre-move path; Verinoda's `history_search` stopped where `git log -S` did.
+  The stance stopped invented answers and did not stop confident negatives.
+- Blinding failed: the judge named the arm in 72 % of answers (interval 0.66 to 0.78). The channel is the mask: 4.06
+  `[tool]` masks per Verinoda answer against 0.12 per plain one. Reported with the caveat, as pre-registered.
+- Cost: 1.66x dollars (median 0.093 against 0.056 USD) and 1.5x seconds per session with Verinoda; `analyze` about 2,700
+  estimated tokens per call over 120 calls (the first per-call cost measured, D178). 2,448 citations: 96.6 % confirmed by
+  the mechanical check; a hand sample of 12 of the rest is about half genuine and half prose the identifier match cannot see.
+- Writing and checking the tasks cost 6.64 USD plus 1.77 for the first repository's trial. **Not measured:** the person's
+  hand check of 40 judged claims (pending; the report is not final until it is in and under 20 % disagreement); the stance
+  against the tool; Verinoda offered without the paragraph; a person's trust in the answers.
+
+### 157.4 Not done
+
+- A plain arm without the stance (10 traps x 3 repeats, about 2 USD), which would say whether the low false-fact rate and
+  the zero confabulation come from the instruction alone. Named in the results README; not run.
+- A larger N on the main run's rate, a judge of another model family, a blinding method that hides the use of a tool (the
+  mask would have to remove the sentence, not the word), repositories over 1,000 files.
+- Nothing in the package or the mod changed: the study measured, it did not ship a feature.
+
+### 157.5 Tests
+
+`tests/test_claims_study.py` (37): the task format, order and validation, the leak check and re-derivation, the writer's and
+checker's prompts, both arms' prompts against the spec's text, the runner's argv and copies, the citation parse and verdicts
+(tool paths, bare and partial names, hashes, the question's identifiers, a commit's diff), the judge's input, parse and
+retry, the summary's pairing, dropping, reclassification and decision rule, the blinding check, and the blind hand-check
+sample.
+
 ## Sources
 
 - **Retrieval:**

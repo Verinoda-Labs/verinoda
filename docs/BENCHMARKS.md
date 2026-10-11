@@ -25,6 +25,28 @@ Sections: [Update 2026-10-02](#update-2026-10-02-graphify-0973-contextbench-agai
 [Metrics](#metrics-exact-definitions) · [Question sets](#question-sets) ·
 [Per-question results](#per-question-results)
 
+## Update 2026-10-11: false claims on why / when / what-it-affects questions (D185)
+
+Result folder: `claims-2026-10-11/` (README with every table). Pre-registered in `benchmarks/agent_compare/DESIGN_CLAIMS.md`.
+Every earlier agent study measured file recall or the resolved share and found the agent alone at the ceiling; this one measures
+what Verinoda is for. 40 tasks over the ten pinned real-world repositories (8 `why`, 8 `when`, 14 `affects`, 10 traps whose
+answer the repository does not hold), written from git by headless Opus sessions without Verinoda and checked by a second agent,
+committed before the first session. Two arms with the **same** cite-or-say-unknown stance (the only difference is the tool),
+`claude-sonnet-5-5`, 3 repeats, 240 sessions, none errored. A blind judge of the same model splits each answer into claims and
+grades them against the gold; a mechanical check grades every citation against the checkout.
+
+- **Answerable tasks (30): share of answers with a false fact claim** 0.044 (plain, 4 of 90) against 0.056 (Verinoda, 5 of
+  90); +0.011 [-0.044, +0.078]. **Traps (10): confabulated** 0 of 30 in each arm. No measured difference; no claim.
+- The pilot's plain rate (0.25, 2 of 8) kept N at 40 by the pre-registered rule; the main rate is 0.044, so a halving (-0.022)
+  sits inside the interval and the result is weak evidence against an effect, not evidence of none.
+- 7 of the 12 false facts are the same absence assertion in both arms ("no rationale in the repository") about a rationale
+  that exists at the file's pre-move path; the stance stops invented answers and does not stop confident negatives.
+- Blinding failed (judge right in 72 %, interval excludes 0.5): the `[tool]` mask itself marks the arm (4.06 masks per
+  Verinoda answer, 0.12 per plain one). Reported with that caveat.
+- Cost: 1.66x dollars and 1.5x seconds per session with Verinoda (`analyze` about 2,700 estimated tokens per call, 120 calls).
+- Not measured: the stance against the tool (both arms carry it); Verinoda offered without the paragraph; a person's trust.
+  The person's hand check of 40 judged claims is pending.
+
 ## Update 2026-10-02: Graphify 0.9.73, ContextBench again, agents in the loop, `update --fast`
 
 Result folders (each with its own README): `compare-2026-10-02/`, `contextbench-2026-10-02/`,

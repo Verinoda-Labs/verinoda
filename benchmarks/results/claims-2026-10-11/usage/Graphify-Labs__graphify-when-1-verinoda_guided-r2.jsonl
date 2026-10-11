@@ -1,0 +1,6 @@
+{"ts":1791749923.98,"surface":"cli","name":"check","args_chars":124,"result_chars":1563,"result_tokens_est":391,"args_tokens_est":31,"seconds":1.0737,"pid":27600,"stderr_chars":0}
+{"ts":1791749931.545,"surface":"mcp","name":"analyze","args_chars":184,"result_chars":11997,"result_tokens_est":3000,"args_tokens_est":46,"seconds":4.9659,"pid":37200}
+{"ts":1791749931.681,"surface":"mcp","name":"project_query","args_chars":90,"result_chars":5951,"result_tokens_est":1488,"args_tokens_est":23,"seconds":0.1289,"pid":37200}
+{"ts":1791749934.189,"surface":"mcp","name":"run_tool:history_search","args_chars":75,"result_chars":1993,"result_tokens_est":499,"args_tokens_est":19,"seconds":1.0241,"pid":37200}
+{"ts":1791749940.705,"surface":"cli","name":"mcp","args_chars":29,"result_chars":235,"result_tokens_est":59,"args_tokens_est":8,"seconds":18.3174,"pid":37200,"stderr_chars":235}
+{"ts":1791749948.64,"surface":"cli","name":"update","args_chars":87,"result_chars":1655,"result_tokens_est":414,"args_tokens_est":22,"seconds":16.9282,"pid":10876,"stderr_chars":0}

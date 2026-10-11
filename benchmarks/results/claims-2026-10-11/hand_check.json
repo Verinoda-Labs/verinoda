@@ -1,0 +1,322 @@
+[
+ {
+  "sample_id": "da4ce376d1",
+  "id": "sharkdp__bat-trap-1",
+  "repeat": 3,
+  "claim_text": "The dim default is a known trade-off.",
+  "grade": "not_in_gold",
+  "stance": "inference"
+ },
+ {
+  "sample_id": "f7a3576576",
+  "id": "fastapi__full-stack-fastapi-template-why-1",
+  "repeat": 1,
+  "claim_text": "Commit b4fa418 appears to be the change that moved the reset token into the body.",
+  "grade": "not_in_gold",
+  "stance": "inference"
+ },
+ {
+  "sample_id": "400a8e7482",
+  "id": "guzzle__guzzle-trap-1",
+  "repeat": 2,
+  "claim_text": "The request follows a row of '>', the response follows a row of '<', and the error follows a row of dashes.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "5f6c4485ac",
+  "id": "gin-gonic__gin-trap-1",
+  "repeat": 3,
+  "claim_text": "safeInt8 caps the handler count at math.MaxInt8, and index is an int8.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "cb50fa79e1",
+  "id": "google__gson-trap-1",
+  "repeat": 3,
+  "claim_text": "Commit 6e06bf0d (\"Fix for an ArrayIndexOutOfBoundsException\") later touched the BUFFER_SIZE constant.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "ee64ab9f1d",
+  "id": "fastapi__full-stack-fastapi-template-trap-1",
+  "repeat": 2,
+  "claim_text": "The value is probably a long-lived convenience default chosen so users stay logged in for about a week.",
+  "grade": "not_in_gold",
+  "stance": "inference"
+ },
+ {
+  "sample_id": "8dd42465fd",
+  "id": "sharkdp__bat-why-1",
+  "repeat": 3,
+  "claim_text": "line_changes is None for non-file inputs or when git cannot produce a diff; stdin gets no line-changes data.",
+  "grade": "not_in_gold",
+  "stance": "inference"
+ },
+ {
+  "sample_id": "b0d82006eb",
+  "id": "junegunn__fzf-why-1",
+  "repeat": 2,
+  "claim_text": "The loop exits when the cancel pipe becomes readable, returning getCharCancelled.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "c99703f2c8",
+  "id": "Graphify-Labs__graphify-why-1",
+  "repeat": 3,
+  "claim_text": "The code seeks to the offset before every msvcrt.locking call: blocking acquire, non-blocking acquire and release with LK_UNLCK, each locking 1 byte.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "718192604e",
+  "id": "fastapi__sqlmodel-why-1",
+  "repeat": 1,
+  "claim_text": "The change to import Literal from typing was enabled by dropping Python 3.8 support, so the typing_extensions backport was no longer needed.",
+  "grade": "correct",
+  "stance": "inference"
+ },
+ {
+  "sample_id": "4d7a348bb1",
+  "id": "fastapi__full-stack-fastapi-template-why-1",
+  "repeat": 1,
+  "claim_text": "git log -S for the body code only turns up 8558cf0, a file move (#630), which shows when the code moved, not why.",
+  "grade": "incorrect",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "1c7edb23b3",
+  "id": "sharkdp__bat-trap-1",
+  "repeat": 2,
+  "claim_text": "The repository does not state why 238 was chosen; no comment, commit message, or doc gives a reason.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "e9785c2dd1",
+  "id": "sharkdp__bat-affects-1",
+  "repeat": 1,
+  "claim_text": "invoke_bugreport at src/bin/bat/main.rs:289-292 calls get_pager_executable and falls back to \"less\" via unwrap_or_else when it returns None, assuming an Option<String> return.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "25a8019d1b",
+  "id": "axios__axios-when-1",
+  "repeat": 3,
+  "claim_text": "HEAD is 84a9f3b 'prepare release 1.20.0' and 39955a6 is an ancestor of HEAD.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "1425c004cb",
+  "id": "Graphify-Labs__graphify-trap-1",
+  "repeat": 1,
+  "claim_text": "The comment at the constant says _read_files truncates each file at this many characters before joining into the user message, and that token estimates use the same cap so packing matches reality.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "30855a14c0",
+  "id": "axios__axios-when-1",
+  "repeat": 2,
+  "claim_text": "The checkout's HEAD is 84a9f3b, \"chore(release): prepare release 1.20.0\".",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "dac633fead",
+  "id": "junegunn__fzf-affects-1",
+  "repeat": 1,
+  "claim_text": "src/util/chars_test.go:259 (TestRuneSlicesAliasTheText) asserts &runes[0] == &chars.ToRunes()[0], would fail if ToRunes returned a copy, and so must change.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "54a3e01567",
+  "id": "fastapi__sqlmodel-when-1",
+  "repeat": 1,
+  "claim_text": "The same commit introduced the ondelete option and RESTRICT together, so RESTRICT was accepted from the start.",
+  "grade": "correct",
+  "stance": "inference"
+ },
+ {
+  "sample_id": "ae5f0ace6f",
+  "id": "fastapi__sqlmodel-affects-1",
+  "repeat": 3,
+  "claim_text": "Line 294 is in a function that builds the object with cls.__new__(cls) for non-table classes; lines 319 and 330 decide whether to set __dict__ directly or use setattr and whether to copy relationship attributes.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "ae490689d6",
+  "id": "expressjs__express-why-1",
+  "repeat": 2,
+  "claim_text": "Other options such as path, domain and secure pass through.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "5aae58c2bf",
+  "id": "Graphify-Labs__graphify-trap-1",
+  "repeat": 2,
+  "claim_text": "_FILE_CHAR_CAP = 20_000 is defined at graphify/llm.py:30, and its comment says _read_files truncates each file at that many characters before joining them into the user message.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "7be63467ce",
+  "id": "axios__axios-when-1",
+  "repeat": 2,
+  "claim_text": "git log -S\"UnprocessableContent\" on lib/helpers/HttpStatusCode.js returns only this commit.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "3c3a1de1b5",
+  "id": "expressjs__express-trap-1",
+  "repeat": 1,
+  "claim_text": "wetag is built with { weak: true } and etag with { weak: false }.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "c97c8b84ed",
+  "id": "gin-gonic__gin-when-1",
+  "repeat": 1,
+  "claim_text": "db30908 appears to be the introducing change of the option.",
+  "grade": "correct",
+  "stance": "inference"
+ },
+ {
+  "sample_id": "f132aba39e",
+  "id": "fastapi__sqlmodel-why-1",
+  "repeat": 3,
+  "claim_text": "The commit touched sqlmodel/main.py, sqlmodel/sql/expression.py and tests/test_pydantic/test_field.py, and removed a typing_extensions line at sqlmodel/sql/expression.py:37.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "141dafc411",
+  "id": "guzzle__guzzle-affects-2",
+  "repeat": 1,
+  "claim_text": "ProxyEnv::resolveProxySelection first calls ProxyOptions::resolve; an option that sets, bypasses or disables the proxy is final, and only a 'none' result falls through to the environment.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "bc9413a877",
+  "id": "expressjs__express-affects-1",
+  "repeat": 3,
+  "claim_text": "The tests pin these behaviours: no arguments returns undefined, no charset returns type unchanged, an existing charset=utf-8 is returned unchanged, adding a charset gives text/html; charset=utf-8, and iso-8859-1 is replaced with utf-8.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "9b2e8b2894",
+  "id": "fastapi__sqlmodel-when-1",
+  "repeat": 3,
+  "claim_text": "Commit 86ab09f's diff to sqlmodel/main.py adds the OnDeleteType line as new, along with two ondelete: Union[OnDeleteType, UndefinedType] = Undefined parameters.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "733aa2f45b",
+  "id": "expressjs__express-when-1",
+  "repeat": 3,
+  "claim_text": "dbac741a is \"5.2.1\" in the recent history.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "5ef6788c91",
+  "id": "expressjs__express-affects-1",
+  "repeat": 1,
+  "claim_text": "External packages importing express/lib/utils are not visible from this repository.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "35959a2b1b",
+  "id": "google__gson-affects-1",
+  "repeat": 1,
+  "claim_text": "A broader match would exclude static local classes from deserialization, while serialization would not change because of the !serialize guard.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "5f23456690",
+  "id": "axios__axios-why-1",
+  "repeat": 3,
+  "claim_text": "The object is added to the set at line 970 and removed at line 989, after its children are walked.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "7097e414ed",
+  "id": "expressjs__express-trap-1",
+  "repeat": 2,
+  "claim_text": "The message of c21226aa only says 'closes #1435, closes #2129'.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "d1a28adf67",
+  "id": "expressjs__express-why-1",
+  "repeat": 2,
+  "claim_text": "The commit body says maxAge is ignored to account for the built-in relative expires when passing a maxAge to res.cookie, and that using maxAge to invalidate cookies inherently hit this relative expires behavior.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "bb549c1a54",
+  "id": "fastapi__full-stack-fastapi-template-when-1",
+  "repeat": 1,
+  "claim_text": "The file's most recent changes are d85803b (CORS simplification) and e95e501 (FASTAPI_ENV), both dated 2026-08-10, a day before 32ab6dd, so neither introduced the rewrite.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "a34b85f574",
+  "id": "fastapi__sqlmodel-when-1",
+  "repeat": 1,
+  "claim_text": "OnDeleteType is Literal[\"CASCADE\", \"SET NULL\", \"RESTRICT\"] at sqlmodel/main.py:93.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "aa63555b0e",
+  "id": "guzzle__guzzle-affects-2",
+  "repeat": 2,
+  "claim_text": "resolveProxySelection first asks ProxyOptions::resolve for a decision from the proxy request option, and returns that result as final if it gave a proxy, bypass or disable.",
+  "grade": "not_in_gold",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "d1b8f16a9a",
+  "id": "junegunn__fzf-why-1",
+  "repeat": 1,
+  "claim_text": "SA_RESTART does not restart select(), so the cancellable path sees EINTR, while the non-cancellable blocking read is restarted and does not.",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "71b20072d1",
+  "id": "google__gson-affects-3",
+  "repeat": 1,
+  "claim_text": "TypeToken.getTypeTokenTypeArgument uses createUrl(\"type-token-raw\").",
+  "grade": "correct",
+  "stance": "fact"
+ },
+ {
+  "sample_id": "728f883a2c",
+  "id": "junegunn__fzf-when-1",
+  "repeat": 2,
+  "claim_text": "Commit 901939bd (2023-09-18, \"Add support for limit and offset parameters for GET / endpoint\") added the progress field.",
+  "grade": "correct",
+  "stance": "fact"
+ }
+]

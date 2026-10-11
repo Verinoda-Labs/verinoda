@@ -1,0 +1,24 @@
+clone fastapi/full-stack-fastapi-template
+clone fastapi/sqlmodel
+clone gin-gonic/gin
+clone guzzle/guzzle
+clone junegunn/fzf
+16 sessions to run (0 done)
+22:36:52 fastapi__full-stack-fastapi-template-when-1:none:r1 answer=1123 chars verinoda_calls=0 turns=5 $0.0474376 14.4 s
+22:36:56 fastapi__sqlmodel-affects-1:none:r1 answer=2227 chars verinoda_calls=0 turns=5 $0.0558655 17.5 s
+22:37:04 fastapi__full-stack-fastapi-template-why-1:none:r1 answer=1297 chars verinoda_calls=0 turns=3 $0.0450293 12.3 s
+22:37:12 fastapi__full-stack-fastapi-template-when-1:verinoda_guided:r1 answer=2077 chars verinoda_calls=3 turns=6 $0.09494469999999999 23.9 s
+22:37:12 gin-gonic__gin-affects-1:none:r1 answer=2618 chars verinoda_calls=0 turns=6 $0.0549209 16.4 s
+22:37:23 guzzle__guzzle-affects-2:none:r1 answer=3028 chars verinoda_calls=0 turns=6 $0.10239659999999999 18.5 s
+22:37:25 fastapi__sqlmodel-affects-1:verinoda_guided:r1 answer=2729 chars verinoda_calls=2 turns=6 $0.0931031 30.0 s
+22:37:26 gin-gonic__gin-why-1:none:r1 answer=1706 chars verinoda_calls=0 turns=5 $0.058394699999999994 13.8 s
+22:37:38 fastapi__full-stack-fastapi-template-why-1:verinoda_guided:r1 answer=1819 chars verinoda_calls=2 turns=5 $0.09918819999999999 19.4 s
+22:37:41 junegunn__fzf-affects-1:none:r1 answer=2435 chars verinoda_calls=0 turns=5 $0.060122100000000005 17.7 s
+22:37:43 fastapi__sqlmodel-why-1:none:r1 answer=1740 chars verinoda_calls=0 turns=5 $0.056445800000000004 16.0 s
+22:37:55 gin-gonic__gin-affects-1:verinoda_guided:r1 answer=3426 chars verinoda_calls=2 turns=5 $0.1004583 24.4 s
+22:38:15 guzzle__guzzle-affects-2:verinoda_guided:r1 answer=3678 chars verinoda_calls=2 turns=6 $0.11515439999999999 28.0 s
+22:38:18 gin-gonic__gin-why-1:verinoda_guided:r1 answer=2373 chars verinoda_calls=1 turns=4 $0.0784804 18.8 s
+22:38:45 junegunn__fzf-affects-1:verinoda_guided:r1 answer=2833 chars verinoda_calls=2 turns=6 $0.10370680000000002 22.9 s
+22:38:56 fastapi__sqlmodel-why-1:verinoda_guided:r1 answer=2241 chars verinoda_calls=2 turns=5 $0.08927860000000001 23.7 s
+all done
+exit=0

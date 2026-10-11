@@ -568,6 +568,15 @@ Nothing to migrate: a measurement, no code changed. The 100-instance study's pat
 harness in Docker: both arms resolved 72 of 100 (no measured difference, 95 % interval -0.07 to 0.07). The reports and the
 per-instance results are in `benchmarks/results/swebench-lite-100-2026-10-10/`.
 
+### D185: The false-claims study
+
+Nothing to migrate: a measurement with its own harness (`benchmarks/agent_compare/claims_tasks.py`, `claims_run.py`,
+`claims_score.py`; no change to the package or the mod). On 40 why / when / what-it-affects questions over ten real
+repositories, with the same cite-or-say-unknown stance in both arms, Claude Code with Verinoda stated false facts in 0.056 of
+its answers against 0.044 without it (+0.011, 95 % interval -0.044 to +0.078: no measured difference), and neither arm
+confabulated on any of the 10 traps. Results in `benchmarks/results/claims-2026-10-11/`; the person's hand check of 40 claims
+is pending there.
+
 ## Upgrading from 0.3.2 (D60-D136)
 
 ### D63: Running a project's own tests safely

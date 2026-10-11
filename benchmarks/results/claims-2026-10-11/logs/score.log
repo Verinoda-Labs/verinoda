@@ -1,0 +1,52 @@
+judged fastapi__full-stack-fastapi-template-when-1:none:r1 claims=9
+judged fastapi__sqlmodel-affects-1:none:r1 claims=15
+judged fastapi__full-stack-fastapi-template-why-1:none:r1 claims=10
+judged fastapi__full-stack-fastapi-template-when-1:verinoda_guided:r1 claims=13
+judged gin-gonic__gin-affects-1:none:r1 claims=15
+judged guzzle__guzzle-affects-2:none:r1 claims=12
+judged fastapi__sqlmodel-affects-1:verinoda_guided:r1 claims=15
+judged gin-gonic__gin-why-1:none:r1 claims=8
+judged fastapi__full-stack-fastapi-template-why-1:verinoda_guided:r1 claims=10
+judged junegunn__fzf-affects-1:none:r1 claims=10
+judged fastapi__sqlmodel-why-1:none:r1 claims=11
+judged gin-gonic__gin-affects-1:verinoda_guided:r1 claims=14
+judged guzzle__guzzle-affects-2:verinoda_guided:r1 claims=19
+judged gin-gonic__gin-why-1:verinoda_guided:r1 claims=10
+judged junegunn__fzf-affects-1:verinoda_guided:r1 claims=13
+judged fastapi__sqlmodel-why-1:verinoda_guided:r1 claims=10
+{
+ "sessions": 16,
+ "valid_sessions": 16,
+ "pairs": 8,
+ "primary": {
+  "answerable_false_fact": {
+   "none": 0.25,
+   "verinoda_guided": 0.125,
+   "difference": -0.125,
+   "ci95": [
+    -0.375,
+    0.0
+   ],
+   "claim": false,
+   "n_tasks": 8
+  },
+  "trap_confabulated": {
+   "none": null,
+   "verinoda_guided": null,
+   "difference": null,
+   "ci95": null,
+   "claim": false,
+   "n_tasks": 0
+  }
+ },
+ "blinding": {
+  "accuracy": 0.6875,
+  "ci95": [
+   0.4375,
+   0.875
+  ],
+  "failed": false,
+  "n": 16
+ }
+}
+exit=0
