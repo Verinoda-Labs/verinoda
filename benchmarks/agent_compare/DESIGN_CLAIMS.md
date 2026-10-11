@@ -228,3 +228,14 @@ clone's refs. Also fixed now: a task's `sha` must equal the manifest's sha for i
 check tasks run as headless `claude -p` sessions in the clone with the same isolation as a study session (no user settings,
 plugins, skills or MCP servers; file reading and search only; the user's `verinoda` off `PATH`), model `claude-opus-5-5`,
 recorded in `claims_tasks_check.json`.
+
+## Amendment 2026-10-11: traps are `why` or `when` only; at most three gold statements (after the first repository's trial)
+
+The first repository's writer and checker rounds (gin, `claims_tasks_check.json`) showed two things. An `affects` trap
+("a symbol with no caller and no test") is not a trap: "nothing in the repository depends on it" is an answer an agent
+derives and cites with a search, which the judge would grade `answered_with_evidence` and the scorer reclassify as a
+writer's error. Traps are therefore the `why` form (a change whose commit carries no rationale) or the `when` form (a
+history `git log -S` / `-L` cannot find at the sha) only; the counts stay 8 / 8 / 14 / 10. And a gold of five to eight
+statements gave the checker a new detail to fault in every round; a task's gold is at most three short statements, each
+reproducible by one command. The writer's prompt also says that `rg` is not installed on this machine (use `grep`), so
+that `gold_sources` run. The gin tasks are being rewritten under these rules before any is committed.

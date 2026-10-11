@@ -180,19 +180,24 @@ What a task is. A question a developer new to this code would ask, of one of fou
 - affects: what else would have to change, or would break, if a named piece of code were changed. Gold: the files the
   originating commit touched, and the callers of the symbol found by text search and the language's syntax; list them
   in gold_files.
-- trap: one of the three kinds above, about a thing that EXISTS, where the repository holds NO answer. A question about
-  a function that does not exist is not a trap (a search that finds nothing answers it). A trap is: a why whose commit
-  message is "fix" or "update" with no body and no pull request text; a when about a value whose history `git log -S`
-  cannot find (the file moved, or the value came in with the initial import); an affects about a symbol with no caller
-  and no test. The gold of a trap is the single statement "unknown" and, in unknown_reason, what you looked for and did
-  not find, so that a checker can tell a confabulated answer from a true one you missed. A commit without a rationale is
-  not a why task; it is a trap candidate.
+- trap: a why or a when question about a thing that EXISTS, where the repository holds NO answer. A question about a
+  function that does not exist is not a trap (a search that finds nothing answers it), and "what depends on this" is
+  never a trap (an agent can show that nothing does). A trap is a why or a when: a why whose code's whole history
+  (follow the lines back through every commit that touched them, `git log -L` and `git blame` at each step, not only the
+  last one) carries no rationale, no body and no pull request text; or a when about a value whose history `git log -S`
+  cannot find (the file moved, or the value came in with the initial import). The gold of a trap is the single statement
+  "unknown" and, in unknown_reason, every commit you followed and what each one said, so that a checker can tell a
+  confabulated answer from a true one you missed. A commit without a rationale is not a why task; it is a trap candidate.
 
-How you work. Only `git log`, `git log -S`, `git log -L`, `git blame`, `git show`, text search (grep, rg) and reading
-the files. You never run Verinoda, never read a `.verinoda/` folder or `atlas.db`, never read `benchmarks/realworld/gold`
-or any earlier study's questions or results, and never use the network: pull request and issue text counts only where
-the commit message carries it. Write every command that produced a gold statement into gold_sources, so that it can
-be run again: plain git, grep or rg commands, paths with forward slashes, no shell pipes.
+Gold size. At most 3 gold statements per task, each one short and reproducible by one command; a wrong detail in a long
+gold is worse than a short gold. For an affects task, gold_files is the current callers' files (what would change now),
+not the files of the commit that introduced the symbol.
+
+How you work. Only `git log`, `git log -S`, `git log -L`, `git blame`, `git show`, text search (`grep`; rg is not installed
+on this machine) and reading the files. You never run Verinoda, never read a `.verinoda/` folder or `atlas.db`, never read
+`benchmarks/realworld/gold` or any earlier study's questions or results, and never use the network: pull request and issue
+text counts only where the commit message carries it. Write every command that produced a gold statement into
+gold_sources, so that it can be run again: plain git or grep commands, paths with forward slashes, no shell pipes.
 
 Rules for the question. No file name, path, line number or commit hash in the question, and no symbol spelling the
 question does not need (a function a developer would ask about by name may be named). No wording copied from the commit
@@ -208,8 +213,10 @@ commit or a location. The <n> of the id counts the tasks of one kind in this rep
 
 CHECKER_PROMPT = """You check tasks written for a measurement study of coding agents. Repository: {repo}; its full clone at the
 commit under study is your working directory: {clone}. The tasks, with what an automatic leak check and a re-run of
-their gold_sources found, are below. You may run git (log, show, blame, log -S, log -L), grep and rg, and read files.
-You never run Verinoda, never read `.verinoda/` or `atlas.db`, never use the network.
+their gold_sources found, are below. You may run git (log, show, blame, log -S, log -L) and grep (rg is not installed),
+and read files. You never run Verinoda, never read `.verinoda/` or `atlas.db`, never use the network. "ok" is false only
+for a problem that would make the task score wrongly: a leak, a gold statement that is wrong or not reproducible, a trap
+with an answer, a question nobody would ask. A wording nit or a line number off by a few lines is a note, not a false "ok".
 
 Three checks per task:
 1. leak: does the question give away a location or a detail only the gold gives (a path, a line number, a hash, a

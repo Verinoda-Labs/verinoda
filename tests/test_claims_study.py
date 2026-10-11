@@ -406,3 +406,9 @@ def test_rederive_records_a_program_that_is_not_installed_instead_of_raising(tmp
     t = _task(gold_sources=["rg -n Recovery"])
     rows = tasks_mod.rederive(t, tmp_path)
     assert rows[0]["rc"] == -2 and "not found" in rows[0]["note"] and rows[0]["reproduces"] == []
+
+
+def test_writer_prompt_limits_gold_and_traps_after_the_gin_trial():
+    w = tasks_mod.writer_prompt("gin-gonic/gin", Path("C:/w/gin"), tasks_mod.KINDS)
+    assert "at most 3 gold statements" in w and "rg is not installed" in w
+    assert "A trap is a why or a when" in w and "symbol with no caller" not in w
