@@ -25,7 +25,7 @@ tasks_mod = _load("claims_tasks")
 
 
 def _task(kind="why", n=1, repo="gin-gonic/gin", **over):
-    t = {"id": f"gin-gonic__gin-{kind}-{n}", "repo": repo, "sha": "7" * 40, "kind": kind,
+    t = {"id": f"gin-gonic__gin-{kind}-{n}", "repo": repo, "sha": tasks_mod.SHA_OF[repo], "kind": kind,
          "question": "Why does the engine recover from panics by default?",
          "gold": [{"statement": "recovery was added to stop one handler's panic killing the server", "commit": "abc1234",
                    "location": None}],
@@ -348,3 +348,51 @@ def test_hand_sample_is_blind_and_balanced():
     assert len(sample) == 40 and all("arm" not in s for s in sample)
     key = score_mod.hand_key(judged, sample)
     assert sorted(key.values()).count("none") == 20
+
+
+# -- Task 7 rulings: the sha against the manifest, single-branch clones, headless writers --------------------------------------
+
+
+def test_validate_checks_the_sha_against_the_manifest():
+    bad = _full_set()
+    bad[5]["sha"] = "0" * 40
+    assert any("manifest" in p and bad[5]["id"] in p for p in tasks_mod.validate(bad))
+    assert tasks_mod.SHA_OF["gin-gonic/gin"] == _task()["sha"]
+
+
+def test_writer_prompt_carries_the_sha_and_asks_for_forward_slashes():
+    w = tasks_mod.writer_prompt("gin-gonic/gin", Path("C:/w/gin"), tasks_mod.KINDS)
+    assert tasks_mod.SHA_OF["gin-gonic/gin"] in w and "forward slashes" in w
+
+
+def test_clone_argv_is_single_branch_at_the_tag_without_other_tags():
+    argv = run_mod.clone_argv("gin-gonic/gin", "v1.12.0", Path("C:/w/clones/gin-gonic__gin"))
+    assert "--single-branch" in argv and "--no-tags" in argv and argv[argv.index("--branch") + 1] == "v1.12.0"
+    assert "https://github.com/gin-gonic/gin.git" in argv
+
+
+def test_a_copy_holds_no_history_past_its_source(tmp_path):
+    import subprocess
+
+    src = tmp_path / "src"
+    src.mkdir()
+    _git_repo(src, filename="f", content="x", message="m")
+    sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=src, capture_output=True, text=True, check=True).stdout.strip()
+    dest = tmp_path / "copy"
+    run_mod.copy_for(src, dest, sha)
+    count = lambda *a: subprocess.run(["git", "rev-list", "--count", *a], cwd=dest, capture_output=True, text=True,
+                                      check=True).stdout.strip()
+    assert count("--all") == count("HEAD") == "1"
+
+
+def test_agent_argv_isolates_the_writer_like_a_study_session():
+    argv = tasks_mod.agent_argv("prompt", {"model": "claude-opus-5-5", "claude": "claude"})
+    assert argv[argv.index("--model") + 1] == "claude-opus-5-5" and "--strict-mcp-config" in argv
+    assert argv[argv.index("--allowedTools") + 1] == "Bash Read Glob Grep" and "--mcp-config" not in argv
+    assert argv[argv.index("--setting-sources") + 1] == "project,local"
+
+
+def test_parse_tasks_output_takes_the_first_object_with_a_tasks_list():
+    assert tasks_mod.parse_agent_json('text {"tasks": [{"id": "a"}]} more', "tasks") == {"tasks": [{"id": "a"}]}
+    assert tasks_mod.parse_agent_json('{"x": 1} {"results": []}', "results") == {"results": []}
+    assert tasks_mod.parse_agent_json("nothing", "tasks") is None

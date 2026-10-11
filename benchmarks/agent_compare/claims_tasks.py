@@ -27,7 +27,10 @@ KINDS = {"why": 8, "when": 8, "affects": 14, "trap": 10}
 SEED = "20261011:"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = REPO_ROOT / "benchmarks" / "realworld" / "manifest.json"
-REPOS: list[str] = [r["name"] for r in json.loads(MANIFEST.read_text(encoding="utf-8"))["repos"]]
+_REPOS = json.loads(MANIFEST.read_text(encoding="utf-8"))["repos"]
+REPOS: list[str] = [r["name"] for r in _REPOS]
+SHA_OF: dict[str, str] = {r["name"]: r["sha"] for r in _REPOS}
+TAG_OF: dict[str, str] = {r["name"]: r["tag"] for r in _REPOS}
 TRAP_GOLD = [{"statement": "unknown", "commit": None, "location": None}]
 _HEX = re.compile(r"^[0-9a-f]{7,40}$")
 
@@ -73,6 +76,8 @@ def validate(tasks: list[dict]) -> list[str]:
             problems.append(f"{tid}: kind {t.get('kind')!r} is none of {sorted(KINDS)}")
         if not re.fullmatch(r"[0-9a-f]{40}", str(t.get("sha", ""))):
             problems.append(f"{tid}: sha is not 40 hex characters")
+        elif t.get("repo") in SHA_OF and t["sha"] != SHA_OF[t["repo"]]:
+            problems.append(f"{tid}: sha is not the manifest's sha for {t['repo']}")
         if _text(t.get("question")) and not t["question"].rstrip().endswith("?"):
             problems.append(f"{tid}: the question does not end with ?")
         if not (isinstance(t.get("gold_sources"), list) and t["gold_sources"] and all(_text(s) for s in t["gold_sources"])):
@@ -161,7 +166,7 @@ def rederive(task: dict, clone: Path) -> list[dict]:
 
 
 WRITER_PROMPT = """You write tasks for a measurement study of coding agents. Repository: {repo}. Its full clone, checked out at
-the commit under study, is your working directory: {clone}. Write exactly these tasks: {kinds}.
+the commit under study ({sha}), is your working directory: {clone}. Write exactly these tasks: {kinds}.
 
 What a task is. A question a developer new to this code would ask, of one of four kinds, with a gold answer:
 - why: why a piece of code does what it does, or why it changed. Gold: the rationale the commit message (and the pull
@@ -183,14 +188,14 @@ How you work. Only `git log`, `git log -S`, `git log -L`, `git blame`, `git show
 the files. You never run Verinoda, never read a `.verinoda/` folder or `atlas.db`, never read `benchmarks/realworld/gold`
 or any earlier study's questions or results, and never use the network: pull request and issue text counts only where
 the commit message carries it. Write every command that produced a gold statement into gold_sources, so that it can
-be run again.
+be run again: plain git, grep or rg commands, paths with forward slashes, no shell pipes.
 
 Rules for the question. No file name, path, line number or commit hash in the question, and no symbol spelling the
 question does not need (a function a developer would ask about by name may be named). No wording copied from the commit
 message. The question ends with a question mark. Write it in English.
 
 Output. JSON only, nothing else: {{"tasks": [ ... ]}} where every task is
-{{"id": "<owner>__<name>-<kind>-<n>", "repo": "{repo}", "sha": "<the 40-character HEAD sha>", "kind": "why|when|affects|trap",
+{{"id": "<owner>__<name>-<kind>-<n>", "repo": "{repo}", "sha": "{sha}", "kind": "why|when|affects|trap",
 "question": "...", "gold": [{{"statement": "...", "commit": "<7-40 hex or null>", "location": "<path:line or null>"}}],
 "gold_sources": ["git ...", ...], "gold_files": ["path", ...] (affects only), "unknown_reason": "..." (trap only)}}.
 A trap's gold is exactly [{{"statement": "unknown", "commit": null, "location": null}}]. Every other gold statement has a
@@ -219,7 +224,45 @@ Tasks and the automatic checks:
 
 
 def writer_prompt(repo: str, clone: Path, kinds: dict) -> str:
-    return WRITER_PROMPT.format(repo=repo, clone=clone.as_posix(), kinds=", ".join(f"{k}: {n}" for k, n in kinds.items()))
+    return WRITER_PROMPT.format(repo=repo, clone=clone.as_posix(), sha=SHA_OF.get(repo, ""),
+                                kinds=", ".join(f"{k}: {n}" for k, n in kinds.items()))
+
+
+def agent_argv(prompt: str, cfg: dict) -> list[str]:
+    """A writer's or checker's session, isolated like a study session: no user settings, plugins, skills or MCP servers
+    (a subagent of the authoring session would inherit Verinoda's MCP server and skills), file reading and search only."""
+    from swebench_run import claude_exe
+
+    return [claude_exe(cfg), "-p", prompt, "--output-format", "json", "--model", cfg["model"], "--setting-sources", "project,local",
+            "--strict-mcp-config", "--allowedTools", "Bash Read Glob Grep", "--max-turns", str(cfg.get("max_turns", 80)),
+            "--permission-mode", "default"]
+
+
+def parse_agent_json(text: str, key: str) -> dict | None:
+    """The first JSON object of the text whose ``key`` is a list; None when there is none."""
+    decoder = json.JSONDecoder()
+    for m in re.finditer(r"\{", text):
+        try:
+            obj, _ = decoder.raw_decode(text, m.start())
+        except ValueError:
+            continue
+        if isinstance(obj, dict) and isinstance(obj.get(key), list):
+            return obj
+    return None
+
+
+def run_agent(prompt: str, clone: Path, cfg: dict, key: str) -> tuple[dict | None, dict]:
+    """One headless session in the clone; its parsed JSON (or None) and the session's report for the record."""
+    from swebench_run import env_for
+
+    rc, out, err, secs = run(agent_argv(prompt, cfg), clone, env_for("none", cfg), timeout=cfg.get("timeout_s", 2400))
+    try:
+        rep = json.loads(out)
+    except ValueError:
+        rep = {"is_error": True, "result": (out or err)[-800:]}
+    record = {"model": cfg["model"], "exit": rc, "seconds": secs, "is_error": bool(rep.get("is_error")),
+              "num_turns": rep.get("num_turns"), "cost_usd": rep.get("total_cost_usd"), "session_id": rep.get("session_id")}
+    return parse_agent_json(rep.get("result") or "", key), record
 
 
 def checker_prompt(repo: str, clone: Path, tasks: list[dict]) -> str:

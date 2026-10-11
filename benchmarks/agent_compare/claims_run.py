@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from big_run import claude_version, isolated_plugin_store, run_by_arm, session_stats
-from claims_tasks import REPO_ROOT, load_tasks, order
+from claims_tasks import REPO_ROOT, TAG_OF, load_tasks, order
 from guard_run import _force_remove, find_transcript, git_env, run
 from swebench_prepare import setup_verinoda
 from swebench_run import claude_exe, env_for, verinoda_tools
@@ -83,16 +83,25 @@ def _clean_at(dest: Path, sha: str) -> bool:
     return rc == 0 and head.strip() == sha and not dirty.strip()
 
 
-def clone_full(repo: str, sha: str, dest: Path) -> None:
-    """A full clone (every commit: the questions are about history) checked out detached at the pinned sha. The real-world
-    run's clones were one commit deep; those answer no when-question. A shallow result is refused."""
+def clone_argv(repo: str, tag: str, dest: Path) -> list[str]:
+    """Only the tag's own history: a clone of every branch and tag would carry commits past the sha, and an agent's
+    `git log --all` could cite a later commit whose message answers what the repository at the sha does not (a true
+    trap wrongly reclassified). Full depth, one branch, no other tags."""
+    return ["clone", "-q", "--no-checkout", "--single-branch", "--no-tags", "--branch", tag, "-c", "core.autocrlf=false",
+            "-c", "core.longpaths=true", f"https://github.com/{repo}.git", dest.as_posix()]
+
+
+def clone_full(repo: str, sha: str, dest: Path, tag: str) -> None:
+    """A full-depth clone of the pinned tag, checked out detached at the pinned sha, which the tag must resolve to. The
+    real-world run's clones were one commit deep; those answer no when-question. A shallow result is refused."""
     if _clean_at(dest, sha):
         return
     if dest.exists():
         shutil.rmtree(dest, onerror=_force_remove)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    _git(["clone", "-q", "--no-checkout", "-c", "core.autocrlf=false", "-c", "core.longpaths=true",
-          f"https://github.com/{repo}.git", dest.as_posix()], dest.parent, timeout=3600)
+    _git(clone_argv(repo, tag, dest), dest.parent, timeout=3600)
+    if _git(["rev-parse", f"{tag}^{{commit}}"], dest).strip() != sha:
+        raise RuntimeError(f"{repo}: tag {tag} does not resolve to {sha}")
     _git(["checkout", "-q", "--detach", sha], dest)
     if (dest / ".git" / "shallow").exists():
         raise RuntimeError(f"shallow clone at {dest}")
@@ -170,7 +179,7 @@ def main() -> int:
     todo = plan(tasks, cfg, done)
     for repo, sha in sorted({(t["repo"], t["sha"]) for t, _, _ in todo}):
         print(f"clone {repo}", flush=True)
-        clone_full(repo, sha, work / "clones" / repo.replace("/", "__"))
+        clone_full(repo, sha, work / "clones" / repo.replace("/", "__"), TAG_OF[repo])
     lock = threading.Lock()
     print(f"{len(todo)} sessions to run ({len(done)} done)", flush=True)
 

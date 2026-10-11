@@ -217,3 +217,14 @@ everything else are unchanged.
 > with `history_search`; for a question about what a change would affect, `run_tool` with `change_review` or the `impact`
 > view. Verinoda answers with claims that carry a status: state as fact only what it marks `statically_verified` or what
 > you confirmed yourself in the files; report its `unknown`s as unknown.
+
+## Amendment 2026-10-11: the clones hold the tag's history only (before any task was written)
+
+"Full clone" above means full depth, not every ref: each clone is `--single-branch --branch <manifest tag> --no-tags`, and the
+tag must resolve to the pinned sha. A clone of every branch and tag would carry commits past the sha, and an agent's
+`git log --all` could cite a later commit whose message answers what the repository at the sha does not: a real hash the
+mechanical check confirms, so a true trap would be reclassified as a writer's error. The sessions' copies inherit only the
+clone's refs. Also fixed now: a task's `sha` must equal the manifest's sha for its repository, and the agents that write and
+check tasks run as headless `claude -p` sessions in the clone with the same isolation as a study session (no user settings,
+plugins, skills or MCP servers; file reading and search only; the user's `verinoda` off `PATH`), model `claude-opus-5-5`,
+recorded in `claims_tasks_check.json`.
