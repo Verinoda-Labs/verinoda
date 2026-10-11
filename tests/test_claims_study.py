@@ -396,3 +396,13 @@ def test_parse_tasks_output_takes_the_first_object_with_a_tasks_list():
     assert tasks_mod.parse_agent_json('text {"tasks": [{"id": "a"}]} more', "tasks") == {"tasks": [{"id": "a"}]}
     assert tasks_mod.parse_agent_json('{"x": 1} {"results": []}', "results") == {"results": []}
     assert tasks_mod.parse_agent_json("nothing", "tasks") is None
+
+
+def test_rederive_records_a_program_that_is_not_installed_instead_of_raising(tmp_path, monkeypatch):
+    def missing(argv, cwd, env=None, timeout=600, stdin=None):
+        raise FileNotFoundError(argv[0])
+
+    monkeypatch.setattr(tasks_mod, "run", missing)
+    t = _task(gold_sources=["rg -n Recovery"])
+    rows = tasks_mod.rederive(t, tmp_path)
+    assert rows[0]["rc"] == -2 and "not found" in rows[0]["note"] and rows[0]["reproduces"] == []

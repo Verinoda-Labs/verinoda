@@ -153,7 +153,11 @@ def rederive(task: dict, clone: Path) -> list[dict]:
         if not argv or argv[0] not in READ_COMMANDS:
             rows.append({"command": command, "rc": -1, "reproduces": [], "note": "not a read command; not run"})
             continue
-        rc, out, err, _ = run(argv, clone, git_env(), timeout=120)
+        try:
+            rc, out, err, _ = run(argv, clone, git_env(), timeout=120)
+        except FileNotFoundError:  # `rg` is not on this machine's PATH; the checker still sees the command
+            rows.append({"command": command, "rc": -2, "reproduces": [], "note": f"{argv[0]}: program not found here; not run"})
+            continue
         text = out + err
         reproduces = []
         for k, g in enumerate(task.get("gold", [])):
