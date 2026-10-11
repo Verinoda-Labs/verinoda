@@ -304,13 +304,16 @@ def test_answer_values_separate_false_fact_from_false_inference_and_uncited():
     assert score_mod.answer_values(_judged("t", "none", 1, [], failed=True), {"citations": []}, "why") is None
 
 
+C_ASSERT = {"text": "the value came in with the initial import", "grade": "not_in_gold", "stance": "fact", "cites": ["a.go:1"]}
+
+
 def test_a_trap_answered_with_a_confirmed_citation_is_reclassified_not_confabulated():
-    j = _judged("t", "none", 1, [C_OK], trap={"verdict": "answered_with_evidence"})
+    j = _judged("t", "none", 1, [C_ASSERT], trap={"verdict": "answered_with_evidence"})
     v = score_mod.answer_values(j, {"citations": [{"raw": "a.go:1", "verdict": "confirmed"}]}, "trap")
     assert v["reclassified"] is True and v["confabulated"] is None
     j2 = _judged("t", "none", 1, [C_BAD], trap={"verdict": "confabulated"})
     assert score_mod.answer_values(j2, {"citations": []}, "trap")["confabulated"] == 1
-    j3 = _judged("t", "none", 1, [C_OK], trap={"verdict": "answered_with_evidence"})
+    j3 = _judged("t", "none", 1, [C_ASSERT], trap={"verdict": "answered_with_evidence"})
     assert score_mod.answer_values(j3, {"citations": [{"raw": "a.go:1", "verdict": "wrong"}]}, "trap")["confabulated"] == 1
 
 
@@ -442,7 +445,7 @@ def test_mechanical_passes_the_questions_identifiers(tmp_path):
     assert score_mod.mechanical(row, tmp_path, task)["citations"][0]["verdict"] == "confirmed"
 
 
-def test_a_bare_file_name_is_resolved_when_it_is_unique_in_the_checkout(tmp_path):
+def test_a_bare_file_name_is_resolved_to_the_tracked_files_of_that_name(tmp_path):
     import subprocess
 
     (tmp_path / "pkg").mkdir()
@@ -463,3 +466,33 @@ def test_a_partial_path_is_resolved_by_suffix_like_a_bare_name(tmp_path):
     loc = {"kind": "location", "raw": "stream/Reader.java:2", "path": "stream/Reader.java", "line": 2, "end": None, "hash": None}
     assert score_mod.check_citation(loc, "`BUFFER_SIZE` is 1024", tmp_path) == "confirmed"
     assert score_mod.check_citation({**loc, "path": "other/Reader.java"}, "`BUFFER_SIZE`", tmp_path) == "missing"
+
+
+# -- after the final review (D185): opaque copy names, reclassification by the asserting claim's own citations, the sheet ----
+
+
+def test_a_copy_folder_does_not_carry_the_task_id_or_its_kind():
+    t = _task("trap")
+    folder = run_mod.copy_dir(Path("C:/w"), t, "none", 2)
+    assert "trap" not in folder.as_posix() and t["id"] not in folder.as_posix()
+    assert folder.parent.name == "none" and folder.name == "r2"
+    assert run_mod.copy_dir(Path("C:/w"), t, "none", 2) == folder  # deterministic
+    assert run_mod.copy_dir(Path("C:/w"), _task("why"), "none", 2) != folder
+
+
+def test_a_trap_is_reclassified_only_when_the_asserting_claim_itself_cites_a_confirmed_place():
+    assert_claim = {"text": "the value came in with commit abc1234", "grade": "not_in_gold", "stance": "fact", "cites": ["abc1234"]}
+    other = {"text": "the file is at a.go:1", "grade": "correct", "stance": "fact", "cites": ["a.go:1"]}
+    j = _judged("t", "none", 1, [other, assert_claim], trap={"verdict": "answered_with_evidence"})
+    mech = {"citations": [{"raw": "a.go:1", "verdict": "confirmed"}, {"raw": "abc1234", "verdict": "wrong"}]}
+    v = score_mod.answer_values(j, mech, "trap")
+    assert v["reclassified"] is False and v["confabulated"] == 1
+    mech2 = {"citations": [{"raw": "a.go:1", "verdict": "confirmed"}, {"raw": "abc1234", "verdict": "confirmed"}]}
+    assert score_mod.answer_values(j, mech2, "trap")["reclassified"] is True
+
+
+def test_the_hand_sheet_carries_the_whole_gold_and_no_arm():
+    t = _task(gold=[{"statement": "x" * 700, "commit": "abc1234", "location": None}])
+    sample = [{"sample_id": "h1", "id": t["id"], "repeat": 1, "claim_text": "c", "grade": "correct", "stance": "fact"}]
+    sheet = score_mod.hand_sheet(sample, [t])
+    assert "x" * 700 in sheet and "none" not in sheet and "verinoda" not in sheet.lower() and "grade:" in sheet

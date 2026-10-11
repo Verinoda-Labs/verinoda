@@ -23,8 +23,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from big_run import claude_version, isolated_plugin_store, run_by_arm, session_stats
+from big_run import isolated_plugin_store, run_by_arm, session_stats
 from claims_tasks import REPO_ROOT, TAG_OF, load_tasks, order
+from claims_tasks import copy_dir as _copy_dir
 from guard_run import _force_remove, find_transcript, git_env, run
 from swebench_prepare import setup_verinoda
 from swebench_run import claude_exe, env_for, verinoda_tools
@@ -132,10 +133,27 @@ def plan(tasks: list[dict], cfg: dict, done: set) -> list[tuple[dict, str, int]]
     return [(by_id[i], arm, r) for i in ids for arm in cfg["arms"] for r in range(1, repeats + 1) if (i, arm, r) not in done]
 
 
+def copy_dir(work: Path, task: dict, arm: str, repeat: int) -> Path:
+    return _copy_dir(work, task["id"], arm, repeat)
+
+
+_CLAUDE_VERSION: str | None = None
+
+
+def cli_version(cfg: dict) -> str:
+    """`claude --version` through the resolved executable (big_run.claude_version runs the bare name, which on Windows is an
+    npm shim a subprocess cannot start: every row of the first run said "unknown")."""
+    global _CLAUDE_VERSION
+    if _CLAUDE_VERSION is None:
+        rc, out, _, _ = run([claude_exe(cfg), "--version"], Path.cwd(), git_env(), timeout=60)
+        _CLAUDE_VERSION = out.strip() if rc == 0 and out.strip() else "unknown"
+    return _CLAUDE_VERSION
+
+
 def one(cfg: dict, task: dict, arm: str, repeat: int) -> dict:
     work = Path(cfg["work"])
     clone = work / "clones" / task["repo"].replace("/", "__")
-    copy = work / "copies" / task["id"] / arm / f"r{repeat}"
+    copy = copy_dir(work, task, arm, repeat)
     copy_for(clone, copy, task["sha"])
     setup = setup_verinoda(copy) if arm == GUIDED else {}
     env = env_for(arm, cfg)
@@ -152,7 +170,7 @@ def one(cfg: dict, task: dict, arm: str, repeat: int) -> dict:
     st = session_stats(transcript)
     usage = rep.get("usage") or {}
     return {"id": task["id"], "arm": arm, "repeat": repeat, "pilot": bool(cfg.get("pilot")), "kind": task["kind"],
-            "model": cfg["model"], "claude": claude_version(), "exit": rc, "seconds": secs, "is_error": bool(rep.get("is_error")),
+            "model": cfg["model"], "claude": cli_version(cfg), "exit": rc, "seconds": secs, "is_error": bool(rep.get("is_error")),
             "subtype": rep.get("subtype"), "session_id": rep.get("session_id"), "num_turns": rep.get("num_turns"),
             "cost_usd": rep.get("total_cost_usd"),
             "input_tokens": sum(int(usage.get(k) or 0) for k in ("input_tokens", "cache_creation_input_tokens",

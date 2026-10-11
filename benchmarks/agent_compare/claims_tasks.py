@@ -40,6 +40,14 @@ def order(ids: list[str]) -> list[str]:
     return sorted(ids, key=lambda i: hashlib.sha256((SEED + i).encode("utf-8")).hexdigest())
 
 
+def copy_dir(work: Path, task_id: str, arm: str, repeat: int) -> Path:
+    """A session's working copy, named by an opaque hash of the task id. The first run named it by the id, and the id
+    carries the task's kind: every trap session read "trap-1" on its prompt's first line, just before the instruction to say
+    "unknown" (D185, the review's finding). The arm and the repeat stay readable; the agent never sees them as words it
+    could act on."""
+    return work / "copies" / hashlib.sha256((SEED + task_id).encode("utf-8")).hexdigest()[:12] / arm / f"r{repeat}"
+
+
 def _text(x) -> bool:
     return isinstance(x, str) and bool(x.strip())
 

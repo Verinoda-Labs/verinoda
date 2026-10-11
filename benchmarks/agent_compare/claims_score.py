@@ -22,7 +22,7 @@ from guard_run import git_env, run
 
 PLAIN, GUIDED = "none", "verinoda_guided"
 SEED = 20261011
-# a citation into the tool's own files is not evidence of the repository (review focus 1 of the plan)
+# a citation into the tool's own files is not evidence of the repository (D185, the plan's review focus)
 TOOL_PATHS = (".verinoda/", "atlas.db", ".claude/", ".mcp.json")
 NEUTRAL = "[tool]"
 # longest alternatives first, so that `mcp__verinoda__analyze` is one token and not two
@@ -214,7 +214,7 @@ def _judge_shape(obj) -> bool:
 
 def judge(cfg: dict, task: dict, row: dict, scratch: Path) -> dict:
     """One blind judging of a session's answer: a tool-less `claude -p` of the pinned model, retried once when the result is
-    not the expected JSON; a second failure is recorded, never counted as "no claims" (review focus 3 of the plan)."""
+    not the expected JSON; a second failure is recorded, never counted as "no claims" (D185)."""
     import json
 
     from swebench_run import claude_exe
@@ -281,7 +281,7 @@ def answer_values(judged: dict, mech: dict, kind: str) -> dict | None:
     """One answer's numbers from the judge's grades and the mechanical check; None when the judge failed on it. A false
     inference is counted apart from a false fact (the spec's primary measure is the fact), a correct claim without a
     confirmed citation is `correct_uncited`, and a trap answered with a confirmed citation is reclassified, not
-    confabulated (review focus 4 of the plan)."""
+    confabulated (D185)."""
     if judged.get("judge_failed") or not judged.get("judge"):
         return None
     claims = judged["judge"]["claims"]
@@ -297,7 +297,10 @@ def answer_values(judged: dict, mech: dict, kind: str) -> dict | None:
     if kind == "trap":
         trap = judged["judge"].get("trap") or {}
         verdict = trap.get("verdict") or ("confabulated" if facts else "unknown_said")
-        if verdict == "answered_with_evidence" and any(c["verdict"] == "confirmed" for c in mech.get("citations", [])):
+        # the asserted answer is a fact claim the gold ("unknown") does not confirm; only its own citations count, not a
+        # confirmed citation elsewhere in the answer (the review of D185 found the first version read every citation)
+        asserting = [c for c in facts if c["grade"] in ("not_in_gold", "incorrect")]
+        if verdict == "answered_with_evidence" and any(_cited_confirmed(c.get("cites") or [], mech) for c in asserting):
             v["reclassified"] = True
         else:
             v["confabulated"] = int(verdict != "unknown_said")
@@ -364,7 +367,7 @@ def _per_call(usage_dir: Path | None) -> dict:
 
 def summary(tasks: list[dict], rows: list[dict], judged: list[dict], mechs: list[dict], usage_dir: Path | None = None) -> dict:
     """Everything the README reports, from the sessions, the judge's rows and the mechanical rows. Errored and empty sessions
-    are listed and left out before pairing (review focus 2 of the plan); a task without a valid repeat in an arm leaves the
+    are listed and left out before pairing (D185); a task without a valid repeat in an arm leaves the
     pairs and is listed."""
     kind_of = {t["id"]: t["kind"] for t in tasks}
     ids = [t["id"] for t in tasks]
@@ -460,6 +463,26 @@ def hand_key(judged: list[dict], sample: list[dict]) -> dict[str, str]:
     return {c["sample_id"]: c["_arm"] for c in _all_claims(judged) if c["sample_id"] in wanted}
 
 
+def hand_sheet(sample: list[dict], tasks: list[dict]) -> str:
+    """The form the person grades (Turkish, like the mod's pane): the question, the whole gold and the claim, no arm and
+    no judge grade. The judge saw the whole gold; a sheet that cut it would have the two grade from different information."""
+    by_id = {t["id"]: t for t in tasks}
+    how = ("Her iddia için iki alanı doldur. `grade:` correct / incorrect / not_in_gold (altına göre: altının doğruladığı, "
+           "yalanladığı, ya da ikisini de yapmadığı). `stance:` fact / inference (düz ifade mi, 'likely / appears / may / "
+           "probably' gibi bir çekinceyle mi). Kol bilgisi `hand_check_key.json` dosyasında; açma.")
+    out = ["# Elle kontrol (40 iddia, kol gizli)", "", how, ""]
+    for k, c in enumerate(sample, 1):
+        t = by_id[c["id"]]
+        if t["kind"] == "trap":
+            gold = f"(tuzak) depoda cevap yok. Yazarın gerekçesi: {t.get('unknown_reason', '')}"
+        else:
+            gold = "; ".join(g["statement"] + (f" (commit {g['commit']})" if g.get("commit") else "")
+                             + (f" ({g['location']})" if g.get("location") else "") for g in t["gold"])
+        out += [f"## {k}. `{c['sample_id']}` ({c['id']}, r{c['repeat']})", f"**Soru:** {t['question']}", f"**Altın:** {gold}",
+                f"**İddia:** {c['claim_text']}", "", "grade: ", "stance: ", ""]
+    return "\n".join(out)
+
+
 def main() -> int:
     import json
 
@@ -472,7 +495,15 @@ def main() -> int:
     tasks = json.loads((work / "tasks.json").read_text(encoding="utf-8"))["tasks"]
     by_id = {t["id"]: t for t in tasks}
     rows = [json.loads(x) for x in (work / "results.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
-    mechs = [mechanical(r, work / "copies" / r["id"] / r["arm"] / f"r{r['repeat']}", by_id.get(r["id"])) for r in rows]
+    from claims_tasks import copy_dir
+
+    def copy_of(r: dict) -> Path:
+        # the first run's copies were named by the task id (D185: the name leaked the kind); its rows still score
+        new = copy_dir(work, r["id"], r["arm"], r["repeat"])
+        old = work / "copies" / r["id"] / r["arm"] / f"r{r['repeat']}"
+        return new if new.is_dir() or not old.is_dir() else old
+
+    mechs = [mechanical(r, copy_of(r), by_id.get(r["id"])) for r in rows]
     (work / "mechanical.jsonl").write_text("".join(json.dumps(m, ensure_ascii=False) + "\n" for m in mechs), encoding="utf-8")
     judge_file = work / "judge.jsonl"
     judged = [json.loads(x) for x in judge_file.read_text(encoding="utf-8").splitlines() if x.strip()] if judge_file.exists() else []
@@ -499,6 +530,7 @@ def main() -> int:
     sample = hand_sample(judged)
     (work / "hand_check.json").write_text(json.dumps(sample, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     (work / "hand_check_key.json").write_text(json.dumps(hand_key(judged, sample), indent=1) + "\n", encoding="utf-8")
+    (work / "hand_check.md").write_text(hand_sheet(sample, tasks), encoding="utf-8")
     print(json.dumps({k: s[k] for k in ("sessions", "valid_sessions", "pairs", "primary", "blinding")}, indent=1))
     return 0
 
