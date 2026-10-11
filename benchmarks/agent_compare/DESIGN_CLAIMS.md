@@ -202,3 +202,18 @@ Task order: the 40 ids sorted by `sha256("20261011:" + id)`, fixed when the task
 - Whether a person reading the answers trusts them more or reviews them faster.
 - Any effect on code the agent writes; this study is questions only.
 - Languages the ten repositories do not cover, and repositories over 1,000 files.
+
+## Amendment 2026-10-11: the guided arm's paragraph loads the tools first (before any task was written)
+
+The SWE-bench pilot (`DESIGN_SWEBENCH.md`) found that an arm told only to use Verinoda called `analyze` in none of its
+sessions: a plugin's MCP tools are deferred behind ToolSearch in this Claude Code, and a tool the model must look up
+first is not called. Its guide therefore opens with the loading step. This study's guide paragraph lacked it; it is
+replaced, before any task was written and before any session ran, by the paragraph below. The stance paragraph and
+everything else are unchanged.
+
+> Load the Verinoda tools first: call ToolSearch with the query
+> `select:mcp__verinoda__analyze,mcp__verinoda__project_query,mcp__verinoda__run_tool`. Then use them before Grep, Glob,
+> Read or a shell search: `analyze` with the question; for a question about when or why something changed, `run_tool`
+> with `history_search`; for a question about what a change would affect, `run_tool` with `change_review` or the `impact`
+> view. Verinoda answers with claims that carry a status: state as fact only what it marks `statically_verified` or what
+> you confirmed yourself in the files; report its `unknown`s as unknown.
