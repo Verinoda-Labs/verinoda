@@ -28,7 +28,9 @@ NEUTRAL = "[tool]"
 # longest alternatives first, so that `mcp__verinoda__analyze` is one token and not two
 _TOOL_WORDS = re.compile(r"mcp__verinoda__\w+|statically_verified|strong_inference|weak_inference|project_query|history_search|"
                          r"change_review|code_check|run_tool|verinoda|analyze", re.IGNORECASE)
-_LOCATION = re.compile(r"(?P<path>[\w./\\-]+\.\w{1,10}):(?P<line>\d+)(?:-(?P<end>\d+))?")
+# the extension starts with a letter: `127.0.0.1:1234` is a host and a port, not a file and a line
+_LOCATION = re.compile(r"(?P<path>[\w./\\-]+\.[A-Za-z]\w{0,9}):(?P<line>\d+)(?:-(?P<end>\d+))?")
+_TRACKED: dict[str, list[str]] = {}
 _HASH = re.compile(r"\b[0-9a-f]{7,40}\b")
 _STOPWORDS = {"this", "that", "with", "from", "into", "when", "where", "which", "while", "there", "their", "these", "those",
               "then", "than", "have", "been", "were", "will", "would", "could", "should", "also", "only", "because", "about",
@@ -74,6 +76,29 @@ def identifiers(claim: str) -> list[str]:
     return seen
 
 
+def _candidates(copy: Path, path: str) -> list[str]:
+    """The files a cited path may mean: the path itself; or, for a bare name an answer uses after naming the file once in
+    full ("`sqlmodel/main.py` ... at main.py:565"), every tracked file with that name."""
+    if (copy / path).is_file() or "/" in path:
+        return [path]
+    key = str(copy)
+    if key not in _TRACKED:
+        _, out, _, _ = run(["git", "ls-files"], copy, git_env(), timeout=120)
+        _TRACKED[key] = out.splitlines()
+    return [f for f in _TRACKED[key] if f == path or f.endswith("/" + path)]
+
+
+def _location_verdict(file: Path, cit: dict, ids: list[str]) -> str:
+    if not file.is_file():
+        return "missing"
+    lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
+    line, end = cit["line"], cit["end"] or cit["line"]
+    if line < 1 or line > len(lines):
+        return "missing"
+    window = "\n".join(lines[max(0, line - 4):min(len(lines), end + 3)])
+    return "confirmed" if any(i in window for i in ids) else "wrong"
+
+
 def check_citation(cit: dict, claim: str, copy: Path, extra: list[str] | tuple[str, ...] = ()) -> str:
     """``confirmed`` (the cited place holds something of the claim, or of ``extra``: the question's own identifiers, for a
     claim like "it is called here"), ``wrong`` (exists, does not), ``missing`` (no such line or commit), ``not_repo`` (one of
@@ -82,15 +107,11 @@ def check_citation(cit: dict, claim: str, copy: Path, extra: list[str] | tuple[s
         path = cit["path"] or ""
         if any(path.startswith(p.rstrip("/")) or f"/{p}" in f"/{path}" for p in TOOL_PATHS):
             return "not_repo"
-        file = copy / path
-        if not file.is_file():
-            return "missing"
-        lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
-        line, end = cit["line"], cit["end"] or cit["line"]
-        if line < 1 or line > len(lines):
-            return "missing"
-        window = "\n".join(lines[max(0, line - 4):min(len(lines), end + 3)])
-        return "confirmed" if any(i in window for i in [*identifiers(claim), *extra]) else "wrong"
+        verdicts = [_location_verdict(copy / p, cit, [*identifiers(claim), *extra]) for p in _candidates(copy, path)]
+        for v in ("confirmed", "wrong"):
+            if v in verdicts:
+                return v
+        return "missing"
     h = cit["hash"] or ""
     if len(h) < 7:
         return "missing"

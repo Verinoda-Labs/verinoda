@@ -440,3 +440,18 @@ def test_mechanical_passes_the_questions_identifiers(tmp_path):
     row = {"id": "t", "arm": "none", "repeat": 1, "answer": "- It is defined at gin.go:3."}
     task = {"question": "Where is `Recovery` defined?"}
     assert score_mod.mechanical(row, tmp_path, task)["citations"][0]["verdict"] == "confirmed"
+
+
+def test_a_bare_file_name_is_resolved_when_it_is_unique_in_the_checkout(tmp_path):
+    import subprocess
+
+    (tmp_path / "pkg").mkdir()
+    _git_repo(tmp_path, filename="pkg/main.go", content="package pkg\n\nfunc Recovery() {}\n", message="m")
+    subprocess.run(["git", "rev-parse", "HEAD"], cwd=tmp_path, capture_output=True, text=True, check=True)
+    loc = {"kind": "location", "raw": "main.go:3", "path": "main.go", "line": 3, "end": None, "hash": None}
+    assert score_mod.check_citation(loc, "`Recovery` is defined here", tmp_path) == "confirmed"
+    assert score_mod.check_citation({**loc, "path": "other.go"}, "`Recovery`", tmp_path) == "missing"
+
+
+def test_a_host_and_port_is_not_a_citation():
+    assert score_mod.citations("listening on http://127.0.0.1:1234 and at //localhost:80") == []
