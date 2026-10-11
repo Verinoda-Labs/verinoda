@@ -455,3 +455,11 @@ def test_a_bare_file_name_is_resolved_when_it_is_unique_in_the_checkout(tmp_path
 
 def test_a_host_and_port_is_not_a_citation():
     assert score_mod.citations("listening on http://127.0.0.1:1234 and at //localhost:80") == []
+
+
+def test_a_partial_path_is_resolved_by_suffix_like_a_bare_name(tmp_path):
+    (tmp_path / "gson" / "stream").mkdir(parents=True)
+    _git_repo(tmp_path, filename="gson/stream/Reader.java", content="class Reader {\n  int BUFFER_SIZE = 1024;\n}\n", message="m")
+    loc = {"kind": "location", "raw": "stream/Reader.java:2", "path": "stream/Reader.java", "line": 2, "end": None, "hash": None}
+    assert score_mod.check_citation(loc, "`BUFFER_SIZE` is 1024", tmp_path) == "confirmed"
+    assert score_mod.check_citation({**loc, "path": "other/Reader.java"}, "`BUFFER_SIZE`", tmp_path) == "missing"

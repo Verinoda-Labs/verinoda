@@ -77,15 +77,16 @@ def identifiers(claim: str) -> list[str]:
 
 
 def _candidates(copy: Path, path: str) -> list[str]:
-    """The files a cited path may mean: the path itself; or, for a bare name an answer uses after naming the file once in
-    full ("`sqlmodel/main.py` ... at main.py:565"), every tracked file with that name."""
-    if (copy / path).is_file() or "/" in path:
+    """The files a cited path may mean: the path itself; or, for a bare name or a partial path an answer uses after naming
+    the file once in full ("`sqlmodel/main.py` ... at main.py:565", "stream/JsonReader.java:1831"), every tracked file that
+    ends with it."""
+    if (copy / path).is_file():
         return [path]
     key = str(copy)
     if key not in _TRACKED:
         _, out, _, _ = run(["git", "ls-files"], copy, git_env(), timeout=120)
         _TRACKED[key] = out.splitlines()
-    return [f for f in _TRACKED[key] if f == path or f.endswith("/" + path)]
+    return [f for f in _TRACKED[key] if f == path or f.endswith("/" + path.lstrip("/"))]
 
 
 def _location_verdict(file: Path, cit: dict, ids: list[str]) -> str:
