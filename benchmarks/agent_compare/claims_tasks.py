@@ -189,7 +189,7 @@ What a task is. A question a developer new to this code would ask, of one of fou
   "unknown" and, in unknown_reason, every commit you followed and what each one said, so that a checker can tell a
   confabulated answer from a true one you missed. A commit without a rationale is not a why task; it is a trap candidate.
 
-Gold size. At most 3 gold statements per task, each one short and reproducible by one command; a wrong detail in a long
+Gold size: at most 3 gold statements per task, each one short and reproducible by one command; a wrong detail in a long
 gold is worse than a short gold. For an affects task, gold_files is the current callers' files (what would change now),
 not the files of the commit that introduced the symbol.
 
