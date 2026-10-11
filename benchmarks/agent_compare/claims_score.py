@@ -53,17 +53,31 @@ def citations(text: str) -> list[dict]:
     return out
 
 
+_EXTENSIONS = {"go", "py", "js", "ts", "tsx", "rs", "php", "java", "md", "json", "toml", "yaml", "yml", "txt", "html", "css"}
+
+
 def identifiers(claim: str) -> list[str]:
-    """What of the claim should be found at the cited place: backticked spans first, else identifier-like words."""
-    quoted = [q.strip() for q in re.findall(r"`([^`]+)`", claim) if q.strip()]
-    if quoted:
-        return quoted
-    return [w for w in re.findall(r"[A-Za-z_][A-Za-z0-9_]{3,}", claim) if w.lower() not in _STOPWORDS]
+    """What of the claim should be found at the cited place: the identifier-like tokens of its backticked spans (a span is
+    split, so `A.__init__` or `&x[0] == y()` yields its names) and of its plain words; a hash, a number, a file extension
+    and a common English word are not identifiers. The pilot's matcher took each backticked span whole and graded 8 of 8
+    sampled correct citations `wrong`."""
+    out: list[str] = []
+    for span in re.findall(r"`([^`]+)`", claim):
+        out += re.findall(r"[A-Za-z_][A-Za-z0-9_]*", span)
+    out += re.findall(r"[A-Za-z_][A-Za-z0-9_]{3,}", re.sub(r"`[^`]+`", " ", claim))
+    seen: list[str] = []
+    for w in out:
+        if (len(w) < 3 or w.lower() in _STOPWORDS or w.lower() in _EXTENSIONS or w.isdigit()
+                or re.fullmatch(r"[0-9a-f]{7,40}", w) or w in seen):
+            continue
+        seen.append(w)
+    return seen
 
 
-def check_citation(cit: dict, claim: str, copy: Path) -> str:
-    """``confirmed`` (the cited place holds something of the claim), ``wrong`` (exists, does not), ``missing`` (no such line
-    or commit), ``not_repo`` (one of the tool's own files)."""
+def check_citation(cit: dict, claim: str, copy: Path, extra: list[str] | tuple[str, ...] = ()) -> str:
+    """``confirmed`` (the cited place holds something of the claim, or of ``extra``: the question's own identifiers, for a
+    claim like "it is called here"), ``wrong`` (exists, does not), ``missing`` (no such line or commit), ``not_repo`` (one of
+    the tool's own files)."""
     if cit["kind"] == "location":
         path = cit["path"] or ""
         if any(path.startswith(p.rstrip("/")) or f"/{p}" in f"/{path}" for p in TOOL_PATHS):
@@ -76,18 +90,21 @@ def check_citation(cit: dict, claim: str, copy: Path) -> str:
         if line < 1 or line > len(lines):
             return "missing"
         window = "\n".join(lines[max(0, line - 4):min(len(lines), end + 3)])
-        return "confirmed" if any(i in window for i in identifiers(claim)) else "wrong"
+        return "confirmed" if any(i in window for i in [*identifiers(claim), *extra]) else "wrong"
     h = cit["hash"] or ""
     if len(h) < 7:
         return "missing"
     rc, kind, _, _ = run(["git", "cat-file", "-t", h], copy, git_env())
     if rc != 0 or kind.strip() != "commit":
         return "missing"
-    _, shown, _, _ = run(["git", "show", "--stat", "--format=%ad%n%B", "--date=short", h], copy, git_env())
+    # the date first (the year check reads it), then the message and the patch: a claim about a commit may name what the
+    # commit's diff holds ("the commit introduced `func X`"), not only its message
+    _, shown, _, _ = run(["git", "show", "--stat", "-p", "--format=%ad%n%H%n%h%n%B", "--date=short", h], copy, git_env())
+    shown = shown[:400_000]
     years = re.findall(r"\b(20\d\d|19\d\d)\b", claim)
     if years and not any(shown.startswith(y) for y in years):
         return "wrong"
-    return "confirmed" if any(i in shown for i in identifiers(claim)) else "wrong"
+    return "confirmed" if any(i in shown for i in [*identifiers(claim), *extra]) else "wrong"
 
 
 def neutralize(text: str) -> str:
@@ -209,11 +226,14 @@ def _boot(diffs: list[float]) -> tuple[float, float, float]:
     return boot(diffs, seed=SEED) if diffs else (0.0, 0.0, 0.0)
 
 
-def mechanical(row: dict, copy: Path) -> dict:
-    """Every citation of a session's answer with its verdict against the session's own working copy."""
+def mechanical(row: dict, copy: Path, task: dict | None = None) -> dict:
+    """Every citation of a session's answer with its verdict against the session's own working copy. The question's own
+    identifiers count for every claim: an answer says "it is called at X" with the symbol named once, in the question."""
     text = row.get("answer") or ""
+    extra = identifiers(task["question"]) if task else []
     return {"id": row["id"], "arm": row["arm"], "repeat": row["repeat"],
-            "citations": [{**c, "verdict": check_citation(c, _sentence_around(text, c["raw"]), copy)} for c in citations(text)]}
+            "citations": [{**c, "verdict": check_citation(c, _sentence_around(text, c["raw"]), copy, extra)}
+                          for c in citations(text)]}
 
 
 def _sentence_around(text: str, raw: str) -> str:
@@ -430,7 +450,7 @@ def main() -> int:
     tasks = json.loads((work / "tasks.json").read_text(encoding="utf-8"))["tasks"]
     by_id = {t["id"]: t for t in tasks}
     rows = [json.loads(x) for x in (work / "results.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
-    mechs = [mechanical(r, work / "copies" / r["id"] / r["arm"] / f"r{r['repeat']}") for r in rows]
+    mechs = [mechanical(r, work / "copies" / r["id"] / r["arm"] / f"r{r['repeat']}", by_id.get(r["id"])) for r in rows]
     (work / "mechanical.jsonl").write_text("".join(json.dumps(m, ensure_ascii=False) + "\n" for m in mechs), encoding="utf-8")
     judge_file = work / "judge.jsonl"
     judged = [json.loads(x) for x in judge_file.read_text(encoding="utf-8").splitlines() if x.strip()] if judge_file.exists() else []

@@ -412,3 +412,31 @@ def test_writer_prompt_limits_gold_and_traps_after_the_gin_trial():
     w = tasks_mod.writer_prompt("gin-gonic/gin", Path("C:/w/gin"), tasks_mod.KINDS)
     assert "at most 3 gold statements" in w and "rg is not installed" in w
     assert "A trap is a why or a when" in w and "symbol with no caller" not in w
+
+
+# -- after the pilot: the mechanical check was too strict (8 of 8 sampled `wrong` verdicts were correct citations) ------------
+
+
+def test_identifiers_split_backticked_spans_and_drop_citations_and_hashes():
+    ids = score_mod.identifiers("`SQLModelMetaclass.__init__` calls it at `sqlmodel/main.py:671-672`")
+    assert "SQLModelMetaclass" in ids and "__init__" in ids and not any(":" in i or "/" in i for i in ids)
+    ids = score_mod.identifiers("The fix is likely commit `472d086`: \"fix(tree): panic in findCaseInsensitivePathRec\"")
+    assert "472d086" not in ids and "findCaseInsensitivePathRec" in ids
+    assert "ToRunes" in score_mod.identifiers("asserts `&runes[0] == &chars.ToRunes()[0]`")
+
+
+def test_check_citation_accepts_an_identifier_of_the_question_and_a_hash_whose_diff_holds_the_claim(tmp_path):
+    sha = _score_repo(tmp_path)
+    loc = {"kind": "location", "raw": "gin.go:3", "path": "gin.go", "line": 3, "end": None, "hash": None}
+    assert score_mod.check_citation(loc, "it is called here", tmp_path) == "wrong"
+    assert score_mod.check_citation(loc, "it is called here", tmp_path, extra=["Recovery"]) == "confirmed"
+    com = {"kind": "commit", "raw": sha, "path": None, "line": None, "end": None, "hash": sha}
+    # `func Recovery` is in the commit's diff, not in its message: the diff counts
+    assert score_mod.check_citation(com, "this commit introduced `func Recovery`", tmp_path) == "confirmed"
+
+
+def test_mechanical_passes_the_questions_identifiers(tmp_path):
+    _score_repo(tmp_path)
+    row = {"id": "t", "arm": "none", "repeat": 1, "answer": "- It is defined at gin.go:3."}
+    task = {"question": "Where is `Recovery` defined?"}
+    assert score_mod.mechanical(row, tmp_path, task)["citations"][0]["verdict"] == "confirmed"
