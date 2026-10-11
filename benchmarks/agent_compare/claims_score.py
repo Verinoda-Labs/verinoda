@@ -1,7 +1,7 @@
 """Score the false-claims study (DESIGN_CLAIMS.md): the mechanical check of every citation an answer carries, the blind judge
 that splits an answer into claims and grades them against the gold, and the paired summary with the decision rule.
 
-    python benchmarks/agent_compare/claims_score.py WORK_DIR [--judge] [--config CONFIG.json]
+    python benchmarks/agent_compare/claims_score.py WORK_DIR [--judge] [--judge-workers 4] [--config CONFIG.json]
 
 Reads ``WORK/results.jsonl`` and ``WORK/tasks.json``; writes ``WORK/mechanical.jsonl``, with ``--judge`` ``WORK/judge.jsonl``
 (resumable: a session already judged is not judged again), then ``WORK/summary.json``, ``WORK/hand_check.json`` (40 claims,
@@ -476,17 +476,23 @@ def main() -> int:
     judge_file = work / "judge.jsonl"
     judged = [json.loads(x) for x in judge_file.read_text(encoding="utf-8").splitlines() if x.strip()] if judge_file.exists() else []
     if "--judge" in sys.argv:
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
         done = {(j["id"], j["arm"], j["repeat"]) for j in judged if not j.get("judge_failed")}
         scratch = work / "judge-scratch"
         scratch.mkdir(exist_ok=True)
-        with judge_file.open("a", encoding="utf-8") as f:
-            for r in rows:
-                if (r["id"], r["arm"], r["repeat"]) in done or r.get("is_error") or not (r.get("answer") or "").strip():
-                    continue
-                j = judge(cfg, by_id[r["id"]], r, scratch)
-                judged.append(j)
-                f.write(json.dumps(j, ensure_ascii=False) + "\n")
-                print(f"judged {r['id']}:{r['arm']}:r{r['repeat']} claims={len(j['judge']['claims']) if j['judge'] else 'FAILED'}", flush=True)
+        todo = [r for r in rows if (r["id"], r["arm"], r["repeat"]) not in done and not r.get("is_error")
+                and (r.get("answer") or "").strip()]
+        lock = threading.Lock()
+        workers = int(sys.argv[sys.argv.index("--judge-workers") + 1]) if "--judge-workers" in sys.argv else 4
+        with judge_file.open("a", encoding="utf-8") as f, ThreadPoolExecutor(max_workers=workers) as ex:
+            for j in ex.map(lambda r: judge(cfg, by_id[r["id"]], r, scratch), todo):
+                with lock:
+                    judged.append(j)
+                    f.write(json.dumps(j, ensure_ascii=False) + "\n")
+                    f.flush()
+                print(f"judged {j['id']}:{j['arm']}:r{j['repeat']} claims={len(j['judge']['claims']) if j['judge'] else 'FAILED'}", flush=True)
     s = summary(tasks, rows, judged, mechs, work / "usage")
     (work / "summary.json").write_text(json.dumps(s, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     sample = hand_sample(judged)
