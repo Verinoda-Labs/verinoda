@@ -199,3 +199,44 @@ def test_copy_for_is_a_shared_detached_clone_at_the_sha(tmp_path):
     assert (dest / ".git" / "objects" / "info" / "alternates").exists()
     run_mod.copy_for(src, dest, sha)  # a second call keeps a clean copy
     assert (dest / "f").read_text(encoding="utf-8") == "x"
+
+
+# -- Task 4: the mechanical citation check and the neutralized text ------------------------------------------------------
+
+score_mod = _load("claims_score")
+
+
+def test_citations_are_found_and_normalized():
+    c = score_mod.citations(r"see .\gin.go:236 and recovery.go:10-14, commit abc1234d; not 2026 and not 1234567890")
+    locs = [x for x in c if x["kind"] == "location"]
+    hashes = [x for x in c if x["kind"] == "commit"]
+    assert [(x["path"], x["line"], x["end"]) for x in locs] == [("gin.go", 236, None), ("recovery.go", 10, 14)]
+    assert [x["hash"] for x in hashes] == ["abc1234d"]
+
+
+def _score_repo(tmp_path):
+    sha = _git_repo(tmp_path, filename="gin.go", content="package gin\n\nfunc Recovery() {}\n", message="add Recovery middleware")
+    (tmp_path / ".verinoda").mkdir()
+    (tmp_path / ".verinoda" / "x").write_text("Recovery", encoding="utf-8")
+    return sha
+
+
+def test_check_citation_grades_location_and_commit(tmp_path):
+    sha = _score_repo(tmp_path)
+    claim = "`Recovery` is defined in gin.go"
+    loc = {"kind": "location", "raw": "gin.go:3", "path": "gin.go", "line": 3, "end": None, "hash": None}
+    assert score_mod.check_citation(loc, claim, tmp_path) == "confirmed"
+    assert score_mod.check_citation({**loc, "line": 1}, "the `Timeout` option", tmp_path) == "wrong"
+    assert score_mod.check_citation({**loc, "line": 99}, claim, tmp_path) == "missing"
+    assert score_mod.check_citation({**loc, "path": ".verinoda/x", "line": 1}, claim, tmp_path) == "not_repo"
+    com = {"kind": "commit", "raw": sha, "path": None, "line": None, "end": None, "hash": sha}
+    assert score_mod.check_citation(com, "Recovery was added as middleware", tmp_path) == "confirmed"
+    assert score_mod.check_citation(com, "Recovery was added in 1999", tmp_path) == "wrong"
+    assert score_mod.check_citation({**com, "hash": "deadbee"}, claim, tmp_path) == "missing"
+    assert score_mod.check_citation({**com, "hash": "abc12"}, claim, tmp_path) == "missing"
+
+
+def test_neutralize_hides_the_tool_words():
+    out = score_mod.neutralize("Verinoda's analyze (mcp__verinoda__analyze) says statically_verified; history_search found it")
+    assert "erinoda" not in out and "analyze" not in out and "statically_verified" not in out and "history_search" not in out
+    assert out.count(score_mod.NEUTRAL) == 5
