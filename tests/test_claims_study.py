@@ -87,3 +87,47 @@ def test_load_tasks_raises_with_the_problems(tmp_path):
     p.write_text(json.dumps({"tasks": [_task()]}), encoding="utf-8")
     with pytest.raises(ValueError, match="40 tasks"):
         tasks_mod.load_tasks(p)
+
+
+# -- Task 2: leak check, re-derivation, the writer's and checker's prompts ------------------------------------------------
+
+
+def _git_repo(tmp_path, filename="a.go", content="Recovery()\n", message="add recovery"):
+    """One commit in a temporary repository; returns the short hash."""
+    import subprocess
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / filename).write_text(content, encoding="utf-8")
+    who = ["-c", "user.name=t", "-c", "user.email=t@t"]
+    subprocess.run(["git", *who, "add", filename], cwd=tmp_path, check=True)
+    subprocess.run(["git", *who, "commit", "-q", "-m", message], cwd=tmp_path, check=True)
+    return subprocess.run(["git", "rev-parse", "--short=8", "HEAD"], cwd=tmp_path, capture_output=True, text=True,
+                          check=True).stdout.strip()
+
+
+def test_leak_check_flags_paths_lines_hashes_and_gold_files():
+    t = _task("affects", question="Does changing recovery.go line 42 (commit abc1234) break gin.go?",
+              gold=[{"statement": "s", "commit": "abc1234", "location": "recovery.go:42"}])
+    found = tasks_mod.leak_check(t)
+    assert any("recovery.go" in f for f in found) and any("42" in f for f in found)
+    assert any("abc1234" in f for f in found) and any("gin.go" in f for f in found)
+    assert tasks_mod.leak_check(_task()) == []
+
+
+def test_rederive_runs_only_read_commands_and_says_which_gold_they_reproduce(tmp_path):
+    sha = _git_repo(tmp_path)
+    t = _task(gold=[{"statement": "s", "commit": sha, "location": "a.go:1"}],
+              gold_sources=["git log --oneline -S Recovery", "rm -rf ."])
+    rows = tasks_mod.rederive(t, tmp_path)
+    assert rows[0]["rc"] == 0 and rows[0]["reproduces"] == [0]
+    assert rows[1]["rc"] == -1 and (tmp_path / "a.go").exists()
+
+
+def test_prompts_carry_the_rules_and_the_shape():
+    w = tasks_mod.writer_prompt("gin-gonic/gin", Path("C:/w/gin"), tasks_mod.KINDS)
+    for must in ("never run Verinoda", "atlas.db", "realworld/gold", "network", "trap", '"gold_sources"', "unknown_reason",
+                 "why: 8"):
+        assert must in w, must
+    c = tasks_mod.checker_prompt("gin-gonic/gin", Path("C:/w/gin"), [_task()])
+    for must in ("leak", "gold_sources", "ten minutes", '"ok"', _task()["id"]):
+        assert must in c, must

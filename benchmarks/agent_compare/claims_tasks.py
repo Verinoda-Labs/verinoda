@@ -15,8 +15,13 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shlex
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from guard_run import git_env, run
 
 KINDS = {"why": 8, "when": 8, "affects": 14, "trap": 10}
 SEED = "20261011:"
@@ -101,6 +106,128 @@ def load_tasks(path: Path) -> list[dict]:
     if problems:
         raise ValueError("\n".join(problems))
     return tasks
+
+
+def leak_check(task: dict) -> list[str]:
+    """What the question gives away: a path or file name of the gold, a line number of a gold location, a commit hash
+    of the gold, a gold file of an affects task. The spec's rule: nothing in the question the question does not need."""
+    q = task.get("question", "")
+    words = set(re.findall(r"[\w./-]+", q))
+    found: list[str] = []
+    paths: set[str] = set()
+    for g in task.get("gold", []):
+        loc = g.get("location") or ""
+        if loc:
+            path, _, lines = loc.rpartition(":")
+            paths.add(path)
+            for n in re.findall(r"\d+", lines):
+                if re.search(rf"(?<!\d){n}(?!\d)", q):
+                    found.append(f"line number {n} of {loc} is in the question")
+        commit = g.get("commit") or ""
+        for h in re.findall(r"\b[0-9a-f]{7,40}\b", q):
+            if commit and commit.startswith(h):
+                found.append(f"commit {h} is in the question")
+    paths.update(task.get("gold_files") or [])
+    for path in sorted(paths):
+        base = path.replace("\\", "/").rsplit("/", 1)[-1]
+        if path in words or base in words or base in q:
+            found.append(f"path {path} is in the question")
+    return found
+
+
+READ_COMMANDS = ("git", "grep", "rg", "findstr")
+
+
+def rederive(task: dict, clone: Path) -> list[dict]:
+    """Run the task's ``gold_sources`` in the clone and say which gold items each one reproduces (its commit prefix or
+    its location's path in the output). Only read commands run; anything else is refused with ``rc -1``."""
+    rows: list[dict] = []
+    for command in task.get("gold_sources", []):
+        argv = shlex.split(command, posix=True)
+        if not argv or argv[0] not in READ_COMMANDS:
+            rows.append({"command": command, "rc": -1, "reproduces": [], "note": "not a read command; not run"})
+            continue
+        rc, out, err, _ = run(argv, clone, git_env(), timeout=120)
+        text = out + err
+        reproduces = []
+        for k, g in enumerate(task.get("gold", [])):
+            commit = (g.get("commit") or "")[:7]
+            path = (g.get("location") or "").rpartition(":")[0]
+            if (commit and commit in text) or (path and path in text):
+                reproduces.append(k)
+        rows.append({"command": command, "rc": rc, "reproduces": reproduces})
+    return rows
+
+
+WRITER_PROMPT = """You write tasks for a measurement study of coding agents. Repository: {repo}. Its full clone, checked out at
+the commit under study, is your working directory: {clone}. Write exactly these tasks: {kinds}.
+
+What a task is. A question a developer new to this code would ask, of one of four kinds, with a gold answer:
+- why: why a piece of code does what it does, or why it changed. Gold: the rationale the commit message (and the pull
+  request text the message carries) gives, with the commit hash.
+- when: when a behaviour, name or value was added or removed, and by which change. Gold: the commit `git log -S` or
+  `git log -L` names, with its hash and date.
+- affects: what else would have to change, or would break, if a named piece of code were changed. Gold: the files the
+  originating commit touched, and the callers of the symbol found by text search and the language's syntax; list them
+  in gold_files.
+- trap: one of the three kinds above, about a thing that EXISTS, where the repository holds NO answer. A question about
+  a function that does not exist is not a trap (a search that finds nothing answers it). A trap is: a why whose commit
+  message is "fix" or "update" with no body and no pull request text; a when about a value whose history `git log -S`
+  cannot find (the file moved, or the value came in with the initial import); an affects about a symbol with no caller
+  and no test. The gold of a trap is the single statement "unknown" and, in unknown_reason, what you looked for and did
+  not find, so that a checker can tell a confabulated answer from a true one you missed. A commit without a rationale is
+  not a why task; it is a trap candidate.
+
+How you work. Only `git log`, `git log -S`, `git log -L`, `git blame`, `git show`, text search (grep, rg) and reading
+the files. You never run Verinoda, never read a `.verinoda/` folder or `atlas.db`, never read `benchmarks/realworld/gold`
+or any earlier study's questions or results, and never use the network: pull request and issue text counts only where
+the commit message carries it. Write every command that produced a gold statement into gold_sources, so that it can
+be run again.
+
+Rules for the question. No file name, path, line number or commit hash in the question, and no symbol spelling the
+question does not need (a function a developer would ask about by name may be named). No wording copied from the commit
+message. The question ends with a question mark. Write it in English.
+
+Output. JSON only, nothing else: {{"tasks": [ ... ]}} where every task is
+{{"id": "<owner>__<name>-<kind>-<n>", "repo": "{repo}", "sha": "<the 40-character HEAD sha>", "kind": "why|when|affects|trap",
+"question": "...", "gold": [{{"statement": "...", "commit": "<7-40 hex or null>", "location": "<path:line or null>"}}],
+"gold_sources": ["git ...", ...], "gold_files": ["path", ...] (affects only), "unknown_reason": "..." (trap only)}}.
+A trap's gold is exactly [{{"statement": "unknown", "commit": null, "location": null}}]. Every other gold statement has a
+commit or a location. The <n> of the id counts the tasks of one kind in this repository from 1.
+"""
+
+CHECKER_PROMPT = """You check tasks written for a measurement study of coding agents. Repository: {repo}; its full clone at the
+commit under study is your working directory: {clone}. The tasks, with what an automatic leak check and a re-run of
+their gold_sources found, are below. You may run git (log, show, blame, log -S, log -L), grep and rg, and read files.
+You never run Verinoda, never read `.verinoda/` or `atlas.db`, never use the network.
+
+Three checks per task:
+1. leak: does the question give away a location or a detail only the gold gives (a path, a line number, a hash, a
+   symbol the question does not need, wording copied from the commit message)?
+2. gold_sources: does each gold statement follow from the commands under gold_sources, run in this clone? A statement
+   the commands do not reproduce is a problem.
+3. trap: for a trap, spend up to ten minutes of git and search trying to find the answer. If you find it, with the
+   commit or the file:line that holds it, the task is not a trap: say what you found.
+Also say when a question is not something a developer would ask, or when a gold statement is wrong about the code.
+
+Output. JSON only: {{"results": [{{"id": "...", "ok": true|false, "problems": ["...", ...]}}, ...]}}, one entry per task.
+
+Tasks and the automatic checks:
+{tasks_json}
+"""
+
+
+def writer_prompt(repo: str, clone: Path, kinds: dict) -> str:
+    return WRITER_PROMPT.format(repo=repo, clone=clone.as_posix(), kinds=", ".join(f"{k}: {n}" for k, n in kinds.items()))
+
+
+def checker_prompt(repo: str, clone: Path, tasks: list[dict]) -> str:
+    """The checker reads each task with the leak check's findings and, when the clone exists, the re-derivation rows."""
+    rows = []
+    for t in tasks:
+        rows.append({"task": t, "leak_check": leak_check(t),
+                     "rederive": rederive(t, clone) if clone.is_dir() else "clone not available here"})
+    return CHECKER_PROMPT.format(repo=repo, clone=clone.as_posix(), tasks_json=json.dumps(rows, indent=1, ensure_ascii=False))
 
 
 def main() -> int:
