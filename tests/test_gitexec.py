@@ -198,5 +198,10 @@ def test_reference_fetches_pin_protocols_and_refuse_redirects(monkeypatch, tmp_p
     unc = r"\\server\share\x"
     gitexec.run(None, "ls-remote", "--", unc, net=unc)  # a UNC path is a network share, not a local directory
     assert "protocol.file.allow=always" not in seen["argv"]
+    gitexec.run(None, "ls-remote", "--", local.as_uri(), net=local.as_uri())  # file:// of a local directory
+    assert "protocol.file.allow=always" in seen["argv"]
+    share = "file://server/share/x"
+    gitexec.run(None, "ls-remote", "--", share, net=share)  # file:// with a host is a share too
+    assert "protocol.file.allow=always" not in seen["argv"]
     with pytest.raises(ValueError, match="--"):
         gitexec.run(None, "clone", url, str(tmp_path / "n.git"), net=url)

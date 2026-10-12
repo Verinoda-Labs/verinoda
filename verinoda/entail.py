@@ -77,6 +77,7 @@ from pathlib import Path, PurePosixPath
 
 from verinoda import anchors
 from verinoda import evidence as evmod
+from verinoda.paths import contained_path, evidence_root_allowed
 from verinoda.textnorm import EN_STOPWORDS, SHORT_TECH, TR_STOPWORDS, fold_tr, split_identifier
 
 GRADES = ("none", "partial", "full")
@@ -704,9 +705,15 @@ def binds(names: list[str], subject: list[str]) -> list[str]:
 # =============================================================================
 
 def _root(repo: Path | None, ev: dict) -> Path | None:
+    """The root the evidence's path is read under: ``meta.root`` when it is one of the roots evidence may cite
+    (:func:`verinoda.paths.evidence_root_allowed`; without a repository to compare with, any root), else the
+    repository."""
     meta = ev.get("meta") or {}
     if meta.get("root"):
-        return Path(meta["root"])
+        root = Path(meta["root"])
+        if repo is not None and not evidence_root_allowed(Path(repo), root):
+            return None
+        return root
     return Path(repo) if repo is not None else None
 
 
@@ -714,8 +721,11 @@ def _file_text(repo: Path | None, ev: dict) -> str | None:
     root = _root(repo, ev)
     if root is None or not ev.get("path"):
         return None
+    p = contained_path(root, str(ev["path"]))
+    if p is None:
+        return None
     try:
-        return (root / ev["path"]).read_text(encoding="utf-8", errors="replace")
+        return p.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
 
@@ -725,9 +735,11 @@ def _cited_range(repo: Path | None, ev: dict) -> tuple[int, int] | None:
     if not ev.get("line_start"):
         return None
     a, b = int(ev["line_start"]), int(ev.get("line_end") or ev["line_start"])
-    if _root(repo, ev) is None:
+    root = _root(repo, ev)
+    if root is None:
         return a, b
-    chk = evmod.check_source(Path(repo) if repo is not None else Path("."), ev)  # meta.root wins inside
+    # meta.root wins inside; without a repository the root itself stands for it (containment still applies)
+    chk = evmod.check_source(Path(repo) if repo is not None else root, ev)
     if chk.ok and chk.moved_to:
         return chk.moved_to
     return a, b
@@ -2448,9 +2460,10 @@ _CACHE: dict[str, Grade] = {}
 def _cache_key(kind: str, repo, spec: dict, ev: dict, text: str | None, subjects) -> str | None:
     stamp = None
     root = _root(Path(repo) if repo else None, ev)
-    if ev.get("path") and root is not None:
+    p = contained_path(root, str(ev["path"])) if ev.get("path") and root is not None else None
+    if p is not None:
         try:
-            st = (root / ev["path"]).stat()
+            st = p.stat()
             stamp = (st.st_mtime_ns, st.st_size)
         except OSError:
             stamp = "missing"

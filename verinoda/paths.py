@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ATLAS_DIRNAME = ".verinoda"
 INDEX_REL = f"{ATLAS_DIRNAME}/index"
@@ -389,3 +389,81 @@ def ignored_settings_note(repo: Path) -> str | None:
             f"ship that file); the user runs `verinoda trust {Path(repo).resolve()}` if they trust it (their "
             f"decision, never an agent's), or sets {'it' if len(names) == 1 else 'them'} in the user config "
             f"{user_config_path()}")
+
+
+# -- containment: a path from an index, a store or a config never leaves its root (docs/DESIGN.md D186) ----------
+
+_RESOLVED: dict[str, Path] = {}
+_TOPS: dict[str, Path] = {}
+
+
+def escapes_lexically(rel: str) -> bool:
+    """Does ``rel`` name something outside any root, judged before the file system is asked? Windows rules apply
+    on every OS (a drive, a UNC prefix, a ``\\\\?\\`` device path, an ``x:stream`` suffix): an index or a store
+    made on one OS cannot smuggle a path past the other, and nothing is resolved first - resolving a UNC path would
+    itself open the connection to the share."""
+    if not rel or "\x00" in rel or ":" in rel:
+        return True
+    pw = PureWindowsPath(rel)
+    if pw.drive or pw.root:
+        return True
+    return ".." in pw.parts or ".." in PurePosixPath(rel).parts
+
+
+def _resolved(root: Path) -> Path:
+    """``root.resolve()``, remembered by spelling: the same root is asked for on every read of every file."""
+    key = str(root)
+    r = _RESOLVED.get(key)
+    if r is None:
+        if len(_RESOLVED) > 64:
+            _RESOLVED.clear()
+        r = _RESOLVED[key] = Path(root).resolve()
+    return r
+
+
+def contained_path(root: Path, rel: str) -> Path | None:
+    """``root / rel`` when it stays inside ``root``, else None. The lexical check comes first
+    (:func:`escapes_lexically`); then the joined path is resolved and must lie under the resolved root, so a link or
+    junction inside the repository that points outside it is refused too. Every reader of a path taken from the
+    index, the store or a config goes through here, which makes a ``root / f`` elsewhere safe by construction."""
+    if escapes_lexically(str(rel)):
+        return None
+    p = Path(root) / rel
+    try:
+        p.resolve().relative_to(_resolved(root))
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return p
+
+
+def work_tree_top(repo: Path) -> Path | None:
+    """The top of the git work tree ``repo`` is in (``repo`` itself, or above it for a project that is a folder of
+    its repository), resolved; None outside a work tree. Remembered once git has answered."""
+    from verinoda import gitexec
+
+    key = str(_resolved(repo))
+    if key in _TOPS:
+        return _TOPS[key]
+    r = gitexec.run(repo, "rev-parse", "--show-toplevel", timeout=30)
+    if r.returncode != 0 or not r.stdout.strip():
+        return None
+    top = _TOPS[key] = Path(r.stdout.strip()).resolve()
+    return top
+
+
+def evidence_root_allowed(repo: Path, root: Path) -> bool:
+    """May evidence recorded with ``meta.root`` be read from ``root``? The roots allowed, compared after resolving
+    (so a root that is a link to somewhere else is not): the repository and its folders (a reference entry of the
+    config counts only when it resolves inside it), ``research_dir(repo)`` with its children (the pinned reference
+    checkouts), and the top of the git work tree the project is a folder of (CODEOWNERS evidence of a subfolder
+    project cites it). A root is never taken from the repository's unprotected config."""
+    try:
+        r = Path(root).resolve()
+        repo_r = _resolved(repo)
+        research = research_dir(repo).resolve()
+    except (OSError, RuntimeError):
+        return False
+    if r == repo_r or repo_r in r.parents or r == research or research in r.parents:
+        return True
+    top = work_tree_top(repo)
+    return top is not None and r == top

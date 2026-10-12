@@ -384,6 +384,28 @@ def test_the_files_of_the_graph_are_read_from_the_json_as_load_sees_them(built, 
     assert index.graph_source_files(repo, gp) == by_load(gp) == {"y.py", "z.py"}
 
 
+def test_index_load_drops_nodes_whose_source_file_escapes(tmp_path):
+    """A graph.json shipped with a repository names only files of that repository (D186)."""
+    repo = tmp_path / "proj"
+    (repo / "pkg").mkdir(parents=True)
+    (repo / "pkg" / "ok.py").write_text("def ok():\n    return 1\n", encoding="utf-8")
+    gp = tmp_path / "graph.json"
+    code = {"source_location": "L1", "file_type": "code"}
+    nodes = [{"id": "ok", "label": "ok", "source_file": "pkg/ok.py", **code},
+             {"id": "hosts", "label": "hosts", "source_file": "../../etc/hosts", **code},
+             {"id": "drive", "label": "drive", "source_file": "C:/Windows/win.ini", **code},
+             {"id": "share", "label": "share", "source_file": "//server/share/x.py", **code},
+             {"id": "free", "label": "free"}]
+    links = [{"source": "ok", "target": "hosts", "relation": "calls"}]
+    gp.write_text(json.dumps({"nodes": nodes, "links": links}), encoding="utf-8")
+    g = index.load(repo, gp, augment=False)
+    assert "ok" in g.G and "free" in g.G
+    for nid in ("hosts", "drive", "share"):
+        assert nid not in g.G or g.source(nid) is None
+    assert g.G.number_of_edges() == 0
+    assert g.source("ok")[2].startswith("def ok")
+
+
 def test_path_identity_memo_keeps_the_graph_byte_identical(tmp_path):
     from verinoda.project_index import watch
 

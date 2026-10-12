@@ -27,6 +27,8 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -153,11 +155,17 @@ def _refusal(repo: Path | str | None, args: tuple[str, ...], safe: bool) -> str 
 
 
 def _local_directory(source: str) -> bool:
-    """Is ``source`` a directory of this machine? A URL or a UNC path (``\\\\server\\share``, ``//server/share``) is not,
-    and is not looked at: the look would be the connection."""
+    """Is ``source`` a directory of this machine (a path, or a ``file://`` URL without a host)? A UNC path
+    (``\\\\server\\share``, ``//server/share``, ``file://server/share``) is a share, and is not looked at: the look
+    would be the connection. Any other URL is not local."""
     s = str(source)
-    if "://" in s or s.startswith(("\\\\", "//")):
+    if not s or s.startswith(("\\\\", "//")):
         return False
+    if "://" in s:
+        u = urllib.parse.urlsplit(s)
+        if u.scheme.lower() != "file" or u.netloc not in ("", "localhost"):
+            return False
+        s = urllib.request.url2pathname(u.path)
     try:
         return Path(s).is_dir()
     except (OSError, ValueError):

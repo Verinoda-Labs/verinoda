@@ -74,6 +74,7 @@ from functools import lru_cache
 from pathlib import Path, PurePosixPath
 
 from verinoda import textnorm
+from verinoda.paths import contained_path
 from verinoda.testcode import is_test_file
 
 SCHEMA_VERSION = 5   # 5: a JVM/C-family symbol's leading comment is its own (D55)
@@ -1218,7 +1219,8 @@ def update(repo: Path, graph=None, changed=None, *, rebuild: bool = False, db: P
             # the defined ids changed: references in unchanged files may now resolve differently
             conn.execute("DELETE FROM refs")
             for (f,) in conn.execute("SELECT file FROM files WHERE skipped IS NULL").fetchall():
-                lines = _read_lines(repo / f)
+                p = contained_path(repo, f)
+                lines = _read_lines(p) if p is not None else None
                 if lines is not None:
                     w.add_refs(f, lines)
         conn.execute("DELETE FROM unindexed")

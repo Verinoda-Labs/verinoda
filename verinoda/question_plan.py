@@ -1511,7 +1511,8 @@ def _site_hash(g, site: str | None) -> str | None:
     from verinoda.index import _file_lines
 
     f, _, ln = site.rpartition(":")
-    lines = _file_lines(g.root / f)
+    p = g.abspath(f)
+    lines = _file_lines(p) if p is not None else None
     if not lines or not ln.isdigit() or not 0 < int(ln) <= len(lines):
         return None
     return evmod.content_hash(lines[int(ln) - 1])

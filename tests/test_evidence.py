@@ -184,7 +184,8 @@ def test_relocations_are_appended_to_evidence_locations(tmp_path, repo):
 
 
 def test_check_source_uses_meta_root_for_external_checkouts(tmp_path, repo):
-    ext = tmp_path / "reference-checkout"
+    # a pinned checkout lives under the repository's research folder: one of the roots evidence may cite (D186)
+    ext = repo / ".verinoda" / "research" / "reference-checkout"
     _write(ext / "lib" / "ref.py", "def upstream():\n    return 42\n")
     ev = evmod.source_evidence(ext, "lib/ref.py", 1, 2, commit="abc", source_type="reference_repo",
                                meta={"root": str(ext)})
@@ -192,6 +193,19 @@ def test_check_source_uses_meta_root_for_external_checkouts(tmp_path, repo):
     assert evmod.check_source(repo, ev).ok
     _write(ext / "lib" / "ref.py", "def upstream():\n    return 43\n")
     assert not evmod.check_source(repo, ev).ok
+
+
+def test_check_source_marks_evidence_with_an_escaping_root_gone(tmp_path, repo):
+    elsewhere = tmp_path / "elsewhere"
+    _write(elsewhere / "lib" / "ref.py", "def upstream():\n    return 42\n")
+    ev = evmod.source_evidence(elsewhere, "lib/ref.py", 1, 2, commit="abc", source_type="reference_repo",
+                               meta={"root": str(elsewhere)})
+    assert ev is not None
+    chk = evmod.check_source(repo, ev)  # a root beside the repository is none of the roots evidence may cite
+    assert not chk.ok and chk.status == "gone" and "root" in chk.reason
+    climbing = dict(ev, path="../elsewhere/lib/ref.py", meta={"root": str(repo)})  # a path out of its root
+    chk = evmod.check_source(repo, climbing)
+    assert not chk.ok and chk.status == "gone"
 
 
 def test_check_source_rejects_non_file_evidence(repo):

@@ -26,6 +26,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from verinoda.paths import contained_path
+
 MAX_FILES = 5000
 STRONG, WEAK = "strong_inference", "weak_inference"
 STATUS_RANK = {STRONG: 2, WEAK: 1, "unknown": 0}
@@ -601,7 +603,8 @@ def find(repo: Path, topic: str | None = None, *, topics_file: str | None = None
     co = 0
     co_examples: list[dict] = []
     for f in prose[:MAX_FILES]:
-        lines = search_index._read_lines(repo / f)
+        p = contained_path(repo, f)
+        lines = search_index._read_lines(p) if p is not None else None
         if not lines:
             continue
         ftopic = _file_topic(lines, f, topics)

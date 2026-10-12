@@ -1955,3 +1955,20 @@ def test_a_usage_log_has_one_line_per_call_with_what_the_agent_received(repo, tm
     assert rows[0]["result_tokens_est"] == usage.tokens_est(rows[0]["result_chars"]) and rows[0]["seconds"] >= 0
     total = usage.summarize(log)["total"]
     assert total["calls"] == 2 and total["result_chars"] == sum(r["result_chars"] for r in rows)
+
+
+def test_evidence_inspect_omits_root_and_file_exists_for_rejected_evidence(repo, tools, tmp_path):
+    """An evidence row whose root is none of the roots evidence may cite (D186): nothing of it is read or named."""
+    from verinoda import evidence as evmod
+
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    (outside / "x.py").write_text("def x():\n    return 1\n", encoding="utf-8")
+    ev = evmod.source_evidence(outside, "x.py", 1, 2, commit=None, source_type="reference_repo",
+                               meta={"root": str(outside)})
+    with _store(repo) as st:
+        eid = evmod.add(st, ev)
+    rc = tools.evidence_inspect(eid)["recheck"]
+    assert rc["performed"] and rc["status"] == "gone"
+    assert "root" not in rc and "file_exists" not in rc and rc["current_text"] is None
+    assert "outside" in rc["rejected"]
