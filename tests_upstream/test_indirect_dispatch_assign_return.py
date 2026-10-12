@@ -7,9 +7,10 @@ new local binding, not a reference -- so the shadow guard still holds: a param o
 named on the RHS is the local, not the module fn. The negatives pin that the false edges
 #1565 fixed do not come back.
 """
-import networkx as nx
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 
-from verinoda.project_index.affected import affected_nodes
 from verinoda.project_index.extract import extract_python
 
 
@@ -75,17 +76,6 @@ CALLBACK = handler      # module-level alias / re-export
 def test_module_level_assignment_emits_indirect_call(tmp_path):
     r, nid = _extract(tmp_path, MODULE_ALIAS)
     assert (nid["m.py"], nid["handler"]) in _ind(r)
-
-
-def test_assignment_feeds_affected(tmp_path):
-    r, nid = _extract(tmp_path, ASSIGN_RETURN)
-    g = nx.DiGraph()
-    for n in r["nodes"]:
-        g.add_node(n["id"], **n)
-    for e in r["edges"]:
-        g.add_edge(e["source"], e["target"], **e)
-    affected = {h.node_id for h in affected_nodes(g, nid["handler"])}
-    assert nid["bind"] in affected
 
 
 # ── negatives: the inverted-shadow trap (must not reintroduce #1565's false edges) ──

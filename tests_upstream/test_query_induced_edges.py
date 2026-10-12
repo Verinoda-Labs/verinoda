@@ -5,6 +5,9 @@ so the result was a traversal tree rather than the induced subgraph over the
 node set the query returns. The most visible casualty is an edge between two
 seed nodes: both endpoints render, the edge between them does not.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 from __future__ import annotations
 
 import json
@@ -12,7 +15,6 @@ import json
 import networkx as nx
 from networkx.readwrite import json_graph
 
-import verinoda.project_index.__main__ as mainmod
 from verinoda.project_index.serve import _bfs, _dfs, _filter_graph_by_context, _query_graph_text
 
 # Hub suppression only kicks in at degree >= 50 (serve.py `hub_threshold`).
@@ -231,19 +233,3 @@ def _write_two_seed_graph(tmp_path):
     return graph_path
 
 
-def test_query_cli_renders_the_edge_between_two_seeds(monkeypatch, tmp_path, capsys):
-    graph_path = _write_two_seed_graph(tmp_path)
-    monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
-    monkeypatch.setattr(
-        mainmod.sys,
-        "argv",
-        ["graphify", "query", "checkout discounted_total", "--graph", str(graph_path)],
-    )
-
-    mainmod.main()
-    out = capsys.readouterr().out
-
-    assert "NODE checkout" in out
-    assert "NODE discounted_total" in out
-    assert "EDGE checkout --calls" in out
-    assert "discounted_total" in out.split("EDGE checkout --calls", 1)[1]

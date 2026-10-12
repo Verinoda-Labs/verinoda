@@ -93,11 +93,6 @@ def pytest_collection_modifyitems(items: list[Any]) -> None:
 
 
 # --- Verinoda port adjustments (appended by tools/port_upstream.py) --------
-# test_skillgen.py regenerates upstream's own skill bodies and audits them
-# against blobs from upstream's git history (`git show <sha>:graphify/...`).
-# That history does not exist in this repository, and those skill bodies are
-# not Verinoda's product skills, so the suite is excluded (docs/UPSTREAM.md).
-collect_ignore = ["test_skillgen.py"]
 
 _PORT_DIVERGENT = {
     # Upstream's installer compares the skill stamp to the *graphifyy* version

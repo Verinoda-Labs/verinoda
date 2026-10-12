@@ -26,11 +26,17 @@ enters this repository. It:
    `ARCHITECTURE.md`/`how-it-works.md` now under `docs/upstream/`);
 4. appends a clearly delimited "Verinoda port adjustments" block to
    `tests_upstream/conftest.py` (see below);
-5. writes the upstream commit SHA to `verinoda/project_index/UPSTREAM_COMMIT`.
+5. writes the upstream commit SHA to `verinoda/project_index/UPSTREAM_COMMIT`;
+6. deletes the upstream surface Verinoda does not ship (`DELETED` in the
+   script; the inventory is under [Removed in D186](#removed-in-d186)) and
+   every upstream test that imports one of those modules or runs the upstream
+   CLI. A test file that mixes such tests with tests of kept code is deleted
+   whole by the script and trimmed by hand instead (the trimmed files are
+   listed under [Modified](#modified)): re-apply the trims after a re-sync.
 
 Files under `verinoda/project_index/` are hand-edited only for the local
 changes listed under [Modified](#modified), each marked `Local change (Verinoda)`
-in the code. Everything else Verinoda adds lives outside that directory,
+or `Verinoda patch` in the code. Everything else Verinoda adds lives outside that directory,
 including the one runtime patch described under
 [Runtime patch applied from outside the vendored tree](#runtime-patch-applied-from-outside-the-vendored-tree).
 Re-syncing is therefore: check out a newer upstream commit, re-run the script,
@@ -63,14 +69,15 @@ lacking `os.mkfifo`/`AF_UNIX`/unprivileged symlinks, and Windows' default
 
 Port adjustments (in `tests_upstream/conftest.py`, appended by the script):
 
-- `test_skillgen.py` is not collected: it regenerates upstream's own skill
-  bodies and audits them against blobs from upstream's git history
-  (`git show <sha>:graphify/skill.md`). That history is not part of this
-  repository, and those skill bodies are not Verinoda's skills.
 - `test_the_warning_names_the_stale_destination_and_the_exact_command` is
   `xfail(strict=True)`: the upstream installer compares a skill stamp against
   the `graphifyy` version line (0.8.x/0.9.x); Verinoda is 0.1.x, so the
-  fixture's "stale" skill looks newer and takes the downgrade branch.
+  fixture's "stale" skill looks newer and takes the downgrade branch. (The test
+  left with the installer in D186; the mark stays for a re-sync that brings it back.)
+- Until D186, `test_skillgen.py` was excluded from collection: it regenerated
+  upstream's own skill bodies and audited them against blobs from upstream's
+  git history, which this repository does not hold. The skill files and
+  `tools/skillgen/` left in D186, and the script now deletes the test with them.
 
 ## Runtime patch applied from outside the vendored tree
 
@@ -149,15 +156,6 @@ as a project (2,305 files). A positive value keeps the page. graph.json and
 GRAPH_REPORT.md are the same either way (orders_app, forge_mod, glow_mod byte
 for byte; Verinoda's own repository node for node and link for link, 2026-09-24).
 
-## Notes on vendored modules Verinoda does not use
-
-- **`project_index/scip_ingest.py`** (left untouched) is upstream's skeleton
-  for SCIP ingestion. It reads a *simplified* JSON shape (occurrences under
-  each symbol), not the SCIP protobuf, and it treats the first element of
-  SCIP's 0-based `range` as a 1-based line. It is not wired to any command.
-  Verinoda reads real `index.scip` files with its own dependency-free
-  decoder, `verinoda/scip_reader.py`, which converts lines to 1-based.
-
 ## Feature inventory
 
 "Carried" = the code is present and unmodified apart from the import rewrite.
@@ -177,35 +175,30 @@ for byte; Verinoda's own repository node for node and link for link, 2026-09-24)
 | Confidence labels on edges (EXTRACTED / INFERRED / AMBIGUOUS) | extraction schema | kept on every edge; Verinoda never treats them as verification |
 | URL validation and safe fetching | `security.py` | document research (`verinoda research <url>`) and the reference resolver's live HTTP transport |
 
-### Carried and exposed through `verinoda index -- …` (pass-through, unsupported)
+### Removed in D186
 
-The upstream CLI is available as `verinoda index -- <graphify arguments>`,
-for example `verinoda index -- query "…"`, `-- path A B`, `-- explain X`,
-`-- export …`, `-- tree`, `-- affected`, `-- diagnose`, `-- watch`,
-`-- benchmark`, `-- prs`, `-- merge-graphs`, and `-- extract` (LLM semantic
-extraction with the upstream provider backends). Output goes to
-`.verinoda/index/`. Verinoda does not use or test these paths.
+Until 2026-10-12 the upstream CLI was reachable as `verinoda index -- <graphify
+arguments>` (a pass-through with the installer and the `~/.graphify` writers
+blocked), and the package shipped the modules and 126 skill Markdown files only
+that CLI used. No Verinoda command and no measured result reached them
+(docs/DESIGN.md D186), so they left the package. `tools/port_upstream.py`
+deletes them again after every re-sync (`DELETED`).
 
-**Blocked pass-through commands** (exit 2 with an explanation;
-`cli.UPSTREAM_BLOCKED`, `cli.UPSTREAM_HOME_WRITERS`):
-
-| Blocked | Why | Use instead |
+| Upstream item | What it was | Forced edits |
 |---|---|---|
-| `install`, `uninstall`, `hook`, `merge-driver`, and every platform installer: `agents`, `aider`, `amp`, `antigravity`, `claude`, `claw`, `codebuddy`, `codex`, `copilot`, `cursor`, `devin`, `droid`, `gemini`, `hermes`, `kilo`, `kiro`, `opencode`, `pi`, `skills`, `trae`, `trae-cn`, `vscode`. At run time the list is also unioned with upstream's own `install._CLI_INSTALL_COMMANDS`, so a platform added upstream is blocked without editing Verinoda. | They write Graphify-branded skills, hooks, merge drivers or agent configs, and would overwrite or remove a *real* Graphify install on the same machine. | `verinoda install` / `uninstall --agent claude\|codex` |
-| `clone`, `provider`, `global`, and the `--global` flag on any command | They write under `~/.graphify` (clone cache, provider registry, global graph), outside the project and outside `.verinoda/`. Verinoda never writes to the home directory implicitly. | `verinoda research <url\|owner/repo> [--ref R]` (pinned checkout under `.verinoda/research`), after `verinoda resolve "<text>"` |
+| `cli.py`, `__main__.py` | the `graphify` command line and `python -m graphify`; `verinoda index` with it | `verinoda/cli.py` lost `cmd_index`, the `index` subparser and the block lists `UPSTREAM_BLOCKED` / `UPSTREAM_HOME_WRITERS`; `tests/test_cli.py`, `tests/test_docs.py`, `tests/test_packaging.py` lost the pass-through cases |
+| `install.py`, `hooks.py`, `skill*.md`, `skills/*/references/*.md`, `always_on/*.md`, `command-kilo.md`, `tools/skillgen/` | the multi-platform installer of *Graphify*-named skills (22 assistants), git hooks and merge driver, the skill bodies and the generator that rendered them | pyproject `package-data` for `verinoda.project_index` is `["UPSTREAM_COMMIT"]` (read by `verinoda doctor` and the benchmark runner); `tests/test_packaging.py` `MUST_SHIP` and the skill-file counts |
+| `wiki.py`, `tree_html.py`, `diagnostics.py`, `affected.py`, `global_graph.py`, `cross_repo_calls.py`, `cross_repo_types.py`, `multigraph_compat.py`, `scip_ingest.py`, `semantic_cleanup.py`, `benchmark.py`, `cargo_introspect.py`, `pg_introspect.py`, `manifest.py` | wiki and tree exports, extraction diagnostics, the `affected` query, the `~/.graphify` global graph and cross-repository merges, the multigraph probe, the SCIP JSON skeleton (Verinoda reads real `index.scip` files with its own `scip_reader.py`), LLM-fragment cleanup, the upstream benchmark, Cargo and PostgreSQL introspection, the `.graphify-manifest` writer | `project_index/__init__.py` lost the lazy `to_wiki` entry (marked) |
 
-Tests: `tests/test_cli.py` checks every blocked name, that upstream's
-installer list is a subset of the static list, and that ordinary commands
-(`query`, `path`, `explain`, `tree`, `--help`, …) are not blocked.
+Upstream tests of this surface left with it (the script's rule), 69 files;
+the tests of kept code in files that also tested it were kept and the files
+trimmed (listed under [Modified](#modified)).
 
 ### Carried but not exposed
 
 | Upstream feature | Why not exposed |
 |---|---|
-| Upstream multi-platform installer (`install.py`; the upstream README lists 22 assistants) and its skill bodies (`skill*.md`, `skills/*/references`, `always_on/`) | They install *Graphify*-named skills that call a `graphify` executable Verinoda does not ship, and are blocked in the pass-through (above). Verinoda has its own installer (`verinoda.agents`, Claude Code + Codex only). Kept in the package so the upstream tests keep passing. |
-| Git hooks, merge driver (`hooks.py`) | Would install `graphify`-named hooks; blocked in the pass-through. |
 | Upstream MCP server (`serve.py`: `query_graph`, `get_node`, `get_neighbors`, `get_community`, `god_nodes`, `graph_stats`, `shortest_path`, `list_prs`, `triage_prs`, `get_pr_impact`) | `verinoda mcp serve` serves Verinoda's own tools (claims, evidence, plans, references, research, critique…). The upstream server still runs with `python -m verinoda.project_index.serve <graph.json>`. |
-| SCIP JSON ingestion skeleton (`scip_ingest.py`) | Not wired upstream either; see the note above. |
 
 ### Removed from the distribution
 
@@ -224,6 +217,8 @@ installer list is a subset of the static list, and that ordinary commands
 | Output directory | unchanged in the module (`GRAPHIFY_OUT`, default `graphify-out`); Verinoda entry points set `GRAPHIFY_OUT=.verinoda/index` before importing it |
 | `watch._StoredSourcePaths` (at run time only) | memoised by the path-identity monkeypatch; source file unchanged |
 | `tests_upstream/conftest.py` | appended port-adjustment block (above) |
+| `project_index/__init__.py` (D186, marked "Verinoda patch") | no lazy `to_wiki` entry: `wiki.py` left with the upstream CLI surface |
+| `tests_upstream/test_cjs_module_extension.py`, `test_duplicate_annotation_edges.py`, `test_export_path_length.py`, `test_god_nodes_exclude_hubs.py`, `test_indirect_call_nested_closure_shadow.py`, `test_indirect_dispatch.py`, `test_indirect_dispatch_assign_return.py`, `test_indirect_dispatch_getattr.py`, `test_js_dynamic_imports.py`, `test_no_dedup_flag.py`, `test_query_induced_edges.py`, `test_reflect.py`, `test_scala_self_type.py`, `test_terraform_modules.py`, `test_unverified_semantic_shrink.py` (D186, each marked "Verinoda patch") | the tests of the removed upstream CLI, `affected`, `diagnostics` and `wiki` were cut out of files that also test kept code (an `affected` query over an extracted graph, a CLI run next to a `watch._rebuild_code` run, ...); the tests kept are upstream's. A re-sync deletes these files whole (the script's rule): re-apply the trims |
 | `extractors/csharp.py` `_resolve_csharp_type_references` (local change, D65) | a dangling type reference finds the first placeholder of its label through a dict built once, not a scan of all nodes per reference; the same graph, the pass 4.2 s -> 0.05 s on a 591-file C# repository |
 | `extractors/engine.py` call binding, `extractors/go.py`, `extractors/rust.py` (local change, D65) | a member call binds to a same-file definition only through the method's own receiver (`self`/`cls`, `this`, `$this`, Ruby `self`/`self.class`, the Go receiver, Rust `self`/`Self::`/`Type::`, also with a turbofish) or a receiver whose type the file states (Go: a parameter, a local or package variable of `&T{}` / `T{}` / a constructor `NewT()`, a struct field, a method promoted from an embedded struct; PHP: a typed parameter, `$x = new T()`, a typed or promoted property, `$this->p = new T()`); an untyped PHP receiver binds only to the one same-named method of another class of the file; Python `super().m()` binds to an in-file base's `m` in C3 order (past `object`) or not at all; `self.m()` prefers the own class; bare Go/Rust calls never bind to a method. `cache._AST_CACHE_SCHEMA` is 7 |
 | `extract.py` `extract`, new `vendored.py` (local change, D65) | vendored files (`vendor/` at the root, beside `go.mod`/`composer.json`/`Gemfile`/`Cargo.toml` or under a static-asset folder; `_vendor/`, `third_party/`, `third-party/`, `thirdparty/`; `deps/` beside `mix.exs`/`rebar.config`; a git submodule under `deps/` or `extern/`) and generated files (a generator's header comment) keep their definitions, marked `vendored`, but no edge other than their structure (`contains`, `method`, `defines`, `inherits` ...) leaves them; minified files (`.min.js`/`.bundle.js`, or a script mostly in lines of code over 1,000 bytes) keep their file node only; `VERINODA_GRAPH_VENDORED=1` (config `index.vendored`) keeps everything. `guards.is_generated` uses the same header rule |
@@ -232,8 +227,8 @@ installer list is a subset of the static list, and that ordinary commands
 | `extractors/engine.py` `_declaration_line`, `_python_note_overload` and the class, function and Python `decorated_definition` branches of `_extract_generic`; `cache._AST_CACHE_SCHEMA` 9 (local change, marked "Verinoda patch") | a class or function is cited at its name's line, not at the annotations or attributes its node starts with (`@Override` above a Java method, `[HttpGet]` above a C# one; every grammar whose definition node has a `name` field), the line a decorated Python def already had; Python `@overload` stubs and their implementation stay one node, located at the implementation (the def without `@overload`), the stubs' lines in its `overloads` metadata (`overload_stub: true` while no implementation follows, as in a stub file) |
 | New `extractors/cobol.py`, `erlang.py`, `r.py`, `solidity.py`, `vbnet.py`; `extractors/ocaml.py`, `razor.py`, `terraform.py`; the language tables of `extract.py` (imports, `_DISPATCH`, `_CASE_INSENSITIVE_EXTS`, `_LANG_FAMILY_BY_EXT`, the four resolvers and `cobol_copybooks`, `_EXTRA_FOR_EXTENSION`, the `Rscript` shebang), `detect.py` `CODE_EXTENSIONS`, `analyze.py` `_LANG_FAMILY`, `extractors/__init__.py`, `extractors/base.py` `_CaseIds` (marked "Verinoda patch: ported from upstream Graphify v0.9.73 (ef4450d)") | the languages upstream added after the pinned commit, ported from tag `v0.9.73` (commit `ef4450d9c28acb2b8cdc22d369c1777b77148eef`) with the module-path rewrite, plus these hand edits, each marked "Verinoda patch": VB.NET nested types are read (a nested `Class`/`Structure`/`Module` block is not wrapped in `type_declaration`, so upstream skipped it with all its members); a COBOL scope terminator (`END-READ.`, `END-EVALUATE.`, ...) or a fixed-format name outside Area A is not a paragraph; a COBOL `COPY` of a copybook in another directory is bound by `resolve_cobol_copybooks` (a fifth resolver) or not at all, never to a file that does not exist; R, Solidity and Erlang symbols whose names differ only in case keep two ids (`extractors/base.py` `_CaseIds`); an Erlang export written in base notation (`f/2#1`) no longer drops its file. The languages: COBOL (regex, no grammar), Erlang and R (`tree-sitter-language-pack==0.11.0`), Solidity (`tree-sitter-solidity==1.2.13`), VB.NET (`tree-sitter-vb-dotnet==0.3.0`), each grammar an optional extra; OCaml classes with their methods and instance variables, Razor `@functions` blocks, and Terraform secret redaction inside lists, name/value pairs and sensitive variable/output blocks, as v0.9.73 has them. The rest of `extract.py` and the other extractors stay at the pinned commit. A re-sync to v0.9.73 or later takes these files as they are upstream |
 | `detect.py` `_git_env`, `_git_ls`, `_git_rules`, `_git_rules_are_utf8`, `_git_listed_files`, `_git_kept_untracked`, `_git_enumerate`, the `enumeration` parameter of `detect()` (local change, D66, marked "Verinoda patch") | at the top of a git work tree the file list comes from `git ls-files` (git's own ignore semantics) instead of the walk; a re-sync with `tools/port_upstream.py` overwrites the file: re-apply and run `tests/test_detect_git.py` and `tests_upstream/test_detect.py` |
-| `extractors/engine.py` `_js_extra_walk`, `_scan_js_nested_function_declarations`, the JS/TS call binding, new `_js_module_owner_names` and `_js_collect_body_bound_names`; `extract.py` cross-file label index; the marker lists in `cli.py` and `watch.py` (local change, marked "Verinoda patch") | `obj.m = function name() {}` / `obj.m = () => {}` at module level, where `obj` is bound at module level in the file (a `var`/`let`/`const`, a function or a class), is the method `.m()` of `obj` (Express `res.json`, `app.render`; each name of an alias chain `res.set = res.header = fn`); a function bound in a function (`const login = async () => {}`) is a nested symbol with its own calls; a bare call binds to the nested function visible from the caller, a member call never to a nested function; a method of such an object binds only through that object or its own `this`; a nested function's locals include the enclosing scope's names; such a method takes no bare name in the file's label map, and both kinds carry the `_no_bare_name` marker, which keeps them out of the cross-file bare-name and by-value index in `extract.py` (kept for unchanged files on incremental builds). `cache._AST_CACHE_SCHEMA` is 10; test: `tests/test_graph_precision.py` |
-| `extractors/go.py` receiver chains and new `resolve_go_receiver_calls`; `extractors/rust.py` receiver types (`_rust_type_desc`, `_rust_use_map`) and the `_rust_returns_self` marker; `extractors/engine.py` PHP `Foo::m()` / `self::` / `parent::` binding, `_php_namespace_facts`, the `_php_fqn` marker and JS/TS `fn.call/apply/bind`; `extract.py` new `_resolve_rust_typed_member_calls` and `_resolve_php_static_calls`; the marker lists in `cli.py` and `watch.py` (local change, marked "Verinoda patch") | a method call binds when the source states the receiver's type: Go locals, parameters, fields, elements and method results typed across the files of a package (read from disk by the package pass); Rust `Type::m()` of this crate (by its `use`/path root and one declaration in the corpus), parameters and `let`s of a stated type or a `Self`-returning constructor; PHP `Foo::m()` to Foo's method by the class FQN (namespace and `use`), no longer to the class; JS/TS `fn.call/apply` as a call of `fn`, `fn.bind` as an indirect call. A Go interface, a Rust trait object or `impl Trait` binds to the interface's or trait's declaration of the method (a lead, INFERRED 0.75), never to an implementation. Edges from a receiver's type are INFERRED (0.85). `cache._AST_CACHE_SCHEMA` is 14; tests: `tests/test_rw_receivers.py`, `tests/test_graph_precision.py`, `tests_upstream/test_php_object_creation.py`, `tests_upstream/test_rust_self_member_calls.py` |
+| `extractors/engine.py` `_js_extra_walk`, `_scan_js_nested_function_declarations`, the JS/TS call binding, new `_js_module_owner_names` and `_js_collect_body_bound_names`; `extract.py` cross-file label index; the marker lists in `watch.py` and in `cli.py` (since removed, D186) (local change, marked "Verinoda patch") | `obj.m = function name() {}` / `obj.m = () => {}` at module level, where `obj` is bound at module level in the file (a `var`/`let`/`const`, a function or a class), is the method `.m()` of `obj` (Express `res.json`, `app.render`; each name of an alias chain `res.set = res.header = fn`); a function bound in a function (`const login = async () => {}`) is a nested symbol with its own calls; a bare call binds to the nested function visible from the caller, a member call never to a nested function; a method of such an object binds only through that object or its own `this`; a nested function's locals include the enclosing scope's names; such a method takes no bare name in the file's label map, and both kinds carry the `_no_bare_name` marker, which keeps them out of the cross-file bare-name and by-value index in `extract.py` (kept for unchanged files on incremental builds). `cache._AST_CACHE_SCHEMA` is 10; test: `tests/test_graph_precision.py` |
+| `extractors/go.py` receiver chains and new `resolve_go_receiver_calls`; `extractors/rust.py` receiver types (`_rust_type_desc`, `_rust_use_map`) and the `_rust_returns_self` marker; `extractors/engine.py` PHP `Foo::m()` / `self::` / `parent::` binding, `_php_namespace_facts`, the `_php_fqn` marker and JS/TS `fn.call/apply/bind`; `extract.py` new `_resolve_rust_typed_member_calls` and `_resolve_php_static_calls`; the marker lists in `watch.py` and in `cli.py` (since removed, D186) (local change, marked "Verinoda patch") | a method call binds when the source states the receiver's type: Go locals, parameters, fields, elements and method results typed across the files of a package (read from disk by the package pass); Rust `Type::m()` of this crate (by its `use`/path root and one declaration in the corpus), parameters and `let`s of a stated type or a `Self`-returning constructor; PHP `Foo::m()` to Foo's method by the class FQN (namespace and `use`), no longer to the class; JS/TS `fn.call/apply` as a call of `fn`, `fn.bind` as an indirect call. A Go interface, a Rust trait object or `impl Trait` binds to the interface's or trait's declaration of the method (a lead, INFERRED 0.75), never to an implementation. Edges from a receiver's type are INFERRED (0.85). `cache._AST_CACHE_SCHEMA` is 14; tests: `tests/test_rw_receivers.py`, `tests/test_graph_precision.py`, `tests_upstream/test_php_object_creation.py`, `tests_upstream/test_rust_self_member_calls.py` |
 
 ### New in Verinoda (not in Graphify)
 

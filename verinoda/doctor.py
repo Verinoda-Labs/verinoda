@@ -19,7 +19,7 @@ OPTIONAL = {
     "tiktoken": "exact token counts in benchmarks (else chars/4 estimate)",
     "anthropic": "benchmark --llm anthropic",
     "pypdf": "PDF documents in research",
-    "watchdog": "upstream `verinoda index watch`",
+    "watchdog": "file watching for `mcp serve --watch` and `ui --watch` (FSEvents on macOS; polling without it)",
 }
 SECRET_ENV = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GITHUB_TOKEN")
 

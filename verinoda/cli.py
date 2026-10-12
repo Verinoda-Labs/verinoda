@@ -8,7 +8,7 @@ human rendering of the same data (``query`` prints the plain-text context the
 model reads, docs/DESIGN.md D20).
 
 Exit codes: 0 done; 1 error; 2 usage error, invalid plan, unresolved trace
-endpoint or blocked upstream command; 3 "needs more": a plan that needs
+endpoint; 3 "needs more": a plan that needs
 clarification, a partial reference resolution, a refused experiment, an
 incomplete observation, no precise answer, an absent name or a version that
 differs from the lock (`check`), a target not found (`api`; a target that could not be decided is 0),
@@ -4643,69 +4643,6 @@ def cmd_mcp_prompts(args) -> int:
     return 0
 
 
-# Upstream subcommands that write Graphify-branded skills, hooks, merge drivers or
-# agent configs into the user's home or project (CLAUDE.md, AGENTS.md, .claude/,
-# .codex/, git hooks, .gitattributes, ...). Run through `verinoda index` they would
-# overwrite or remove a REAL Graphify install, so they are refused. Taken from the
-# upstream dispatch: install.py `_CLI_INSTALL_COMMANDS` (install, uninstall and every
-# platform installer incl. the `skills` alias) plus cli.py `hook` and `merge-driver`.
-# `_blocked_index_commands()` also unions the live upstream set, so a platform added
-# upstream is blocked without editing this list.
-UPSTREAM_BLOCKED = frozenset({
-    "install", "uninstall", "hook", "merge-driver",
-    "agents", "aider", "amp", "antigravity", "claude", "claw", "codebuddy", "codex", "copilot", "cursor",
-    "devin", "droid", "gemini", "hermes", "kilo", "kiro", "opencode", "pi", "skills", "trae", "trae-cn",
-    "vscode",
-})
-# Upstream subcommands (and the `--global` flag of extract/update) that write under
-# ~/.graphify - outside the project and outside .verinoda: `clone` caches checkouts in
-# ~/.graphify/repos, `provider` keeps ~/.graphify/providers.json, `global` and `--global`
-# merge graphs into ~/.graphify's global graph. Verinoda keeps reference checkouts under
-# .verinoda/research (`verinoda research`), so these are refused as well.
-UPSTREAM_HOME_WRITERS = frozenset({"clone", "provider", "global"})
-UPSTREAM_HOME_FLAGS = ("--global",)
-
-
-def _blocked_index_commands() -> frozenset:
-    try:
-        from verinoda.project_index.install import _CLI_INSTALL_COMMANDS
-    except Exception:  # pragma: no cover - upstream layout changed; the static list still applies
-        return UPSTREAM_BLOCKED
-    return UPSTREAM_BLOCKED | frozenset(_CLI_INSTALL_COMMANDS)
-
-
-def cmd_index(args) -> int:
-    """Pass-through to the Graphify-derived CLI (advanced/upstream features).
-
-    Installer-type subcommands are refused (exit 2): see ``UPSTREAM_BLOCKED``;
-    so are commands that write under ``~/.graphify``: see ``UPSTREAM_HOME_WRITERS``.
-    """
-    rest = args.rest[1:] if args.rest and args.rest[0] == "--" else args.rest
-    if rest and rest[0] in _blocked_index_commands():
-        print(f"error: `verinoda index {rest[0]}` is blocked: this upstream Graphify command writes "
-              "Graphify-branded skills, hooks, merge drivers or agent configs and could overwrite or remove "
-              "a real Graphify install.\n"
-              "  Use `verinoda install --agent claude|codex --scope project|user` for the Verinoda skill + MCP "
-              "(and `verinoda uninstall` to remove exactly what it added).", file=sys.stderr)
-        return 2
-    flag = next((a for a in rest if a.split("=", 1)[0] in UPSTREAM_HOME_FLAGS), None)
-    if rest and (rest[0] in UPSTREAM_HOME_WRITERS or flag):
-        what = f"{rest[0]} {flag}" if flag and rest[0] not in UPSTREAM_HOME_WRITERS else rest[0]
-        print(f"error: `verinoda index {what}` is blocked: this upstream Graphify command writes under "
-              "~/.graphify (clone cache ~/.graphify/repos, provider registry ~/.graphify/providers.json or the "
-              "global graph), outside this project and outside .verinoda/; Verinoda never writes to your home "
-              "directory implicitly.\n"
-              "  Use `verinoda research <url|owner/repo> [--ref R]` for a pinned checkout under "
-              ".verinoda/research, and `verinoda resolve \"<text>\"` to pin the version you mean first.",
-              file=sys.stderr)
-        return 2
-    from verinoda.project_index.__main__ import main as upstream_main
-
-    sys.argv = ["verinoda index", *rest]
-    upstream_main()
-    return 0
-
-
 # -- benchmarks ---------------------------------------------------------------------
 
 def _bench_out(path: str | None, res: dict) -> None:
@@ -6211,12 +6148,6 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--arg", action="append", metavar="NAME=VALUE", help="a prompt argument (repeatable)")
     c.add_argument("--profile", choices=("core", "full"), default=None,
                    help="word the steps for this profile's menu (default: as `mcp serve` would)")
-
-    sp = sub.add_parser("index", help="pass-through to the Graphify-derived indexer CLI (advanced; "
-                                       "installer/hook commands and commands writing under ~/.graphify are "
-                                       "blocked - use `verinoda install` / `verinoda research`)")
-    sp.set_defaults(fn=cmd_index)
-    sp.add_argument("rest", nargs=argparse.REMAINDER)
 
     sp = sub.add_parser("benchmark", help="reproducible comparison: raw search vs Graphify baseline vs Verinoda; "
                                           "staleness and critique harnesses")

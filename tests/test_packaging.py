@@ -24,6 +24,7 @@ from __future__ import annotations
 import configparser
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -44,9 +45,6 @@ NOT_RUNTIME = {
 # Data files that must be in every wheel, whatever else changes.
 MUST_SHIP = (
     "verinoda/project_index/UPSTREAM_COMMIT",
-    "verinoda/project_index/skill.md",
-    "verinoda/project_index/always_on/claude-md.md",
-    "verinoda/project_index/skills/claude/references/query.md",
     "verinoda/agents/templates/claude_SKILL.md",
     "verinoda/agents/templates/codex_SKILL.md",
     "verinoda/benchmark/questions/orders_app.json",
@@ -121,6 +119,41 @@ def test_pyproject_ships_only_verinoda():
     assert pp["tool"]["setuptools"]["packages"]["find"]["include"] == ["verinoda*"]
     assert set(pp["project"]["license-files"]) == set(LICENSES)
     assert all((ROOT / f).is_file() for f in LICENSES)
+
+
+# D186: the upstream Graphify CLI surface with its skill files, the LLM, PR and media layer, and scipy
+# (through graspologic-native) left the default install. The extras that only served them went with them.
+REMOVED_EXTRAS = {"kimi", "ollama", "bedrock", "anthropic", "gemini", "openai", "video", "neo4j", "falkordb",
+                  "postgres", "google"}
+REMOVED_MODULES = ("verinoda/project_index/cli.py", "verinoda/project_index/__main__.py",
+                   "verinoda/project_index/install.py", "verinoda/project_index/llm.py",
+                   "verinoda/project_index/prs.py", "verinoda/project_index/exporters/graphdb.py")
+
+
+def test_the_default_install_has_no_upstream_cli_llm_or_scipy():
+    pp = _pyproject()["project"]
+    assert not [d for d in pp["dependencies"] if d.startswith("graspologic")], pp["dependencies"]
+    extras = pp["optional-dependencies"]
+    assert extras["leiden"] == ["graspologic-native>=1.3.1,<2"]
+    assert extras["benchmark"] == ["tiktoken", "anthropic"]
+    assert not REMOVED_EXTRAS & set(extras), sorted(REMOVED_EXTRAS & set(extras))
+    assert not [d for d in extras["pdf"] if "markdownify" in d], extras["pdf"]
+    py, data = _files(PKG)
+    gone = sorted(n for n in py | data
+                  if n in REMOVED_MODULES
+                  or n.startswith(("verinoda/project_index/skills/", "verinoda/project_index/always_on/"))
+                  or (n.startswith("verinoda/project_index/skill") and n.endswith(".md")))
+    assert not gone, gone
+
+
+def test_the_index_build_path_imports_after_the_deletions():
+    """detect.py and export.py imported deleted modules at module top (D186): a scan, an update and the
+    benchmark runner must still import. Checked in a fresh interpreter, not through this process's cache."""
+    mods = ("export", "detect", "watch", "dedup", "build", "serve", "ingest", "reflect")
+    code = ("import " + ", ".join(f"verinoda.project_index.{m}" for m in mods)
+            + ", verinoda.index, verinoda.benchmark.runner")
+    r = _run([sys.executable, "-c", code], cwd=ROOT, env=_clean_env())
+    assert r.returncode == 0, r.stderr[-2000:]
 
 
 # -- wheel build --------------------------------------------------------------------
@@ -205,9 +238,8 @@ def test_wheel_contents(built):
     assert not sorted(data - names - set(NOT_RUNTIME)), sorted(data - names - set(NOT_RUNTIME))
     for rel in MUST_SHIP:
         assert rel in names, rel
-    skills = [n for n in names if n.startswith("verinoda/project_index/skill") and n.endswith(".md")]
-    refs = [n for n in names if n.startswith("verinoda/project_index/skills/") and n.endswith(".md")]
-    assert len(skills) >= 16 and len(refs) >= 8, (len(skills), len(refs))
+    # D186: nothing of the removed upstream surface ships (its modules, its skill bodies and references).
+    assert not [n for n in names if n in REMOVED_MODULES or n.startswith("verinoda/project_index/skill")]
     # Licence files travel in the dist-info (PEP 639: .dist-info/licenses/).
     for lic in LICENSES:
         assert f"{di}/licenses/{lic}" in names or f"{di}/{lic}" in names, lic
@@ -249,7 +281,9 @@ def _drive_installed_cli(ra: Path, base: Path, *, full: bool) -> dict:
     # built from a copy without .git or a filled-in stamp: the build is said to be unknown, not guessed
     assert r.stdout.startswith("verinoda ") and "(build unknown" in r.stdout, r.stdout
     r = _ok(_run([ra, "--help"], cwd=work, env=env), "--help")
-    assert all(c in r.stdout for c in ("scan", "analyze", "doctor", "install", "index"))
+    assert all(c in r.stdout for c in ("scan", "analyze", "doctor", "install"))
+    # the upstream pass-through left with the upstream CLI (D186); `scan` still says "index a repository"
+    assert not re.search(r"^ {4}index\b", r.stdout, re.MULTILINE)
     doc = json.loads(_ok(_run([ra, "doctor", "--json"], cwd=work, env=env), "doctor --json").stdout)
     checks = {c["check"]: c for c in doc["checks"]}
     assert doc["ok"] is True and checks["package"]["ok"] and checks["upstream_base"]["ok"]
@@ -270,12 +304,6 @@ def _drive_installed_cli(ra: Path, base: Path, *, full: bool) -> dict:
         an = json.loads(_ok(_run([ra, "analyze", QUESTION, "--repo", repo, "--json"], cwd=repo, env=env),
                             "analyze").stdout)
         assert an["claims"] and all(c["evidence"] for c in an["claims"])
-        # The installer-type upstream commands stay blocked in an installed build, and so do the
-        # ones that write under ~/.graphify.
-        r = _run([ra, "index", "--", "install"], cwd=repo, env=env)
-        assert r.returncode == 2 and "verinoda install" in r.stderr
-        r = _run([ra, "index", "--", "clone", "https://github.com/a/b"], cwd=repo, env=env)
-        assert r.returncode == 2 and "~/.graphify" in r.stderr
         # round-3 commands work from the wheel alone: a plan drafted with the packaged seed lexicon,
         # the plain-text query, an offline reference resolution
         msg = "Sipariş veritabanına nerede kaydediliyor?"

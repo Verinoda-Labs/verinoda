@@ -243,7 +243,8 @@ include = ["verinoda*"]
 [tool.setuptools.package-data]
 # Runtime data only; tests/test_packaging.py checks every data file in the source
 # tree is matched here and that the built wheel ships it.
-"verinoda.project_index" = ["*.md", "skills/*/references/*.md", "always_on/*.md", "UPSTREAM_COMMIT"]
+# D186: the upstream skill files left with the upstream CLI; `doctor` and the benchmark runner read the commit.
+"verinoda.project_index" = ["UPSTREAM_COMMIT"]
 "verinoda.agents" = ["templates/*.md", "templates/*.json"]
 "verinoda.benchmark" = ["questions/*.json"]
 # round 3 (docs/DESIGN.md): question-plan schema, TR->EN seed lexicon; the build stamp git archive fills in
