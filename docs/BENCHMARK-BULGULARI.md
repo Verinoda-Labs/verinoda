@@ -186,8 +186,8 @@ Verinoda çağrısının sonucuyla birlikte maliyetinden azdır.
 
 ### 5.2 Koşular şimdiye kadar ne gösterdi
 
-Hiçbiri yeniden tasarlanan aracın maliyetinin ya da ajan davranışının puanlı bir ölçümü değil: tek oturumluk denemeler gözlemdir,
-katı atıf kontrolü D185'in (eski araçla verilmiş) cevaplarını puanlar.
+Aşağıdakilerden yalnız yeniden koşu (son madde) yeniden tasarlanan aracın maliyetinin ve ajan davranışının puanlı bir ölçümüdür:
+tek oturumluk denemeler gözlemdir, katı atıf kontrolü D185'in (eski araçla verilmiş) cevaplarını puanlar.
 
 - **Modelsiz benchmark, sekiz küme (işlenmiş sonuç: `benchmarks/results/compare-2026-10-12-branch/`):** dalın c678d46
   sürümünde olgu kaybı da kazancı da yok (sorgu 284/319 → 284/319, analyze 285/319 → 285/319); `analyze` soru başına token'ı
@@ -221,14 +221,26 @@ katı atıf kontrolü D185'in (eski araçla verilmiş) cevaplarını puanlar.
   iki beceri uzunluğu testi; ikinci dalgada düzeldi); mod: 85 test geçti; `tests_upstream` silmelerden sonra 38 başarısız (hepsi
   daha önce de başarısız olan türden), 3.645 geçti, 130 atlandı; Louvain kapısı (graspologic-native'siz tüm ürün takımı): 20
   başarısız, hiçbiri Louvain'den değil.
+- **Yeniden koşu (`benchmarks/results/claims-rerun-2026-10-13/`; `claude-sonnet-5-5`, 63 oturum, 0 hata):** düzeltilmiş kuralla
+  (575b2a5) Verinoda kolunun 39 oturumunun 37'sinde ilk araç çağrısı `analyze` oldu (neden 11/11, ne zaman 10/10, tuzak 6/6,
+  neyi-etkiler 10/12); ilk kuralla aynı yapı 39 oturumda sıfır çağrı yapmıştı (klasörün `superseded-zero-call/` eki). 24 çiftlik
+  maliyet örneği: düz 0,0576 $, Verinoda 0,0633 $ (1,10 kat); eşleştirilmiş fark +0,0057 $, %95 aralık +0,0023 ile +0,0085
+  (aralık tasarımın +0,015 çizgisini dışlıyor; sıfırı da dışlıyor, yani eşitlik değil); D185 yapılandırması aynı görevlerde
+  1,64 kat, +0,0371 $. Model çağrısı 3,50'ye karşı 3,17; Verinoda çıktısı oturum başına ortalama 3.136 karakter (D185: 16.179).
+  Altı görev, üçer tekrar: fastapi why-1'de 546dc8b 3/3 anıldı ve hiçbir cevap "gerekçe yok" demedi (D185 Verinoda kolu: 0/3,
+  3 yanlış olgu); fzf why-1'de 1578b7c3 3/3; axios ve bat when-1 3/3 doğru; **guzzle tuzağında 3/3 cevap hâlâ b58db450'yi en
+  eski commit sayıyor**, oysa her `analyze` sonucu 91f1e347'yi yoldan bağımsız ilk görünüm olarak listeledi: modelin kendi yol
+  sınırlı `git log -S`'i ipucunu ezdi (D185 düz kol 3/3, GUIDE kolu 0/3; `docs/BACKLOG.md` 22.8); gin tuzağında jüri yanlış olgu
+  bulmadı, elle okuma 3/3 cevabın 31323f6'yı "ilk" saydığını buluyor, geçmiş 15216a0'da başlıyor (22.9). 63 cevapta jüri yanlış
+  olgu: düz 2/24, Verinoda 3/39 (üçü guzzle); çalışmanın ana ölçüsü iddia üretmiyor (-0,083, aralık -0,208 ile 0); kör
+  değerlendirme yine tutmadı (%69,8 kol tahmini). Atıf kontrolü gevşek: düz %98,5, Verinoda %99,0; katı: %78,8 ve %82,6.
 
 ### 5.3 Ölçülmedi
 
-- **Dolar ve doğruluk.** Yeniden tasarlanan aracın bir modelle doğruluğu ölçülmedi. 1,1-1,2 kat modellenmiştir (taslak tasarımın
-  bölüm 2'sindeki aritmetik, burada yeniden türetilmedi), ölçülmemiştir. Yeniden koşular henüz yapılmadı: D185'in altı görevi
-  (Verinoda kolu, üç tekrar) ve 24 çiftlik maliyet örneği (24 cevaplanabilir görev, iki kol). Başarı ölçütü önceden belirli:
-  eşleştirilmiş farkın aralığı +0,015 $'ı dışlamalı ve Verinoda çıktısı oturum başına en çok 4.500 karakter olmalı. Sayılar ve
-  sonuç klasörü `docs/DESIGN.md` 158.3'e yazılacak.
+- **Doğruluk eşitliği.** Yeniden tasarlanan aracın bir modelle doğruluğunun düz Claude'a eşit ya da farklı olduğu bu koşudan
+  çıkmaz: 30 görev, çoğu tek tekrar, düz kolda 2 yanlış olgulu cevap. Tek bir değişikliğin etkisi de ölçülmedi: iki yapılandırma
+  birlikte farklıdır (GUIDE'sız istem, çağrı kuralı, yalın `analyze`, 575b2a5 kodu). Dolar 24 çiftte ölçüldü (yukarıda); 1,1-1,2
+  katlık model tuttu.
 - Modelin ilk Read'inin 1. ipucunu izleyip izlemediği; `show="lead"`'in etkisi (kapalı; Verinoda kolunun kendi model çağrıları
   düz kolunkinden en az 1,5 az değilse kapalı kalır); modelin kısalmış metinle ne yaptığı; metin boyutlarının gerçek bir depoda
   değeri (ölçümler örnek proje `orders_app` üzerinde).
@@ -239,8 +251,9 @@ katı atıf kontrolü D185'in (eski araçla verilmiş) cevaplarını puanlar.
 
 ### 5.4 Sıra
 
-Önce, yeni bir çalışma değil, D186 planının son adımı: §5.3'teki yeniden koşular ile D186 sonrası sekiz küme ve hüküm
-denetimi, sonuç klasörleriyle commit'lenerek. Dolar rakamı o zamana kadar bir modeldir ve yeniden tasarlanan aracın doğruluğu ölçülmemiştir.
+D186 planının son adımı tamamlandı: §5.2'deki yeniden koşu, D186 sonrası sekiz küme (`compare-2026-10-13-after-d186/`,
+`compare-2026-10-13-after-review/`) ve hüküm denetimi (`verdict-audit-2026-10-13/`) sonuç klasörleriyle commit'lendi. Dolar
+24 çiftte ölçüldü; yeniden tasarlanan aracın bir modelle doğruluk eşitliği ölçülmemiştir (§5.3).
 
 1. **Ajan tarafında kalan tek açık deney: test kanalı.** SWE-bench çalışmasında iki kolda da proje testleri çalışmıyordu;
    literatürün en yüksek getiri dediği kanal hiç ölçülmedi. Aynı 100 örnek, bağımlılıkları kurulu Docker ortamında, önce

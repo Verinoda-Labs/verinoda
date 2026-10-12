@@ -18093,23 +18093,43 @@ re-derived); **not measured**.
   Louvain's.
 - **Install size.** Without `graspologic-native` the default install drops about 107 MB of scipy that nothing imports: 293 MB
   (D183, 63 packages) -> about 185 MB, the second figure from a reviewer's `du`, not re-measured on a fresh install.
-- **Cost: modelled, not measured.** The 1.1-1.2x of 158.1 is arithmetic, copied from the draft design's section 2 and not
-  re-derived; no session of the redesigned tool has been priced.
+- **Cost, measured on 24 pairs** (`benchmarks/results/claims-rerun-2026-10-13/`; the success rule was fixed before any session:
+  the interval of the paired difference excludes +$0.015 and Verinoda's output is at most 4,500 characters per session). The D186
+  configuration (no GUIDE, the mod's call rule naming `analyze` as the first tool call, the lean `analyze`, the code at 575b2a5)
+  against plain Claude Code on the same 24 answerable D185 tasks, one repeat, `claude-sonnet-5-5`: plain $0.0576 a session,
+  Verinoda $0.0633 (1.10x), paired +$0.0057 with a 10,000-resample bootstrap 95% interval of +$0.0023 to +$0.0085 (Verinoda
+  higher in 21 pairs, lower in 3). The interval excludes +$0.015 (the modelled 1.1-1.2x holds) and excludes zero (not parity).
+  The D185 configuration on the same tasks: 1.64x, +$0.0371 (+$0.0329 to +$0.0411). Model calls 3.50 against 3.17 (-0.33,
+  -0.62 to -0.04); own-tool model calls 2.50 against 2.00; cache-write tokens +1,752 (+1,009 to +2,331), of which +1,095 is the
+  first call's longer system prompt in every pair; under the fitted prices ($2 / $4 / $0.10 / $10 per million, zero residual
+  on all 63 sessions) the +$0.0057 is cache writes +$0.0070, output -$0.0011, reads -$0.0002. Verinoda output per session:
+  mean 3,136 characters in the pairs, median 2,484 (D185: 16,179); 3 of 39 sessions above 4,500 (8,093, 6,905 and 11,997, all
+  what-does-it-affect questions whose answer claims list many sites). `show="lead"` was never passed, so 4.1b stays off (its
+  rule: own model calls at least 1.5 below plain; measured -0.50). Caveats: the 24 plain sessions ran at 01:16 and the Verinoda
+  ones at 02:30 the same day (D185's plain arm agrees with the plain figure within 1.1%); the Verinoda-arm copies were indexed
+  once at 68b2133 and reused; everything that differs between the two configurations differs together, so nothing here says
+  which change did what.
+- **The call, measured.** `analyze` was the first tool in 37 of the 39 Verinoda sessions (why 11 of 11, when 10 of 10, trap 6 of 6,
+  what-does-it-affect 10 of 12; the two misses went to Grep first); `run_tool`, `project_query` and ToolSearch were never
+  called; after `analyze` the model ran a Grep, Read or Bash of its own in all 37. The 39 sessions of the first rule (the folder's
+  appendix `superseded-zero-call/`) made no Verinoda call at all; the five rule variants probed on the way (`probes/`) got 3, 4,
+  5, 1 and 6 of 6.
+- **The six tasks, three repeats each, judged (false-fact answers of 3; gold commit cited of 3).** fastapi why-1: 0 false, 546dc8b
+  cited 3 of 3, no absence asserted (D185: Verinoda arm 3 false and 0 cited, plain 2 and 1). fzf why-1: 0 false, 1578b7c3 cited 3
+  of 3 (D185: Verinoda arm 2 false and 1 cited, plain 0 and 1). axios when-1 and bat when-1: 0 false, the gold commit cited 3 of
+  3, as in D185. **guzzle trap-1: 3 of 3 false**, every answer naming b58db450 as the earliest commit of the string although every
+  `analyze` result listed 91f1e347 as the path-free first appearance of `MessageFormatter`: the model's own path-restricted `git
+  log -S` overrode the lead (D185: plain 3 of 3, the GUIDE arm 0 of 3; every answer still said the reason is unknown; backlog
+  row 22.8). gin trap-1: the judge finds no false claim; a hand reading finds 31323f6 named as where the constant was added (two
+  answers say "first") where the history starts at 15216a0, which no `analyze` result named because the model asked with the
+  post-rename name (backlog row 22.9). Over all 63 sessions the judge found an incorrect fact in 2 of 24 plain and 3 of 39 Verinoda
+  answers (the three guzzle ones); the study's primary measure shows no claim (-0.083, -0.208 to 0), and its blinding failed again
+  (69.8% of arms guessed). Citations: lenient plain 98.5%, Verinoda 99.0%; strict plain 78.8%, Verinoda 82.6% (D185's strict
+  figures above: 0.803 and 0.793; the strict "wrong" verdicts were not hand-checked). With 30 tasks, one repeat for most, and
+  2 false-fact answers in the plain arm, accuracy parity or a difference is not measurable from this run.
 
-<!-- TASK8: numbers from benchmarks/results/claims-rerun-2026-10-1x/ -->
-**Not run yet: the plan's verification runs.** The re-run of six D185 tasks (`fastapi__full-stack-fastapi-template-why-1`,
-`junegunn__fzf-why-1`, `guzzle__guzzle-trap-1`, `gin-gonic__gin-trap-1`, `axios__axios-when-1`, `sharkdp__bat-when-1`; the
-Verinoda arm, three repeats, the status rule as the guide text, the mod loaded, model `claude-sonnet-5-5`) and the cost sample (24
-answerable D185 tasks, one repeat, both arms: the paired mean dollar difference with its bootstrap interval, own model calls per
-arm, Verinoda characters per session, cache-write tokens per arm) are the plan's last task, with the eight sets and the verdict
-audit once more after D186. Their numbers go here, each with its results folder. The success rule was fixed before any session:
-the interval of the paired difference excludes +$0.015 (the modelled 1.1-1.2x holds) and Verinoda's output is at most 4,500
-characters per session; `show="lead"` stays off unless the Verinoda arm's own model calls are at least 1.5 below the plain arm's.
-Until then every statement about dollars in this section is modelled, and none about the accuracy of the redesigned tool with a
-model is a measurement.
-
-**Not measured, listed once.** The accuracy and the dollars of the redesigned tool with a model (the runs above); what a model
-does with the shorter instruction and skill text, and the text sizes on a real repository; whether the model's first Read follows
+**Not measured, listed once.** Accuracy parity or a difference with a model (the run above is too small, and it measures two
+configurations, not one change); what a model does with the shorter skill text; whether the model's first Read follows
 the first lead; the effect of `show="lead"`; the 60 s time-out and the ancestry walk on a 50,000-commit repository; `status`
 latency with `--no-optional-locks` on a stale-stat tree; the cost of one `resolve()` per file read in `span` and `source`; `http.followRedirects=false` against a live host; the eight-set headline and the
 clustering time on large graphs with Louvain (every result so far ran with Leiden; 3.4 s against 1.0 s on this repository is
