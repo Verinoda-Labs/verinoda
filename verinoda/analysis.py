@@ -1908,7 +1908,7 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
     names = {i["symbol"].strip(".()") for i in sub.items} | {Path(i["file"]).name for i in sub.items}
     files = {i["file"] for i in sub.items}
     terms = _decision_terms(ctx, sub)
-    found = False
+    found = found_doc = False   # found_doc: a decision document was cited (its intent may have aged, below)
     why_not = None   # why the symbol's commits could not be read, for the unknown
     for dec in hv["decisions"]:
         text = "\n".join(am._read(repo, dec["doc"]))
@@ -1943,7 +1943,7 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
                           uncertainties=[f"matched only because the document names {what}; it may not state the "
                                          "reason that was asked about"])
         if c is not None:
-            found = True
+            found = found_doc = True
     leads: list[str] = []   # commits that changed the lines without stating the reason: one line each, to open
     own_words = {tn.fold_tr(w).lower() for n in names for w in [n, *tn.split_identifier(n)]}
     topic = [t for t in terms if t not in own_words]   # the question's words that are not the subject's own name
@@ -1995,7 +1995,7 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
                                    + (f" ({why_not})" if why_not else ""),
                             "next_step": "search issue tracker/PR discussion; or `verinoda research <reference>` "
                                          "if the design follows an external reference"})
-    elif found:
+    elif found_doc:   # a commit message is dated by itself; a document is not (D185: this fired with no document 75 times)
         _unknown(ctx, sub, {"question": "is the recorded rationale still the actual reason?",
                             "why": "documents state intent, not current behaviour",
                             "next_step": "compare with code via `verinoda challenge <claim>`"})
@@ -2829,14 +2829,18 @@ def _asks_when_runs(sq: dict) -> bool:
 
 def answer_claims(sq: dict, claims: list[dict], flags: dict | None = None) -> list[str]:
     """The claims that answer a sub-question, strongest first: of a kind its ``done_when`` asks for,
-    about its subject (not ``off_subject`` context), not stale, contradicted or unknown."""
+    about its subject (not ``off_subject`` context), not stale, contradicted or unknown, and not set aside by
+    the verdict gate (``weak``: a commit line for a why, a definition for a usage question), unless the gate
+    only found it in a copy of the code (``weak_copy``: the answer, with inference). A reader takes the list
+    as the answer; a claim that cannot make the verdict is context (D185)."""
     _kind, _min, kinds = _verdict_kinds(sq, flags)
     off = set((flags or {}).get("off_subject") or [])
-    ans = [c for c in claims if c.get("kind") in kinds and c["id"] not in off
+    aside = set((flags or {}).get(verdict_gate.WEAK) or []) - set((flags or {}).get(verdict_gate.WEAK_COPY) or [])
+    ans = [c for c in claims if c.get("kind") in kinds and c["id"] not in off and c["id"] not in aside
            and c.get("status") in _RANK and c["status"] not in ("unknown", "stale", "contradicted")]
     exclusive = ((flags or {}).get("exclusive") or {}).get("answer")
     if exclusive:  # "is X only called in Y?": what the only_in engine found answers, the rest is context
-        ans = [c for c in claims if c["id"] in set(exclusive)
+        ans = [c for c in claims if c["id"] in set(exclusive) and c["id"] not in aside
                and c.get("status") in _RANK and c["status"] not in ("unknown", "stale", "contradicted")]
     def in_tests(c: dict) -> bool:  # the product's own code first (a caller in the API before one in a test)
         subs = c.get("subjects") or []

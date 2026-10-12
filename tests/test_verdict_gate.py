@@ -160,6 +160,17 @@ def test_weak_claims_never_make_a_subquestion_met():
     assert analysis.judge(sq, rows, {"capped": ["callers: 3 call sites unresolved"]}) == "met_with_inference"
 
 
+def test_weak_claims_are_not_listed_as_answers():
+    # the answer list is what a reader takes as the answer; a claim the gate set aside is context (D185 listed the
+    # two weak commit lines of the fastapi why as answers)
+    sq = {"id": "q1", "intent": "locate"}
+    rows = [_claim("c1", "location"), _claim("c2", "location")]
+    assert analysis.answer_claims(sq, rows, {}) == ["c1", "c2"]
+    assert analysis.answer_claims(sq, rows, {"weak": ["c1"]}) == ["c2"]
+    assert analysis.answer_claims(sq, rows, {"weak": ["c1", "c2"]}) == []
+    assert analysis.answer_claims(sq, rows, {"weak": ["c1", "c2"], "weak_copy": ["c2"]}) == ["c2"]  # a copy answers
+
+
 def test_the_gate_never_raises_a_verdict():
     level = {"met": 3, "met_with_inference": 2}
     sqs = [{"id": "q1", "intent": i} for i in ("locate", "callers", "why", "config", "flow", "architecture")]

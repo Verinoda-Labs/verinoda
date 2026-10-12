@@ -118,6 +118,7 @@ def test_a_why_reads_past_the_three_newest_commits_and_ties_the_reason_to_the_qu
     answers = [c for c in res["claims"] if c["id"] in s["answer_claim_ids"]]
     assert any("count-based expiry" in c["text"] for c in answers)          # the fourth commit, past the old limit of 3
     assert not any("ensure clarity" in c["text"] for c in answers)         # a reason word about another topic: a lead
+    assert not any("documents state intent" in u["why"] for u in res["unknowns"])  # no document was cited
 
 
 def test_a_why_with_no_stated_reason_is_unanswered_and_lists_the_commits_as_leads(tmp_path):
