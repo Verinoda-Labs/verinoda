@@ -167,6 +167,25 @@ def test_both_arms_get_the_same_stance_and_only_the_guided_arm_the_guide():
     assert guided.startswith(plain) and guided.endswith(run_mod.GUIDE)
 
 
+def test_guide_text_from_config_replaces_the_default():
+    # the re-runs of D186 give the Verinoda arm the one status rule instead of the study's guide paragraph; the measured
+    # GUIDE constant stays what the first run used
+    t = _task()
+    copy = Path("C:/w/copies/x/verinoda_guided/r1")
+    guided = run_mod.prompt_for(t, copy, "verinoda_guided", {"guide_text": "RULE: lead, not answer."})
+    assert guided.endswith("RULE: lead, not answer.") and run_mod.GUIDE not in guided and run_mod.STANCE in guided
+    assert run_mod.prompt_for(t, copy, "none", {"guide_text": "RULE"}) == run_mod.prompt_for(t, copy, "none")
+    assert run_mod.prompt_for(t, copy, "verinoda_guided", {}).endswith(run_mod.GUIDE)
+
+
+def test_flags_set_the_tasks_the_repeats_the_arms_and_the_pilot():
+    cfg = run_mod.apply_flags({"arms": ["none", "verinoda_guided"], "repeats": 3},
+                              ["--tasks", "a,b", "--repeats", "2", "--arms", "verinoda_guided"])
+    assert cfg["only"] == ["a", "b"] and cfg["repeats"] == 2 and cfg["arms"] == ["verinoda_guided"] and not cfg.get("pilot")
+    assert run_mod.apply_flags({"arms": ["none"]}, ["--pilot"])["pilot"] is True
+    assert run_mod.apply_flags({"arms": ["none"], "repeats": 3}, [])["repeats"] == 3
+
+
 def test_session_argv_pins_the_model_the_tools_and_the_turn_limit():
     cfg = {"model": "claude-sonnet-5-5", "claude": "claude", "plugin_dir": "P"}
     argv = run_mod.session_argv("q", "none", Path("C:/w"), cfg)
@@ -234,6 +253,49 @@ def test_check_citation_grades_location_and_commit(tmp_path):
     assert score_mod.check_citation(com, "Recovery was added in 1999", tmp_path) == "wrong"
     assert score_mod.check_citation({**com, "hash": "deadbee"}, claim, tmp_path) == "missing"
     assert score_mod.check_citation({**com, "hash": "abc12"}, claim, tmp_path) == "missing"
+
+
+strict_mod = _load("claims_mech_strict")
+
+
+def test_the_strict_check_wants_whole_words_on_the_cited_lines_and_no_question_identifiers(tmp_path):
+    # the first run's check kept 77 of 150 location citations moved by 60 lines "confirmed" (D185 README): a substring of
+    # a neighbouring name within a window of lines was enough. The strict check reads the cited lines only, whole words.
+    body = ["package gin", "", "func Recovery() {}"] + [""] * 59 + ["func RecoveryWithWriter() {}"] + [""] * 30
+    _git_repo(tmp_path, filename="gin.go", content="\n".join(body) + "\n", message="add Recovery middleware")
+    claim = "`Recovery` is defined here"
+    loc = {"kind": "location", "raw": "gin.go:3", "path": "gin.go", "line": 3, "end": None, "hash": None}
+    assert strict_mod.check_citation_strict(loc, claim, tmp_path) == "confirmed"
+    assert strict_mod.check_citation_strict({**loc, "line": 63}, claim, tmp_path) == "wrong"   # RecoveryWithWriter is not Recovery
+    assert score_mod.check_citation({**loc, "line": 63}, claim, tmp_path) == "confirmed"       # the lenient check's gap
+    assert strict_mod.check_citation_strict({**loc, "line": 5}, claim, tmp_path) == "wrong"    # line 5 is blank: no window
+    assert strict_mod.check_citation_strict({**loc, "line": 999}, claim, tmp_path) == "missing"
+    assert strict_mod.check_citation_strict({**loc, "path": ".verinoda/x"}, claim, tmp_path) == "not_repo"
+
+
+def test_the_strict_check_rejects_a_swapped_commit_and_a_misquoted_subject(tmp_path):
+    import subprocess
+
+    sha1 = _git_repo(tmp_path, filename="gin.go", content="func Recovery() {}\n", message="add Recovery middleware")
+    (tmp_path / "b.go").write_text("func RecoveryHandler() {}\n", encoding="utf-8")
+    who = ["-c", "user.name=t", "-c", "user.email=t@t"]
+    subprocess.run(["git", *who, "add", "b.go"], cwd=tmp_path, check=True)
+    subprocess.run(["git", *who, "commit", "-q", "-m", "rename things"], cwd=tmp_path, check=True)
+    sha2 = subprocess.run(["git", "rev-parse", "--short=8", "HEAD"], cwd=tmp_path, capture_output=True, text=True, check=True).stdout.strip()
+    com = {"kind": "commit", "raw": sha1, "path": None, "line": None, "end": None, "hash": sha1}
+    assert strict_mod.check_citation_strict(com, "`Recovery` was added in this commit", tmp_path) == "confirmed"
+    swapped = {**com, "raw": sha2, "hash": sha2}
+    assert strict_mod.check_citation_strict(swapped, "`Recovery` was added in this commit", tmp_path) == "wrong"  # RecoveryHandler
+    assert score_mod.check_citation(swapped, "`Recovery` was added in this commit", tmp_path) == "confirmed"      # the lenient gap
+    assert strict_mod.check_citation_strict(com, 'the commit "rename things" added `Recovery`', tmp_path) == "wrong"  # misquoted
+    assert strict_mod.check_citation_strict(com, 'the commit "add Recovery middleware" added `Recovery`', tmp_path) == "confirmed"
+
+
+def test_mechanical_strict_scores_a_row_without_the_questions_identifiers(tmp_path):
+    _git_repo(tmp_path, filename="gin.go", content="package gin\n\nfunc Recovery() {}\n", message="add Recovery middleware")
+    row = {"id": "t", "arm": "none", "repeat": 1, "answer": "The middleware is wired at gin.go:1."}
+    m = strict_mod.mechanical_strict(row, tmp_path)
+    assert m["citations"][0]["verdict"] == "wrong" and m["check"] == "strict"
 
 
 def test_neutralize_hides_the_tool_words():

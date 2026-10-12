@@ -1,11 +1,12 @@
 """Run the false-claims study (DESIGN_CLAIMS.md): one headless Claude Code session per task, arm and repeat, each asked a
 why / when / what-it-affects question about a pinned real-world repository; the session's final answer is what is scored.
 
-    python benchmarks/agent_compare/claims_run.py CONFIG.json [--pilot]
+    python benchmarks/agent_compare/claims_run.py CONFIG.json [--pilot] [--tasks id,id] [--repeats N] [--arms a,b]
 
 CONFIG: {"work": WORK_DIR, "model": "claude-sonnet-5-5", "plugin_dir": the mod, "mod_options": {"auto": "nudge"},
 "verinoda_bin": [dirs put on PATH in the Verinoda arm], "drop_path": [dirs taken off PATH], "arms": ["none", "verinoda_guided"],
-"arm_workers": {arm: n}, "timeout_s": s, "max_turns": n, "repeats": 3, "pilot": bool, "only": [task ids] (optional)}.
+"arm_workers": {arm: n}, "timeout_s": s, "max_turns": n, "repeats": 3, "pilot": bool, "only": [task ids] (optional),
+"guide_text": the Verinoda arm's paragraph in place of GUIDE (optional; the D186 re-runs)}.
 ``--pilot`` (or ``"pilot": true``) runs the first 8 tasks of the fixed order once per arm. Layout: ``WORK/clones/<owner>__<name>``
 (full clones), ``WORK/copies/<task>/<arm>/r<repeat>`` (shared clones, one per session), ``WORK/usage/`` (the Verinoda arm's
 per-call usage logs, D178), ``WORK/results.jsonl`` (one row per session; resumable on task, arm and repeat).
@@ -47,9 +48,26 @@ PLAIN, GUIDED = "none", "verinoda_guided"
 PILOT_N = 8
 
 
-def prompt_for(task: dict, copy: Path, arm: str) -> str:
+def prompt_for(task: dict, copy: Path, arm: str, cfg: dict | None = None) -> str:
+    """The session's prompt: both arms get the stance; the Verinoda arm gets the guide too - the study's paragraph, or the
+    text ``cfg["guide_text"]`` names (the D186 re-runs give the one status rule instead; GUIDE stays what the first run used)."""
     text = f"Repository: {task['repo']} at {copy.as_posix()}.\n\nQuestion: {task['question']}\n\n{STANCE}"
-    return f"{text}\n\n{GUIDE}" if arm == GUIDED else text
+    guide = (cfg or {}).get("guide_text") or GUIDE
+    return f"{text}\n\n{guide}" if arm == GUIDED else text
+
+
+def apply_flags(cfg: dict, argv: list[str]) -> dict:
+    """The command line's choices over the config: ``--pilot``, ``--tasks id,id`` (the ``only`` filter), ``--repeats N``,
+    ``--arms a,b``. Returns the same dict, updated."""
+    if "--pilot" in argv:
+        cfg["pilot"] = True
+    if "--tasks" in argv:
+        cfg["only"] = [x for x in argv[argv.index("--tasks") + 1].split(",") if x]
+    if "--repeats" in argv:
+        cfg["repeats"] = int(argv[argv.index("--repeats") + 1])
+    if "--arms" in argv:
+        cfg["arms"] = [x for x in argv[argv.index("--arms") + 1].split(",") if x]
+    return cfg
 
 
 def tools_for(arm: str) -> str:
@@ -161,7 +179,8 @@ def one(cfg: dict, task: dict, arm: str, repeat: int) -> dict:
     if arm == GUIDED:
         usage_log.parent.mkdir(parents=True, exist_ok=True)
         env["VERINODA_USAGE_LOG"] = str(usage_log)
-    rc, out, err, secs = run(session_argv(prompt_for(task, copy, arm), arm, copy, cfg), copy, env, timeout=cfg.get("timeout_s", 1200))
+    rc, out, err, secs = run(session_argv(prompt_for(task, copy, arm, cfg), arm, copy, cfg), copy, env,
+                             timeout=cfg.get("timeout_s", 1200))
     try:
         rep = json.loads(out)
     except ValueError:
@@ -183,9 +202,7 @@ def one(cfg: dict, task: dict, arm: str, repeat: int) -> dict:
 
 
 def main() -> int:
-    cfg = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-    if "--pilot" in sys.argv[2:]:
-        cfg["pilot"] = True
+    cfg = apply_flags(json.loads(Path(sys.argv[1]).read_text(encoding="utf-8")), sys.argv[2:])
     work = Path(cfg["work"])
     work.mkdir(parents=True, exist_ok=True)
     tasks = load_tasks(REPO_ROOT / "benchmarks" / "agent_compare" / "claims_tasks.json")
