@@ -446,3 +446,20 @@ describe('pane', () => {
     expect(await pane.find({ text: /^u güncelle · 1-3 bağlam · r inceleme · k kontrol$/ })).toBeDefined()
   })
 })
+
+describe('the MCP server tools in front', () => {
+  // the agent studies found a tool the model must first look up (deferred behind ToolSearch) is not called: 0 of 286
+  // sessions with the tools deferred, 51 of 63 with `locate` listed in front; and the ToolSearch turn itself costs a
+  // model call (D186). The server's core tools are placed in the prompt's list; their descriptions are the server's.
+  test('analyze, project_query and run_tool are listed, not deferred, with the engine description kept', async ($, on) => {
+    mock.clock(on)
+    mock.store(on)
+    world(on)
+    await $.session.start(START)
+    for (const tool of ['mcp__verinoda__analyze', 'mcp__verinoda__project_query', 'mcp__verinoda__run_tool']) {
+      const d = await $.tool.describe({ tool, description: 'engine text', isDeferred: true } as never) as { isDeferred?: boolean; description: string }
+      expect(d.isDeferred).toBe(false)
+      expect(d.description).toBe('engine text')
+    }
+  })
+})

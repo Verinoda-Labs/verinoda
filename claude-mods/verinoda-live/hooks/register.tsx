@@ -79,6 +79,8 @@ const ANCHORS_MAX = 5
 const COUPLED_BUDGET = 6 // notes about a file's partners, per session: each is a lookup and a few hundred tokens
 const TASK_MIN_CHARS = 40 // a prompt shorter than this is not a task to locate
 const ASSIST_TOOL = (name: string) => `mcp__verinoda-live__${name}`
+// the Verinoda MCP server's listed tools (its core profile), as the model names them
+const MCP_CORE_TOOLS = ['mcp__verinoda__analyze', 'mcp__verinoda__project_query', 'mcp__verinoda__run_tool'] as const
 
 const CHECKING: IndexState = { kind: 'checking', n: 0, waiting: false, since: null, at: null, error: '' }
 
@@ -894,6 +896,10 @@ export const register: Register = (on, options) => {
     const spec = TOOL_SPECS.find(s => ASSIST_TOOL(s.name) === e.tool)
     return { description: spec?.description ?? e.description, isDeferred: false }
   })
+
+  // The server's core tools likewise (D186): deferred, they were called in 0 of 286 sessions, and the ToolSearch turn
+  // that loads them costs a model call; listed in front, `locate` was called in 51 of 63. The descriptions stay the server's.
+  on('tool.describe', { tool: [...MCP_CORE_TOOLS] }, ($, e) => ({ description: e.description, isDeferred: false }))
 
   on('prompt.compose', async ($, e, next) => {
     const out = await next(e)
