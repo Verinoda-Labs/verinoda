@@ -20,12 +20,13 @@ Out of scope here: a `for (const x of xs)` loop variable not wrapped in a
 computation, already addressed by #1985 — not retested here to avoid
 overlapping that diff.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 import os
 from pathlib import Path
 
-import networkx as nx
 
-from verinoda.project_index.affected import affected_nodes
 from verinoda.project_index.extract import extract
 
 
@@ -122,30 +123,6 @@ def test_tracked_const_arrow_param_shadow_still_emits_no_indirect_call(tmp_path)
     )})
     indirect = _rels(r, "indirect_call")
     assert all(t != nid["handler"] for _s, t in indirect)
-
-
-def test_affected_excludes_shadowed_untracked_closure_caller(tmp_path):
-    """Blast-radius traversal must not include a caller that only reached the
-    target through the fabricated edge this fix removes."""
-    r, nid = _extract_js_dir(tmp_path, {
-        "round.test.ts": "const r = (v) => Math.round(v);\n",
-        "report.ts": (
-            "export function buildSheet(rows, cols) {\n"
-            "  return rows.map((r) => {\n"
-            "    const o = {};\n"
-            "    for (const c of cols) o[c.label] = c.get(r);\n"
-            "    return o;\n"
-            "  });\n"
-            "}\n"
-        ),
-    })
-    g = nx.DiGraph()
-    for n in r["nodes"]:
-        g.add_node(n["id"], **n)
-    for e in r["edges"]:
-        g.add_edge(e["source"], e["target"], **e)
-    affected = {h.node_id for h in affected_nodes(g, nid["r"])}
-    assert nid["buildSheet"] not in affected
 
 
 def test_untracked_arrow_param_shadow_stable_on_warm_cache(tmp_path):

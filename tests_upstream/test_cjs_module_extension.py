@@ -13,6 +13,9 @@ regression locks for the extension sets plus an end-to-end extraction proving
 Same shape of gap (and fix) as `.mts`/`.cts` in
 tests/test_typescript_module_extensions.py.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 from __future__ import annotations
 
 from pathlib import Path
@@ -41,11 +44,6 @@ def test_cjs_in_js_resolution_sets():
     from verinoda.project_index.extract import _JS_CACHE_BYPASS_SUFFIXES, _JS_RESOLVE_EXTS
     assert ".cjs" in _JS_RESOLVE_EXTS
     assert ".cjs" in _JS_CACHE_BYPASS_SUFFIXES
-
-
-def test_cjs_in_hook_source_exts():
-    from verinoda.project_index.cli import _HOOK_SOURCE_EXTS
-    assert ".cjs" in _HOOK_SOURCE_EXTS
 
 
 # A representative CommonJS source: require() imports, a class, a function, and

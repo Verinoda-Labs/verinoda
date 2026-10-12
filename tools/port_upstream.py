@@ -8,6 +8,13 @@ upstream test-suite to `tests_upstream/`, rewriting only module paths
 name used for version lookups. Everything else is copied byte-for-byte so a
 future upstream sync is a re-run of this script plus a review of the diff.
 The upstream commit is recorded in `verinoda/project_index/UPSTREAM_COMMIT`.
+
+The upstream surface no Verinoda command reaches is not shipped (D186): after
+the copy, the modules and data files in `DELETED` leave again, and so does every
+upstream test that imports one of them, runs the upstream CLI or uses a name the
+kept modules lost with them (the names are printed; a test file that mixes such
+tests with others is deleted whole here and trimmed by hand afterwards,
+docs/UPSTREAM.md lists which).
 """
 
 from __future__ import annotations
@@ -22,16 +29,41 @@ REPO = Path(__file__).resolve().parent.parent
 NEW_PKG = "verinoda.project_index"
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache")
 
+# D186: the upstream CLI (`graphify ...` / `python -m graphify`), its installer, hooks and skill files, the
+# modules only that CLI reached, and the LLM, PR and media layer. Deleted after every copy; the tests that
+# exercise them go with them. Kept modules that imported one carry a "Verinoda patch (D186)" at the edit.
+DELETED_MODULES = (
+    "cli", "__main__", "install", "hooks", "tree_html", "diagnostics", "wiki", "scip_ingest", "semantic_cleanup",
+    "affected", "cross_repo_calls", "cross_repo_types", "multigraph_compat", "global_graph", "pg_introspect",
+    "benchmark", "cargo_introspect", "manifest",
+    "llm", "prs", "transcribe", "google_workspace", "callflow_html",
+)
+DELETED = (  # globs under verinoda/project_index
+    *(f"{m}.py" for m in DELETED_MODULES), "exporters/graphdb.py", "skill*.md", "command-kilo.md", "skills",
+    "always_on",
+)
+_DELETED_NAMES = "|".join(map(re.escape, DELETED_MODULES))
+_TEST_OF_DELETED = re.compile(
+    rf"verinoda\.project_index\.({_DELETED_NAMES}|exporters\.graphdb)\b"
+    rf"|from verinoda\.project_index import [^\n]*\b({_DELETED_NAMES})\b"
+    # the names the kept modules lost with them, used by tests that import nothing deleted: export.py's
+    # re-export of the graph-database pushers, detect.py's Google Workspace conversion and its
+    # `google_workspace=` parameter, the `dedup_llm_backend=` of dedup.py and build.py
+    r"|\bpush_to_(falkordb|neo4j)\b|google_workspace|\bdedup_llm_backend\b"
+    # the upstream CLI, the skill bodies and their generator (as a module path or as path parts)
+    r'|"-m",\s*"verinoda\.project_index"|-m verinoda\.project_index\b|project_index/skill|\bskillgen\b',
+)
+# tests of the removed surface that import none of it: upstream's own ARCHITECTURE.md table (kept verbatim
+# under docs/upstream/) names symbols of the deleted modules
+DELETED_TESTS = ("test_architecture_doc.py",)
+# upstream's conftest clears the LLM backends' environment through llm.py before every test
+_LLM_FIXTURE = re.compile(r"\n@pytest\.fixture\(autouse=True\)\ndef _isolate_backend_env\(.*?\n(?=\n\S)",
+                          re.DOTALL)
+
 
 PORT_CONFTEST = '''
 
 # --- Verinoda port adjustments (appended by tools/port_upstream.py) --------
-# test_skillgen.py regenerates upstream's own skill bodies and audits them
-# against blobs from upstream's git history (`git show <sha>:graphify/...`).
-# That history does not exist in this repository, and those skill bodies are
-# not Verinoda's product skills, so the suite is excluded (docs/UPSTREAM.md).
-collect_ignore = ["test_skillgen.py"]
-
 _PORT_DIVERGENT = {
     # Upstream's installer compares the skill stamp to the *graphifyy* version
     # line (0.8.x/0.9.x). Verinoda ships as 0.1.x, so the "stale skill"
@@ -115,25 +147,21 @@ def port(src: Path) -> str:
             new = rewrite(old, mods, is_test=is_test)
             if new != old:
                 f.write_text(new, encoding="utf-8", newline="")
-    # Upstream repo-level files some upstream tests read.
-    for rel in ("tools/skillgen", "tools/__init__.py"):
-        s, d = src / rel, REPO / rel
-        if d.exists():
-            shutil.rmtree(d) if d.is_dir() else d.unlink()
-        (shutil.copytree(s, d, ignore=IGNORE) if s.is_dir() else shutil.copy2(s, d))
-    for rel in ("tools/skillgen",):
-        for f in (REPO / rel).rglob("*.py"):
-            old = f.read_text(encoding="utf-8")
-            new = rewrite(old, mods, is_test=True)
-            if new != old:
-                f.write_text(new, encoding="utf-8", newline="")
+    for pattern in DELETED:
+        for p in dst_pkg.glob(pattern):
+            shutil.rmtree(p) if p.is_dir() else p.unlink()
+    for f in sorted(dst_tests.glob("test_*.py")):
+        if f.name in DELETED_TESTS or _TEST_OF_DELETED.search(f.read_text(encoding="utf-8")):
+            f.unlink()
+            print(f"deleted {f.relative_to(REPO).as_posix()}: a test of the removed upstream surface")
     up = REPO / "docs" / "upstream"
     up.mkdir(parents=True, exist_ok=True)
     for name in ("ARCHITECTURE.md", "README.md", "CHANGELOG.md", "BENCHMARKS.md", "SECURITY.md"):
         shutil.copy2(src / name, up / name)
     shutil.copy2(src / "docs" / "how-it-works.md", up / "how-it-works.md")
     conftest = dst_tests / "conftest.py"
-    conftest.write_text(conftest.read_text(encoding="utf-8") + PORT_CONFTEST, encoding="utf-8")
+    text = _LLM_FIXTURE.sub("\n", conftest.read_text(encoding="utf-8"))
+    conftest.write_text(text + PORT_CONFTEST, encoding="utf-8")
     (dst_pkg / "UPSTREAM_COMMIT").write_text(sha + "\n", encoding="utf-8")
     return sha
 

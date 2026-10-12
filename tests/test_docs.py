@@ -1,8 +1,8 @@
 """The user-facing docs stay in step with the code they describe.
 
 Checks README.md and docs/{ARCHITECTURE,UPSTREAM,UPGRADING,DESIGN,GENEL-BAKIS}.md
-against the CLI parser, the package layout, the MCP tool list, the store schema,
-the blocked upstream commands and pyproject's extras. It does not check measured
+against the CLI parser, the package layout, the MCP tool list, the store schema
+and pyproject's extras. It does not check measured
 numbers: those are owned by docs/BENCHMARKS.md and its result files.
 """
 
@@ -112,16 +112,6 @@ def test_schema_version_and_mcp_tool_count_match_the_code():
     for name, text in (("ARCHITECTURE.md", arch), ("README.md", readme), ("UPGRADING.md", upg)):
         counts = {int(m) for m in re.findall(r"\b(\d+) tools\b", text)}
         assert counts == {n}, f"{name} states {counts} MCP tools, the server has {n}"
-
-
-def test_upstream_lists_every_blocked_pass_through_command():
-    from verinoda import cli
-
-    up = _text(DOCS / "UPSTREAM.md")
-    blocked = set(cli.UPSTREAM_BLOCKED) | set(cli.UPSTREAM_HOME_WRITERS) | set(cli.UPSTREAM_HOME_FLAGS)
-    missing = sorted(b for b in blocked if f"`{b}`" not in up)
-    assert not missing, f"UPSTREAM.md does not list blocked commands: {missing}"
-    assert "install_path_identity_memo" in up and "scip_ingest.py" in up
 
 
 def test_design_has_one_status_row_per_decision():

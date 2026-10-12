@@ -14,13 +14,15 @@ imports that exact symbol by name, there IS an edge into ``load()``. So the test
 pin the cases where nothing points at the enclosing symbol: a namespace import and a
 side-effect import. Those are the ones that were silent.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 from __future__ import annotations
 
 from pathlib import Path
 
 import networkx as nx
 
-from verinoda.project_index.affected import affected_nodes
 from verinoda.project_index.extract import _file_node_id, extract
 
 
@@ -64,11 +66,6 @@ def _fid(rel: str) -> str:
     return _file_node_id(Path(rel))
 
 
-def _reaches(graph: nx.DiGraph, seed: str, wanted: str, depth: int = 3) -> bool:
-    hits = affected_nodes(graph, _fid(seed), depth=depth)
-    return _fid(wanted) in {h.node_id for h in hits}
-
-
 def _file_edges(result: dict, source: str, target: str) -> list[dict]:
     return [
         e for e in result["edges"]
@@ -87,28 +84,6 @@ def test_dynamic_import_in_function_emits_a_file_level_edge(tmp_path: Path):
     # `imports_from`/`re_exports` — so the phantom file cycle of #1241 cannot come back
     # through this edge the way a second `imports_from` might.
     assert all(e["relation"] == "dynamic_import" for e in edges)
-
-
-def test_affected_reaches_through_a_side_effect_importer(tmp_path: Path):
-    """`import './dyn'` binds no symbol, so nothing points at the enclosing function."""
-    _, graph = _build(tmp_path, "import './dyn'\nexport const run = () => 1\n")
-
-    assert _reaches(graph, "src/target.ts", "src/dyn.ts", depth=1)
-    assert _reaches(graph, "src/target.ts", "src/top.ts", depth=3)
-
-
-def test_affected_reaches_through_a_namespace_importer(tmp_path: Path):
-    """`import * as ns` binds the module, not the function that defers the load."""
-    _, graph = _build(tmp_path, "import * as ns from './dyn'\nexport const run = () => ns.load()\n")
-
-    assert _reaches(graph, "src/target.ts", "src/top.ts", depth=3)
-
-
-def test_affected_reaches_when_importer_names_a_different_symbol(tmp_path: Path):
-    """`other` is a sibling export; the edge into `load()` that used to rescue this is absent."""
-    _, graph = _build(tmp_path, "import { other } from './dyn'\nexport const run = () => other\n")
-
-    assert _reaches(graph, "src/target.ts", "src/top.ts", depth=3)
 
 
 def test_call_site_precision_is_preserved(tmp_path: Path):

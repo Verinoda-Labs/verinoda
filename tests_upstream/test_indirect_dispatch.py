@@ -9,12 +9,13 @@ They also pin the soundness guards: an argument that is a PARAMETER or a LOCAL b
 enclosing function is a local value, not the module-level function it shares a name with, and a
 non-callable same-named node is never a dispatch target — neither may manufacture an edge.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 import os
 from pathlib import Path
 
-import networkx as nx
 
-from verinoda.project_index.affected import affected_nodes
 from verinoda.project_index.extract import extract, extract_python
 
 SRC = '''\
@@ -72,21 +73,6 @@ def test_emits_indirect_call_edges_and_keeps_calls_precise(tmp_path):
 
     for e in (e for e in r["edges"] if e["relation"] == "indirect_call"):
         assert e["context"] == "argument" and e["confidence"] == "INFERRED"
-
-
-def test_affected_includes_indirect_callers(tmp_path):
-    r, nid = _build(tmp_path)
-    g = nx.DiGraph()
-    for n in r["nodes"]:
-        g.add_node(n["id"], **n)
-    for e in r["edges"]:
-        g.add_edge(e["source"], e["target"], **e)
-
-    affected = {h.node_id for h in affected_nodes(g, nid["handler"])}
-    # blast radius of `handler` now includes the dispatchers it used to drop
-    assert nid["via_submit"] in affected
-    assert nid["via_thread"] in affected
-    assert nid["via_map"] in affected
 
 
 # ── Soundness: the guards that kill the PR's false positives ──────────────────
@@ -272,26 +258,6 @@ def test_cross_file_class_ref_is_not_indirect_call(tmp_path):
     assert all(t != nid["Widget"] for _s, t in indirect)
     # genuine imported function callback still emits its edge
     assert (nid["schedule"], nid["on_event"]) in indirect
-
-
-def test_cross_file_affected_includes_importing_dispatcher(tmp_path):
-    r, nid = _extract_dir(tmp_path, {
-        "handlers.py": "def on_event(x):\n    return x\n",
-        "scheduler.py": (
-            "from handlers import on_event\n\n\n"
-            "def schedule(pool):\n"
-            "    pool.submit(on_event)\n"
-        ),
-    })
-    g = nx.DiGraph()
-    for n in r["nodes"]:
-        g.add_node(n["id"], **n)
-    for e in r["edges"]:
-        g.add_edge(e["source"], e["target"], **e)
-    affected = {h.node_id for h in affected_nodes(g, nid["on_event"])}
-    # editing on_event now flags the cross-module dispatcher — the gap #1565
-    # left open (it only saw same-file callbacks).
-    assert nid["schedule"] in affected
 
 
 def test_cross_file_param_shadow_emits_no_indirect_call(tmp_path):

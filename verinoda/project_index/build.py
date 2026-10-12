@@ -1489,17 +1489,16 @@ def build(
     *,
     directed: bool = False,
     dedup: bool = True,
-    dedup_llm_backend: str | None = None,
     root: str | Path | None = None,
     protected_ids: "set[str] | None" = None,
 ) -> nx.Graph:
     """Merge multiple extraction results into one graph.
 
+    Verinoda patch (D186): no ``dedup_llm_backend``; the LLM tiebreak left with llm.py (docs/UPSTREAM.md).
+
     directed=True produces a DiGraph that preserves edge direction (source→target).
     directed=False (default) produces an undirected Graph for backward compatibility.
     dedup=True (default) runs entity deduplication before building the graph.
-    dedup_llm_backend: if set (e.g. "gemini", "claude", or "kimi"), uses LLM to resolve
-        ambiguous pairs in the 75–92 Jaro-Winkler score zone.
     root: if given, absolute source_file paths are made relative to root (#932).
     protected_ids: optional set of node IDs to protect from being collapsed with
         other protected nodes during incremental merge (#3477).
@@ -1542,7 +1541,7 @@ def build(
                     n["definition_file"] = _norm_source_file(n["definition_file"], _root)
         combined["nodes"], combined["edges"] = deduplicate_entities(
             combined["nodes"], combined["edges"], communities={},
-            dedup_llm_backend=dedup_llm_backend, root=_root,
+            root=_root,
             # Hyperedge members reference node ids too, so they need the same
             # survivor rewiring the edges get (#2805).
             hyperedges=combined.get("hyperedges"),
@@ -1880,7 +1879,6 @@ def build_merge(
     *,
     directed: bool | None = None,
     dedup: bool = True,
-    dedup_llm_backend: str | None = None,
     root: str | Path | None = None,
     ast_sources: "Iterable[str | Path] | None" = None,
 ) -> nx.Graph:
@@ -2145,7 +2143,6 @@ def build_merge(
         all_chunks,
         directed=directed,
         dedup=dedup,
-        dedup_llm_backend=dedup_llm_backend,
         root=_eff_root,
         protected_ids=_protected_ids,
     )

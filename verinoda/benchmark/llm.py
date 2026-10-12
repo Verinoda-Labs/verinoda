@@ -5,7 +5,7 @@ Runs only when all of these hold; otherwise every model field is reported as
 
 * ``llm == "anthropic"``;
 * ``ANTHROPIC_API_KEY`` is set;
-* the official ``anthropic`` SDK is importable (``pip install anthropic``).
+* the official ``anthropic`` SDK is importable (``pip install "verinoda[benchmark]"``).
 
 Token counts come from the API response ``usage``; cost is computed from
 :data:`PRICES` (USD per million tokens).
@@ -44,7 +44,7 @@ def status(llm: str) -> tuple[bool, str]:
     try:
         import anthropic  # noqa: F401  # type: ignore[import-not-found]
     except ImportError:
-        return False, "not measured: the `anthropic` package is not installed"
+        return False, "not measured: the `anthropic` package is not installed (`verinoda[benchmark]`)"
     return True, "measured"
 
 

@@ -7,9 +7,10 @@ diff never touched, and the #479 shrink guard — the one thing that would have
 caught it — is deliberately skipped while dedup is on, because fuzzy merging
 shrinks the graph legitimately. There was no way to opt out from the CLI.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 from __future__ import annotations
-
-import verinoda.project_index.__main__ as mainmod
 
 
 def _corpus(tmp_path):
@@ -17,17 +18,6 @@ def _corpus(tmp_path):
     corpus.mkdir()
     (corpus / "main.go").write_text("package main\nfunc main() {}\n")
     return corpus
-
-
-def _run(monkeypatch, argv):
-    """Run the CLI and return its exit code (0 when main() simply returns)."""
-    monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
-    monkeypatch.setattr(mainmod.sys, "argv", argv)
-    try:
-        mainmod.main()
-    except SystemExit as exc:
-        return exc.code or 0
-    return 0
 
 
 def _capture_dedup(monkeypatch):
@@ -71,62 +61,6 @@ def _assert_spied(seen: dict, entry_point: str) -> None:
         f"below it would be vacuous. Did the CLI's import of it move to module "
         f"scope, or did this run take a path that skips the build stage?"
     )
-
-
-def test_no_dedup_flag_disables_dedup(monkeypatch, tmp_path):
-    corpus = _corpus(tmp_path)
-    seen = _capture_dedup(monkeypatch)
-    code = _run(monkeypatch, [
-        "graphify", "extract", str(corpus), "--code-only",
-        "--no-dedup", "--out", str(tmp_path / "out"),
-    ])
-    assert code == 0
-    _assert_spied(seen, "build")
-    assert seen["build"] is False
-
-
-def test_dedup_is_on_by_default(monkeypatch, tmp_path):
-    corpus = _corpus(tmp_path)
-    seen = _capture_dedup(monkeypatch)
-    code = _run(monkeypatch, [
-        "graphify", "extract", str(corpus), "--code-only",
-        "--out", str(tmp_path / "out"),
-    ])
-    assert code == 0
-    _assert_spied(seen, "build")
-    assert seen["build"] is True
-
-
-def test_no_dedup_reaches_the_incremental_merge(monkeypatch, tmp_path):
-    corpus = _corpus(tmp_path)
-    out = tmp_path / "out"
-    # First run establishes graph.json, so the second run takes the
-    # build_merge (incremental) path rather than build().
-    assert _run(monkeypatch, [
-        "graphify", "extract", str(corpus), "--code-only",
-        "--out", str(out),
-    ]) == 0
-
-    (corpus / "other.go").write_text("package main\nfunc other() {}\n")
-    seen = _capture_dedup(monkeypatch)
-    assert _run(monkeypatch, [
-        "graphify", "extract", str(corpus), "--code-only",
-        "--no-dedup", "--out", str(out),
-    ]) == 0
-    _assert_spied(seen, "build_merge")
-    assert seen["build_merge"] is False, (
-        "the incremental path hardcoded dedup=True, which is the bug"
-    )
-
-
-def test_no_dedup_conflicts_with_dedup_llm(monkeypatch, tmp_path, capsys):
-    corpus = _corpus(tmp_path)
-    code = _run(monkeypatch, [
-        "graphify", "extract", str(corpus), "--code-only",
-        "--no-dedup", "--dedup-llm", "--out", str(tmp_path / "out"),
-    ])
-    assert code == 2
-    assert "mutually exclusive" in capsys.readouterr().err
 
 
 # ── graph-level behaviour (the invariant that makes --no-dedup safe) ─────────
