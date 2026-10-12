@@ -486,9 +486,16 @@ def cap_response(obj: dict, limit: int = MAX_RESPONSE_CHARS, *, first: tuple[str
     return obj
 
 
+# a history row, `sha date author subject` (verinoda.history, D186)
+_ROW_RX = re.compile(r"^([0-9a-f]{7,40}) (\d{4}-\d{2}-\d{2}) ")
+
+
 def _commit_sha(item: Any) -> str | None:
-    """The commit an item of a history list stands for: a commit row (``commit``) or a history claim whose
-    first evidence names ``commit_sha``; None for anything else."""
+    """The commit an item of a history list stands for: a commit row (``commit``), a row string (``sha date
+    ...``) or a history claim whose first evidence names ``commit_sha``; None for anything else."""
+    if isinstance(item, str):
+        m = _ROW_RX.match(item)
+        return m.group(1) if m else None
     if not isinstance(item, dict):
         return None
     sha = item.get("commit")
@@ -505,7 +512,10 @@ def _commit_list(node: list) -> bool:
     return len(node) >= 2 and all(_commit_sha(x) for x in node)
 
 
-def _commit_tag(item: dict) -> str:
+def _commit_tag(item: dict | str) -> str:
+    if isinstance(item, str):
+        m = _ROW_RX.match(item)
+        return f"{m.group(1)[:7]} {m.group(2)}" if m else item[:7]
     date = item.get("date")
     if not isinstance(date, str):
         ev = item.get("evidence")
@@ -650,18 +660,25 @@ class AtlasTools:
             )
 
     def _run(self, tool: str, fn: Callable[[], dict], *, need: str = "atlas",
-             first: tuple[str, ...] = (), keep: tuple[str, ...] = ()) -> dict:
-        with self._lock:
-            self._call_started_ns = time.time_ns()
-            try:
+             first: tuple[str, ...] = (), keep: tuple[str, ...] = (), lock: bool = True) -> dict:
+        # lock=False (D186): a read that touches only git and the loaded graph (history_search) is not held up by a
+        # build of this or another project in the process. The stdout redirection goes with the lock: it is
+        # process-wide too (two threads swapping sys.stdout can leave it on either stream), and such a read calls
+        # nothing that prints. Its start time is not noted either: the racy-file check of the locked call it may
+        # overlap with keeps the earlier, stricter start.
+        with contextlib.ExitStack() as stack:
+            if lock:
+                stack.enter_context(self._lock)
                 # Stray prints from core/vendored code must never reach the
                 # JSON-RPC channel on stdout.
-                with contextlib.redirect_stdout(sys.stderr):
-                    self._check(need)
-                    res = fn()
-                    if not isinstance(res, dict):
-                        res = {"result": res}
-                    return cap_response(res, self.max_chars, first=first, keep=keep)
+                stack.enter_context(contextlib.redirect_stdout(sys.stderr))
+                self._call_started_ns = time.time_ns()
+            try:
+                self._check(need)
+                res = fn()
+                if not isinstance(res, dict):
+                    res = {"result": res}
+                return cap_response(res, self.max_chars, first=first, keep=keep)
             except ToolFailure as f:
                 return cap_response({**f.as_dict(), "tool": tool}, self.max_chars)
             except KeyError as exc:
@@ -1250,7 +1267,8 @@ class AtlasTools:
                 res.setdefault("next_step", "fewer filters, no path, or a shorter text; regex=true matches "
                                             "changed lines")
             return res
-        return self._run("history_search", go, keep=("status", "claims", "unknowns", "appeared", "disappeared"))
+        return self._run("history_search", go, keep=("status", "scope", "more", "appeared", "disappeared", "claims"),
+                         lock=False)
 
     def map_view(self, view: str, targets: list[str] | None = None) -> dict:
         def go():
@@ -2470,11 +2488,13 @@ DESCRIPTIONS: dict[str, str] = {
         "evaluated; a path that ends at a method nothing calls is an entry point or dead code."),
     "history_search": (
         "Git history. With text: the commit that first added it and, when HEAD has none, the one that last "
-        "removed it, each a claim with the commit as evidence and file:line (regex=true: a pattern over changed "
-        "lines). Without text: commits by message, author, path, since/until dates and diff content (a regex), "
-        "newest first. With base: what head (default HEAD) has that base has not - commits and changed files. "
-        "With symbol (a name or path:A-B): the commits that changed its lines, each message quoted. "
-        "Regexes are git's (POSIX extended). A parameter of another mode is an error."),
+        "removed it, claims with the commit as evidence and file:line (regex=true: a pattern over changed lines); "
+        "a text born in another file is said so. Without text: commits by message, author, path, since/until "
+        "dates and diff content (a regex), newest first. With base: what head (default HEAD) has that base has "
+        "not. With symbol (a name or path:A-B): one row per commit that changed its lines, newest first, the "
+        "message bodies of both ends and of any stating a reason quoted. scope says what was searched; more: "
+        "raise limit; a time-out answers status partial. Regexes are git's (POSIX extended). A parameter of "
+        "another mode is an error."),
     "map_view": (
         "One architecture view: hierarchy, dependencies, dataflow, config, tests, history, impact "
         "(dependents of targets; default the working-tree changes), cycles (file dependency cycles and the "
@@ -2962,7 +2982,8 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
         message: Annotated[OptStr, Field(description="Without text: a regex the commit message matches.")] = None,
         author: Annotated[OptStr, Field(description="Without text: a regex the author's name or e-mail matches.")]
         = None,
-        path: Annotated[OptStr, Field(description="Only the history of this file or folder.")] = None,
+        path: Annotated[OptStr, Field(description="A literal file or folder prefix, not a glob; one file path "
+                                                  "follows renames.")] = None,
         since: Annotated[OptStr, Field(description="Commits after this date ('2026-01-31', '2 weeks ago').")] = None,
         until: Annotated[OptStr, Field(description="Commits before this date.")] = None,
         diff: Annotated[OptStr, Field(description="Commits whose added or removed lines match this regex.")] = None,

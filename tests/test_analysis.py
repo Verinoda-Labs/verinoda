@@ -132,8 +132,10 @@ def test_a_why_with_no_stated_reason_is_unanswered_and_lists_the_commits_as_lead
     (s,) = res["subquestions"]
     assert s["status"] == "unmet" and res["status"] == "unanswered"
     u = next(x for x in res["unknowns"] if "the reason was not found" in x["why"])
-    assert len(u["commits"]) == 4 and all(re.match(r"^[0-9a-f]{7,10} \d{4}-\d{2}-\d{2} ", c) for c in u["commits"])
+    assert len(u["commits"]) == 5 and all(re.match(r"^[0-9a-f]{7,10} \d{4}-\d{2}-\d{2} ", c) for c in u["commits"][:4])
     assert u["commits"][0].endswith("polish the docstring to ensure clarity")  # newest first, git's order
+    assert u["commits"][4].startswith("first appearance of `PriceCache`: ")     # the term's path-free birth (D186)
+    assert "4 commit(s) changed these lines" in u["why"]
     assert "git show" in u["next_step"] and "history_search" in u["next_step"]
 
 
@@ -1473,3 +1475,53 @@ def test_the_claims_that_answer_come_first(proj):
     assert "create_order_handler" in res["claims"][0]["text"]  # the product's own caller, before the tests
     res = analysis.analyze(st, repo, "Where is an order written to the database?")
     assert "orders/repository.py:17" in res["claims"][0]["text"]  # the INSERT, not a settings loader
+
+
+def test_a_why_with_no_stated_reason_adds_the_terms_first_appearance_as_a_lead(tmp_path):
+    """The path-free first appearance of the question's code term joins the leads (D186): a why whose commits state
+    no reason, and a when-question of the form "when was X added"; never a claim, and not for another when-form,
+    where the term's first appearance predates the change asked about."""
+    repo = _why_repo(tmp_path, with_reason=False)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+        u = next(x for x in res["unknowns"] if "the reason was not found" in x["why"])
+        born = [c for c in u["commits"] if c.startswith("first appearance of `PriceCache`: ")]
+        assert len(born) == 1 and born[0].endswith(" add the price cache (path-free)")
+        assert re.match(r"^first appearance of `PriceCache`: [0-9a-f]{10} \d{4}-\d{2}-\d{2} ", born[0])
+        assert not any("first appearance" in c["text"] for c in res["claims"])
+        res = analysis.analyze(st, repo, "When was PriceCache added?")
+        lead = next(x for x in res["unknowns"]
+                    if any(c.startswith("first appearance of `PriceCache`: ") for c in x.get("commits") or []))
+        assert "lead" in lead["why"] and "git show" in lead["next_step"]
+        assert not any("first appearance" in c["text"] for c in res["claims"])
+        res = analysis.analyze(st, repo, "When did PriceCache start keeping prices in a dict?")
+        assert not any("first appearance" in c for x in res["unknowns"] for c in x.get("commits") or [])
+    finally:
+        st.close()
+
+
+def test_a_why_whose_symbol_history_times_out_is_not_a_tool_error(tmp_path, monkeypatch):
+    """Review focus 2 of D186: git log -L over the symbol's lines exceeds VERINODA_MCP_GIT_TIMEOUT -> the analysis
+    completes, the unknown says what timed out and how to go on; no exception, no error result."""
+    from verinoda import gitexec
+
+    repo = _why_repo(tmp_path, with_reason=True)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        real = gitexec.run
+
+        def slow_log(repo_, *args, **kw):   # the -L, -S and -G reads over a whole history: the ones the budget is for
+            if "log" in args and any(a.startswith(("-L", "-S", "-G")) for a in args):
+                return gitexec.GitResult(124, "", "git log timed out after 60 s", timed_out=True)
+            return real(repo_, *args, **kw)
+
+        monkeypatch.setattr(gitexec, "run", slow_log)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+        assert res["status"] in analysis.DONE_STATUSES and "error" not in res
+        u = next(x for x in res["unknowns"] if "timed out" in x["why"])
+        assert "VERINODA_MCP_GIT_TIMEOUT" in u["next_step"]
+    finally:
+        st.close()

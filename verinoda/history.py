@@ -16,8 +16,16 @@ commits) leaves the first appearance unproven, so that claim is ``strong_inferen
 regular expression is git's (POSIX extended) throughout: git selects the commits with it and ``git grep`` picks
 the changed lines it matches, so the two never disagree and no pattern is matched in this process.
 
+Where git is blind with a path (D186): a path that names one file is followed across renames (``--follow``), so
+a one-for-one change before a move is found; a first event that created the file, or an older path-free commit,
+is checked against :func:`oldest_appearance` (the whole history, oldest first), and the claim says what it found
+(``earlier_elsewhere``). A read that exceeds :data:`GIT_TIMEOUT` (``VERINODA_MCP_GIT_TIMEOUT``) answers
+``status: partial`` with what was searched and the next call, never a bare error. Every result states its
+``scope`` (what was searched, what was not) and ``more`` (the tool's own limit was reached).
+
 When the project is a folder of its git repository, every search stays inside that folder and every path is
-relative to it (``--relative``), as the index's paths are.
+relative to it (``--relative``), as the index's paths are. A path is a literal file or folder prefix
+(``--literal-pathspecs``: no glob, no ``:/`` magic) and never leaves the project.
 
 :func:`commits` searches commit messages, authors, paths, dates and diff content (``git log --grep``,
 ``--author``, ``-G``); :func:`compare` lists what one revision has that another has not (the commits of
@@ -26,9 +34,11 @@ argument that reaches it is one ``--option=value`` word or a path after ``--``, 
 a commit first.
 
 :func:`symbol_history` answers why a symbol is the way it is from git: the commits whose diffs changed its lines
-(``git log -L`` from HEAD; working-tree lines that differ from HEAD are mapped to HEAD's first), each a claim quoting
-the commit message, subject and body, as the author wrote it. :func:`symbol_commits` is the reading alone; the
-why-questions of ``analyze`` use it.
+(``git log -L`` from HEAD; working-tree lines that differ from HEAD are mapped to HEAD's first), one row each
+(``sha date author subject``, newest first) with the message bodies of the first and last :data:`QUOTED_EACH_END`
+and of any that states a reason quoted as the author wrote them (D186: a claim per commit repeated every row).
+:func:`symbol_commits` is the reading alone, each commit with its whole message; the why-questions of ``analyze``
+use it.
 
 :func:`co_changes` reads which files changed in the same commits as a set of files (temporal coupling):
 ``map --view impact`` lists those the graph does not link to the change as ``strong_inference`` claims with their
@@ -36,39 +46,86 @@ commit counts and the shared commits as evidence.
 """
 from __future__ import annotations
 
+import os
 import re
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
 from verinoda import evidence as evmod
 from verinoda import gitexec
-from verinoda.snapshot import git
 from verinoda.treestate import project_prefix
 
 MAX_EVENTS = 200     # commits read for one text; more and the oldest (the first appearance) are cut
 MAX_COMMITS = 100    # commits a search or a comparison lists at most
 MAX_FILES = 200      # changed files a comparison lists at most
 MAX_SITES = 10       # HEAD occurrences listed
-_GIT_TIMEOUT = 120
+QUOTED_EACH_END = 3  # rows at each end of a symbol's history whose message body is quoted (D186)
+QUOTE_CHARS = 300    # characters of one quoted body (the row carries the subject; `git show` has the rest)
+
+
+def _seconds(name: str, default: float) -> float:
+    try:
+        v = float(os.environ.get(name) or "")
+    except ValueError:
+        return default
+    return v if v > 0 else default
+
+
+# a -S, -G or -L read over a whole history; rev-parse and grep are short. On expiry the tool answers `partial`
+# with what was searched, never a bare error (D186). The 60 s is not measured on a 50k-commit repository.
+GIT_TIMEOUT = _seconds("VERINODA_MCP_GIT_TIMEOUT", 60)
+GIT_SHORT_TIMEOUT = 20.0
 _HDR = "\x1e@@"      # start of one commit in the log output (never in a diff line)
 _FMT = f"--format={_HDR}%H%x1f%an%x1f%aI%x1f%s"
 _HUNK = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 # no external diff or text conversion (a repository's config could name a program), no colour, no renames
 # (a moved file's text is neither added nor removed)
 _DIFF_SAFE = ("--no-ext-diff", "--no-textconv", "--no-color", "--no-renames")
+# the same with the one followed file's renames detected: the move shows no occurrence change and drops out
+_DIFF_FOLLOW = ("--no-ext-diff", "--no-textconv", "--no-color", "--follow")
+_LIT = "--literal-pathspecs"   # a user path is a file or folder prefix: no glob, no `:/` magic
+_NEXT_NARROW = (f"narrow with path=<a file or folder>, or raise VERINODA_MCP_GIT_TIMEOUT (now {GIT_TIMEOUT:g} s) "
+                "and ask again")
 
 
-def _git(repo: Path, *args: str) -> str | None:
-    return git(repo, *args, timeout=_GIT_TIMEOUT)
+def _run_git(repo: Path, *args: str, timeout: float | None = None) -> gitexec.GitResult:
+    """One git call through the funnel (D186); the caller reads ``returncode`` and ``timed_out``."""
+    return gitexec.run(repo, *args, timeout=GIT_TIMEOUT if timeout is None else timeout)
+
+
+def _git(repo: Path, *args: str, timeout: float | None = None) -> str | None:
+    """stdout of a git call that succeeded, else None (a time-out included: a caller that must tell the two apart
+    reads :func:`_run_git`)."""
+    r = _run_git(repo, *args, timeout=timeout)
+    return r.stdout if r.returncode == 0 else None
+
+
+def _partial(searched: str, next_step: str, **found) -> dict:
+    """A result cut short by a time-out: what was searched for how long, how to go on, what was found (D186)."""
+    return {"status": "partial", "timed_out": True, "searched": searched, "next_step": next_step, "more": False,
+            **found}
+
+
+def _probe(repo: Path, kind: str) -> dict | None:
+    """None when ``repo`` is a git work tree with a commit; else the answer: ``not_git``, or ``partial`` when the
+    probe itself timed out (no answer in time is not "no history")."""
+    r = _run_git(repo, "rev-parse", "--verify", "--quiet", "HEAD^{commit}", timeout=GIT_SHORT_TIMEOUT)
+    if r.returncode == 0:
+        return None
+    if r.timed_out:
+        return {"kind": kind, **_partial(f"git rev-parse HEAD, {GIT_SHORT_TIMEOUT:g} s: the repository gave no answer",
+                                         "ask again; a repository this slow to answer is busy or on a slow disk")}
+    return _not_git(kind, repo)
 
 
 def _is_git(repo: Path) -> bool:
-    return _git(repo, "rev-parse", "--verify", "--quiet", "HEAD^{commit}") is not None
+    return _probe(repo, "") is None
 
 
 def _shallow(repo: Path) -> bool:
-    return (_git(repo, "rev-parse", "--is-shallow-repository") or "").strip() == "true"
+    return (_git(repo, "rev-parse", "--is-shallow-repository", timeout=GIT_SHORT_TIMEOUT) or "").strip() == "true"
 
 
 def _word(value: str | None, what: str) -> str | None:
@@ -85,7 +142,12 @@ def _word(value: str | None, what: str) -> str | None:
 
 def _pathspec(path: str | None) -> list[str]:
     p = _word(path, "path")
-    return ["--", p.replace("\\", "/")] if p else []
+    if not p:
+        return []
+    p = p.replace("\\", "/")
+    if ".." in p.split("/"):   # from a sub-project, `..` would reach a sibling folder of the same repository
+        raise ValueError(f"path: {p!r} leaves the project (a path is a file or folder prefix inside it)")
+    return ["--", p]
 
 
 def _scope(repo: Path, path: str | None) -> tuple[list[str], list[str]]:
@@ -97,6 +159,31 @@ def _scope(repo: Path, path: str | None) -> tuple[list[str], list[str]]:
     return (spec or ["--", "."]), ["--relative"]
 
 
+def _one_file(repo: Path, path: str | None) -> bool:
+    """Does ``path`` name one file of the working tree? Its history is then followed across renames: a one-for-one
+    change before a move is invisible to ``-S`` under the new path alone (D186, the fastapi class). A folder
+    cannot be followed; a deleted file's path is read as it is."""
+    p = _word(path, "path")
+    if not p:
+        return False
+    try:
+        return (Path(repo) / p.replace("\\", "/")).is_file()
+    except (OSError, ValueError):
+        return False
+
+
+def _scope_text(repo: Path, path: str | None, follow: bool) -> str:
+    """One sentence: which paths and moves were searched, which were not."""
+    if not path:
+        s = "path-free, HEAD history"
+    elif follow:
+        s = f"HEAD history of {path}, renames followed"
+    else:
+        s = f"HEAD history of {path} (pre-move paths not searched)"
+    pre = project_prefix(repo)
+    return s + (f"; only the project's folder {pre!r} of its repository" if pre else "")
+
+
 def _rev(repo: Path, rev: str, what: str) -> str:
     """The commit ``rev`` names (a branch, tag, sha, ``HEAD~3``); ValueError when it names none."""
     r = _word(rev, what)
@@ -104,10 +191,21 @@ def _rev(repo: Path, rev: str, what: str) -> str:
         raise ValueError(f"{what}: a revision is needed")
     if r.startswith("-"):
         raise ValueError(f"{what}: {r!r} is not a revision")
-    sha = (_git(repo, "rev-parse", "--verify", "--quiet", f"{r}^{{commit}}") or "").strip()
+    got = _run_git(repo, "rev-parse", "--verify", "--quiet", "--end-of-options", f"{r}^{{commit}}",
+                   timeout=GIT_SHORT_TIMEOUT)
+    if got.timed_out:
+        raise ValueError(f"{what}: git rev-parse took over {GIT_SHORT_TIMEOUT:g} s")
+    sha = got.stdout.strip() if got.returncode == 0 else ""
     if not sha:
         raise ValueError(f"{what}: {r!r} names no commit in this repository")
     return sha
+
+
+def _when(iso: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _not_git(kind: str, repo: Path) -> dict:
@@ -144,9 +242,9 @@ def _ere_lines(lines: list[str], pattern: str) -> set[int]:
     with tempfile.TemporaryDirectory(prefix="verinoda-history-") as d:
         (Path(d) / "lines.txt").write_bytes("".join(x + "\n" for x in lines).encode("utf-8"))
         r = gitexec.run(d, "grep", "--no-index", "-a", "-h", "-n", "-E", "-e", pattern, "--", "lines.txt",
-                        timeout=_GIT_TIMEOUT)
+                        timeout=GIT_TIMEOUT)
     if r.timed_out:
-        raise ValueError(f"text: git took over {_GIT_TIMEOUT} s to match the pattern")
+        raise ValueError(f"text: git took over {GIT_TIMEOUT:g} s to match the pattern")
     if r.returncode in (126, 127):
         raise ValueError(f"git could not run: {r.stderr}")
     if r.returncode not in (0, 1):  # 1: no line matched
@@ -166,7 +264,8 @@ def _counter(text: str, regex: bool) -> Callable[[list[str]], list[int]]:
 
 def _parse_patches(out: str, count: Callable[[list[str]], list[int]]) -> list[dict]:
     """Commits (as git listed them) with, per file, the occurrences its added and removed lines hold and the
-    first line of each (new-file line for an addition, parent-file line for a removal). A commit whose patch
+    first line of each (new-file line for an addition, parent-file line for a removal), and whether the commit
+    created the file (``new_file``: the text may have lived in another file before, D186). A commit whose patch
     has a binary file is marked ``binary``: such a file has no lines to count."""
     commits: list[dict] = []
     cur: dict | None = None
@@ -183,14 +282,16 @@ def _parse_patches(out: str, count: Callable[[list[str]], list[int]]) -> list[di
             continue
         if line.startswith("diff --git "):
             f = {"path": None, "added": 0, "removed": 0, "added_at": None, "removed_at": None,
-                 "added_line": None, "removed_line": None}
+                 "added_line": None, "removed_line": None, "new_file": False}
             cur["files"].append(f)
             in_header = True  # until the first hunk: a removed "-- x" line is "--- x" too
             continue
         if f is None:
             continue
         if in_header and line.startswith("--- "):
-            if line != "--- /dev/null":
+            if line == "--- /dev/null":
+                f["new_file"] = True
+            else:
                 f["path"] = f["path"] or _diff_path(line[4:], "a/")
             continue
         if in_header and line.startswith("+++ "):
@@ -250,16 +351,20 @@ def _diff_path(p: str, prefix: str) -> str:
 
 def _at_head(repo: Path, text: str, regex: bool, spec: list[str]) -> dict:
     """The lines at HEAD that hold the text (``git grep``, binary files left out): how many (counted per file by
-    git) and the first :data:`MAX_SITES` of them, read from the first files only."""
+    git) and the first :data:`MAX_SITES` of them, read from the first files only. ``present`` is None when git
+    timed out: whether HEAD holds the text is then not known."""
     kind = "-E" if regex else "-F"
+    counted = _run_git(repo, _LIT, "grep", "-c", "-I", "--null", kind, "-e", text, "HEAD", *spec)
+    if counted.timed_out:
+        return {"present": None, "count": None, "sites": [], "truncated": False, "timed_out": True}
     per_file: list[tuple[str, int]] = []
-    for line in (_git(repo, "grep", "-c", "-I", "--null", kind, "-e", text, "HEAD", *spec) or "").splitlines():
+    for line in (counted.stdout if counted.returncode == 0 else "").splitlines():
         where, _, n = line.partition("\x00")
         per_file.append((where[len("HEAD:"):] if where.startswith("HEAD:") else where, int(n) if n.isdigit() else 0))
     count = sum(n for _, n in per_file)
     sites: list[dict] = []
     if per_file:
-        out = _git(repo, "--literal-pathspecs", "grep", "-n", "-I", "--null", f"--max-count={MAX_SITES}", kind,
+        out = _git(repo, _LIT, "grep", "-n", "-I", "--null", f"--max-count={MAX_SITES}", kind,
                    "-e", text, "HEAD", "--", *(p for p, _ in per_file[:MAX_SITES]))
         for line in (out or "").splitlines():
             parts = line.split("\x00", 2)
@@ -275,7 +380,9 @@ def _at_head(repo: Path, text: str, regex: bool, spec: list[str]) -> dict:
 
 def text_history(repo: Path, text: str, *, regex: bool = False, path: str | None = None) -> dict:
     """When ``text`` (a literal; with ``regex``, an extended regular expression) appeared and, when HEAD no
-    longer has it, disappeared: the commits that added and removed it, oldest first, and claims citing them."""
+    longer has it, disappeared: the commits that added and removed it, oldest first, and claims citing them.
+    With a path, the path-free oldest commit is read as well (:func:`oldest_appearance`): a text born in another
+    file is said so, and ``earlier_elsewhere`` names the commit (D186)."""
     repo = Path(repo)
     t = _word(text, "text")
     if not t:
@@ -283,32 +390,42 @@ def text_history(repo: Path, text: str, *, regex: bool = False, path: str | None
     if regex:
         _ere_lines([], t)  # a pattern git cannot read is the caller's error, before any history is read
     base = {"kind": "text", "text": t, "regex": bool(regex), "path": _word(path, "path")}
-    if not _is_git(repo):
-        return {**base, **_not_git("text", repo)}
+    bad = _probe(repo, "text")
+    if bad:
+        return {**base, **bad}
     spec, rel = _scope(repo, path)
+    follow = _one_file(repo, path)
+    scope = _scope_text(repo, base["path"], follow)
     pick = f"-G{t}" if regex else f"-S{t}"
-    out = _git(repo, "log", pick, f"-n{MAX_EVENTS + 1}", _FMT, "-p", "-U0", *_DIFF_SAFE, *rel, *spec)
-    if out is None:
-        raise ValueError(f"git log {pick[:2]} failed (a pattern git cannot read, or it took over "
-                         f"{_GIT_TIMEOUT} s)")
-    listed = _parse_patches(out, _counter(t, bool(regex)))
-    truncated = len(listed) > MAX_EVENTS
+    got = _run_git(repo, _LIT, "log", pick, f"-n{MAX_EVENTS + 1}", _FMT, "-p", "-U0",
+                   *(_DIFF_FOLLOW if follow else _DIFF_SAFE), *rel, *spec)
+    if got.timed_out:
+        return {**base, **_partial(f"git log {pick[:2]}<text> over the {scope}, {GIT_TIMEOUT:g} s: no commit was "
+                                   "read", _NEXT_NARROW, scope=scope), "events": [], "claims": [], "unknowns": []}
+    if got.returncode != 0:
+        raise ValueError(f"git log {pick[:2]} failed (a pattern git cannot read): {got.stderr.strip()[:200]}")
+    listed = _parse_patches(got.stdout, _counter(t, bool(regex)))
+    more = len(listed) > MAX_EVENTS
     events = [c for c in reversed(listed[:MAX_EVENTS]) if c["files"]]  # oldest first
     shallow = _shallow(repo)
     now = _at_head(repo, t, bool(regex), spec)
     limits = ["history reachable from HEAD only (other branches are not searched)",
               "merge commits are not diffed: a text a merge alone introduced or removed is not seen",
-              "no rename detection: a moved file's text is removed from the old path and added at the new one",
+              (f"renames of {base['path']} followed: its history before a move is read" if follow else
+               "no rename detection: a moved file's text is removed from the old path and added at the new one"),
               "a binary file has no lines to read"]
     if regex:
         limits.append("the regex is git's (POSIX extended: [0-9] or [[:digit:]], not \\d)")
     if project_prefix(repo):
         limits.append(f"only the project's folder {project_prefix(repo)!r} of its git repository")
-    res = {**base, "status": "found" if events else "not_found", "events": [_event(c) for c in events],
-           "at_head": now, "truncated": truncated, "shallow": shallow,
+    res = {**base, "status": "found" if events else "not_found", "scope": scope, "more": more,
+           "events": [_event(c) for c in events], "at_head": now, "shallow": shallow,
            "coverage": {"method": f"git log {pick[:2]} over the history of HEAD, zero-context patches; "
                                   "git grep at HEAD", "limits": limits},
            "claims": [], "unknowns": []}
+    if now.get("timed_out"):
+        res["unknowns"].append({"question": f"is {t!r} at HEAD?", "why": f"git grep at HEAD took over {GIT_TIMEOUT:g} s",
+                                "next_step": _NEXT_NARROW})
     if not events:
         selected = listed[:MAX_EVENTS]
         if selected and any(c["binary"] for c in selected):
@@ -328,9 +445,9 @@ def text_history(repo: Path, text: str, *, regex: bool = False, path: str | None
                     f"{pick[:2]}<text>` diffs each merge against its first parent")
         res["unknowns"].append({"question": f"when did {t!r} appear?", "why": why, "next_step": step})
         return res
-    complete = not truncated and not shallow
+    complete = not more and not shallow
     why_not = ("the history is cut at %d commits: an older commit may have added it first" % MAX_EVENTS
-               if truncated else "a shallow clone: the commits before its boundary are missing")
+               if more else "a shallow clone: the commits before its boundary are missing")
     first = next((c for c in events if any(f["added"] for f in c["files"])), None)
     if first is not None:
         f = next(x for x in first["files"] if x["added"])
@@ -343,14 +460,16 @@ def text_history(repo: Path, text: str, *, regex: bool = False, path: str | None
                  "subjects": [f["path"]]}
         if not complete:
             claim["uncertainties"] = [why_not]
+        res["appeared"] = {"commit": first["commit"], "at": f"{f['path']}:{f['added_at']}"}  # under the path
+        if base["path"]:   # the path-bound reading may be blind to an older life of the text in another file
+            _past_the_path(repo, res, claim, t, bool(regex), first, f)
         res["claims"].append(claim)
-        res["appeared"] = {"commit": first["commit"], "at": f"{f['path']}:{f['added_at']}"}
     else:
         res["unknowns"].append({"question": f"when did {t!r} appear?",
                                 "why": "the commits found only removed it: " + (why_not if not complete else
                                                                                 "it was added before them"),
                                 "next_step": "search without --path (it may have come from another file)"})
-    if not now["present"]:
+    if now["present"] is False:   # None: git grep timed out, so nothing is said about a disappearance
         last = next((c for c in reversed(events) if any(f["removed"] for f in c["files"])), None)
         if last is not None:
             f = next(x for x in last["files"] if x["removed"])
@@ -374,10 +493,95 @@ def text_history(repo: Path, text: str, *, regex: bool = False, path: str | None
 
 
 def _event(c: dict) -> dict:
+    added = [f for f in c["files"] if f["added"]]
     return {"commit": c["commit"], "date": c["date"], "author": c["author"], "subject": c["subject"],
+            "new_file": bool(added) and all(f["new_file"] for f in added),   # the text arrived with the file
             "files": [{"path": f["path"], "added": f["added"], "removed": f["removed"],
                        **({"added_at": f["added_at"]} if f["added"] else {}),
                        **({"removed_at": f["removed_at"]} if f["removed"] else {})} for f in c["files"]]}
+
+
+def oldest_appearance(repo: Path, text: str, *, regex: bool = False) -> dict | None:
+    """The oldest commit of HEAD's history that changed how often ``text`` occurs (``-S``; with ``regex``, the
+    oldest whose changed lines match it, ``-G``), read path-free and oldest first: ``git log`` lists every such
+    commit (no ``-n``: the newest-first cut of :func:`text_history` drops the oldest, the one wanted here), the
+    last line is the oldest, and ``git show -U0`` of that one commit gives the file and line it added the text at
+    (0.2 to 2.7 s on the ten study clones, D186). ``{"sha", "date", "author", "subject", "path", "line", "text"}``,
+    the last three None when that commit only removed it; None when no commit changed it; ``{"timed_out": True}``
+    when git took over :data:`GIT_TIMEOUT` s. In a sub-project only the project's folder is read."""
+    repo = Path(repo)
+    t = _word(text, "text")
+    if not t:
+        raise ValueError("text: give the text to look for")
+    spec, rel = _scope(repo, None)
+    pick = f"-G{t}" if regex else f"-S{t}"
+    listed = _run_git(repo, _LIT, "log", pick, "--format=%H%x1f%aI%x1f%an%x1f%s", *_DIFF_SAFE, *spec)
+    if listed.timed_out:
+        return {"timed_out": True}
+    if listed.returncode != 0:
+        raise ValueError(f"git log {pick[:2]} failed (a pattern git cannot read): {listed.stderr.strip()[:200]}")
+    lines = [x for x in listed.stdout.split("\n") if x]
+    if not lines:
+        return None
+    sha, date, author, subject = (lines[-1].split("\x1f", 3) + [""] * 4)[:4]
+    out = {"sha": sha, "date": date, "author": author, "subject": subject, "path": None, "line": None, "text": None}
+    shown = _run_git(repo, _LIT, "show", "-U0", *_DIFF_SAFE, _FMT, "--end-of-options", sha, *rel, *spec)
+    if shown.timed_out:
+        return {"timed_out": True}
+    if shown.returncode == 0:
+        for c in _parse_patches(shown.stdout, _counter(t, bool(regex))):
+            for f in c["files"]:
+                if f["added"]:
+                    out.update(path=f["path"], line=f["added_at"], text=f["added_line"])
+                    return out
+    return out
+
+
+def _past_the_path(repo: Path, res: dict, claim: dict, text: str, regex: bool, first: dict, f: dict) -> None:
+    """The path-free oldest commit against the path-bound first event (D186). A text can be born in another
+    file: when the first event under the path created the file (the guzzle class), the first appearance is the
+    path-free one and the claim is re-made from it; when it modified the file and an older commit added the text
+    elsewhere (the gin class), the claim names that commit as a lead. Both set ``earlier_elsewhere``. A path-free
+    read that times out leaves a created-file claim one step down, with the reason."""
+    created = f["new_file"]
+    oldest = oldest_appearance(repo, text, regex=regex)
+    if oldest is None or oldest.get("timed_out"):
+        if created:
+            claim["status"] = "strong_inference"
+            claim.setdefault("uncertainties", []).extend([
+                (f"created at this path: {f['path']} arrived with the text in {first['commit'][:10]}, which may "
+                 "have lived in another file before"),
+                f"path-free search timed out after {GIT_TIMEOUT:g} s" if oldest else
+                "the path-free search found no commit that added it"])
+        return
+    if oldest["sha"] == first["commit"]:
+        if created and not res["shallow"]:   # the whole history was read for this: nothing lived elsewhere before
+            claim["status"] = "primary_source_verified"
+            claim.pop("uncertainties", None)
+            claim["text"] += " (path-free: the oldest commit that added it anywhere in the project)"
+            res["scope"] += "; the first appearance read path-free: the same commit"
+        return
+    then, here = _when(oldest["date"]), _when(first["date"])
+    if then is None or here is None or then >= here:
+        return
+    res["earlier_elsewhere"] = {"sha": oldest["sha"], "date": oldest["date"], "subject": oldest["subject"]}
+    lead = f"{oldest['sha'][:10]} {oldest['date'][:10]} {oldest['subject'][:90]}"
+    if created and oldest["path"]:
+        # the path-bound first event only brought the text here: the first appearance is the path-free one
+        c = {"commit": oldest["sha"], "date": oldest["date"], "author": oldest["author"], "subject": oldest["subject"]}
+        claim["text"] = (f"`{text}` first appeared in commit {c['commit'][:10]} ({c['date'][:10]}, {c['author']}): "
+                         f"{c['subject']} - added at {oldest['path']}:{oldest['line']} (path-free; under "
+                         f"{res['path']} it arrived in {first['commit'][:10]}, which created {f['path']})")
+        claim["evidence"] = [_ev(c, path=oldest["path"], line=oldest["line"], excerpt="+" + (oldest["text"] or ""),
+                                 change="added")]
+        claim["subjects"] = [oldest["path"]]
+        claim["status"] = "strong_inference" if res["shallow"] else "primary_source_verified"
+        claim["uncertainties"] = [(f"the history under {res['path']} starts at {first['commit'][:10]}, which "
+                                   f"created {f['path']} with the text")] \
+            + (["a shallow clone: the commits before its boundary are missing"] if res["shallow"] else [])
+        res["scope"] += "; the first appearance read path-free (the whole HEAD history)"
+    else:
+        claim.setdefault("uncertainties", []).append(f"the text existed earlier at another path: {lead}")
 
 
 # -- commit search -------------------------------------------------------------------------------------------
@@ -396,12 +600,15 @@ def commits(repo: Path, *, message: str | None = None, author: str | None = None
                                  ("path", _word(path, "path")), ("since", _word(since, "since")),
                                  ("until", _word(until, "until")), ("diff", _word(diff, "diff"))) if v}
     base = {"kind": "commits", "filters": filters}
-    if not _is_git(repo):
-        return {**base, **_not_git("commits", repo)}
+    bad = _probe(repo, "commits")
+    if bad:
+        return {**base, **bad}
     spec, rel = _scope(repo, path)
+    follow = _one_file(repo, path)
+    scope = _scope_text(repo, filters.get("path"), follow)
     # all three patterns are extended regular expressions (--grep and --author read basic ones without -E)
-    args = ["log", f"-n{limit + 1}", _FMT, "--name-only", *_DIFF_SAFE, *rel, "--regexp-ignore-case",
-            "--extended-regexp"]
+    args = [_LIT, "log", f"-n{limit + 1}", _FMT, "--name-only", *(_DIFF_FOLLOW if follow else _DIFF_SAFE), *rel,
+            "--regexp-ignore-case", "--extended-regexp"]
     if "message" in filters:
         args.append(f"--grep={filters['message']}")
     if "author" in filters:
@@ -412,12 +619,14 @@ def commits(repo: Path, *, message: str | None = None, author: str | None = None
         args.append(f"--until={filters['until']}")
     if "diff" in filters:
         args.append(f"-G{filters['diff']}")
-    out = _git(repo, *args, *spec)
-    if out is None:
-        raise ValueError("git log failed (a pattern or date git cannot read, or it took over "
-                         f"{_GIT_TIMEOUT} s)")
+    got = _run_git(repo, *args, *spec)
+    if got.timed_out:
+        return {**base, **_partial(f"git log over the {scope}, {GIT_TIMEOUT:g} s: no commit was read", _NEXT_NARROW,
+                                   scope=scope), "commits": []}
+    if got.returncode != 0:
+        raise ValueError(f"git log failed (a pattern or date git cannot read): {got.stderr.strip()[:200]}")
     found: list[dict] = []
-    for line in out.split("\n"):
+    for line in got.stdout.split("\n"):
         if line.startswith(_HDR):
             found.append({**_header(line), "files": []})
         elif line.strip() and found:
@@ -429,9 +638,14 @@ def commits(repo: Path, *, message: str | None = None, author: str | None = None
               "case ignored; a merge commit's diff is not searched"]
     if project_prefix(repo):
         limits.append(f"only the project's folder {project_prefix(repo)!r} of its git repository")
-    return {**base, "status": "found" if found else "not_found", "commits": found[:limit],
-            "truncated": len(found) > limit,
+    more = len(found) > limit
+    return {**base, "status": "found" if found else "not_found", "scope": scope, "commits": found[:limit],
+            "more": more, **({"next_step": _more_step(limit)} if more else {}),
             "coverage": {"method": "git log over the history of HEAD, newest first", "limits": limits}}
+
+
+def _more_step(limit: int) -> str:
+    return f"limit={min(MAX_COMMITS, limit * 2)} lists more (up to {MAX_COMMITS})"
 
 
 # -- two revisions -------------------------------------------------------------------------------------------
@@ -441,18 +655,24 @@ def compare(repo: Path, base_rev: str, head_rev: str, *, path: str | None = None
     base, and the files that differ between the two trees with their added and removed line counts."""
     repo = Path(repo)
     out_base = {"kind": "compare", "base": {"rev": base_rev}, "head": {"rev": head_rev}, "path": _word(path, "path")}
-    if not _is_git(repo):
-        return {**out_base, **_not_git("compare", repo)}
+    bad = _probe(repo, "compare")
+    if bad:
+        return {**out_base, **bad}
     a = _rev(repo, base_rev, "base")
     b = _rev(repo, head_rev, "head")
     out_base["base"]["commit"], out_base["head"]["commit"] = a, b
     spec, rel = _scope(repo, path)
-    mb = (_git(repo, "merge-base", a, b) or "").strip() or None
-    log = _git(repo, "log", f"-n{MAX_COMMITS + 1}", _FMT, f"{a}..{b}", *spec) or ""
-    only_head = [_header(x) for x in log.split("\n") if x.startswith(_HDR)]
-    back = _git(repo, "rev-list", "--count", f"{b}..{a}", *spec)
-    status = _git(repo, "diff", "--name-status", "-z", *_DIFF_SAFE, *rel, a, b, *spec)
-    numstat = _git(repo, "diff", "--numstat", "-z", *_DIFF_SAFE, *rel, a, b, *spec)
+    scope = f"{a[:10]}..{b[:10]}" + (f" under {out_base['path']}" if out_base["path"] else "") \
+        + (f"; only the project's folder {project_prefix(repo)!r} of its repository" if project_prefix(repo) else "")
+    mb = (_git(repo, "merge-base", "--end-of-options", a, b) or "").strip() or None
+    log = _run_git(repo, _LIT, "log", f"-n{MAX_COMMITS + 1}", _FMT, "--end-of-options", f"{a}..{b}", *spec)
+    if log.timed_out:
+        return {**out_base, **_partial(f"git log {a[:10]}..{b[:10]}, {GIT_TIMEOUT:g} s: no commit was read",
+                                       _NEXT_NARROW, scope=scope), "merge_base": mb, "commits": [], "files": []}
+    only_head = [_header(x) for x in (log.stdout if log.returncode == 0 else "").split("\n") if x.startswith(_HDR)]
+    back = _git(repo, _LIT, "rev-list", "--count", "--end-of-options", f"{b}..{a}", *spec)
+    status = _git(repo, _LIT, "diff", "--name-status", "-z", *_DIFF_SAFE, *rel, "--end-of-options", a, b, *spec)
+    numstat = _git(repo, _LIT, "diff", "--numstat", "-z", *_DIFF_SAFE, *rel, "--end-of-options", a, b, *spec)
     if status is None or numstat is None:
         raise ValueError("git diff failed between the two revisions")
     kinds = {}
@@ -472,7 +692,8 @@ def compare(repo: Path, base_rev: str, head_rev: str, *, path: str | None = None
                       "removed": None if m.group(2) == "-" else int(m.group(2))})
     files.sort(key=lambda f: f["path"])
     same = a == b
-    return {**out_base, "status": "same" if same else "found", "merge_base": mb,
+    return {**out_base, "status": "same" if same else "found", "scope": scope, "merge_base": mb,
+            "more": len(only_head) > MAX_COMMITS or len(files) > MAX_FILES,
             "commits": only_head[:MAX_COMMITS], "commits_truncated": len(only_head) > MAX_COMMITS,
             "commits_only_in_base": int(back.strip()) if back and back.strip().isdigit() else None,
             "files": files[:MAX_FILES], "files_truncated": len(files) > MAX_FILES,
@@ -524,7 +745,7 @@ def co_changes(repo: Path, files: list[str], *, linked: dict[str, set[str]] | No
     out = _git(repo, "log", f"-n{max_commits}", "--no-merges", _FMT, "--name-only", *_DIFF_SAFE, *rel, *spec)
     if out is None:  # a timeout or an unreadable object store: no reading, which is not "nothing coupled"
         return {"is_git": True, "commits_read": 0, "bulk_skipped": 0, "coupled": [], "coverage": coverage,
-                "error": f"git log failed (it took over {_GIT_TIMEOUT} s, or the repository could not be read): "
+                "error": f"git log failed (it took over {GIT_TIMEOUT:g} s, or the repository could not be read): "
                          "co-change was not read"}
     shallow = _shallow(repo)
     if shallow:
@@ -626,27 +847,36 @@ def symbol_commits(repo: Path, rel: str, a: int, b: int, *, limit: int = 10, rev
     """The commits reachable from HEAD that changed lines ``a``-``b`` of ``rel`` (working-tree lines), newest
     first, as git's ``log -L`` follows the range back through the file's history, each with its whole message
     (subject, and the body up to :data:`MAX_BODY_LINES` lines) and ``git_history`` evidence quoting it.
-    ``{"status": "found" | "not_found" | "not_committed" | "not_git", "commits", "head_lines", "note",
-    "truncated", "shallow"}``. ``rev`` (a commit sha): the lines are that commit's and its history is read. ``probe=False``: the caller
-    already knows this is a git work tree (no ``rev-parse`` per call; ``shallow`` is then not read)."""
+    ``{"status": "found" | "not_found" | "not_committed" | "not_git" | "partial", "commits", "head_lines", "note",
+    "more", "shallow"}``. ``rev`` (a commit): the lines are that commit's and its history is read. ``probe=False``:
+    the caller already knows this is a git work tree (no ``rev-parse`` per call; ``shallow`` is then not read)."""
     repo = Path(repo)
     limit = max(1, min(int(limit), MAX_COMMITS))
-    if probe and not _is_git(repo):
-        return _not_git("symbol", repo)
+    if probe:
+        bad = _probe(repo, "symbol")
+        if bad:
+            return bad
     if rev:
+        rev = _rev(repo, rev, "rev")   # set only by callers of this module; checked all the same (D186)
         span, note = (a, b), None
     else:
         span, note = _head_lines(repo, rel, a, b)
         if span is None:
             return {"status": "not_committed", "commits": [], "note": note}
     fmt = f"--format={_HDR}%H%x1f%an%x1f%aI%x1f%P%x1f%B"
-    out = _git(repo, "log", f"-n{limit + 1}", f"-L{span[0]},{span[1]}:{rel}", "--no-patch", "--no-ext-diff",
-               "--no-textconv", "--no-color", fmt, *([rev] if rev else []))
-    if out is None:
-        raise ValueError(f"git log -L could not read {rel}:{span[0]}-{span[1]} at HEAD (or it took over "
-                         f"{_GIT_TIMEOUT} s)")
+    where = f"{rel}:{span[0]}-{span[1]}"
+    got = _run_git(repo, "log", f"-n{limit + 1}", f"-L{span[0]},{span[1]}:{rel}", "--no-patch", "--no-ext-diff",
+                   "--no-textconv", "--no-color", fmt, *(["--end-of-options", rev] if rev else []))
+    if got.timed_out:
+        return {**_partial(f"git log -L {where} over the HEAD history, {GIT_TIMEOUT:g} s: no commit was read",
+                           f"raise VERINODA_MCP_GIT_TIMEOUT (now {GIT_TIMEOUT:g} s) and ask again, or history_search "
+                           f"with text=<a line of the symbol> and path={rel}"),
+                "commits": [], "head_lines": list(span), "shallow": None,
+                "note": f"git log -L {where} timed out after {GIT_TIMEOUT:g} s: its commits were not read"}
+    if got.returncode != 0:
+        raise ValueError(f"git log -L could not read {where} at HEAD: {got.stderr.strip()[:200]}")
     found: list[dict] = []
-    for block in out.split(_HDR)[1:]:
+    for block in got.stdout.split(_HDR)[1:]:
         sha, author, date, parents, msg = (block.split("\x1f", 4) + [""] * 5)[:5]
         lines = msg.strip("\n").splitlines()
         subject = lines[0].strip() if lines else ""
@@ -671,7 +901,7 @@ def symbol_commits(repo: Path, rel: str, a: int, b: int, *, limit: int = 10, rev
         c["evidence"]["locator"] = f"commit {c['commit']} {rel}"
         c["evidence"]["meta"]["head_lines"] = list(span)
         found.append(c)
-    return {"status": "found" if found else "not_found", "commits": found[:limit], "truncated": len(found) > limit,
+    return {"status": "found" if found else "not_found", "commits": found[:limit], "more": len(found) > limit,
             "head_lines": list(span), "note": note, "shallow": _shallow(repo) if probe else None}
 
 
@@ -691,10 +921,12 @@ def _project_rel(repo: Path, path: str) -> str:
 
 
 def symbol_history(repo: Path, g, target: str, *, stale=(), limit: int = 10) -> dict:
-    """Why a symbol is the way it is, from git: the commits that changed its lines, newest first, each a
-    ``history`` claim quoting the commit message (git's own words, no summary). ``target`` is a name the index
-    resolves exactly (``Class.method``, ``path/file.py::name``, a node id) or ``path:A-B``; a name that does not
-    resolve to one symbol is answered with its candidates, never replaced by a similar one."""
+    """Why a symbol is the way it is, from git: the commits that changed its lines, newest first, one row each
+    (``sha date author subject``), and ``quoted``, the message bodies of the first and last :data:`QUOTED_EACH_END`
+    rows and of any that states a reason, as the author wrote them (D186: a claim per commit repeated every row
+    at 28,725 chars of JSON for 5,361 of git output). ``target`` is a name the index resolves exactly
+    (``Class.method``, ``path/file.py::name``, a node id) or ``path:A-B``; a name that does not resolve to one
+    symbol is answered with its candidates, never replaced by a similar one."""
     from verinoda import naming
 
     repo = Path(repo)
@@ -727,28 +959,46 @@ def symbol_history(repo: Path, g, target: str, *, stale=(), limit: int = 10) -> 
         if res.note:
             base["resolution_note"] = res.note
     got = symbol_commits(repo, rel, a, b, limit=limit)
-    out = {**base, **got, "symbol": label, "file": rel, "lines": [a, b]}
-    if got["status"] in ("not_git", "not_committed"):
+    scope = f"HEAD history of {rel}:{a}-{b} (git log -L; a move from another file not followed)" \
+        + (f"; only the project's folder {project_prefix(repo)!r} of its repository" if project_prefix(repo) else "")
+    out = {**base, **got, "symbol": label, "file": rel, "lines": [a, b], "scope": scope}
+    if got["status"] in ("not_git", "not_committed", "partial"):
         return out
-    unc = [got["note"]] if got.get("note") else []
-    claims = []
-    for c in got["commits"]:
-        text = f"`{label}` ({rel}:{a}-{b}) was changed in {c['commit'][:10]} ({c['date'][:10]}, {c['author']}): " \
-               f"{c['subject']}"
-        claims.append({"kind": "history", "status": "primary_source_verified", "text": text,
-                       "evidence": [c["evidence"]], "subjects": [rel], "uncertainties": list(unc)})
-    out["claims"] = claims
-    limits = ["history reachable from HEAD only; git log -L follows the lines within the file (a symbol moved "
-              "from another file starts where it arrived)",
-              "a commit message states the author's intent when committing, not the current behaviour"]
+    for key in ("note", "shallow"):   # said when there is something to say
+        if not out.get(key):
+            out.pop(key, None)
+    out["commits"] = [_row(c) for c in got["commits"]]
+    out["quoted"] = _quoted(got["commits"])
+    if got["more"]:
+        out["next_step"] = _more_step(limit)
+    limits = ["a commit message states the author's intent when committing, not the current behaviour"]
     if got.get("shallow"):
         limits.append("a shallow clone: older commits are missing")
-    if project_prefix(repo):
-        limits.append(f"only the project's folder {project_prefix(repo)!r} of its git repository")
     out["coverage"] = {"method": "git log -L over the symbol's lines at HEAD, newest first", "limits": limits}
     if got["status"] == "not_found":
         out["unknowns"] = [{"why": "no commit reachable from HEAD changed these lines",
                             "next_step": "`verinoda history text` with a line of the symbol"}]
+    return out
+
+
+def _row(c: dict) -> str:
+    return f"{c['commit'][:10]} {c['date'][:10]} {c['author']} {c['subject'][:90]}"
+
+
+def _quoted(commits: list[dict]) -> list[dict]:
+    """The message bodies worth their bytes (D186): those of the first and last :data:`QUOTED_EACH_END` rows and
+    of any commit whose message states a reason (D185's gold commit was the eleventh of fourteen). A commit
+    without a body is not quoted: its row carries the subject."""
+    from verinoda.verdict_gate import states_reason
+
+    n = len(commits)
+    out = []
+    for i, c in enumerate(commits):
+        body = c.get("body") or ""
+        if not body or not (i < QUOTED_EACH_END or i >= n - QUOTED_EACH_END or states_reason([], c["subject"], body)):
+            continue
+        cut = len(body) > QUOTE_CHARS or c.get("body_truncated")
+        out.append({"sha": c["commit"][:10], "message": body[:QUOTE_CHARS] + ("..." if cut else "")})
     return out
 
 
@@ -768,13 +1018,12 @@ def _render_symbol(res: dict) -> str:
         return "\n".join(out)
     if not res.get("commits"):
         out.append("  no commit reachable from HEAD changed these lines")
-    for c in res.get("commits") or []:
-        out.append(f"  {_short(c)}" + ("  (merge)" if c.get("merge") else ""))
-        out += [f"    | {ln}" for ln in c["body"].splitlines()]
-        if c.get("body_truncated"):
-            out.append("    | ...")
-    if res.get("truncated"):
-        out.append("  (more: raise --limit)")
+    quoted = {q["sha"]: q["message"] for q in res.get("quoted") or []}
+    for row in res.get("commits") or []:
+        out.append(f"  {row}")
+        out += [f"    | {ln}" for ln in quoted.get(row.split(" ", 1)[0], "").splitlines()]
+    if res.get("more"):
+        out.append(f"  (more: {res.get('next_step') or 'raise --limit'})")
     return "\n".join(out)
 
 
@@ -784,45 +1033,65 @@ def _short(c: dict) -> str:
     return f"{c['commit'][:10]} {c['date'][:10]} {c['author']}: {c['subject']}"
 
 
-def render(res: dict) -> str:
-    if res.get("status") == "not_git":
-        return res["note"]
+def _label(res: dict) -> str:
     kind = res.get("kind")
     if kind == "text":
         what = f"/{res['text']}/" if res.get("regex") else repr(res["text"])
-        out = [f"{what}" + (f" under {res['path']}" if res.get("path") else "") + ":"]
+        return what + (f" under {res['path']}" if res.get("path") else "")
+    if kind == "symbol":
+        return res.get("symbol") or res["target"]
+    if kind == "commits":
+        f = res.get("filters") or {}
+        return "commits" + (" where " + ", ".join(f"{k}={v!r}" for k, v in f.items()) if f else "")
+    return f"{res['base']['rev']} .. {res['head']['rev']}"
+
+
+def render(res: dict) -> str:
+    if res.get("status") == "not_git":
+        return res["note"]
+    if res.get("status") == "partial":
+        return f"{_label(res)}: partial - {res['searched']}\n  next: {res['next_step']}"
+    kind = res.get("kind")
+    if kind == "text":
+        out = [_label(res) + ":"]
+        if res.get("scope"):
+            out.append(f"  scope: {res['scope']}")
         for c in res.get("claims") or []:
             out.append(f"  [{c['status']}] {c['text']}")
             out += [f"    uncertain: {u}" for u in c.get("uncertainties") or []]
+        e = res.get("earlier_elsewhere")
+        if e:
+            out.append(f"  earlier at another path: {e['sha'][:10]} {e['date'][:10]} {e['subject']}")
         for u in res.get("unknowns") or []:
             out.append(f"  unknown: {u['why']}\n    next: {u['next_step']}")
         if res.get("events"):
             out.append(f"  commits that added or removed it ({len(res['events'])}, oldest first):")
             for e in res["events"]:
                 ch = ", ".join(f"{f['path']} +{f['added']}/-{f['removed']}" for f in e["files"][:4])
-                out.append(f"    {_short(e)}  [{ch}]")
+                out.append(f"    {_short(e)}  [{ch}]" + ("  (created the file)" if e.get("new_file") else ""))
         head = res.get("at_head") or {}
         if head.get("present"):
             out.append(f"  at HEAD: {head['count']} line(s): "
                        + ", ".join(f"{s['path']}:{s['line']}" for s in head["sites"])
                        + (" ..." if head.get("truncated") else ""))
+        elif head.get("present") is None:
+            out.append("  at HEAD: not known (git grep timed out)")
         else:
             out.append("  at HEAD: none")
-        if res.get("truncated"):
+        if res.get("more"):
             out.append(f"  (cut at {MAX_EVENTS} commits: narrow with --path)")
         return "\n".join(out)
     if kind == "symbol":
         return _render_symbol(res)
     if kind == "commits":
-        f = res.get("filters") or {}
-        out = ["commits" + (" where " + ", ".join(f"{k}={v!r}" for k, v in f.items()) if f else "") + ":"]
+        out = [_label(res) + ":"]
         if not res.get("commits"):
             out.append("  none")
         for c in res.get("commits") or []:
             out.append(f"  {_short(c)}")
             if c["files"]:
                 out.append("    " + ", ".join(c["files"][:6]) + (" ..." if len(c["files"]) > 6 else ""))
-        if res.get("truncated"):
+        if res.get("more"):
             out.append("  (more: raise --limit or narrow the filters)")
         return "\n".join(out)
     b, h = res["base"], res["head"]
