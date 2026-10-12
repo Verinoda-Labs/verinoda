@@ -25,6 +25,7 @@ import shutil  # noqa: E402
 import socket  # noqa: E402
 import subprocess  # noqa: E402
 import sys  # noqa: E402
+import threading
 import time  # noqa: E402
 import types  # noqa: E402
 from pathlib import Path  # noqa: E402
@@ -2133,3 +2134,31 @@ def test_evidence_inspect_omits_root_and_file_exists_for_rejected_evidence(repo,
     assert rc["performed"] and rc["status"] == "gone"
     assert "root" not in rc and "file_exists" not in rc and rc["current_text"] is None
     assert "outside" in rc["rejected"]
+
+
+def test_history_search_runs_outside_the_server_lock(fresh_repo):
+    """history_search only reads git and the loaded graph (D186): while a build holds the server's lock in another
+    thread (the watcher's update, an index_update of another project), it answers; index_update waits."""
+    t = AtlasTools(fresh_repo)
+    held, release = threading.Event(), threading.Event()
+
+    def hold():
+        with t._lock:   # the lock is re-entrant: it must be held by another thread to block anything
+            held.set()
+            release.wait(timeout=60)
+
+    holder = threading.Thread(target=hold, daemon=True)
+    holder.start()
+    assert held.wait(timeout=5)
+    started = time.monotonic()
+    res = t.history_search(text="place_order")
+    assert "error" not in res and res["status"] in ("found", "not_found") and time.monotonic() - started < 30
+    done: list[dict] = []
+    updater = threading.Thread(target=lambda: done.append(t.index_update()), daemon=True)
+    updater.start()
+    updater.join(1.0)
+    assert updater.is_alive() and not done   # the build waits for the lock
+    release.set()
+    updater.join(120)
+    holder.join(5)
+    assert done and "error" not in done[0]

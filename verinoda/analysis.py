@@ -1899,6 +1899,33 @@ def _decision_terms(ctx: _Ctx, sub: _Sub) -> list[str]:
     return list(dict.fromkeys(words + exp))
 
 
+# a code term a question names: a backticked token, a snake_case or a camelCase identifier (a plain word or a
+# dotted expression such as `PriceCache.get` is not one, D186)
+_TERM_RX = re.compile(r"`([^`\s]+)`|(?<![\w.])([A-Za-z]\w*)(?![\w.])")
+_IDENT_RX = re.compile(r"_|[a-z][A-Z]|^[A-Z][a-z]+[A-Z]")
+
+
+def _code_terms(text: str) -> list[str]:
+    """The code terms ``text`` names, in its order, each once."""
+    out: list[str] = []
+    for m in _TERM_RX.finditer(text or ""):
+        term = m.group(1) or m.group(2)
+        if "." in term or len(term) < 3 or (m.group(2) and not _IDENT_RX.search(term)):
+            continue
+        if term not in out:
+            out.append(term)
+    return out
+
+
+def _asks_added(question: str, term: str) -> bool:
+    """Is the question "when was <term> added / introduced"? Only then is the term's first appearance read for a
+    when-question (D186: on four of the eight D185 when tasks the term's first appearance predates the change
+    asked about by 7-16 years)."""
+    rx = (r"\bwhen\b[^?]*?\b(?:was|were|did|is)\s+(?:the\s+)?`?" + re.escape(term)
+          + r"`?(?:\(\))?(?:\s+\w+){0,2}\s+(?:added|introduced|created|first\s+(?:added|introduced|appeared))")
+    return re.search(rx, question or "", re.IGNORECASE) is not None
+
+
 def _h_why(ctx: _Ctx, sub: _Sub) -> None:
     g, rec, repo = ctx.g, ctx.rec, ctx.repo
     if not _begin(ctx, sub, "why"):
@@ -1908,9 +1935,11 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
     names = {i["symbol"].strip(".()") for i in sub.items} | {Path(i["file"]).name for i in sub.items}
     files = {i["file"] for i in sub.items}
     terms = _decision_terms(ctx, sub)
+    question = sub.sq.get("text_user_lang") or sub.sq.get("text") or ""
     asks_why = sub.sq.get("intent") != "history"   # a when-question (intent history) shares this handler
     found = found_doc = False   # found_doc: a decision document was cited (its intent may have aged, below)
     why_not = None   # why the symbol's commits could not be read, for the unknown
+    timed_out: list[str] = []   # the git reads that exceeded VERINODA_MCP_GIT_TIMEOUT: said, never an error
     for dec in hv["decisions"]:
         text = "\n".join(am._read(repo, dec["doc"]))
         folded = tn.fold_tr(text).lower()
@@ -1969,6 +1998,8 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
         unc = [got["note"]] if got.get("note") else []
         if not got.get("commits") and got.get("note"):
             why_not = got["note"]
+            if got.get("timed_out"):
+                timed_out.append(f"git log -L {it['file']}:{a}-{b}")
         commits = got.get("commits") or []
         if asks_why:
             # a why is answered by a commit whose message states a reason about what was asked
@@ -1988,22 +2019,55 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
                 found = True
                 continue
             leads.append(f"{c['commit'][:10]} {c['date'][:10]} {c['subject'][:90]}")
+    # the path-free first appearance of a code term the question names is a lead, never the answer (D186): for a
+    # why whose commits state no reason (the term may have been born in another file), and for "when was X added"
+    # alone (on four of eight D185 when tasks the first appearance predates the change asked about by years)
+    born: list[tuple[str, str]] = []   # (term, lead line)
+    wanted = [t for t in _code_terms(question)[:2] if asks_why or _asks_added(question, t)]
+    if hv["is_git"] and wanted and (not found or not asks_why) and ctx.budget.ok:
+        for term in wanted:
+            try:
+                first = history.oldest_appearance(repo, term)
+            except ValueError:
+                first = None
+            ctx.step("git_log_S", term)
+            if first and first.get("sha"):
+                born.append((term, (f"first appearance of `{term}`: {first['sha'][:10]} {first['date'][:10]} "
+                                    f"{first['subject'][:90]} (path-free)")))
+            elif first and first.get("timed_out"):
+                timed_out.append(f"git log -S{term}")
+    if not asks_why:
+        for term, line in born:
+            _unknown(ctx, sub, {"question": f"when did `{term}` first appear?",
+                                "why": ("a lead, not the answer: the term's first appearance in the project may "
+                                        "predate the change asked about"),
+                                "commits": [line],
+                                "next_step": f"`git show {line.split(': ', 1)[1].split(' ', 1)[0]}`; history_search "
+                                             f"with text={term!r} lists every commit that changed it"})
+    else:
+        leads += [line for _, line in born]
+    slow = (f" ({', '.join(timed_out)} timed out after {history.GIT_TIMEOUT:g} s: not read)" if timed_out else "")
+    retry = (f"; raise VERINODA_MCP_GIT_TIMEOUT (now {history.GIT_TIMEOUT:g} s) and ask again" if timed_out else "")
     if leads:
         sub.extra["why_leads"] = leads   # for the verdict gate's note, when it sets the claims aside
     if not found and not rec.skipped["why"] and leads:   # a why with commits that state no reason (a when claims them)
+        n = len(leads) - len(born)
         _unknown(ctx, sub, {"question": sub.sq.get("text") or SUBQUESTIONS["why"],
-                            "why": f"the reason was not found: {len(leads)} commit(s) changed these lines and none "
-                                   "states a reason about it in its message; no decision record explains it",
+                            "why": (f"the reason was not found: {n} commit(s) changed these lines and none states a "
+                                    "reason about it in its message" if n else
+                                    "the reason was not found: no commit of these lines was read"
+                                    + (f" ({why_not})" if why_not else ""))
+                                   + "; no decision record explains it" + slow,
                             "commits": leads,
                             "next_step": "open a commit with `git show <sha>`; `history_search` with the symbol "
                                          "lists every commit that changed these lines (newest first, both ends "
-                                         "kept); search the issue tracker or PR discussion"})
+                                         "kept); search the issue tracker or PR discussion" + retry})
     elif not found and not rec.skipped["why"]:
         _unknown(ctx, sub, {"question": sub.sq.get("text") or SUBQUESTIONS["why"],
                             "why": "no decision record or commit message explains it"
-                                   + (f" ({why_not})" if why_not else ""),
+                                   + (f" ({why_not})" if why_not else "") + slow,
                             "next_step": "search issue tracker/PR discussion; or `verinoda research <reference>` "
-                                         "if the design follows an external reference"})
+                                         "if the design follows an external reference" + retry})
     elif found_doc:   # a commit message is dated by itself; a document is not (D185: this fired with no document 75 times)
         _unknown(ctx, sub, {"question": "is the recorded rationale still the actual reason?",
                             "why": "documents state intent, not current behaviour",

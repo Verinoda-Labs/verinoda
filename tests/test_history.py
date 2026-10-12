@@ -98,8 +98,11 @@ def test_a_text_still_at_head_has_no_disappearance(repo):
 def test_a_path_narrows_the_history(repo):
     r, shas = repo
     res = history.text_history(r, "RETRY_BUDGET", path="lib")
-    assert res["appeared"] == {"commit": shas[2], "at": "lib/job.py:3"}
-    assert res["disappeared"]["commit"] == shas[3] and "under lib" in res["claims"][1]["text"]
+    assert res["appeared"] == {"commit": shas[2], "at": "lib/job.py:3", "scope": "under lib"}
+    assert res["disappeared"] == {"commit": shas[3], "at": "lib/job.py:3", "scope": "under lib"}
+    assert "under lib" in res["claims"][1]["text"]
+    # lib/job.py arrived with the text: the first appearance is the path-free one, and says so (D186)
+    assert res["first_appearance"] == {"commit": shas[1], "at": "svc.py:2", "scope": "path-free"}
 
 
 def test_a_regex_matches_changed_lines(repo):
@@ -162,7 +165,7 @@ def test_a_cut_history_does_not_prove_the_first_appearance(repo, monkeypatch):
     r, shas = repo
     monkeypatch.setattr(history, "MAX_EVENTS", 2)  # three commits changed it: the oldest is cut
     res = history.text_history(r, "RETRY_BUDGET")
-    assert res["truncated"] and [e["commit"] for e in res["events"]] == [shas[2], shas[3]]
+    assert res["more"] and [e["commit"] for e in res["events"]] == [shas[2], shas[3]]
     appeared, gone = res["claims"]
     assert appeared["status"] == "strong_inference" and "cut at 2" in appeared["uncertainties"][0]
     assert res["appeared"]["commit"] == shas[2]
@@ -248,7 +251,9 @@ def test_commits_by_message_author_path_date_and_diff(repo):
     assert by_alice[0]["evidence"]["commit_sha"] == shas[1]
     assert by_alice[0]["evidence"]["source_type"] == "git_history"
     cut = history.commits(r, limit=2)
-    assert len(cut["commits"]) == 2 and cut["truncated"]
+    assert len(cut["commits"]) == 2 and cut["more"] and "limit=4" in cut["next_step"]
+    whole = history.commits(r, limit=50)
+    assert whole["scope"] == "path-free, HEAD history" and whole["more"] is False and "next_step" not in whole
     assert history.commits(r, message="no such words")["status"] == "not_found"
 
 
@@ -320,7 +325,13 @@ def test_mcp_history_search(repo):
                     {"author": "alice", "head": "HEAD"}, {"message": "x", "regex": True}):
             err = t.history_search(**bad)
             assert err["error"] == "invalid_argument", bad
-        assert t.history_search(text="RETRY_BUDGET", path="lib")["appeared"]["commit"] == shas[2]
+        # the guzzle class through the wrapper (D186): a model reading top-down meets the path-free first
+        # appearance before what arrived under the path, and each of the two says which it is
+        under = t.history_search(text="RETRY_BUDGET", path="lib")
+        assert list(under)[:5] == ["status", "scope", "more", "first_appearance", "appeared"]
+        assert under["first_appearance"] == {"commit": shas[1], "at": "svc.py:2", "scope": "path-free"}
+        assert under["appeared"] == {"commit": shas[2], "at": "lib/job.py:3", "scope": "under lib"}
+        assert shas[1][:10] in under["claims"][0]["text"]
     finally:
         shutil.rmtree(r / ".verinoda")
 
@@ -349,21 +360,28 @@ def sym_repo(tmp_path_factory) -> tuple[Path, list[str]]:
 def test_the_commits_that_changed_a_line_range_quote_their_messages(sym_repo):
     r, shas = sym_repo
     res = history.symbol_history(r, None, "pricing.py:1-2")
-    assert res["status"] == "found" and [c["commit"] for c in res["commits"]] == [shas[1], shas[0]]
-    rounded = res["commits"][0]
-    assert rounded["subject"] == "Round totals to cents" and rounded["author"] == "Alice"
-    assert rounded["body"].startswith("Invoices showed 10.000000001") and "Signed-off-by" not in rounded["body"]
-    assert "Co-Authored-By" not in rounded["evidence"]["excerpt"] and "ledger stores cents" in rounded["evidence"]["excerpt"]
-    claim = res["claims"][0]
-    assert claim["status"] == "primary_source_verified" and shas[1][:10] in claim["text"]
-    assert claim["evidence"][0]["locator"] == f"commit {shas[1]} pricing.py"
+    # one row per commit, newest first; the bodies quoted as the author wrote them, people trailers dropped
+    assert res["status"] == "found" and "claims" not in res
+    assert res["commits"] == [f"{shas[1][:10]} 2026-02-10 Alice Round totals to cents",
+                              f"{shas[0][:10]} 2026-01-05 Bob Add pricing"]
+    (rounded,) = res["quoted"]   # "Add pricing" has no body: nothing to quote beyond its row
+    assert rounded["sha"] == shas[1][:10] and rounded["message"].startswith("Invoices showed 10.000000001")
+    assert "Signed-off-by" not in rounded["message"] and "Co-Authored-By" not in rounded["message"]
+    assert res["scope"].startswith("HEAD history of pricing.py:1-2") and res["more"] is False
+    # the reading behind it keeps each commit whole, with git_history evidence quoting the message
+    got = history.symbol_commits(r, "pricing.py", 1, 2)
+    assert [c["commit"] for c in got["commits"]] == [shas[1], shas[0]] and got["commits"][0]["author"] == "Alice"
+    ev = got["commits"][0]["evidence"]
+    assert ev["locator"] == f"commit {shas[1]} pricing.py" and "ledger stores cents" in ev["excerpt"]
+    assert "Co-Authored-By" not in ev["excerpt"]
     from verinoda.claims import check_status
 
-    for c in res["claims"]:
-        evs = [{**e, "relation": "supports", "id": f"evd_{i}"} for i, e in enumerate(c["evidence"])]
-        assert check_status(c["status"], evs, claim={"kind": c["kind"], "text": c["text"]}, repo=r) is None, c
+    for c in got["commits"]:
+        evs = [{**c["evidence"], "relation": "supports", "id": "evd_0"}]
+        text = f"`pricing.py:1-2` was changed in {c['commit'][:10]} ({c['date'][:10]}, {c['author']}): {c['subject']}"
+        assert check_status("primary_source_verified", evs, claim={"kind": "history", "text": text}, repo=r) is None, c
     other = history.symbol_history(r, None, "pricing.py:5-6")
-    assert [c["commit"] for c in other["commits"]] == [shas[2], shas[0]]
+    assert [row.split(" ", 1)[0] for row in other["commits"]] == [shas[2][:10], shas[0][:10]]
 
 
 def test_working_tree_lines_are_mapped_to_head_first(sym_repo, tmp_path):
@@ -373,8 +391,7 @@ def test_working_tree_lines_are_mapped_to_head_first(sym_repo, tmp_path):
     (work / "pricing.py").write_bytes(("import math\n\n\n" + PRICING_3).encode())   # uncommitted: 3 lines on top
     res = history.symbol_history(work, None, "pricing.py:4-5")
     assert res["head_lines"] == [1, 2] and "mapped to HEAD's lines 1-2" in res["note"]
-    assert [c["commit"] for c in res["commits"]] == [shas[1], shas[0]]
-    assert res["claims"][0]["uncertainties"] == [res["note"]]
+    assert [row.split(" ", 1)[0] for row in res["commits"]] == [shas[1][:10], shas[0][:10]]
     new = history.symbol_history(work, None, "pricing.py:1-1")
     assert new["status"] == "not_committed" and "new since HEAD" in new["note"]
     (work / "fresh.py").write_bytes(b"x = 1\n")
@@ -399,7 +416,7 @@ def test_a_name_resolves_through_the_index_and_is_never_replaced(sym_repo, tmp_p
     g = index.load(work)
     res = history.symbol_history(work, g, "compute_total")
     assert res["status"] == "found" and res["symbol"].startswith("compute_total") and res["lines"] == [1, 2]
-    assert [c["commit"] for c in res["commits"]] == [shas[1], shas[0]]
+    assert [row.split(" ", 1)[0] for row in res["commits"]] == [shas[1][:10], shas[0][:10]]
     miss = history.symbol_history(work, g, "compute_totl")
     assert miss["status"] == "unresolved" and "commits" not in miss
     assert history.symbol_history(work, None, "compute_total")["status"] == "unresolved"
@@ -428,11 +445,13 @@ def test_symbol_history_cli_and_mcp(sym_repo, capsys):
     assert text.startswith("pricing.py:1-2:") and "| Invoices showed" in text and shas[1][:10] in text
     assert cli.main(["history", "symbol", "pricing.py:1-2", "--repo", str(r), "--json", "--limit", "1"]) == 0
     out = json.loads(capsys.readouterr().out)
-    assert [c["commit"] for c in out["commits"]] == [shas[1]] and out["truncated"]
+    assert [row.split(" ", 1)[0] for row in out["commits"]] == [shas[1][:10]] and out["more"]
     (r / ".verinoda").mkdir(exist_ok=True)
     try:
         t = AtlasTools(r)
-        assert t.history_search(symbol="pricing.py:5-6")["commits"][0]["commit"] == shas[2]
+        res = t.history_search(symbol="pricing.py:5-6")
+        assert res["commits"][0].startswith(shas[2][:10]) and "claims" not in res
+        assert list(res)[:3] == ["status", "scope", "more"]   # the keys a reader needs first, kept whole
         for bad in ({"symbol": "pricing.py:1-2", "text": "x"}, {"symbol": "pricing.py:1-2", "path": "lib"},
                     {"symbol": "pricing.py:1-2", "base": "HEAD"}):
             assert t.history_search(**bad)["error"] == "invalid_argument", bad
@@ -454,7 +473,7 @@ def test_review_round_edges(sym_repo, tmp_path):
     _git(work, "commit", "-q", "-am", "Change other\n\nReason: the API v2 contract.\nNote: see RFC-12\n\n"
                                       "Signed-off-by: Bob <b@x>", author="Bob")
     got = history.symbol_history(work, None, "pricing.py:5-6")
-    assert got["commits"][0]["body"] == "Reason: the API v2 contract.\nNote: see RFC-12"
+    assert got["quoted"][0]["message"] == "Reason: the API v2 contract.\nNote: see RFC-12"
     # a range past the end, a path outside the project, an absolute path inside it
     with pytest.raises(ValueError, match="has 6 lines"):
         history.symbol_history(work, None, "pricing.py:50-60")
@@ -495,3 +514,202 @@ def test_mcp_refuses_an_empty_symbol(sym_repo):
         assert AtlasTools(r).history_search(symbol="  ")["error"] == "invalid_argument"
     finally:
         shutil.rmtree(r / ".verinoda")
+
+
+# -- one flat list, correct where git is blind, honest on time-outs (D186) ----------------------------------------
+
+def _rows_repo(root: Path) -> tuple[Path, list[str]]:
+    """Thirty commits, each changing the one line of compute_total; a body on a few of them, one stating a
+    reason in the middle, one a plain note in the middle."""
+    r = root / "rows"
+    r.mkdir()
+    _git(r, "init", "-q")
+    bodies = {1: "The total starts here.", 3: "Items are summed.", 10: "A plain note in the middle.",
+              15: "because the ledger counts from one", 28: "Near the end.", 30: "The newest step."}
+    shas = []
+    for i in range(1, 31):
+        msg = f"total step {i:02}" + (f"\n\n{bodies[i]}\n" if i in bodies else "")
+        shas.append(_commit(r, {"calc.py": f"def compute_total(items):\n    return sum(items) + {i}\n"}, msg,
+                            date=f"2026-01-{i:02}T10:00:00+00:00"))
+    return r, shas
+
+
+def test_symbol_history_is_one_flat_list_with_bodies_on_the_ends(tmp_path):
+    from verinoda.mcp.server import _size
+
+    r, shas = _rows_repo(tmp_path)
+    res = history.symbol_history(r, None, "calc.py:1-2", limit=30)
+    assert res["status"] == "found" and "claims" not in res and res["more"] is False
+    rows = res["commits"]
+    assert len(rows) == 30 and all(isinstance(x, str) for x in rows)
+    assert rows[0] == f"{shas[29][:10]} 2026-01-30 Bob total step 30"      # newest first, every commit one row
+    assert rows[-1] == f"{shas[0][:10]} 2026-01-01 Bob total step 01"
+    # bodies on the first three and the last three rows that have one, and on the one that states a reason;
+    # the plain note in the middle is not quoted
+    assert [q["sha"] for q in res["quoted"]] == [shas[29][:10], shas[27][:10], shas[14][:10], shas[2][:10],
+                                                 shas[0][:10]]
+    assert next(q["message"] for q in res["quoted"] if q["sha"] == shas[14][:10]) == "because the ledger counts from one"
+    assert "HEAD history of calc.py:1-2" in res["scope"]
+    # 2,000 chars holds for these 13-char subjects only: a real subject makes a row about 100 chars (fastapi,
+    # D186: 14 rows 1,420 chars, four quoted bodies 1,023, the rest 525), so 30 real rows are about 3,000 chars
+    # before any body
+    assert _size(res) <= 2000, _size(res)
+    cut = history.symbol_history(r, None, "calc.py:1-2", limit=14)
+    assert len(cut["commits"]) == 14 and cut["more"] is True and "limit" in cut["next_step"]
+    assert cut["commits"][0].startswith(shas[29][:10]) and cut["commits"][-1].startswith(shas[16][:10])
+    assert {q["sha"] for q in cut["quoted"]} == {shas[29][:10], shas[27][:10]}
+
+
+def test_text_history_marks_a_created_file_and_searches_path_free_oldest_first(tmp_path):
+    r = tmp_path / "born"
+    r.mkdir()
+    _git(r, "init", "-q")
+    born = _commit(r, {"old.py": "MAGIC_TOKEN = 1\n"}, "Add the token", date="2026-01-05T10:00:00+00:00")
+    _commit(r, {"notes.txt": "nothing\n"}, "Unrelated", date="2026-01-06T10:00:00+00:00")
+    created = _commit(r, {"new.py": "MAGIC_TOKEN = 2\n"}, "Create new.py with the token",
+                      date="2026-01-07T10:00:00+00:00")
+    # the guzzle class (D186): the path-bound first event created the file, so the text may have lived elsewhere;
+    # the path-free search, oldest first, finds the commit that first added it to the project
+    res = history.text_history(r, "MAGIC_TOKEN", path="new.py")
+    assert res["status"] == "found" and res["events"][0]["new_file"] is True
+    # what arrived under the path is labelled as such, and the path-free first appearance stands beside it
+    assert res["appeared"] == {"commit": created, "at": "new.py:1", "scope": "under new.py"}
+    assert res["first_appearance"] == {"commit": born, "at": "old.py:1", "scope": "path-free"}
+    claim = res["claims"][0]
+    assert claim["status"] == "primary_source_verified" and born[:10] in claim["text"] and "old.py:1" in claim["text"]
+    assert "path-free" in claim["text"] and any("new.py" in u for u in claim["uncertainties"])
+    assert claim["evidence"][0]["commit_sha"] == born and claim["evidence"][0]["excerpt"] == "+MAGIC_TOKEN = 1"
+    assert res["earlier_elsewhere"]["sha"] == born and res["earlier_elsewhere"]["subject"] == "Add the token"
+    assert "path-free" in res["scope"]
+    # the project's first commit created the file: the path-free oldest is the same commit, the status is restored
+    first = history.text_history(r, "MAGIC_TOKEN", path="old.py")
+    assert first["events"][0]["new_file"] is True and first["claims"][0]["status"] == "primary_source_verified"
+    assert first["appeared"] == {"commit": born, "at": "old.py:1", "scope": "under old.py"}
+    assert first["first_appearance"] == {"commit": born, "at": "old.py:1", "scope": "path-free"}
+    assert "earlier_elsewhere" not in first and "path-free" in first["claims"][0]["text"]
+
+
+def test_commits_of_one_second_are_ordered_by_ancestry_not_by_date(tmp_path):
+    """A scripted import stamps a whole history with one second: the path-free oldest commit then ties with the
+    path-bound first event on date, and the graph says which came first (D186)."""
+    r = tmp_path / "tie"
+    r.mkdir()
+    _git(r, "init", "-q")
+    when = "2026-01-05T10:00:00+00:00"
+    born = _commit(r, {"old.py": "TIED_TOKEN = 1\n"}, "Add the token", date=when)
+    created = _commit(r, {"new.py": "TIED_TOKEN = 2\n"}, "Create new.py with the token", date=when)
+    _commit(r, {"app.py": "x = 1\n"}, "Add the app", date=when)
+    again = _commit(r, {"app.py": "x = 1\nTIED_TOKEN = 3\n"}, "Use the token in the app", date=when)
+    # the guzzle class on a tie: the claim is re-made from the path-free commit all the same
+    res = history.text_history(r, "TIED_TOKEN", path="new.py")
+    assert res["first_appearance"] == {"commit": born, "at": "old.py:1", "scope": "path-free"}
+    assert res["appeared"] == {"commit": created, "at": "new.py:1", "scope": "under new.py"}
+    assert born[:10] in res["claims"][0]["text"] and res["earlier_elsewhere"]["sha"] == born
+    # the gin class on a tie: the older commit is still the lead
+    res = history.text_history(r, "TIED_TOKEN", path="app.py")
+    assert res["appeared"]["commit"] == again and res["earlier_elsewhere"]["sha"] == born
+    assert any(u.startswith(f"the text existed earlier at another path: {born[:10]}")
+               for u in res["claims"][0]["uncertainties"])
+
+
+def test_regex_and_text_mode_follow_a_moved_file_when_one_path_is_given(tmp_path):
+    r = tmp_path / "moved"
+    r.mkdir()
+    _git(r, "init", "-q")
+    shas = [_commit(r, {"a/old_name.py": "x = 1\nLIMIT = 10\n"}, "Add the limit", date="2026-01-05T10:00:00+00:00"),
+            _commit(r, {"a/old_name.py": "x = 1\nLIMIT = 20\n"}, "Raise the limit", date="2026-01-06T10:00:00+00:00")]
+    (r / "b").mkdir()
+    _git(r, "mv", "a/old_name.py", "b/new_name.py")
+    _git(r, "commit", "-q", "-m", "Move the module", date="2026-01-07T10:00:00+00:00")
+    shas.append(_git(r, "rev-parse", "HEAD"))
+    # the fastapi class (D186): a one-for-one change before the move, which -S with the new path alone never sees
+    res = history.text_history(r, "LIMIT = 20", path="b/new_name.py")
+    assert res["appeared"] == {"commit": shas[1], "at": "a/old_name.py:2", "scope": "under b/new_name.py"}
+    assert "renames followed" in res["scope"] and "first_appearance" not in res   # a modification, not a birth
+    assert [e["commit"] for e in res["events"]] == [shas[1]]    # the pure move shows no occurrence change
+    rx = history.text_history(r, "LIMIT = 2[0-9]", regex=True, path="b/new_name.py")
+    assert rx["appeared"]["commit"] == shas[1]
+    found = history.commits(r, diff="LIMIT = 20", path="b/new_name.py")
+    assert [c["commit"] for c in found["commits"]] == [shas[1]] and "renames followed" in found["scope"]
+    # a folder path keeps today's result: no rename detection, the move adds the text at the new path
+    folder = history.text_history(r, "LIMIT = 20", path="b")
+    assert folder["appeared"] == {"commit": shas[2], "at": "b/new_name.py:2", "scope": "under b"}
+    assert "pre-move" in folder["scope"]
+    # under the folder the move created the file, so the path-free read names the pre-move commit all the same
+    assert folder["first_appearance"] == {"commit": shas[1], "at": "a/old_name.py:2", "scope": "path-free"}
+
+
+def test_the_general_rule_names_an_earlier_commit_at_another_path(tmp_path):
+    r = tmp_path / "elsewhere"
+    r.mkdir()
+    _git(r, "init", "-q")
+    first = _commit(r, {"lib.py": "SHARED_KEY = 'a'\n"}, "Add the shared key", date="2026-01-05T10:00:00+00:00")
+    _commit(r, {"app.py": "x = 1\n"}, "Add the app", date="2026-01-06T10:00:00+00:00")
+    again = _commit(r, {"app.py": "x = 1\nSHARED_KEY = 'b'\n"}, "Use the key in the app",
+                    date="2026-01-07T10:00:00+00:00")
+    # the gin trap-1 class (D186): the path-bound first event is a modification; the text was born in another file
+    res = history.text_history(r, "SHARED_KEY", path="app.py")
+    assert res["events"][0]["new_file"] is False
+    assert res["appeared"] == {"commit": again, "at": "app.py:2", "scope": "under app.py"}
+    assert "first_appearance" not in res   # the older commit is a lead (earlier_elsewhere), not the answer
+    claim = res["claims"][0]
+    assert claim["status"] == "primary_source_verified" and again[:10] in claim["text"]
+    assert any(u.startswith(f"the text existed earlier at another path: {first[:10]} 2026-01-05 Add the shared key")
+               for u in claim["uncertainties"])
+    assert res["earlier_elsewhere"]["sha"] == first and res["earlier_elsewhere"]["date"].startswith("2026-01-05")
+    assert res["earlier_elsewhere"]["subject"] == "Add the shared key"
+
+
+def test_a_timed_out_search_is_partial_not_an_error(repo, monkeypatch):
+    from verinoda import gitexec
+
+    r, shas = repo
+    real = gitexec.run
+
+    def slow_log(repo_, *args, **kw):   # the -S, -G and -L reads time out; rev-parse, show and grep answer
+        if "log" in args:
+            return gitexec.GitResult(124, "", "git log timed out after 60 s", timed_out=True)
+        return real(repo_, *args, **kw)
+
+    monkeypatch.setattr(gitexec, "run", slow_log)
+    res = history.text_history(r, "RETRY_BUDGET")
+    assert res["status"] == "partial" and res["timed_out"] is True and "error" not in res
+    assert "log -S" in res["searched"] and "VERINODA_MCP_GIT_TIMEOUT" in res["next_step"] and "path" in res["next_step"]
+    assert res["claims"] == [] and "scope" in res
+    sym = history.symbol_history(r, None, "svc.py:1-2")
+    assert sym["status"] == "partial" and sym["timed_out"] is True and sym["commits"] == []
+    assert history.commits(r, message="budget")["status"] == "partial"
+
+    def slow_path_free(repo_, *args, **kw):   # only the automatic path-free read times out
+        if "log" in args and "--" not in args:
+            return gitexec.GitResult(124, "", "git log timed out after 60 s", timed_out=True)
+        return real(repo_, *args, **kw)
+
+    monkeypatch.setattr(gitexec, "run", slow_path_free)
+    res = history.text_history(r, "RETRY_BUDGET", path="lib")
+    assert res["status"] == "found" and res["appeared"]["commit"] == shas[2] and res["events"][0]["new_file"] is True
+    assert "first_appearance" not in res   # not read in time: nothing path-free is said
+    claim = res["claims"][0]
+    assert claim["status"] == "strong_inference"
+    assert any("path-free search timed out" in u for u in claim["uncertainties"])
+    assert any("created at this path" in u for u in claim["uncertainties"])
+
+
+def test_literal_pathspecs_and_end_of_options(repo, tmp_path):
+    top = tmp_path / "top"
+    top.mkdir()
+    _git(top, "init", "-q")
+    _commit(top, {"other.py": "zeta_tok outside\n", "sub/a.py": "nothing\n", "sub/b.py": "zeta_tok inside\n"},
+            "both", date="2026-01-05T10:00:00+00:00")
+    proj = top / "sub"
+    # pathspec magic (`:/` is the repository root) and globs are read literally: a path is a file or folder prefix
+    assert history.text_history(proj, "zeta_tok", path=":/other.py")["status"] == "not_found"
+    assert history.text_history(proj, "zeta_tok", path="*.py")["status"] == "not_found"
+    assert history.text_history(proj, "zeta_tok", path="b.py")["appeared"]["at"] == "b.py:1"
+    with pytest.raises(ValueError, match="leaves the project"):
+        history.text_history(proj, "zeta_tok", path="../other.py")
+    r, _ = repo
+    with pytest.raises(ValueError, match="is not a revision"):
+        history.compare(r, "-x", "HEAD")
+    with pytest.raises(ValueError, match="is not a revision"):
+        history.symbol_commits(r, "svc.py", 1, 2, rev="--output=x")
