@@ -82,7 +82,13 @@ def main() -> int:
     rows = [json.loads(x) for x in (work / "results.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
     from claims_tasks import copy_dir
 
-    out = [mechanical_strict(r, copy_dir(work, r["id"], r["arm"], r["repeat"])) for r in rows]
+    def copy_of(r: dict) -> Path:
+        # the first run's copies were named by the task id (D185: the name leaked the kind); its rows still score
+        new = copy_dir(work, r["id"], r["arm"], r["repeat"])
+        old = work / "copies" / r["id"] / r["arm"] / f"r{r['repeat']}"
+        return new if new.is_dir() or not old.is_dir() else old
+
+    out = [mechanical_strict(r, copy_of(r)) for r in rows]
     (work / "mechanical-strict.jsonl").write_text("".join(json.dumps(m, ensure_ascii=False) + "\n" for m in out),
                                                   encoding="utf-8")
     by_arm: dict[str, dict[str, int]] = {}
