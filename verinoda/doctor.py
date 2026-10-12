@@ -16,8 +16,9 @@ from verinoda import __version__
 
 OPTIONAL = {
     "mcp": "MCP server (`verinoda mcp serve`)",
-    "tiktoken": "exact token counts in benchmarks (else chars/4 estimate)",
-    "anthropic": "benchmark --llm anthropic",
+    "tiktoken": "exact token counts in `verinoda benchmark` (`verinoda[benchmark]`; else a chars/4 estimate)",
+    "anthropic": "the benchmark's model-in-the-loop measurement, `benchmark run --llm anthropic` "
+                 "(`verinoda[benchmark]`)",
     "pypdf": "PDF documents in research",
     "watchdog": "file watching for `mcp serve --watch` and `ui --watch` (FSEvents on macOS; polling without it)",
 }

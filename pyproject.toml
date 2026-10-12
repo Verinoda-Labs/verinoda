@@ -63,12 +63,11 @@ dependencies = [
     "starlette>=1.3.1,<2",
     # PEP 440 version ranges in reference resolution (without it, ranges were matched loosely)
     "packaging>=23",
-    # Leiden communities in native code (abi3 wheels for Windows, macOS and Linux): clustering in an
-    # update of Verinoda's own repository 3.4 -> 1.0 s against networkx's Louvain fallback
-    "graspologic-native>=1.3.1,<2",
     # the text of PDF documents in the repository (verinoda/doctext.py, docs/DESIGN.md D41); pure Python
     "pypdf>=6.16.1",
 ]
+# D186: graspologic-native (Leiden communities) is the `leiden` extra, not a dependency: it brought 107 MB of
+# scipy that nothing imports into every install; without it project_index/cluster.py uses networkx's Louvain.
 
 [project.optional-dependencies]
 mcp = ["mcp>=1,<3", "starlette>=1.3.1,<2"]
@@ -88,9 +87,17 @@ svg = [
     "pillow>=12.3.0",
     "numpy>=2.0; python_version >= '3.13'",
 ]
+# Leiden communities in native code (abi3 wheels for Windows, macOS and Linux): clustering in an update of
+# Verinoda's own repository 3.4 -> 1.0 s against networkx's Louvain (measured for D42; not re-measured for
+# D186, which made it this extra). An index built with one backend re-clusters once under the other.
 leiden = [
-    "graspologic; python_version < '3.13'",
-    "graspologic-native>=1.3.1,<2; python_version >= '3.13'",
+    "graspologic-native>=1.3.1,<2",
+]
+# `verinoda benchmark`: exact token counts (tiktoken; else chars/4) and the model-in-the-loop measurement
+# (`benchmark run --llm anthropic`)
+benchmark = [
+    "tiktoken",
+    "anthropic",
 ]
 office = [
     "python-docx",
@@ -158,8 +165,9 @@ all = [
     "hypothesis>=6",
     "pypdf>=6.16.1",
     "watchdog",
-    "graspologic; python_version < '3.13'",
-    "graspologic-native>=1.3.1,<2; python_version >= '3.13'",
+    "graspologic-native>=1.3.1,<2",
+    "tiktoken",
+    "anthropic",
     "python-docx",
     "openpyxl",
     "matplotlib",

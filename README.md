@@ -152,7 +152,9 @@ uvx --from "verinoda[precise]" verinoda --version      # run once without instal
 
 On Windows, get uv first with `winget install --id astral-sh.uv -e` (then open a new terminal) and run
 `uv tool update-shell` once so `verinoda` is on PATH. `[precise]` adds the optional precise call-site resolver
-(jedi); leave it out for a smaller install. Upgrade with `uv tool upgrade verinoda`, `pipx upgrade verinoda` or
+(jedi); leave it out for a smaller install. `[leiden]` adds Leiden communities in native code (graspologic-native,
+with scipy; since D186 the default install clusters with networkx's Louvain instead) and `[benchmark]` adds
+tiktoken and anthropic for `verinoda benchmark`. Upgrade with `uv tool upgrade verinoda`, `pipx upgrade verinoda` or
 `pip install -U verinoda`. Releases are published from tags by `.github/workflows/release.yml`
 ([docs/RELEASING.md](docs/RELEASING.md)). MCP clients that start servers with npx can use
 `npx -y verinoda mcp serve`; `verinoda setup` registers the installed command instead.
