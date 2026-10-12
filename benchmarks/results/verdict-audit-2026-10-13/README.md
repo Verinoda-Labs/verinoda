@@ -23,8 +23,10 @@ verinoda benchmark verdict-audit --split all
 | `after-wave2-f34a223.json` | f34a223 | the merged tree after wave 2 (Tasks 3 and 4) |
 
 The JSON schema is `verinoda.verdict_audit_result/1`. It does not record the commit; the commits above come from the
-session ledger. Each run took under a minute; the `seconds` field of a row is the wall time of one `analyze` call
-and varies between runs (0.1 to 10 seconds), so it is not compared below.
+session ledger. The `seconds` field of a row is the wall time of one `analyze` call (indexing excluded); summed over
+the 39 rows it is 22.4 s before, 27.4 s after wave 1 and 29.2 s after wave 2, and a single row varies between runs
+by up to a factor of two in both directions (0.12 to 10.11 s), so it is not compared below. The runs were not timed
+under controlled load.
 
 ## Grades: unchanged
 
