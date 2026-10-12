@@ -1,0 +1,87 @@
+[bench] copying corpus from C:\Users\ozcin\Desktop\RepoAtlas\upstream-graphify to C:\Users\ozcin\AppData\Local\Temp\verinoda-bench-d8ohybm1\verinoda
+[bench] verinoda scan (cold)
+[bench] verinoda scan (warm)
+[bench] pass 1/1 g01 raw
+[bench] pass 1/1 g01 graphify_vendored
+[bench] pass 1/1 g01 verinoda_analyze
+[bench] pass 1/1 g01 verinoda_retrieve
+[bench] pass 1/1 g01 verinoda_retrieve_text
+[bench] pass 1/1 g02 raw
+[bench] pass 1/1 g02 graphify_vendored
+[bench] pass 1/1 g02 verinoda_analyze
+[bench] pass 1/1 g02 verinoda_retrieve
+[bench] pass 1/1 g02 verinoda_retrieve_text
+[bench] pass 1/1 g03 raw
+[bench] pass 1/1 g03 graphify_vendored
+[bench] pass 1/1 g03 verinoda_analyze
+[bench] pass 1/1 g03 verinoda_retrieve
+[bench] pass 1/1 g03 verinoda_retrieve_text
+[bench] pass 1/1 g04 raw
+[bench] pass 1/1 g04 graphify_vendored
+[bench] pass 1/1 g04 verinoda_analyze
+[bench] pass 1/1 g04 verinoda_retrieve
+[bench] pass 1/1 g04 verinoda_retrieve_text
+[bench] pass 1/1 g05 raw
+[bench] pass 1/1 g05 graphify_vendored
+[bench] pass 1/1 g05 verinoda_analyze
+[bench] pass 1/1 g05 verinoda_retrieve
+[bench] pass 1/1 g05 verinoda_retrieve_text
+[bench] pass 1/1 g06 raw
+[bench] pass 1/1 g06 graphify_vendored
+[bench] pass 1/1 g06 verinoda_analyze
+[bench] pass 1/1 g06 verinoda_retrieve
+[bench] pass 1/1 g06 verinoda_retrieve_text
+[bench] pass 1/1 g07 raw
+[bench] pass 1/1 g07 graphify_vendored
+[bench] pass 1/1 g07 verinoda_analyze
+[bench] pass 1/1 g07 verinoda_retrieve
+[bench] pass 1/1 g07 verinoda_retrieve_text
+[bench] pass 1/1 g08 raw
+[bench] pass 1/1 g08 graphify_vendored
+[bench] pass 1/1 g08 verinoda_analyze
+[bench] pass 1/1 g08 verinoda_retrieve
+[bench] pass 1/1 g08 verinoda_retrieve_text
+[bench] pass 1/1 g09 raw
+[bench] pass 1/1 g09 graphify_vendored
+[bench] pass 1/1 g09 verinoda_analyze
+[bench] pass 1/1 g09 verinoda_retrieve
+[bench] pass 1/1 g09 verinoda_retrieve_text
+benchmark set graphify_core_tr (9 questions)  status=ok
+gold facts re-verified against the corpus: 37 checked, 0 failure(s)
+Question set provenance: questions written by: question-understanding track agent, the author of the Turkish rules (textnorm / lexicon / question_plan), while tuning them; gold written by: copied unchanged from graphify_core.json (benchmark harness author, round 1); in sample: True; caveat: the paraphrases and the rules were written by the same author; Turkish results on these sets are an upper bound, not an independent measurement; english set: graphify_core; original file: qu_track/graphify_core_tr.json (research scratch, not in the repository).
+tokens: chars/4 estimate;  model: not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+graphify CLI: not run: --graphify-cmd not given
+
+index (one-off):
+  Verinoda scan: cold 12.61 s, warm 3.63 s; 4092 nodes / 8596 edges; 227 cache files
+
+| approach | facts found | via locator | pinpointed | shown | all-facts Qs | tokens mean | tokens max | facts/1k tok | shown/1k tok | pinpointed/1k tok | locators/Q | tool calls/Q | cold s (median) | warm s (median) | neg. matched | cited line lacks target |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| raw grep+read | 5/37 | 5 | 4 | 5 | 1/9 | 5991 | 6000 | 0.09 | 0.09 | 0.07 | 33.1 | 2.1 | 0.415 | - | n/a | n/a |
+| Graphify query (vendored, depth 3) | 2/37 | 2 | 2 | 2 | 0/9 | 1287 | 1653 | 0.17 | 0.17 | 0.17 | 46.7 | 1 | 0.252 | - | 0/7 | 0/0 |
+| Verinoda analyze | 31/37 | 31 | 19 | 21 | 7/9 | 2010 | 2295 | 1.71 | 1.16 | 1.05 | 31.4 | 1 | 1.475 | - | 0/7 | 0/39 |
+| Verinoda retrieve (JSON) | 26/37 | 23 | 17 | 12 | 4/9 | 1436 | 1446 | 2.01 | 0.93 | 1.32 | 23.4 | 1 | 0.138 | - | 0/7 | 0/5 |
+| Verinoda retrieve (text) | 31/37 | 31 | 18 | 21 | 7/9 | 1431 | 1495 | 2.41 | 1.63 | 1.40 | 26.7 | 1 | 0.152 | - | 0/7 | 0/126 |
+
+facts found per question (found/total):
+| question | category | raw grep+read | Graphify query (vendored, depth 3) | Verinoda analyze | Verinoda retrieve (JSON) | Verinoda retrieve (text) |
+|---|---|---|---|---|---|---|
+| g01 Graphify sorgu çıktısı token bütçesine sığmak için nerede kesiliyor? | where | 0/4 (5982 tok) | 0/4 (1636 tok) | 4/4 (1620 tok) | 2/4 (1443 tok) | 4/4 (1315 tok) |
+| g02 graphify query komutu bir soruyu graf bağlamına çevirmek için hangi fonksiyonları çağırıyor? | flow | 0/6 (5992 tok) | 0/6 (1653 tok) | 1/6 (2040 tok) | 0/6 (1431 tok) | 1/6 (1486 tok) |
+| g03 Graphify'ın query log'unu hangi ortam değişkenleri kontrol ediyor? | config | 0/4 (5992 tok) | 0/4 (1639 tok) | 4/4 (2291 tok) | 4/4 (1427 tok) | 4/4 (1490 tok) |
+| g04 Graphify AST çıkarım önbelleğini nerede saklıyor ve bir önbellek kaydının anahtarı nasıl oluşturuluyor? | where | 0/4 (6000 tok) | 0/4 (1631 tok) | 3/4 (2112 tok) | 3/4 (1429 tok) | 3/4 (1428 tok) |
+| g05 Hangi ortam değişkeni en büyük graph.json boyutunu artırıyor ve varsayılan sınır nedir? | config | 0/3 (5996 tok) | 1/3 (1633 tok) | 3/3 (2295 tok) | 2/3 (1446 tok) | 3/3 (1390 tok) |
+| g06 Graphify sorgu terimlerinden neden stopword'leri atıyor? | why | 3/3 (5988 tok) | 0/3 (93 tok) | 3/3 (1660 tok) | 2/3 (1437 tok) | 3/3 (1301 tok) |
+| g07 _query_terms değişirse ne etkilenir? | impact | 2/4 (5992 tok) | 1/4 (1642 tok) | 4/4 (1981 tok) | 4/4 (1433 tok) | 4/4 (1494 tok) |
+| g08 graphify update kod grafiğini LLM olmadan nasıl yeniden oluşturuyor? | flow | 0/6 (5982 tok) | 0/6 (1649 tok) | 6/6 (1947 tok) | 6/6 (1432 tok) | 6/6 (1480 tok) |
+| g09 Grafik dosyası boyut sınırını ve ortam değişkeniyle aşılmasını hangi testler kapsıyor? | tests | 0/3 (5998 tok) | 0/3 (6 tok) | 3/3 (2148 tok) | 3/3 (1446 tok) | 3/3 (1495 tok) |
+
+Verinoda claims: 88 (observed=13, primary_source_verified=3, statically_verified=65, strong_inference=6, weak_inference=1); verified share 0.92; weak/unknown 1 (unlabelled 1); negative facts stated as findings 0 (in 0 claim(s)); unknowns reported 4; relation claims labelled contradicted 0, of which the cited line does name the target 0 (via import alias 0)
+claim reuse: warm 0/0, cold 11/88 (claims whose id already existed in atlas.db before the run (same text + snapshot))
+
+not measured:
+  - model-in-the-loop answer accuracy, model tokens and model cost - not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+  - real upstream Graphify CLI baseline - not run: --graphify-cmd not given
+  - runtime correctness of answers (only presence of gold facts in the delivered context is scored)
+  - OS file-cache effects are not separated from process warm-up in cold vs warm timings
+  - memory use
