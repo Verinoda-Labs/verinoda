@@ -144,11 +144,11 @@ DECISION_ACTIONS = ("list", "record", "import", "guard", "accept", "waive", "sup
 DECISION_NEEDS_USER = ("record", "guard", "accept", "waive", "supersede", "link", "answer")
 DEBUG_KINDS = ("fix", "probe", "rerun", "differential")
 DEBUG_STRATEGIES = ("differential", "bisect", "rerun", "observe")
-# analyze: what the agent reads first and what is cut last (the interpretation and the per-sub-question verdicts)
-ANALYZE_KEEP = ("analysis_id", "snapshot", "understood_as", "subquestions")
-# over the cap, bookkeeping goes before evidence: the critique log and the plan's links first, then the
-# passages (from the end: the top-ranked stay; `project_query` gives them in full), claims last
-ANALYZE_FIRST_CUT = ("critique", "plan_check.links", "passages")
+# analyze: the response is built under its own budget (analysis_view.lead_view, D186): the verdict, the answer
+# claims whole, the leads; the generic cap stays a backstop, and under a smaller cap these are kept whole
+ANALYZE_BUDGET = 2500        # chars of compact JSON (about 1,000 tokens)
+ANALYZE_LEAD_BUDGET = 4500   # with show="lead": the first lead's source lines on top
+ANALYZE_KEEP = ("status", "understood_as", "errors", "clarifications")
 PLAN_HINT = ("draft and check a plan with `verinoda plan draft` / `verinoda plan check` (MCP, profile full: "
              "question_plan_draft / question_plan_check); the format: `verinoda plan schema`")
 # A file modified this close to (or after) the start of a call may have changed while it was read, or
@@ -1475,7 +1475,7 @@ class AtlasTools:
     # -- analysis & claims ----------------------------------------------------------
     def analyze(self, question: str = "", run_tests: bool = False, budget_seconds: float = 60,
                 budget_calls: int = 40, plan_json: str | None = None, observe: bool = False,
-                intent: str | None = None) -> dict:
+                intent: str | None = None, show: str | None = None) -> dict:
         def go():
             from verinoda import analysis
             from verinoda.question_plan import INTENTS
@@ -1485,6 +1485,10 @@ class AtlasTools:
             if not q and plan is None:
                 raise ToolFailure("invalid_argument", "question must be a non-empty string (or pass plan_json)",
                                   "pass the user's question, or a checked plan as plan_json")
+            want_show = _opt_text(show)
+            if want_show not in (None, "lead"):
+                raise ToolFailure("invalid_argument", f"unknown show {want_show!r}",
+                                  "leave it out, or pass show='lead' for the first lead's source lines", valid=["lead"])
             want = _opt_text(intent)
             if intent is not None and want is None:  # a blank intent is a mistake, not "no intent"
                 raise ToolFailure("invalid_argument", "intent must not be blank",
@@ -1512,13 +1516,22 @@ class AtlasTools:
                 raise ToolFailure("invalid_plan", f"the plan failed validation ({len(problems)} problem(s)); "
                                                   "nothing was analysed", PLAN_HINT, problems=problems,
                                   analysis_id=res.get("analysis_id"), plan_id=res.get("plan_id"))
-            from verinoda.analysis_view import lean_capped
+            from verinoda.analysis_view import lead_view
 
-            # the answer, not the run (verinoda.analysis_view); plan_audit / claim_inspect for more. Capped
-            # here: a claim left out as printed by the passages comes back when the cut removes its lines.
-            return lean_capped(res, lambda d: cap_response(d, self.max_chars, first=ANALYZE_FIRST_CUT,
-                                                           keep=ANALYZE_KEEP))
-        return self._run("analyze", go, need="graph", first=ANALYZE_FIRST_CUT, keep=ANALYZE_KEEP)
+            # leads, not an investigation (D186): the verdict, the answer claims whole, what to read next, cut to
+            # its budget by the builder itself; plan_audit, claim_inspect and project_query give the rest
+            return lead_view(res, budget=ANALYZE_BUDGET, show=want_show, read=self._lead_lines,
+                             lead_budget=ANALYZE_LEAD_BUDGET)
+        return self._run("analyze", go, need="graph", keep=ANALYZE_KEEP)
+
+    def _lead_lines(self, rel: str, start: int, end: int) -> str | None:
+        """Source lines for analyze's ``show="lead"``: a path the result cites, read under the repository only."""
+        p = Path(rel)
+        if p.is_absolute() or ".." in p.parts:
+            return None
+        from verinoda.evidence import read_lines
+
+        return read_lines(self.repo / p, start, end)
 
     def plan_audit(self, analysis_id: str, refresh: bool = True) -> dict:
         def go():
@@ -2474,10 +2487,9 @@ DESCRIPTIONS: dict[str, str] = {
         "nowhere is not_found with did_you_mean, never replaced). Stored (plan_id). status: ready | "
         "needs_clarification (ask the user, record answers[] with clarification_id) | invalid (an error)."),
     "analyze": (
-        "Answer a question as claims with evidence: one verdict per sub-question, claims with file:line, "
-        "unknowns with next steps, and the passages. needs_clarification is a normal result (ask the user). "
-        "run_tests / observe also run or trace the tests that reach the answer (isolated copy). Re-indexes "
-        "first if the tree changed."),
+        "Answer a question as a verdict, its answer claims and leads with file:line; under 2,500 chars; leads are "
+        "what to read next, not verified claims; show='lead' adds the first lead's lines. needs_clarification is a "
+        "normal result (ask the user). Re-indexes first if the tree changed."),
     "plan_audit": (
         "Re-judge an earlier analysis' sub-questions on the current claim statuses (refresh=true re-indexes "
         "first, so claims whose files changed are stale); 'changed' lists the verdicts that moved."),
@@ -3020,9 +3032,13 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
                                             "Used only when the rules' reading agrees, else intent_check gives "
                                             "both and the rules' is used. Never changes a claim's status.")]
         = None,
+        show: Annotated[Literal["lead"] | None,
+                        Field(description="'lead': also the first lead's numbered source lines (at most 60).")]
+        = None,
     ) -> dict[str, Any]:
         return emit(t.analyze(question, run_tests=run_tests, budget_seconds=budget_seconds,
-                              budget_calls=budget_calls, plan_json=plan_json, observe=observe, intent=intent))
+                              budget_calls=budget_calls, plan_json=plan_json, observe=observe, intent=intent,
+                              show=show))
 
     @register("plan_audit")
     def plan_audit(
@@ -3419,8 +3435,11 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
         def analyze_core(
             question: Annotated[str, Field(description="The question.")],
             budget_seconds: Annotated[float, Field(description="Wall-time budget in seconds (1-600).")] = 60,
+            show: Annotated[Literal["lead"] | None,
+                            Field(description="'lead': also the first lead's numbered source lines (at most 60).")]
+            = None,
         ) -> dict[str, Any]:
-            return emit(t.analyze(question, budget_seconds=budget_seconds))
+            return emit(t.analyze(question, budget_seconds=budget_seconds, show=show))
 
         def code_check_core(
             paths: Annotated[list[str] | None, Field(description="Repository-relative files or directories.")]

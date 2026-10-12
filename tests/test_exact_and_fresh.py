@@ -962,8 +962,9 @@ def test_mcp_analyze_starts_a_background_update_when_the_refresh_would_be_slow(p
     (proj / "app" / "claims.py").write_text(CLAIMS + "\n# edited\n", encoding="utf-8")
     t = mcp_server.AtlasTools(proj)
     res = t.analyze("Where is assess_change defined?")
-    ref = res["index_refresh"]
-    assert ref["ran"] is False and ref["background_update"].startswith("started (pid 4242)")
+    # the MCP response says it in its coverage line (analysis_view.lead_view, D186), not as a refresh record
+    assert "index_refresh" not in res
+    assert "not refreshed" in res["coverage"] and "background update started (pid 4242)" in res["coverage"]
     argv = started[0]
     assert argv[1:3] == ["-I", "-c"] and argv[-3:] == ["update", "--repo", str(proj.resolve())]
     assert t._update_in_background() == "running (pid 4242)"  # one at a time

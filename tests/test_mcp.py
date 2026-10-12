@@ -61,8 +61,8 @@ EXPECTED_PARAMS = {
                       "findings", "since_last"}, set()),
     "question_plan_draft": ({"question"}, {"question"}),
     "question_plan_check": ({"plan_json"}, {"plan_json"}),
-    "analyze": ({"question", "run_tests", "budget_seconds", "budget_calls", "plan_json", "observe", "intent"},
-                set()),
+    "analyze": ({"question", "run_tests", "budget_seconds", "budget_calls", "plan_json", "observe", "intent",
+                 "show"}, set()),
     "plan_audit": ({"analysis_id", "refresh"}, {"analysis_id"}),
     "lexicon_show": ({"word"}, {"word"}),
     "claim_inspect": ({"claim_id"}, {"claim_id"}),
@@ -150,6 +150,32 @@ def _store(repo: Path):
 
 def _norm(obj):
     return json.loads(json.dumps(obj, ensure_ascii=False, default=str))
+
+
+# one lead of the analyze response ends with why it is there (verinoda.analysis_view.lead_view, D186)
+_LEAD_WHYS = ("  (answer)", "  (claim)", "  (linked)", "  (passage)")
+
+
+def _lead_path(lead: str) -> str:
+    """The path of one lead line ``path:a-b  symbol  (why)``."""
+    where = lead.split("  ")[0]
+    path, _, lines = where.rpartition(":")
+    return path if lines.replace("-", "").isdigit() else where
+
+
+def _claim_ids(view: dict) -> list[str]:
+    """The claim ids an analyze response names: its answers, then its context lines (``id status text``)."""
+    ids = [a["id"] for s in view.get("subquestions") or [] for a in s.get("answers") or []]
+    ids += [ln.split(" ", 1)[0] for ln in view.get("context") or []]
+    return list(dict.fromkeys(ids))
+
+
+def _claim_status(view: dict, cid: str) -> str:
+    for s in view.get("subquestions") or []:
+        for a in s.get("answers") or []:
+            if a["id"] == cid:
+                return a["status"]
+    return next(ln.split(" ")[1] for ln in view.get("context") or [] if ln.startswith(cid + " "))
 
 
 def _line_of(repo: Path, rel: str, needle: str) -> int:
@@ -361,14 +387,16 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     assert gate["annotations"]["readOnlyHint"] is False  # change_review can run tests
     # the core analyze and code_check take the arguments a question or an edit needs
     by = {t["name"]: t["inputSchema"]["properties"] for t in core}
-    assert set(by["analyze"]) == {"question", "budget_seconds"} and "env" not in by["code_check"]
+    assert set(by["analyze"]) == {"question", "budget_seconds", "show"} and "env" not in by["code_check"]
     wire = json.dumps(core, separators=(",", ":"))
     # 50,029 chars for the 33 tools before (2026-09-25); 11,999 for 12 on 2026-09-26; 8,905 for 11 (D60);
     # D82's deps argument and D84's dead view kept under the limit by shorter wording; tq's catalog line paid for by
     # shorter history_search and run_tool.arguments texts: 4,449 -> 4,426 (the records menu 4,598 -> 4,575);
     # locate and coupled (one catalog line for both) take it to 4,563 (the records menu to about 4,712): the two
-    # limits are raised on purpose, by 100 and 150
-    assert len(wire) < 4600
+    # limits are raised on purpose, by 100 and 150; analyze's show argument (D186, the experiment the cost sample
+    # measures) takes it to 4,721 (the records menu to 4,870): both raised by 200, to come down with the shorter
+    # descriptions of the one status rule
+    assert len(wire) < 4800
     assert '"title"' not in wire and "outputSchema" not in wire
     text = instructions("core")
     # tq, locate and coupled are named in run_tool's catalog only: a sentence for them in the instructions waits
@@ -387,7 +415,7 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     gate = next(t for t in with_records if t["name"] == GATEWAY)
     assert {"decision_check", "dependency_ask"} <= set(gate["inputSchema"]["properties"]["name"]["enum"])
     # decision_check's line already took this menu to 4,598 characters; dependency_ask's line did not add to it
-    assert len(json.dumps(with_records, separators=(",", ":"))) < 4750
+    assert len(json.dumps(with_records, separators=(",", ":"))) < 4950
     assert "dependency_ask {source, target}" in gate["description"]
     full = mcp_server.build_server(repo, profile="full")
     assert full.verinoda_profile == "full" and len(listing(full)) == len(TOOL_NAMES)
@@ -830,33 +858,41 @@ def test_lexicon_show_equals_core(repo, tools):
 
 # -- analysis & claims ------------------------------------------------------------
 
-def test_analyze_records_claims_like_core(repo, tools, analysis):
-    from verinoda import analysis_view
+def test_analyze_is_a_lead_view_of_the_stored_claims(repo, tools, analysis):
     from verinoda.claims import STATUSES, VERIFIED, Claims
 
     assert analysis["analysis_id"].startswith("ana_")
-    # the lean response (verinoda.analysis_view): the answer, not the run
-    assert list(analysis)[:4] == ["analysis_id", "snapshot", "understood_as", "subquestions"]
-    assert {"claims", "passages", "plan_check", "status"} <= set(analysis)
-    assert not {"steps", "usage", "question", "intents", "plan_source"} & set(analysis)
-    assert all(set(s) <= set(analysis_view.SUB_KEYS) for s in analysis["subquestions"])
-    assert analysis["claims"]
+    # the lead view (verinoda.analysis_view.lead_view, D186): the verdict, the answer claims whole, what to read next
+    assert list(analysis)[:4] == ["status", "understood_as", "snapshot", "analysis_id"]
+    assert analysis["status"] == "answered" and {"subquestions", "leads", "coverage"} <= set(analysis)
+    for gone in ("claims", "passages", "plan_check", "critique", "steps", "usage", "question", "intents",
+                 "plan_source", "claims_in_passages", "truncated", "truncation"):
+        assert gone not in analysis, gone
+    assert _size(analysis) <= mcp_server.ANALYZE_BUDGET
+    assert all(set(s) == {"id", "intent", "status", "answers"} for s in analysis["subquestions"])
+    answers = [a for s in analysis["subquestions"] for a in s["answers"]]
+    assert answers and all({"id", "status", "text"} <= set(a) for a in answers)
+    assert 0 < len(analysis["leads"]) <= 8 and all(ln.endswith(_LEAD_WHYS) for ln in analysis["leads"])
+    assert all((repo / _lead_path(ln)).is_file() for ln in analysis["leads"])  # every lead is a file of the tree
+    assert analysis["leads"][0].startswith("orders/repository.py:") and analysis["leads"][0].endswith("(answer)")
+    assert all(len(ln.split(" ", 2)) == 3 for ln in analysis.get("context") or []) and len(analysis.get("context") or []) <= 6
+    assert "project_query" in analysis["coverage"] and analysis["snapshot"]["id"] in analysis["coverage"]
+    ids = _claim_ids(analysis)
     with _store(repo) as st:
         cl = Claims(st, repo)
         row = st.get("analyses", analysis["analysis_id"])
-        ids = [c["id"] for c in analysis["claims"]]
-        # verified context claims the passages print are left out and counted, never silently
-        assert set(ids) <= set(row["result"]["claims"])
-        assert len(row["result"]["claims"]) == len(ids) + analysis.get("claims_in_passages", 0)
-        for c in analysis["claims"]:
-            shown = tools.claim_inspect(c["id"])
-            assert shown == _norm(cl.show(c["id"]))
-            assert shown["status"] == c["status"] and shown["status"] in STATUSES
+        assert set(ids) <= set(row["result"]["claims"])  # every id the response names is a stored claim of its own
+        for cid in ids:
+            shown = tools.claim_inspect(cid)
+            assert shown == _norm(cl.show(cid))
+            assert shown["status"] == _claim_status(analysis, cid) and shown["status"] in STATUSES
             support = [e["type"] for e in shown["supporting"]]
             if support and set(support) == {"graph_edge"}:
                 assert shown["status"] not in VERIFIED  # a graph edge alone never verifies
     bad = tools.analyze("")
     assert bad["error"] == "invalid_argument"
+    bad = tools.analyze(QUESTION, show="passages")
+    assert bad["error"] == "invalid_argument" and bad["valid"] == ["lead"]
 
 
 def test_claim_list(repo, tools, analysis):  # runs before the other analyses of this module add claims
@@ -864,7 +900,7 @@ def test_claim_list(repo, tools, analysis):  # runs before the other analyses of
     with _store(repo) as st:
         rows = st.claims(limit=50)
     assert res["count"] == len(rows) and [c["id"] for c in res["claims"]] == [r["id"] for r in rows]
-    assert {c["id"] for c in analysis["claims"]} <= {c["id"] for c in res["claims"]}
+    assert set(_claim_ids(analysis)) <= {c["id"] for c in res["claims"]}
     only = tools.claim_list(status="statically_verified")
     assert only["claims"] and all(c["status"] == "statically_verified" for c in only["claims"])
     assert tools.claim_list(status="made_up")["error"] == "invalid_argument"
@@ -905,15 +941,17 @@ def test_analyze_with_a_host_plan(repo, tools):
     res = tools.analyze(plan_json=json.dumps(plan))
     assert "error" not in res and res["status"] == "answered" and res["plan_id"].startswith("qpl_")
     assert res["understood_as"] == plan["restated_goal_user_lang"] and "question" not in res
-    assert list(res)[:4] == ["analysis_id", "snapshot", "understood_as", "subquestions"]
-    assert any(c["text"].startswith("`compute_total()` is defined at orders/pricing.py") for c in res["claims"])
+    assert list(res)[:4] == ["status", "understood_as", "snapshot", "analysis_id"]
+    answers = [a for s in res["subquestions"] for a in s["answers"]]
+    assert any(a["text"].startswith("`compute_total()` is defined at orders/pricing.py") for a in answers)
     with _store(repo) as st:
         assert qp.get_plan(st, res["plan_id"])["source"] == "host"
 
-    # needs_clarification is a normal result: nothing analysed, the clarifications to ask
+    # needs_clarification is a normal result: nothing analysed, the clarifications to ask, whole (never cut)
     amb = tools.analyze(plan_json=json.dumps(AMBIGUOUS_PLAN))
-    assert "error" not in amb and amb["status"] == "needs_clarification" and amb["claims"] == []
-    assert amb["clarifications"] and amb["plan_check"]["status"] == "needs_clarification"
+    assert "error" not in amb and amb["status"] == "needs_clarification" and "claims" not in amb
+    assert amb["clarifications"] and amb["subquestions"] == [] and _size(amb) <= mcp_server.ANALYZE_BUDGET
+    assert list(amb)[:3] == ["status", "understood_as", "clarifications"]
 
     # an invalid plan is an error that names the problems
     bad = tools.analyze(plan_json=json.dumps({**AMBIGUOUS_PLAN, "language": "klingon"}))
@@ -949,40 +987,32 @@ def test_analyze_takes_a_host_intent_in_the_full_profile_only(repo, tools):
     assert "intent" not in core["analyze"]["properties"]
 
 
-def test_analyze_keeps_the_interpretation_under_a_small_cap(repo, analysis):
-    small = AtlasTools(repo, max_chars=4000)
-    res = small.analyze(QUESTION)
-    assert res["truncated"] is True and _size(res) <= 4000
-    assert list(res)[:4] == ["analysis_id", "snapshot", "understood_as", "subquestions"]
-    assert res["understood_as"] == analysis["understood_as"]
-    assert [s["id"] for s in res["subquestions"]] == [s["id"] for s in analysis["subquestions"]]
-    cut = res["truncation"]["cut"]
-    assert not any(k.startswith(("understood_as", "subquestions", "analysis_id", "snapshot")) for k in cut), cut
-    # bookkeeping and passages go before claims: passages are cut from the end (the top-ranked stay)
-    assert "passages" in cut and res["passages"] == analysis["passages"][:len(res["passages"])]
-    assert list(cut)[0] in ("critique", "plan_check.links", "passages")
-
-
-def test_analyze_under_a_cap_never_hides_a_claim_the_cut_passages_no_longer_print(repo, monkeypatch):
-    """A verified claim left out as printed by the passages comes back when the cap cuts its lines:
-    every claim is listed, printed by the passages kept, or counted in the cut note."""
-    from verinoda import analysis_view as av
-
-    seen = {}
-    real = av.lean_capped
-    monkeypatch.setattr(av, "lean_capped", lambda res, cap: seen.update(res=res) or real(res, cap))
+def test_analyze_stays_under_its_budget_and_a_smaller_cap_keeps_the_verdict(repo, analysis):
+    """The builder cuts the response to 2,500 chars itself (never marked truncated); a server cap below that is
+    the generic cut, which keeps the status, the interpretation and the coverage whole."""
     q = "how does an order get persisted and where is the discount applied?"
-    for limit in (5000, 7000):
-        out = AtlasTools(repo, max_chars=limit).analyze(q)
-        res = seen["res"]
-        assert _size(out) <= limit and out["truncated"] is True, limit
-        assert len(res["passages"]) > len(out["passages"]), limit  # the cap did cut the passages
-        listed = {c["id"] for c in out["claims"]}
-        printed = av.shown_by_passages({**res, "passages": out["passages"]})
-        cut = out["truncation"]["cut"].get("claims")
-        missing = [c["id"] for c in res["claims"] if c["id"] not in listed and c["id"] not in printed]
-        assert len(missing) <= (cut["total"] - cut["kept"] if cut else 0), (limit, missing)
-        assert out.get("claims_in_passages", 0) <= len(printed), limit
+    res = AtlasTools(repo).analyze(q)
+    assert "error" not in res and _size(res) <= mcp_server.ANALYZE_BUDGET and "truncated" not in res
+    assert len(res["subquestions"]) >= 2 and any(s["answers"] for s in res["subquestions"])
+    small = AtlasTools(repo, max_chars=1800).analyze(QUESTION)
+    assert small["truncated"] is True and _size(small) <= 1800
+    assert list(small)[:2] == ["status", "understood_as"] and small["understood_as"] == analysis["understood_as"]
+    assert small["status"] == analysis["status"] and "project_query" in small["coverage"]
+    assert not any(k.startswith(("status", "understood_as", "coverage")) for k in small["truncation"]["cut"])
+
+
+def test_show_lead_adds_the_first_leads_source_lines(repo, tools):
+    res = tools.analyze(QUESTION, show="lead")
+    assert "error" not in res and _size(res) <= mcp_server.ANALYZE_LEAD_BUDGET
+    ll = res["lead_lines"]
+    path = _lead_path(res["leads"][0])
+    assert ll["path"] == path and ll["start"] >= 1 and ll["end"] - ll["start"] < 60 and list(res)[-1] == "lead_lines"
+    first = ll["text"].splitlines()[0].lstrip()
+    number, body = first.split(" ", 1)
+    assert number == str(ll["start"])  # numbered lines ...
+    assert body == (repo / path).read_text(encoding="utf-8").splitlines()[ll["start"] - 1]  # ... of the file as it is
+    plain = tools.analyze(QUESTION)
+    assert "lead_lines" not in plain and plain["leads"] == res["leads"]  # the same leads, by default without lines
 
 
 def test_plan_audit_equals_core(repo, tools, analysis):
@@ -1000,14 +1030,14 @@ def test_plan_audit_equals_core(repo, tools, analysis):
 
 
 def _first_claim_with(tools: AtlasTools, analysis: dict, ev_type: str, status: str | None = None):
-    for c in analysis["claims"]:
-        if status and c["status"] != status:
+    for cid in _claim_ids(analysis):
+        if status and _claim_status(analysis, cid) != status:
             continue
-        shown = tools.claim_inspect(c["id"])
+        shown = tools.claim_inspect(cid)
         for e in shown["supporting"]:
             if e["type"] == ev_type:
-                return c["id"], e["id"]
-    raise AssertionError(f"no claim with {ev_type} evidence in {analysis['claims']}")
+                return cid, e["id"]
+    raise AssertionError(f"no claim with {ev_type} evidence in {_claim_ids(analysis)}")
 
 
 def test_evidence_inspect_rechecks_source(repo, tools, analysis):
@@ -1372,7 +1402,7 @@ def test_real_research_and_feedback_modules_through_tools(tmp_path, fresh_repo):
     assert cmp.get("status") == "ok" and _size(cmp) <= t.max_chars, cmp
 
     a = t.analyze("where is the order saved to the database?")
-    cid = a["claims"][0]["id"]
+    cid = _claim_ids(a)[0]
     fb = t.feedback_submit("this claim is wrong", claim_id=cid, process=False)
     assert fb.get("id") and fb.get("status") and not fb.get("error"), fb
     processed = t.feedback_process(fb["id"], network="off")
@@ -1522,17 +1552,17 @@ def test_cap_response_truncates_and_reports():
 
 
 def test_cap_response_keeps_named_keys_first_and_cuts_them_last():
-    keep = ("understood_as", "subquestions", "plan_check")
+    keep = ("understood_as", "subquestions", "searched")
     big = {"analysis_id": "ana_1",
            "steps": [{"i": i, "pad": "s" * 50} for i in range(100)],
-           "claims": [{"id": f"clm_{i}", "text": "c" * 80} for i in range(100)],
+           "items": [{"id": f"itm_{i}", "text": "c" * 80} for i in range(100)],
            "subquestions": [{"id": f"q{i}", "claim_ids": [f"clm_{j}" for j in range(10)]} for i in range(3)],
            "understood_as": "Anladığım: siparişin kaydedildiği yer",
-           "plan_check": {"status": "ready", "links": [{"mention": f"m{i}", "status": "linked"} for i in range(5)]}}
+           "searched": {"status": "ready", "links": [{"mention": f"m{i}", "status": "linked"} for i in range(5)]}}
     res = cap_response(big, 3000, first=("steps",), keep=keep)
     assert list(res)[:3] == list(keep) and _size(res) <= 3000
     assert {k: res[k] for k in keep} == _norm({k: big[k] for k in keep})  # untouched
-    assert {"steps", "claims"} <= set(res["truncation"]["cut"])
+    assert {"steps", "items"} <= set(res["truncation"]["cut"])
     assert cap_response({"a": 1, "understood_as": "x"}, 3000, keep=keep) == {"understood_as": "x", "a": 1}
     tight = cap_response(big, 1200, keep=keep)  # nothing else left to cut: the kept keys are cut too
     assert _size(tight) <= 1200 and "over_limit" not in tight["truncation"]
@@ -1566,13 +1596,14 @@ def test_cap_response_keeps_both_ends_of_a_commit_list_and_names_the_dropped():
 
 
 def test_cap_response_cuts_a_nested_first_list_before_the_rest():
-    big = {"claims": [{"id": f"clm_{i}", "text": "c" * 80} for i in range(10)],
-           "plan_check": {"status": "ready", "links": [f"m{i} -> f.py:{i} (linked)" * 3 for i in range(60)]},
-           "passages": [f"line {i} " + "p" * 60 for i in range(40)]}
-    res = cap_response(big, 4000, first=("plan_check.links", "passages"))
-    assert _size(res) <= 4000 and res["claims"] == big["claims"]  # evidence last
-    assert list(res["truncation"]["cut"])[0] == "plan_check.links" and res["plan_check"]["status"] == "ready"
-    assert res["plan_check"]["links"] == big["plan_check"]["links"][:len(res["plan_check"]["links"])]
+    big = {"items": [{"id": f"itm_{i}", "text": "c" * 80} for i in range(10)],
+           "searched": {"status": "ready", "links": [f"m{i} -> f.py:{i} (linked)" * 3 for i in range(60)]},
+           "history": [f"line {i} " + "p" * 60 for i in range(40)]}
+    res = cap_response(big, 4000, first=("searched.links", "history"))
+    assert _size(res) <= 4000 and res["items"] == big["items"]  # what `first` does not name goes last
+    assert list(res["truncation"]["cut"])[0] == "searched.links" and res["searched"]["status"] == "ready"
+    assert res["searched"]["links"] == big["searched"]["links"][:len(res["searched"]["links"])]
+    assert res["history"] == big["history"][-len(res["history"]):]  # a history keeps its newest entries
 
 
 # -- real stdio round trip ------------------------------------------------------------------
@@ -1652,7 +1683,7 @@ def test_stdio_roundtrip(repo, tmp_path):
         c = await s.call_tool("question_plan_check", {"plan_json": json.dumps(plan)})
         a = await s.call_tool("analyze", {"plan_json": json.dumps(plan), "budget_seconds": 90})
         bad_plan = await s.call_tool("analyze", {"plan_json": '{"schema": "nope"}'})
-        cid = _payload(a)["claims"][0]["id"]
+        cid = _claim_ids(_payload(a))[0]
         ci = await s.call_tool("claim_inspect", {"claim_id": cid})
         bad = await s.call_tool("claim_inspect", {"claim_id": "clm_does_not_exist"})
         rr = await s.call_tool("reference_resolve", {"text": "is this the same in requests 2.31?", "network": "off"})
@@ -1680,19 +1711,20 @@ def test_stdio_roundtrip(repo, tmp_path):
     assert not _is_error(c) and cp_check["status"] == "ready" and cp_check["plan_id"].startswith("qpl_")
 
     ap = _payload(a)
-    assert not _is_error(a) and ap["analysis_id"].startswith("ana_") and ap["claims"]
-    assert ap["plan_id"].startswith("qpl_") and list(ap)[:4] == ["analysis_id", "snapshot", "understood_as",
-                                                                 "subquestions"]
+    assert not _is_error(a) and ap["analysis_id"].startswith("ana_") and _claim_ids(ap)
+    assert ap["plan_id"].startswith("qpl_") and list(ap)[:4] == ["status", "understood_as", "snapshot",
+                                                                 "analysis_id"]
+    assert _size(ap) <= mcp_server.ANALYZE_BUDGET and "claims" not in ap and "passages" not in ap
     bpp = _payload(bad_plan)
     assert bpp["error"] == "invalid_plan" and bpp["problems"]
     if hasattr(bad_plan, "is_error"):
         assert bad_plan.is_error is True
     cp = _payload(ci)
-    assert not _is_error(ci) and cp["id"] == ap["claims"][0]["id"]
+    assert not _is_error(ci) and cp["id"] == _claim_ids(ap)[0]
     with _store(repo) as st:
         assert cp == _norm(Claims(st, repo).show(cp["id"]))
         assert st.get("analyses", ap["analysis_id"]) is not None
-    assert cp["status"] == ap["claims"][0]["status"] and cp["supporting"]
+    assert cp["status"] == _claim_status(ap, cp["id"]) and cp["supporting"]
 
     bp = _payload(bad)
     assert bp["error"] == "not_found" and bp["hint"]
