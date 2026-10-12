@@ -112,6 +112,48 @@ def test_doctor_json_never_prints_secret_values(repo):
     assert "search_index: generation" in r.stdout and "lexicon:" in r.stdout and "research.network = cache" in r.stdout
 
 
+def test_graph_state_reports_lock_and_files_behind(repo, capsys, tmp_path):
+    """The editor mod's status line reads the index lock and the files behind from this one command (D186)."""
+    import threading
+
+    from verinoda import buildlock
+
+    out = run_cli(capsys, "graph-state", "--repo", str(repo), "--json")
+    d = json.loads(out)
+    assert d["locked"] is False and d["behind"] == 0 and d["state"] == "fresh"
+    assert run_cli(capsys, "graph-state", "--repo", str(repo)).strip() == "graph: fresh"
+    new = repo / "orders" / "new.py"
+    new.write_text("x = 1\n", encoding="utf-8")
+    try:
+        d = json.loads(run_cli(capsys, "graph-state", "--repo", str(repo), "--json"))
+        assert d["behind"] == 1 and d["state"] == "behind"
+        assert run_cli(capsys, "graph-state", "--repo", str(repo)).strip() == "graph: behind 1 file"
+    finally:
+        new.unlink()
+    # a build in another thread holds the lock: `building`, whatever the files say
+    held, release = threading.Event(), threading.Event()
+
+    def hold():
+        with buildlock.build_lock(repo, wait=0, purpose="test"):
+            held.set()
+            release.wait(10)
+
+    t = threading.Thread(target=hold)
+    t.start()
+    assert held.wait(10)
+    try:
+        d = json.loads(run_cli(capsys, "graph-state", "--repo", str(repo), "--json"))
+        assert d["locked"] is True and d["state"] == "building"
+    finally:
+        release.set()
+        t.join(10)
+    d = json.loads(run_cli(capsys, "graph-state", "--repo", str(repo), "--json"))
+    assert d == {"locked": False, "behind": 0, "state": "fresh"}
+    # a folder that was never indexed is not called fresh
+    d = json.loads(run_cli(capsys, "graph-state", "--repo", str(tmp_path), "--json"))
+    assert d["state"] == "no_index" and d["locked"] is False and d["behind"] == 0
+
+
 def test_update_is_noop_on_unchanged_tree(repo):
     res = ok_json("update", str(repo), "--json", cwd=repo)
     assert res["mode"] == "noop" and res["changed_count"] == 0 and res["stale"] == []

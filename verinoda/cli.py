@@ -450,6 +450,29 @@ def cmd_doctor(args) -> int:
     return 0 if res["ok"] else 1
 
 
+def cmd_graph_state(args) -> int:
+    """The index build lock and the files changed since the index, in one call: what the editor mod's status
+    line needs (D186). The mod used to read them through a Python of its own, run with the repository as its
+    working directory, which put the repository first on sys.path; now it runs no python at all. Always exit 0:
+    a folder that was never indexed is an answer (``no_index``), not a failure."""
+    from verinoda import buildlock, freshness
+
+    repo = _repo(args)
+    locked = buildlock.is_locked(repo)
+    fresh = freshness.check(repo)
+    behind = fresh.get("count", 0) if fresh.get("checked") else 0
+    state = "building" if locked else "no_index" if not fresh.get("checked") else "behind" if behind else "fresh"
+
+    def render(r: dict) -> None:
+        n = r["behind"]
+        words = {"fresh": "fresh", "building": "building", "no_index": "no index",
+                 "behind": f"behind {n} file{'' if n == 1 else 's'}"}
+        print(f"graph: {words[r['state']]}")
+
+    _emit(args, {"locked": locked, "behind": behind, "state": state}, render)
+    return 0
+
+
 def cmd_init(args) -> int:
     from verinoda import workflow
 
@@ -4879,6 +4902,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp = add("doctor", cmd_doctor, "check installation, index, agent skills and MCP configuration")
     sp.add_argument("--brief", action="store_true",
                     help="the graph and snapshot lines and every failed or warning check, nothing else")
+    add("graph-state", cmd_graph_state, "is an index build running, and how many files changed since the index: "
+                                        "one line (--json: locked, behind, state) for an editor's status line")
     sp = add("setup", cmd_setup, "one step for a project: init + scan/update + skills for the agents found "
                                  "on PATH (safe to re-run)", repo=False)
     sp.add_argument("path", nargs="?", default=".")
