@@ -178,20 +178,29 @@ def _local_directory(source: str) -> bool:
 
 # -- the repository's own config --------------------------------------------------------------------------------
 
-def _config_file(repo: Path) -> Path | None:
-    """``.git/config``; for a linked work tree (``.git`` a file naming its git dir) the common dir's config."""
+def _git_dir(repo: Path) -> Path | None:
+    """The repository's own git dir: ``.git`` itself, or the dir a ``.git`` file names (a linked work tree)."""
     dot = Path(repo) / ".git"
     try:
         if dot.is_dir():
-            return dot / "config"
+            return dot
         if not dot.is_file():
             return None
         text = dot.read_text(encoding="utf-8", errors="replace")
-        if not text.startswith("gitdir:"):
-            return None
-        gd = Path(text[len("gitdir:"):].strip())
-        if not gd.is_absolute():
-            gd = dot.parent / gd
+    except OSError:
+        return None
+    if not text.startswith("gitdir:"):
+        return None
+    gd = Path(text[len("gitdir:"):].strip())
+    return gd if gd.is_absolute() else dot.parent / gd
+
+
+def _config_file(repo: Path) -> Path | None:
+    """``.git/config``; for a linked work tree (``.git`` a file naming its git dir) the common dir's config."""
+    gd = _git_dir(repo)
+    if gd is None:
+        return None
+    try:
         common = (gd / "commondir").read_text(encoding="utf-8").strip() if (gd / "commondir").is_file() else ""
     except OSError:
         return None
@@ -204,6 +213,8 @@ def _risky(section: str, sub: str, key: str, value: str) -> bool:
         return value not in _BOOL_VALUES
     if section == "core" and k == "sshcommand":
         return True
+    if section == "core" and k == "worktree":  # the work tree moved above the repository: status and diff read there
+        return True
     if section == "filter" and k in ("clean", "smudge", "process"):
         return True
     if section == "diff" and sub and k in ("command", "textconv"):
@@ -212,18 +223,30 @@ def _risky(section: str, sub: str, key: str, value: str) -> bool:
 
 
 def untrusted_config_risk(repo: Path) -> list[str]:
-    """The keys of the repository's own config that name a command git would run on a status or diff, or pull
-    in another config file: ``core.fsmonitor`` (a command, not a boolean), ``core.sshCommand``, ``filter.*``
-    (clean, smudge, process), ``diff.*.command``, ``diff.*.textconv``, ``include.*``/``includeIf.*``. Sorted;
-    empty when there is no config to read."""
+    """The keys of the repository's own config that name a command git would run on a status or diff, move the
+    work tree, or pull in another config file: ``core.fsmonitor`` (a command, not a boolean), ``core.sshCommand``,
+    ``core.worktree``, ``filter.*`` (clean, smudge, process), ``diff.*.command``, ``diff.*.textconv``,
+    ``include.*``/``includeIf.*``; with ``extensions.worktreeConfig`` the work tree's ``config.worktree`` is read
+    too. Sorted; empty when there is no config to read."""
     p = _config_file(Path(repo))
     if p is None:
         return []
+    found, per_worktree = _risky_keys(p)
+    # with extensions.worktreeConfig git reads the work tree's own config.worktree too, and runs what it names
+    gd = _git_dir(Path(repo))
+    if per_worktree and gd is not None:
+        found |= _risky_keys(gd / "config.worktree")[0]
+    return sorted(found)
+
+
+def _risky_keys(p: Path) -> tuple[set[str], bool]:
+    """The risky keys of one config file, and whether it turns ``extensions.worktreeConfig`` on."""
     try:
         text = p.read_text(encoding="utf-8", errors="replace")
     except OSError:
-        return []
+        return set(), False
     found: set[str] = set()
+    per_worktree = False
     section = sub = ""
     for raw in text.splitlines():
         line = raw.strip()
@@ -240,6 +263,8 @@ def untrusted_config_risk(repo: Path) -> list[str]:
             continue
         key = m.group(1)
         value = re.split(r"\s[;#]", m.group(2) or "", 1)[0].strip().strip('"').lower()
+        if section == "extensions" and key.lower() == "worktreeconfig" and value in ("true", "yes", "on", "1"):
+            per_worktree = True
         if _risky(section, sub, key, value):
             found.add(f"{section}.{sub}.{key}" if sub else f"{section}.{key}")
-    return sorted(found)
+    return found, per_worktree

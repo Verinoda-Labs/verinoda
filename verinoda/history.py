@@ -52,11 +52,11 @@ import os
 import re
 import tempfile
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Callable
 
 from verinoda import evidence as evmod
-from verinoda import gitexec
+from verinoda import gitexec, paths
 from verinoda.treestate import project_prefix
 
 MAX_EVENTS = 200     # commits read for one text; more and the oldest (the first appearance) are cut
@@ -147,7 +147,12 @@ def _pathspec(path: str | None) -> list[str]:
     if not p:
         return []
     p = p.replace("\\", "/")
-    if ".." in p.split("/"):   # from a sub-project, `..` would reach a sibling folder of the same repository
+    # judged before git or a stat sees it: `..` would reach a sibling folder of the same repository from a
+    # sub-project; an absolute path, a drive or a share (`//host/share`: the stat that asks whether it names one
+    # file would open the connection) is outside it. A `:` stays allowed, unlike in paths.escapes_lexically: under
+    # --literal-pathspecs `:/x` is a file name, not git's magic
+    pw = PureWindowsPath(p)
+    if ".." in p.split("/") or pw.drive or pw.root or p.startswith("/"):
         raise ValueError(f"path: {p!r} leaves the project (a path is a file or folder prefix inside it)")
     return ["--", p]
 
@@ -168,8 +173,9 @@ def _one_file(repo: Path, path: str | None) -> bool:
     p = _word(path, "path")
     if not p:
         return False
+    inside = paths.contained_path(Path(repo), p.replace("\\", "/"))
     try:
-        return (Path(repo) / p.replace("\\", "/")).is_file()
+        return inside is not None and inside.is_file()
     except (OSError, ValueError):
         return False
 
@@ -537,7 +543,9 @@ def oldest_appearance(repo: Path, text: str, *, regex: bool = False) -> dict | N
         return None
     sha, date, author, subject = (lines[-1].split("\x1f", 3) + [""] * 4)[:4]
     out = {"sha": sha, "date": date, "author": author, "subject": subject, "path": None, "line": None, "text": None}
-    shown = _run_git(repo, _LIT, "show", "-U0", *_DIFF_SAFE, _FMT, "--end-of-options", sha, *rel, *spec)
+    # the diff option goes before --end-of-options: after it, git read --relative as a revision and the show failed,
+    # so a sub-project's first appearance was never corrected (the final review)
+    shown = _run_git(repo, _LIT, "show", "-U0", *_DIFF_SAFE, _FMT, *rel, "--end-of-options", sha, *spec)
     if shown.timed_out:
         return {"timed_out": True}
     if shown.returncode == 0:
@@ -894,8 +902,11 @@ def symbol_commits(repo: Path, rel: str, a: int, b: int, *, limit: int = 10, rev
             return {"status": "not_committed", "commits": [], "note": note}
     fmt = f"--format={_HDR}%H%x1f%an%x1f%aI%x1f%P%x1f%B"
     where = f"{rel}:{span[0]}-{span[1]}"
-    got = _run_git(repo, "log", f"-n{limit + 1}", f"-L{span[0]},{span[1]}:{rel}", "--no-patch", "--no-ext-diff",
-                   "--no-textconv", "--no-color", fmt, *(["--end-of-options", rev] if rev else []))
+    # rename detection pinned on: `-L` then reaches the commits before a whole-file move on every machine, not only
+    # where diff.renames is unset (the fastapi class of D186 depends on it)
+    got = _run_git(repo, "-c", "diff.renames=true", "log", f"-n{limit + 1}", f"-L{span[0]},{span[1]}:{rel}",
+                   "--no-patch", "--no-ext-diff", "--no-textconv", "--no-color", fmt,
+                   *(["--end-of-options", rev] if rev else []))
     if got.timed_out:
         return {**_partial(f"git log -L {where} over the HEAD history, {GIT_TIMEOUT:g} s: no commit was read",
                            f"raise VERINODA_MCP_GIT_TIMEOUT (now {GIT_TIMEOUT:g} s) and ask again, or history_search "
@@ -949,13 +960,10 @@ def _project_rel(repo: Path, path: str) -> str:
     return rel
 
 
-def symbol_history(repo: Path, g, target: str, *, stale=(), limit: int = 10) -> dict:
-    """Why a symbol is the way it is, from git: the commits that changed its lines, newest first, one row each
-    (``sha date author subject``), and ``quoted``, the message bodies of the first and last :data:`QUOTED_EACH_END`
-    rows and of any that states a reason, as the author wrote them (D186: a claim per commit repeated every row
-    at 28,725 chars of JSON for 5,361 of git output). ``target`` is a name the index resolves exactly
-    (``Class.method``, ``path/file.py::name``, a node id) or ``path:A-B``; a name that does not resolve to one
-    symbol is answered with its candidates, never replaced by a similar one."""
+def symbol_target(repo: Path, g, target: str, *, stale=()) -> dict:
+    """What :func:`symbol_history` reads: ``target`` resolved to ``{"base", "rel", "a", "b", "label"}``, or an
+    answer carrying a ``status`` (``unresolved``, ``ambiguous``, ``stale_index``) when it names no one span. This is
+    the part that reads the graph and derives spans: the server runs it under its lock and the git read outside."""
     from verinoda import naming
 
     repo = Path(repo)
@@ -987,8 +995,27 @@ def symbol_history(repo: Path, g, target: str, *, stale=(), limit: int = 10) -> 
         (a, b), label = sp, g.label(res.node)
         if res.note:
             base["resolution_note"] = res.note
+    return {"base": base, "rel": rel, "a": a, "b": b, "label": label}
+
+
+def symbol_history(repo: Path, g, target: str, *, stale=(), limit: int = 10) -> dict:
+    """Why a symbol is the way it is, from git: the commits that changed its lines, newest first, one row each
+    (``sha date author subject``), and ``quoted``, the message bodies of the first and last :data:`QUOTED_EACH_END`
+    rows and of any that states a reason, as the author wrote them (D186: a claim per commit repeated every row
+    at 28,725 chars of JSON for 5,361 of git output). ``target`` is a name the index resolves exactly
+    (``Class.method``, ``path/file.py::name``, a node id) or ``path:A-B``; a name that does not resolve to one
+    symbol is answered with its candidates, never replaced by a similar one."""
+    t = symbol_target(repo, g, target, stale=stale)
+    return t if "status" in t else symbol_history_of(repo, t, limit=limit)
+
+
+def symbol_history_of(repo: Path, t: dict, *, limit: int = 10) -> dict:
+    """The rows and quoted bodies of a target :func:`symbol_target` resolved: the git read alone."""
+    repo = Path(repo)
+    base, rel, a, b, label = t["base"], t["rel"], t["a"], t["b"], t["label"]
     got = symbol_commits(repo, rel, a, b, limit=limit)
-    scope = f"HEAD history of {rel}:{a}-{b} (git log -L; a move from another file not followed)" \
+    scope = f"HEAD history of {rel}:{a}-{b} (git log -L: the file's renames followed, not lines moved in from " \
+            "another file)" \
         + (f"; only the project's folder {project_prefix(repo)!r} of its repository" if project_prefix(repo) else "")
     out = {**base, **got, "symbol": label, "file": rel, "lines": [a, b], "scope": scope}
     if got["status"] in ("not_git", "not_committed", "partial"):

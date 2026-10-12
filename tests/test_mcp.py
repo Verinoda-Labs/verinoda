@@ -2140,6 +2140,41 @@ def test_evidence_inspect_omits_root_and_file_exists_for_rejected_evidence(repo,
     assert "outside" in rc["rejected"]
 
 
+def test_symbol_mode_history_search_resolves_under_the_lock_and_reads_git_outside_it(fresh_repo, monkeypatch):
+    """The graph's derived spans are shared with the locked tools: a name is resolved under the lock, the spans it
+    derived are noted under it, and only the git read runs outside (the final review: a parallel project_query
+    inserting a span while history_search iterated them raised "dictionary changed size during iteration" in
+    0.2-0.3% of calls under churn)."""
+    from verinoda import history
+
+    t = AtlasTools(fresh_repo)
+    seen: list[tuple[str, bool]] = []
+
+    def lock_is_held() -> bool:   # by any thread: another thread cannot take it (the lock is re-entrant)
+        out: list[bool] = []
+
+        def probe():
+            ok = t._lock.acquire(blocking=False)
+            out.append(not ok)
+            if ok:
+                t._lock.release()
+
+        th = threading.Thread(target=probe)
+        th.start()
+        th.join(5)
+        return out[0]
+
+    real_graph, real_note, real_commits = t._graph, t._note_spans, history.symbol_commits
+    monkeypatch.setattr(t, "_graph", lambda: (seen.append(("graph", lock_is_held())), real_graph())[1])
+    monkeypatch.setattr(t, "_note_spans", lambda: (seen.append(("note", lock_is_held())), real_note())[1])
+    monkeypatch.setattr(history, "symbol_commits",
+                        lambda *a, **k: (seen.append(("git", lock_is_held())), real_commits(*a, **k))[1])
+    res = t.history_search(symbol="compute_total")
+    assert res["status"] == "found", res
+    assert ("graph", True) in seen and ("note", True) in seen and ("git", False) in seen
+    assert ("graph", False) not in seen and ("note", False) not in seen
+
+
 def test_history_search_runs_outside_the_server_lock(fresh_repo):
     """history_search only reads git and the loaded graph (D186): while a build holds the server's lock in another
     thread (the watcher's update, an index_update of another project), it answers; index_update waits."""

@@ -1972,9 +1972,13 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
                           evidence=[(ev, "supports")], subjects=[dec["doc"]],
                           uncertainties=[f"matched only because the document names {what}; it may not state the "
                                          "reason that was asked about"])
-        if c is not None:
+        # only a document that explains answers: one that merely names the symbol is an inference beside the
+        # commit leads, not the answer that hides them (the final review: with such a document the result was
+        # `answered` with no commit anywhere in it)
+        if c is not None and explains:
             found = found_doc = True
     leads: list[str] = []   # commits that changed the lines without stating the reason: one line each, to open
+    capped = False   # a history longer than WHY_COMMITS: the window is said, never a count of the read commits
     own_words = {tn.fold_tr(w).lower() for n in names for w in [n, *tn.split_identifier(n)]}
     topic = [t for t in terms if t not in own_words]   # the question's words that are not the subject's own name
     sub.extra["why_topic"] = topic   # the verdict gate judges the commits it sees by the same words
@@ -2001,6 +2005,7 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
             if got.get("timed_out"):
                 timed_out.append(f"git log -L {it['file']}:{a}-{b}")
         commits = got.get("commits") or []
+        capped = capped or bool(got.get("more"))
         if asks_why:
             # a why is answered by a commit whose message states a reason about what was asked
             answers = [c for c in commits if verdict_gate.states_reason(topic, c["subject"], c.get("body") or "")]
@@ -2050,11 +2055,17 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
     retry = (f"; raise VERINODA_MCP_GIT_TIMEOUT (now {history.GIT_TIMEOUT:g} s) and ask again" if timed_out else "")
     if leads:
         sub.extra["why_leads"] = leads   # for the verdict gate's note, when it sets the claims aside
+    if capped:
+        sub.extra["why_more"] = WHY_COMMITS   # the gate's note says the window too
     if not found and not rec.skipped["why"] and leads:   # a why with commits that state no reason (a when claims them)
         n = len(leads) - len(born)
+        # a cut history is said as a window (the review's case: 26 commits, the reason 25th from the top, and
+        # "20 commit(s) changed these lines and none states a reason" read as the whole history)
+        read = (f"the {WHY_COMMITS} newest commits of these lines were read and none states a reason about it "
+                "in its message; older commits were not read" if capped else
+                f"{n} commit(s) changed these lines and none states a reason about it in its message")
         _unknown(ctx, sub, {"question": sub.sq.get("text") or SUBQUESTIONS["why"],
-                            "why": (f"the reason was not found: {n} commit(s) changed these lines and none states a "
-                                    "reason about it in its message" if n else
+                            "why": (f"the reason was not found: {read}" if n else
                                     "the reason was not found: no commit of these lines was read"
                                     + (f" ({why_not})" if why_not else ""))
                                    + "; no decision record explains it" + slow,
@@ -3120,11 +3131,19 @@ def _refresh_estimate(repo: Path, store: Store, snap: dict, state: dict,
     own = selffiles.own_filter(repo)
 
     def index_reads(rel: str) -> bool:
-        # Verinoda's own files (skills, marked blocks) and a config holding only its server entry are what
-        # `verinoda setup` leaves behind after a build: nothing the index reads changed with them (D186)
+        # Verinoda's own files (skills, marked blocks) and a config added with only its server entry are what
+        # `verinoda setup` leaves behind after a build: nothing the index reads changed with them (D186). A config
+        # the graph had read is unchanged only when its content, that entry left out, is what the last build read
+        # (the digest it recorded): one edited down to Verinoda's entry alone lost the other servers' nodes (the
+        # final review)
         if own(rel):
             return False
-        return rel in diff["removed"] or not (selffiles.is_mcp_config(rel) and selffiles.nothing_but_own(repo / rel))
+        if rel in diff["removed"] or not selffiles.is_mcp_config(rel):
+            return True
+        if rel in diff["added"]:
+            return not selffiles.nothing_but_own(repo / rel)
+        read = buildlock.recorded_configs(repo)
+        return not (rel in read and selffiles.config_digest(repo / rel) == read[rel])
 
     diff = {k: [f for f in v if index_reads(f)] for k, v in diff.items()}
     changed = diff["modified"] + diff["added"] + diff["removed"]

@@ -36,13 +36,14 @@ Measured with a model in the loop, pre-registered:
 | | |
 |---|---|
 | **Keeps the index fresh** | Every Edit / Write / NotebookEdit in the project is noted; at the end of the turn one `verinoda update --fast` runs (about 20 s on 2,900 files instead of 130-155 s; `benchmarks/results/mod-live-self-quiet-2026-10-02/`), and the background graph build is watched until it has caught up. Edits during a build wait for it; a failed update keeps its files. |
-| **Nudges the agent** | `/verinoda-auto nudge`: a code question typed in the project carries the instruction to start with `verinoda analyze` (same facts; fewer output, more input tokens on real repositories); `search` attaches `verinoda query` results instead; `off` by default. |
-| **Reviews commits** | `/verinoda-guard on`: when a Bash or PowerShell command moved HEAD, `verinoda review` runs in the background and a toast gives the risk and findings. |
-| **Shows it** | `/verinoda-panel`: a Turkish pane with the index state (glyph + words + colour), the last commit review, both settings with hotkeys, and an animated purple Claude mascot in glasses that reads the code while Verinoda works. |
+| **Puts Verinoda in front of the agent** | The server's `analyze`, `project_query` and `run_tool` sit in the model's tool list, not behind ToolSearch, and one paragraph in the system prompt names `analyze` as the first tool call on a why, when, which-commit or what-does-it-affect question (D186). The earlier nudge mode and a softer rule were deleted after they were measured: 0 Verinoda calls in 286 study sessions and in 39 of 39 re-run sessions; the present rule got the call in 6 of 6 probe sessions (`docs/DESIGN.md` 158). |
+| **Checks edits** (off) | `/verinoda-check on`: after each edit of a Python, Java or Kotlin file, the names on the changed lines that exist nowhere in the project are told to the model (0 notes in 65 edits of the guard study, so off by default). |
+| **Shows it** | `/verinoda-panel`: a Turkish pane with the index state (glyph + words + colour), the check setting with a hotkey, and an animated purple Claude mascot in glasses that reads the code while Verinoda works. |
 
-Settings (`/config`): `root` (project folder), `cli` (Verinoda program), `python` (a Python that imports verinoda),
-`motion` (the mascot's animation). Empty means found: the nearest folder with a `.verinoda` index (never a home
-folder or a drive root), the project's `.venv` CLI or `verinoda` on PATH, the Python beside it.
+Settings (`/config`): `root` (project folder), `cli` (Verinoda program), `check`, `improveOffer`, `motion` (the
+mascot's animation). An empty `cli` means `verinoda` on PATH outside the project: a program inside the project (its
+`.venv`) is never run (D186). An empty `root` means the nearest folder with a `.verinoda` index at or above the
+session's folder; one found above it is used only when `verinoda trust` knows it.
 
 ## Use it
 
@@ -52,7 +53,7 @@ cd your-project && verinoda setup .
 claude --plugin-dir <this repository>/claude-mods/verinoda-live
 ```
 
-Then `/verinoda-panel`; `/verinoda-auto nudge` if you want the agent to start from Verinoda (see above for what it costs).
+Then `/verinoda-panel`. The call rule is on whenever the Verinoda MCP server is connected; nothing else to switch on.
 
 ## Verinoda in a product: at build time, not at run time
 
@@ -77,7 +78,7 @@ not the field test's; the field test's corpus and gold were not measured.
 
 ## Develop it
 
-`claude plugin validate claude-mods/verinoda-live` and `claude plugin test claude-mods/verinoda-live` (35 tests on the
+`claude plugin validate claude-mods/verinoda-live` and `claude plugin test claude-mods/verinoda-live` (86 tests on the
 terminal and desktop surfaces). Its design, the three-lens review it went through and the user-eyes redesign of the
 pane are in `claude-mods/verinoda-live/README.md`.
 
@@ -88,13 +89,12 @@ pane are in `claude-mods/verinoda-live/README.md`.
 Verinoda Symbiosis, Verinoda ile Claude Code'u birlikte çalıştırır. **verinoda-live** modu oturumun içinde yaşar:
 
 - Claude dosya düzenledikçe indeksi tazeler.
-- İstenirse ajanı önce `analyze` çalıştırmaya yönlendirir. İki ölçümde de aynı olguları buldu; küçük projelerde %16 daha az, gerçek depolarda ise %14 daha fazla girdi token'ı harcadı (çıktı %16 daha az).
+- Verinoda'nın üç ana aracını modelin araç listesine koyar ve sistem istemindeki tek paragraflık kural, "neden / ne zaman / hangi commit / neyi etkiler" sorularında ilk araç çağrısının `analyze` olmasını söyler (D186). Eski yönlendirme modu ve kaçış cümleli yumuşak kural ölçülüp silindi: 286 çalışma oturumunda ve yeniden koşunun 39 oturumunun 39'unda sıfır Verinoda çağrısı; bugünkü kural altı deneme oturumunun altısında çağrıyı aldı.
 - Kod değiştikten sonra sorulan 50 soruda taze ve bayat indeks aynı olguları buldu; bayat indeks ajanı silinmiş kodu anlatmaya yöneltmedi. Tazeliğin faydası maliyette ve yalnızca büyük projelerde (300+ dosya) görüldü: bayat indeks indekssiz çalışmaya göre ~%20 daha fazla girdi token'ı harcattı, taze indeks bunu bir çalışmada geri aldı.
 - Claude'un her Python/Java/Kotlin düzenlemesini kontrol edip var olmayan isimleri söyler. 60 gerçek kodlama oturumunda modlu ve modsuz ajan bütün gizli testleri geçti; ajan her düzenlemeden önce kodu okuduğu için kontrolün yakalayacağı bir şey çıkmadı.
 - 27 bin dosyalık Home Assistant'ta (40 gerçek hata raporu) ve seL4 çekirdeğinde (21 rapor, her oturum üç kez): modlu, Graphify'lı ve araçsız Claude Code aynı dosyaları buldu, fark yok (şans). Verinoda'lı 286 oturumun hiçbirinde ajan Verinoda'yı çağırmadı, oysa nudge, MCP ve beceri her birinde vardı ve yoklama aracın çalıştığını gösterdi. Graphify'ın `grep` anında konuşan kancası HA'da 80 oturumun 5'inde, seL4'te 63'ün 21'inde aracın kullanılmasına yol açtı. Bileşen adı vermeyen raporlar denenmedi.
-- Commit'leri inceler.
 - Bunların hepsini hareketli mor maskotlu, Türkçe bir panelde gösterir.
 
-Kurulum için yukarıdaki üç satır yeterli. Kurulumdan sonra `/verinoda-panel`; ajanın Verinoda'dan başlamasını isterseniz `/verinoda-auto nudge`.
+Kurulum için yukarıdaki üç satır yeterli. Kurulumdan sonra `/verinoda-panel`; çağrı kuralı Verinoda MCP sunucusu bağlıyken kendiliğinden açıktır.
 
 Verinoda'yla yapılan bir ürün (biyoloji saha testindeki bilgi tabanı gibi) Verinoda'yı derleme anında kullanır: ürettiği veriyi (ilişkiler, kanıt cümleleri) kendi verisi olarak taşır, çalışırken Verinoda'yı yüklemez. Sentetik bir korpusta çalışma zamanı bağımlılığı soru başına ~0,45 s, ~40 MB bellek, 63 paket / 293 MB kurulum ve her korpus değişikliğinde 1-5 s dizin güncellemesi demekti; kazancı olan daha iyi sıralama derleme adımında da korunur. Çalışma zamanı bağımlılığı yalnızca korpus ürün çalışırken değişiyorsa önerilir.

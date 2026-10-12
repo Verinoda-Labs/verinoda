@@ -280,6 +280,18 @@ def test_a_commit_states_the_reason_asked_about_only_with_the_questions_words():
     # a when-question needs the topic, not the reason
     assert vg.shares_topic(["key", "argument", "renamed"], "rename the key argument") is True
     assert vg.shares_topic(["dict"], "reformat the class") is False
+    # "Why was X moved?" meets "Move the ..." stem for stem: the consonant doubled before -ed goes back to one and
+    # -ied goes back to -y (the final review: moved/move, dropped/drop, copied/copy never matched, so the commit
+    # that states the reason became a lead and the question stayed unmet)
+    for asked, said in (("moved", "Move the price cache into its own module because the imports cycled"),
+                        ("dropped", "Drop the retry because it masked the error"), ("stopped", "Stop the timer"),
+                        ("mapped", "Map the ids"), ("committed", "Commit the batch"), ("logged", "Log the call"),
+                        ("copied", "Copy the key so the caller keeps its own"), ("retried", "Retry once"),
+                        ("entries", "Keep the entry list"), ("applied", "Apply the discount"),
+                        ("filled", "Fill the cache"), ("passed", "Pass the token")):
+        assert vg.shares_topic([asked], said) is True, asked
+    assert vg.states_reason(["moved"], "Move the price cache into its own module because the imports cycled") is True
+    assert vg.shares_topic(["read"], "the readthedocs link") is False   # a prefix still does not tie
     assert vg.shares_topic(terms, gold, gold_body) is True and vg.shares_topic(terms, other) is False
 
 

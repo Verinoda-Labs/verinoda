@@ -139,6 +139,52 @@ def test_a_why_with_no_stated_reason_is_unanswered_and_lists_the_commits_as_lead
     assert "git show" in u["next_step"] and "history_search" in u["next_step"]
 
 
+def test_a_decision_document_that_only_names_the_symbol_leaves_the_commits_as_leads(tmp_path):
+    """D186: a why whose commits state no reason lists them as leads and adds the term's path-free first
+    appearance, whether or not a decision document mentions the symbol. A document that names it without the
+    question's topic is an inference claim beside those leads, not the answer that hides them (the final review:
+    with such a document the result was `answered` with no commit anywhere in it)."""
+    repo = _why_repo(tmp_path, with_reason=False)
+    adr = repo / "docs" / "adr" / "0001-price-cache.md"
+    adr.parent.mkdir(parents=True)
+    adr.write_text("# ADR 0001: the price cache\n\nStatus: accepted\n\nThe `PriceCache` class holds the prices the "
+                   "order flow reads.\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "record the price cache decision")
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+    finally:
+        st.close()
+    mention = next(c for c in res["claims"] if c["text"].startswith("Decision record docs/adr/0001-price-cache.md"))
+    assert " mentions `PriceCache`" in mention["text"] and mention["status"] != "primary_source_verified"
+    u = next(x for x in res["unknowns"] if "the reason was not found" in x["why"])
+    assert sum(1 for c in u["commits"] if re.match(r"^[0-9a-f]{7,10} \d{4}-\d{2}-\d{2} ", c)) >= 4
+    assert any(c.startswith("first appearance of `PriceCache`: ") for c in u["commits"])
+    assert not any("is the recorded rationale still the actual reason" in x["question"] for x in res["unknowns"])
+
+
+def test_a_why_whose_history_is_longer_than_the_window_says_the_window(tmp_path, monkeypatch):
+    """D186: a history unknown says what was not read. With a window of WHY_COMMITS over a longer history the
+    unknown names the window and the older commits, not a count of the read commits as if they were all of them
+    (the final review's reproduction: 26 commits, the reason 25th from the top, "20 commit(s) changed these
+    lines and none states a reason")."""
+    repo = _why_repo(tmp_path, with_reason=False)   # four commits changed the lines
+    monkeypatch.setattr(analysis, "WHY_COMMITS", 2)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+    finally:
+        st.close()
+    u = next(x for x in res["unknowns"] if "the reason was not found" in x["why"])
+    assert "the 2 newest commits of these lines were read" in u["why"] and "older commits were not read" in u["why"]
+    assert "commit(s) changed these lines" not in u["why"]
+    assert len([c for c in u["commits"] if not c.startswith("first appearance")]) == 2
+    assert "history_search" in u["next_step"]
+
+
 def test_a_config_holding_only_verinodas_server_is_not_a_change_for_the_index(tmp_path):
     # `verinoda setup` writes .mcp.json after the index is built; the file has nothing the index reads, yet every
     # analyze re-indexed for it (108 of 120 D185 calls, 90 of 100 SWE-bench calls, about 4 s each)
@@ -157,6 +203,11 @@ def test_a_config_holding_only_verinodas_server_is_not_a_change_for_the_index(tm
                                         encoding="utf-8")
         res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
         assert res["index_refresh"]["ran"] is True and res["index_refresh"]["changed_count"] == 1  # another server
+        # shrunk back to Verinoda's entry alone: the graph had read the other server, so this is a change too (the
+        # final review: the graph kept the removed server's nodes under "index current")
+        (repo / ".mcp.json").write_text(json.dumps({"mcpServers": {"verinoda": own}}), encoding="utf-8")
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        assert res["index_refresh"]["ran"] is True and res["index_refresh"]["changed_count"] == 1
     finally:
         st.close()
 

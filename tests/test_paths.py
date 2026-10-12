@@ -103,6 +103,25 @@ def test_the_git_work_tree_top_of_a_subfolder_project_is_allowed(tmp_path):
     assert paths.work_tree_top(plain) is None
 
 
+@pytest.mark.skipif(shutil.which("git") is None, reason="git not available")
+def test_a_core_worktree_in_the_repositorys_config_does_not_move_the_top(tmp_path):
+    """A cloned repository ships its .git/config: `core.worktree = <the folder above>` makes `git rev-parse
+    --show-toplevel` name the user's folder, and with it every file there would be a readable evidence root (the
+    final review, Critical). The top is taken from git only when the repository's config sets no core.worktree."""
+    outer = tmp_path / "outer"
+    repo = outer / "proj"
+    repo.mkdir(parents=True)
+    (repo / "a.py").write_text("x = 1\n", encoding="utf-8")
+    (outer / "secret.txt").write_text("not yours\n", encoding="utf-8")
+    _git(repo, "init", "-q")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "init")
+    _git(repo, "config", "core.worktree", str(outer))
+    assert paths.work_tree_top(repo) is None
+    assert not paths.evidence_root_allowed(repo, outer)
+    assert paths.evidence_root_allowed(repo, repo)
+
+
 _ROOT_JOIN = re.compile(r"\broot\s*/\s*ev\b|\[\"root\"\]\)?\s*/\s")
 
 

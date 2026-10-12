@@ -719,7 +719,8 @@ class AtlasTools:
                 return {"error": _error_code(exc), "message": f"{type(exc).__name__}: {exc}"[:600],
                         "tool": tool, "hint": _error_hint(exc, self.repo)}
             finally:
-                self._note_spans()
+                if lock:   # an unlocked call derives no span outside the lock: what it derived, it noted under it
+                    self._note_spans()
 
     @contextlib.contextmanager
     def _store(self):
@@ -1268,10 +1269,20 @@ class AtlasTools:
                 raise ValueError("symbol is empty: pass a name or path:A-B")
             if _opt_text(symbol):
                 t = _opt_text(symbol)
-                g = stale = None
-                if not history._SPAN.match(t):
-                    g, stale = self._graph(), self._freshness().get("files") or ()
-                return history.symbol_history(self.repo, g, t, stale=stale or (), limit=_clamp(limit, 1, 100, "limit"))
+                if history._SPAN.match(t):
+                    target = history.symbol_target(self.repo, None, t)
+                else:
+                    # the graph and the spans it derives are shared with the locked tools: a name is resolved under
+                    # the lock (a parallel call inserting a span while this one iterated them raised "dictionary
+                    # changed size during iteration" in 0.2-0.3% of calls under churn, the final review); only the
+                    # git read runs outside it
+                    with self._lock:
+                        g, stale = self._graph(), self._freshness().get("files") or ()
+                        target = history.symbol_target(self.repo, g, t, stale=stale or ())
+                        self._note_spans()
+                if "status" in target:
+                    return target
+                return history.symbol_history_of(self.repo, target, limit=_clamp(limit, 1, 100, "limit"))
             if _opt_text(base):
                 return history.compare(self.repo, base, _opt_text(head) or "HEAD", path=_opt_text(path))
             if _opt_text(text):

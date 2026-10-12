@@ -394,7 +394,7 @@ def ignored_settings_note(repo: Path) -> str | None:
 # -- containment: a path from an index, a store or a config never leaves its root (docs/DESIGN.md D186) ----------
 
 _RESOLVED: dict[str, Path] = {}
-_TOPS: dict[str, Path] = {}
+_TOPS: dict[str, Path | None] = {}
 
 
 def escapes_lexically(rel: str) -> bool:
@@ -444,6 +444,13 @@ def work_tree_top(repo: Path) -> Path | None:
     key = str(_resolved(repo))
     if key in _TOPS:
         return _TOPS[key]
+    # a cloned repository ships its .git/config: with `core.worktree` pointing above itself, --show-toplevel would
+    # name the user's folder and make every file there a readable evidence root; a project that is a folder of its
+    # repository never needs that key, so a repository that sets it gets no top at all
+    c = gitexec.run(repo, "config", "--get", "core.worktree", timeout=30)
+    if c.returncode == 0 and c.stdout.strip():
+        _TOPS[key] = None
+        return None
     r = gitexec.run(repo, "rev-parse", "--show-toplevel", timeout=30)
     if r.returncode != 0 or not r.stdout.strip():
         return None

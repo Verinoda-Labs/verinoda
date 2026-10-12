@@ -110,6 +110,9 @@ def test_untrusted_config_risk_names_the_keys(tmp_path):
         "core.fsmonitor", "diff.pdf.textconv", "filter.lfs.clean", "filter.lfs.smudge", "include.path"]
     _config(repo, "[core]\n\tfsmonitor = true\n\tsshCommand = evil\n")
     assert gitexec.untrusted_config_risk(repo) == ["core.sshCommand"]  # a boolean fsmonitor is the built-in daemon
+    # a work tree redirected above the repository: status and diff would read and hash the user's files there
+    _config(repo, "[core]\n\tworktree = ../..\n")
+    assert gitexec.untrusted_config_risk(repo) == ["core.worktree"]
     _config(repo, "[core]\n\tbare = false\n[remote \"origin\"]\n\turl = x\n")
     assert gitexec.untrusted_config_risk(repo) == []
     assert gitexec.untrusted_config_risk(tmp_path / "none") == []
@@ -122,6 +125,28 @@ def test_untrusted_config_risk_names_the_keys(tmp_path):
     wt.mkdir()
     (wt / ".git").write_text(f"gitdir: {main / '.git' / 'worktrees' / 'wt'}\n", encoding="utf-8")
     assert gitexec.untrusted_config_risk(wt) == ["diff.x.command"]
+
+
+def test_untrusted_config_risk_reads_the_work_trees_own_config_too(tmp_path):
+    """With `extensions.worktreeConfig` git also reads `.git/config.worktree`, and runs what it names like any
+    other config (the final review): its keys count; without the extension git ignores the file, and so do we."""
+    repo = tmp_path / "wtconf"
+    (repo / ".git").mkdir(parents=True)
+    (repo / ".git" / "config").write_text("[extensions]\n\tworktreeConfig = true\n", encoding="utf-8")
+    (repo / ".git" / "config.worktree").write_text('[filter "lfs"]\n\tclean = evil\n', encoding="utf-8")
+    assert gitexec.untrusted_config_risk(repo) == ["filter.lfs.clean"]
+    (repo / ".git" / "config").write_text("[core]\n\tbare = false\n", encoding="utf-8")
+    assert gitexec.untrusted_config_risk(repo) == []
+    # a linked work tree keeps its own config.worktree in its git dir, the extension in the common config
+    main = tmp_path / "main2"
+    (main / ".git" / "worktrees" / "wt").mkdir(parents=True)
+    (main / ".git" / "config").write_text("[extensions]\n\tworktreeConfig = true\n", encoding="utf-8")
+    (main / ".git" / "worktrees" / "wt" / "commondir").write_text("../..\n", encoding="utf-8")
+    (main / ".git" / "worktrees" / "wt" / "config.worktree").write_text("[core]\n\tsshCommand = evil\n", encoding="utf-8")
+    wt = tmp_path / "wt2"
+    wt.mkdir()
+    (wt / ".git").write_text(f"gitdir: {main / '.git' / 'worktrees' / 'wt'}\n", encoding="utf-8")
+    assert gitexec.untrusted_config_risk(wt) == ["core.sshCommand"]
 
 
 def test_a_risky_config_refuses_status_and_diff_in_an_untrusted_repository(monkeypatch, tmp_path):

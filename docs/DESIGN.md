@@ -18139,8 +18139,8 @@ D42's `pyproject.toml` comment, not a re-measurement); the install size on a fre
   suffix: a file with a colon in its name (legal on Linux and macOS) is dropped from the loaded graph and cannot be read as
   evidence (found while writing this section by calling `paths.escapes_lexically("data/ns:thing.json")`; no test pins it, and how
   many repositories hold such a file is not measured). The reason test of the why-handler is a heuristic (reason words and a
-  topic word shared with the question): an explaining commit that fails it stays a lead, named in the unknown with `git show` as
-  the next step.
+  topic word shared with the question, stem for stem, inflections equated since the final review): an explaining commit that
+  fails it stays a lead, named in the unknown with `git show` as the next step.
 - **Deferred to the backlog** (`docs/BACKLOG.md`, the section "Deferred from D186" holds all seven rows; four are named
   above): the lab-tools split, the grammar cut and the Louvain headline re-measurement.
 
@@ -18164,6 +18164,31 @@ the index; a when-question is answered by the commits about it; the overall stat
 question's words; "so" and "therefore" state a reason. `tests/test_gitexec.py` (new): the safety flags and environment, input and
 bytes, a time-out is a result, a risky config refuses `status` and `diff` in an untrusted repository, the refusal is said in
 `git_info`, no bare git argv outside `gitexec`, reference fetches pin protocols and refuse redirects, a share hidden in a file URL.
+
+**The final whole-branch review (2026-10-13; five reviewers, one per dimension, every finding checked by a skeptic from the
+code) confirmed nine findings graded Important or above by effect, each fixed with a test that failed first:**
+`paths.work_tree_top` answers None when the repository's own config sets `core.worktree` (a shipped `.git/config` pointing
+above the clone made the user's folder an allowed evidence root; `evidence_inspect` would have read any file there: the one
+Critical), and `core.worktree` is a refusal key of `untrusted_config_risk`, which also reads the work tree's `config.worktree`
+when `extensions.worktreeConfig` is on; `history_search`'s `path` is refused lexically when it is absolute, a drive, a share
+(`//host/share`: the stat that asks whether it names one file would have opened the connection) or holds `..`, and the one-file
+check goes through `contained_path`; in a sub-project the `git show` of the path-free oldest commit puts `--relative` before
+`--end-of-options` (after it, git read `--relative` as a revision and the later path-bound commit stood as the first
+appearance, `primary_source_verified`); a why-unknown over a history longer than `WHY_COMMITS` says the window ("the 20 newest
+commits of these lines were read ... older commits were not read") instead of counting the read commits as all of them; a
+decision document that only names the symbol no longer hides the commit leads and the path-free first appearance; the stemmer
+equates `moved` with `move`, `dropped` with `drop`, `copied` with `copy`, `entries` with `entry` (the explaining commit of
+"Why was X moved?" had become a lead); a tracked `.mcp.json` edited down to Verinoda's entry alone counts as a change for the
+refresh (the graph kept the removed server's nodes under "index current"); `history_search`'s symbol mode resolves the name
+and notes its spans under the server lock and reads git outside it (a parallel locked call raised "dictionary changed size
+during iteration" in 0.2-0.3% of calls under churn, in whichever tool was iterating); the `git log -L` call pins
+`diff.renames=true` and the symbol scope says "the file's renames followed, not lines moved in from another file". Graded
+Minor and left as recorded in the ledger: a `cli` setting spelled with its Windows extension is not found on PATH; `more: true`
+in text and compare modes carries no next call; the `quoted` bodies are cut independently of the rows; a when-question that fell
+back to the newest commits carries no marker of it; a sub-question judged `met_with_inference` keeps that status when the
+critique later lowers its only claim to `weak_inference`; `scip_reader`'s docstring names a deleted module; the import block of
+`mcp/server.py` carries a ruff I001 that predates the branch. One finding was refuted: the mod's rule and the server's status
+rule name different sets of verified statuses by design (the rule names the two a history answer carries).
 `tests/test_paths.py` (new): lexical rejection before the file system is asked, a plain relative file, a symlinked root outside
 the repository, the work-tree top of a subfolder project, no evidence root joined outside the helper, a root on a share refused
 before it is resolved. `tests/test_evidence.py` (an escaping root is `gone`), `tests/test_index.py` (nodes whose `source_file`

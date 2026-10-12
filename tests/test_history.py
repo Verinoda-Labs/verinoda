@@ -560,6 +560,62 @@ def test_symbol_history_is_one_flat_list_with_bodies_on_the_ends(tmp_path):
     assert {q["sha"] for q in cut["quoted"]} == {shas[29][:10], shas[27][:10]}
 
 
+def test_symbol_history_follows_the_files_renames_and_its_scope_says_so(tmp_path, monkeypatch):
+    """D186: `git log -L` reaches the commits before a whole-file move (git's rename detection, pinned on here so a
+    user's `diff.renames = false` cannot switch it off); lines moved in from another file start where they
+    arrived. The scope line says both; it said "a move from another file not followed", which text mode's words
+    ("pre-move paths not searched") made read as the opposite of what happened (the final review)."""
+    r = tmp_path / "moved"
+    r.mkdir()
+    _git(r, "init", "-q")
+    _commit(r, {"a/old.py": "LIMIT = 10\nSTEP = 1\n"}, "Add the limit", date="2026-01-05T10:00:00+00:00")
+    _commit(r, {"a/old.py": "LIMIT = 20\nSTEP = 1\n"}, "Raise the limit", date="2026-01-06T10:00:00+00:00")
+    (r / "b").mkdir()
+    _git(r, "mv", "a/old.py", "b/new.py")
+    _git(r, "commit", "-q", "-m", "Move the module", date="2026-01-07T10:00:00+00:00")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "diff.renames")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "false")
+    res = history.symbol_history(r, None, "b/new.py:1-2")
+    assert res["status"] == "found"
+    assert [row.split(" ", 3)[3] for row in res["commits"]] == ["Raise the limit", "Add the limit"]
+    assert "the file's renames followed" in res["scope"] and "moved in from another file" in res["scope"]
+    assert "a move from another file not followed" not in res["scope"]
+
+
+def test_the_path_free_first_appearance_is_read_in_a_subfolder_project_too(tmp_path):
+    """A project that is a folder of its git repository: the `git show` of the oldest commit takes --relative
+    before --end-of-options (after it, git read --relative as a revision and failed, so the later path-bound
+    commit stood as the first appearance, primary_source_verified: the final review)."""
+    top = tmp_path / "mono"
+    proj = top / "svc"
+    proj.mkdir(parents=True)
+    _git(top, "init", "-q")
+    born = _commit(top, {"svc/old.py": "MAGIC_TOKEN = 1\n"}, "Add the token", date="2026-01-01T10:00:00+00:00")
+    # a different file around the token: an identical file would be a copy of old.py to `git log --follow`
+    created = _commit(top, {"svc/new.py": "import os\n\nMAGIC_TOKEN = 1\nPATH = os.sep\n"},
+                      "Create new.py with the token", date="2026-01-02T10:00:00+00:00")
+    res = history.text_history(proj, "MAGIC_TOKEN", path="new.py")
+    assert res["status"] == "found"
+    assert res["appeared"] == {"commit": created, "at": "new.py:3", "scope": "under new.py"}
+    assert res["first_appearance"] == {"commit": born, "at": "old.py:1", "scope": "path-free"}
+    assert born[:10] in res["claims"][0]["text"] and res["claims"][0]["status"] == "primary_source_verified"
+
+
+def test_a_path_outside_the_project_is_refused_before_anything_is_touched(repo):
+    """history_search's path goes to git as a pathspec and to the file system (does it name one file to follow?):
+    an absolute path, a drive, a share (`//host/share`: the stat would open the SMB connection, the final review)
+    or a `..` is refused lexically, as every path from the index or the store is, before git or a stat sees it."""
+    r, _ = repo
+    for bad in ("//attacker/share/x.py", r"\\attacker\share\x.py", "C:/Windows/win.ini", "/etc/hosts", "a/../../x"):
+        with pytest.raises(ValueError, match="leaves the project"):
+            history.text_history(r, "RETRY_BUDGET", path=bad)
+        with pytest.raises(ValueError, match="leaves the project"):
+            history.commits(r, path=bad)
+    assert history._one_file(r, "//attacker/share/x.py") is False
+    assert history._one_file(r, "svc.py") is True
+
+
 def test_text_history_marks_a_created_file_and_searches_path_free_oldest_first(tmp_path):
     r = tmp_path / "born"
     r.mkdir()

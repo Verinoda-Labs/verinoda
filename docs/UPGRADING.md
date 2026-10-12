@@ -624,8 +624,13 @@ section 158. No schema change (`atlas.db` stays at v10) and no migration to run.
 - **Git.** Every git call goes through `verinoda.gitexec`. In a repository you have not trusted (`verinoda trust`), `status`,
   `diff`, `diff-index` and `update-index` are refused with exit code 126 when `.git/config` names a command: a `core.fsmonitor`
   that is not a boolean, `core.sshCommand`, `filter.*` (`git lfs install --local` writes it), `diff.*.command`,
-  `diff.*.textconv` or `include.*`. The refusal names the keys and appears in `snapshot`'s `git_info` as `refused`; `verinoda
-  trust` is the way out. Reference clones and fetches use https and ssh only and follow no redirect.
+  `diff.*.textconv`, `include.*` or `core.worktree` (a work tree moved above the repository), in `.git/config` and, with
+  `extensions.worktreeConfig`, in `config.worktree`. The refusal names the keys and appears in `snapshot`'s `git_info` as
+  `refused`; `verinoda trust` is the way out. Reference clones and fetches use https and ssh only and follow no redirect. A
+  repository whose config sets `core.worktree` has no git work-tree top for evidence roots (CODEOWNERS evidence of a
+  sub-project cites the top; a shipped config could have pointed it at your home folder). `history_search`'s `path` must be a
+  relative path inside the project: an absolute path, a drive, a share or `..` is refused before git or the file system sees
+  it.
 - **Paths from an index.** A graph node whose `source_file` is absolute, leaves the repository or holds a colon is dropped when
   the graph is loaded (a colon counts as an escape, see `docs/DESIGN.md` 158.4); evidence recorded with a root other than the
   repository, its git work-tree top, `.verinoda/research` or a reference entry inside the repository is `gone` at its next

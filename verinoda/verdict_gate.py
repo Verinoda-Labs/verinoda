@@ -233,15 +233,23 @@ def cited_files(claim: dict, evidence: list[dict]) -> list[str]:
 # -- matching words against code -----------------------------------------------------------------------------
 
 def _stem(word: str) -> str:
+    """One spelling for a word's inflections, so that a question's "moved" is a commit's "Move" (shares_topic
+    compares stem for stem). The stemmer leaves the consonant doubled before -ed/-ing (stopp, mapp, committ) and
+    bends -y to -i (appli, copi): both are undone here; l, s, z and f are doubled in the base itself (fill, pass)."""
     w = tn.en_stem(tn.fold_tr(word))
     for suf in ("ed", "en", "ing"):
         if len(w) > len(suf) + 3 and w.endswith(suf):
             w = w[: -len(suf)]
             break
-    if len(w) > 4 and w.endswith("e"):
+    if len(w) > 3 and w[-1] == w[-2] and w[-1] in "bdgkmnprtv":
         w = w[:-1]
-    if len(w) > 4 and w.endswith("i"):  # applied -> appli -> appl (apply)
+    if len(w) > 3 and w.endswith("e"):   # move / moved: the stemmer leaves a four-letter word whole
         w = w[:-1]
+    low = word.lower()
+    if len(w) > 3 and w.endswith("i") and not low.endswith("i"):  # applied -> appli -> apply; copied -> copi -> copy
+        w = w[:-1] + "y"
+    elif low.endswith("ies") and not w.endswith("y"):   # entries -> entr -> entry
+        w += "y"
     return w
 
 
@@ -654,10 +662,13 @@ def apply(ctx, sq: dict, rows: list[dict], flags: dict, s: dict, res: dict, gate
         # the other commits of the lines, which the run read and did not claim (no reason stated)
         leads += [lead for lead in (gate.get("why_leads") or []) if lead.split(" ", 1)[0] not in seen]
         capped.append("why: no reason found")
+        # the run read a window of the newest commits (analysis.WHY_COMMITS): a longer history is said to be cut
+        window = (f"; only the {gate['why_more']} newest commits of the lines were read, older ones were not"
+                  if gate.get("why_more") else "")
         notes.append({"question": sq.get("text") or "",
                       "why": f"the reason was not found: {len(lines)} commit line(s) say when the code changed, not "
                              "why (or state a reason about another change), and no decision record, comment or "
-                             "document found states it",
+                             f"document found states it{window}",
                       **({"commits": leads} if leads else {}),
                       "next_step": "open a commit with `git show <sha>`; `history_search` with the symbol lists every "
                                    "commit that changed these lines (newest first, both ends kept); read the comments "
