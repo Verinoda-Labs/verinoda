@@ -9,13 +9,13 @@ result:
   was understood, one block per sub-question (verdict, answer claims, unknowns), the other claims,
   and the passages ``verinoda query`` gives for the question, as plain text;
 * :func:`lead_view` - the MCP ``analyze`` response (docs/DESIGN.md D186): the verdict, the answer
-  claims whole, at most eight leads (``path:a-b  symbol  (why)``: what to read next, not claims), the
-  unknowns, at most six context claims as one line each and one line of coverage, under a budget of
-  2,500 characters that this builder keeps itself (context lines go first, then leads beyond the
-  answers' files, then an unknown's commit list from the middle; answer claims, clarifications and
-  errors never); passages, plan links, critique, steps and usage are not sent (``project_query``
-  gives the passages, ``claim_inspect`` the rest). ``show="lead"`` adds the first lead's numbered
-  source lines (at most 60) inside 4,500 characters;
+  claims whole, at most eight leads (``path:a-b  symbol  (why)``: what to read next, not claims; the
+  answers' files first and always, whatever their path), the unknowns, at most six context claims as
+  one line each and one line of coverage, under a budget of 2,500 characters that this builder keeps
+  itself (context lines go first, then leads beyond the answers' files, then an unknown's commit list
+  from the middle; answer claims, clarifications and errors never); passages, plan links, critique,
+  steps and usage are not sent (``project_query`` gives the passages, ``claim_inspect`` the rest).
+  ``show="lead"`` adds the first lead's numbered source lines (at most 60) inside 4,500 characters;
 * :func:`lean` - the whole result as compact JSON (what the MCP response was before D186: every
   claim, the plan check, the passages).
 
@@ -240,8 +240,10 @@ LEAD_LINES = 60           # source lines show="lead" adds for the first lead
 QUOTED_COMMITS = 3        # an unknown's commit list keeps this many at each end when the budget cuts it
 _WHY_RANK = {"answer": 0, "claim": 1, "linked": 2, "passage": 3}
 # Paths a reader opens last for a how or why question: tests after the other noise (examples, docs, vendored
-# and generated code). The gold file of the SWE-bench analyze outputs was at rank 1 in 31 of 100 in the order
-# the model read, 60 of 100 with the answers' files first and these paths last (checked offline, D186).
+# and generated code); an answer's own file is never noise (a decision record, the test a question asks about).
+# The gold file of the SWE-bench analyze outputs was at rank 1 in 31 of 100 in the order the model read, 60 of
+# 100 with the answers' files first and these paths last, and the same 60 with an answer's file first whatever
+# its path (two of the 100 answers cite one; checked offline, D186).
 _NOISE_RX = re.compile(r"(^|/)(tests?|testing|examples?|galleries|docs?|benchmarks?|vendor|vendored|third_party|"
                        r"site-packages|_build|build|dist|scripts?|tutorials?)(/|$)"
                        r"|(^|/)(test_[^/]*|[^/]*_tests?\.py|conftest\.py)$")
@@ -329,16 +331,17 @@ def _tier(path: str) -> int:
 
 
 def _ranked(sites: list[dict]) -> list[dict]:
-    """One lead per file: the first site seen gives the file its place (its group, then source paths before
-    test, example, doc, generated and vendored paths, tests last of all) and the lines shown; ``spans`` keeps
-    every range the file's own group cites and ``other_spans`` the other groups' (``show="lead"`` reads the
-    narrowest of the first, else of the second)."""
+    """One lead per file: the first site seen gives the file its place (the answers' files first, whatever their
+    path; among them as among the rest, source paths before test, example, doc, generated and vendored paths,
+    tests last of all; then the group, then first seen) and the lines shown; ``spans`` keeps every range the
+    file's own group cites and ``other_spans`` the other groups' (``show="lead"`` reads the narrowest of the
+    first, else of the second)."""
     leads: dict[str, dict] = {}
     for i, s in enumerate(sites):
         lead = leads.get(s["path"])
         if lead is None:
             lead = leads[s["path"]] = {**s, "spans": [], "other_spans": [],
-                                       "rank": (_tier(s["path"]), _WHY_RANK[s["why"]], i)}
+                                       "rank": (s["why"] != "answer", _tier(s["path"]), _WHY_RANK[s["why"]], i)}
         if s["start"] is not None:
             if lead["start"] is None:
                 lead["start"], lead["end"] = s["start"], s["end"]
@@ -354,11 +357,18 @@ def _lead_line(x: dict) -> str:
     return where + (f"  {x['symbol']}" if x["symbol"] else "") + f"  ({x['why']})"
 
 
+def _top(ranked: list[dict], limit: int) -> list[dict]:
+    """The first ``limit`` leads, and every answer's file whatever their count: the cap takes the other files,
+    never one the answer rests on (as the answer claims are never cut), so more answer files than ``limit``
+    make a longer list, not a shorter answer."""
+    return ranked[:max(limit, sum(x["why"] == "answer" for x in ranked))]
+
+
 def leads_for(res: dict, limit: int = LEADS) -> list[str]:
-    """At most ``limit`` leads, ``path:a-b  symbol  (answer|claim|linked|passage)``: the files of the answer
-    claims first, then the other claims', the plan's linked mentions', the passages'; test, example, doc,
-    generated and vendored paths after source paths (see :func:`_ranked`)."""
-    return [_lead_line(x) for x in _ranked(_sites(res))[:limit]]
+    """At most ``limit`` leads (every answer's file always), ``path:a-b  symbol  (answer|claim|linked|passage)``:
+    the files of the answer claims first, then the other claims', the plan's linked mentions', the passages';
+    test, example, doc, generated and vendored paths after source paths (see :func:`_ranked`)."""
+    return [_lead_line(x) for x in _top(_ranked(_sites(res)), limit)]
 
 
 def _query_names(res: dict) -> str:
@@ -450,7 +460,7 @@ def lead_view(res: dict, *, budget: int = LEAD_BUDGET, show: str | None = None,
     head["subquestions"] = [{"id": s.get("id"), "intent": s.get("intent"), "status": s.get("status"),
                              "answers": [lean_claim(by_id[cid]) for cid in s.get("answer_claim_ids") or []
                                          if cid in by_id]} for s in res.get("subquestions") or []]
-    leads = _ranked(_sites(res))[:LEADS]
+    leads = _top(_ranked(_sites(res)), LEADS)
     unknowns = [dict(u) for u in res.get("unknowns") or []]
     facts = list(res.get("facts") or [])
     # context the critique refuted on the way is not part of the answer (render_text leaves it out too)
@@ -483,9 +493,8 @@ def lead_view(res: dict, *, budget: int = LEAD_BUDGET, show: str | None = None,
                 return out
             if shown:
                 shown -= 1
-            elif (last := next((i for i in range(len(leads) - 1, -1, -1) if leads[i]["why"] != "answer"), None)) \
-                    is not None:
-                del leads[last]
+            elif leads and leads[-1]["why"] != "answer":  # the answers' files lead the list: never cut
+                leads.pop()
                 dropped += 1
             elif len(facts) > 1:
                 facts.pop()

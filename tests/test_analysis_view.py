@@ -279,18 +279,21 @@ def test_leads_order_answer_files_first_and_noise_paths_last():
     leads = av.leads_for(res)
     paths = [_lead(ln)[0] for ln in leads]
     assert leads[0] == "src/a.py:10-20  save  (answer)"
-    assert paths[:4] == ["src/a.py", "src/b.py", "src/c.py", "src/d.py"]  # answer, claim, then the passages
+    # the answers' files first, whatever their path (the test file after the source file among them), then the
+    # claim's, then the passages'
+    assert paths[:5] == ["src/a.py", "tests/test_a.py", "src/b.py", "src/c.py", "src/d.py"]
     assert "src/weak.py" not in paths                                      # a weak link is no lead
-    assert paths.index("docs/x.md") > paths.index("src/d.py")              # doc paths after source paths ...
-    assert paths[-2:] == ["tests/test_a.py", "tests/test_c.py"]            # ... and test paths last
-    assert "docs/x.md:1-2  x.md  (linked)" in leads and "src/c.py:7-9  helper  (passage)" in leads
+    assert paths[-2:] == ["docs/x.md", "tests/test_c.py"]                  # of the rest: doc paths after source
+    assert "docs/x.md:1-2  x.md  (linked)" in leads and "src/c.py:7-9  helper  (passage)" in leads  # paths, tests last
     assert {_lead(ln)[1] for ln in leads} == {"answer", "claim", "linked", "passage"}
-    # one lead per file, at most eight
+    # one lead per file, at most eight: the cap takes the passages' files, never an answer's (a test path too)
     res["passages"] += [f"src/p{i}.py:1-2 def p{i}()" for i in range(12)]
     many = av.leads_for(res)
     assert len(many) == 8 and len({_lead(ln)[0] for ln in many}) == 8
-    assert len(av.leads_for(res, limit=3)) == 3 and av.leads_for(_result(claims=[], passages=[],
-                                                                          plan_check={"links": []})) == []
+    assert "tests/test_a.py" in [_lead(ln)[0] for ln in many]
+    assert len(av.leads_for(res, limit=3)) == 3
+    assert [_lead(ln) for ln in av.leads_for(res, limit=1)] == [("src/a.py", "answer"), ("tests/test_a.py", "answer")]
+    assert av.leads_for(_result(claims=[], passages=[], plan_check={"links": []})) == []
 
 
 def _wide() -> dict:
@@ -364,14 +367,40 @@ def test_a_why_result_with_twenty_lead_commits_fits_and_keeps_both_ends():
     assert kept[:3] == commits[:3] and kept[-3:] == commits[-3:] and len(kept) == 7  # three at each end ...
     assert "14 more" in kept[3] and "history_search" in kept[3]                     # ... and the count between
     assert res["unknowns"][0]["commits"] == commits  # the result dict is not changed
-    # the list is cut only when the context lines and the other leads are already gone
-    assert "context" not in out and all(_lead(ln)[1] == "answer" for ln in out["leads"])
-    assert out["leads"][0] == "orders/repository.py:15-20  save  (answer)"  # the history claim's path and lines
+    # the list is cut only when the context lines and the other leads are already gone; the answers' files stay
+    # (the history claim's path and lines, then the record: a doc path, not cut by the cap of eight either)
+    assert "context" not in out
+    assert out["leads"] == ["orders/repository.py:15-20  save  (answer)",
+                            "docs/adr/0001-sqlite-persistence.md:3-7  OrderRepository  (answer)"]
     assert av.lead_view(res, budget=10 ** 6)["unknowns"] == [unknown]
     tighter = av.lead_view(res, budget=_size(out) - 100)  # both ends only, before anything that answers
     kept = tighter["unknowns"][0]["commits"]
     assert kept[0] == commits[0] and kept[-1] == commits[-1] and len(kept) == 3 and "18 more" in kept[1]
     assert tighter["subquestions"] == out["subquestions"] and _size(tighter) <= _size(out) - 100
+
+
+def test_an_answer_in_a_doc_path_is_the_first_lead_and_show_lead_reads_it():
+    """A why question answered by a decision record: its file is the first lead whatever its path, the cap of eight
+    takes the context claims' source files instead, and show="lead" reads the record's lines."""
+    res = _result(critique=[], unknowns=[], passages=[])
+    res["plan_check"]["links"] = []
+    res["claims"] = [
+        _claim("c1", "Decision record docs/adr/0001-sqlite-persistence.md (status: accepted) explains it: We persist "
+               "orders in SQLite through `OrderRepository` only", "primary_source_verified",
+               evidence=["supports:design_doc:docs/adr/0001-sqlite-persistence.md:3-7"]),
+        *[_claim(f"c{i}", f"`fn_{i}()` calls `save()` (orders/m{i}.py:{i})") for i in range(2, 11)],
+    ]
+    res["subquestions"][0].update(answer_claim_ids=["c1"], claim_ids=[c["id"] for c in res["claims"]])
+
+    def read(path: str, start: int, end: int) -> str:
+        return "\n".join(f"line {i} of {path}" for i in range(start, end + 1))
+
+    out = av.lead_view(res, show="lead", read=read)
+    assert out["leads"][0] == "docs/adr/0001-sqlite-persistence.md:3-7  OrderRepository  (answer)"
+    assert [_lead(ln) for ln in out["leads"][1:]] == [(f"orders/m{i}.py", "claim") for i in range(2, 9)]
+    assert out["lead_lines"]["path"] == "docs/adr/0001-sqlite-persistence.md"
+    assert (out["lead_lines"]["start"], out["lead_lines"]["end"]) == (3, 7)
+    assert out["lead_lines"]["text"].startswith("3 line 3 of docs/adr/")
 
 
 def test_show_lead_adds_the_rank_one_lines_within_4500_chars():
