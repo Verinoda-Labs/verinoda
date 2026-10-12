@@ -19,7 +19,9 @@ the changed lines it matches, so the two never disagree and no pattern is matche
 Where git is blind with a path (D186): a path that names one file is followed across renames (``--follow``), so
 a one-for-one change before a move is found; a first event that created the file, or an older path-free commit,
 is checked against :func:`oldest_appearance` (the whole history, oldest first), and the claim says what it found
-(``earlier_elsewhere``). A read that exceeds :data:`GIT_TIMEOUT` (``VERINODA_MCP_GIT_TIMEOUT``) answers
+(``earlier_elsewhere``). ``appeared`` is what happened under the path and says so (``scope: under <path>``);
+``first_appearance`` (``scope: path-free``) stands beside it when the path-free read proved the first commit, so
+neither is read as the other. A read that exceeds :data:`GIT_TIMEOUT` (``VERINODA_MCP_GIT_TIMEOUT``) answers
 ``status: partial`` with what was searched and the next call, never a bare error. Every result states its
 ``scope`` (what was searched, what was not) and ``more`` (the tool's own limit was reached).
 
@@ -382,7 +384,8 @@ def text_history(repo: Path, text: str, *, regex: bool = False, path: str | None
     """When ``text`` (a literal; with ``regex``, an extended regular expression) appeared and, when HEAD no
     longer has it, disappeared: the commits that added and removed it, oldest first, and claims citing them.
     With a path, the path-free oldest commit is read as well (:func:`oldest_appearance`): a text born in another
-    file is said so, and ``earlier_elsewhere`` names the commit (D186)."""
+    file is said so, ``earlier_elsewhere`` names the commit, ``appeared`` carries ``scope: under <path>`` and
+    ``first_appearance`` the proven path-free commit (D186)."""
     repo = Path(repo)
     t = _word(text, "text")
     if not t:
@@ -460,9 +463,11 @@ def text_history(repo: Path, text: str, *, regex: bool = False, path: str | None
                  "subjects": [f["path"]]}
         if not complete:
             claim["uncertainties"] = [why_not]
-        res["appeared"] = {"commit": first["commit"], "at": f"{f['path']}:{f['added_at']}"}  # under the path
         if base["path"]:   # the path-bound reading may be blind to an older life of the text in another file
             _past_the_path(repo, res, claim, t, bool(regex), first, f)
+        # under a path, `appeared` is what arrived there and is labelled so: read on its own it was taken for
+        # the first appearance when the claim beside it named an older commit (D186, the guzzle class)
+        res["appeared"] = {"commit": first["commit"], "at": f"{f['path']}:{f['added_at']}", **_under(base["path"])}
         res["claims"].append(claim)
     else:
         res["unknowns"].append({"question": f"when did {t!r} appear?",
@@ -481,7 +486,8 @@ def text_history(repo: Path, text: str, *, regex: bool = False, path: str | None
                 "evidence": [_ev(last, path=f["path"], line=f["removed_at"],
                                  excerpt="-" + (f["removed_line"] or ""), change="removed")],
                 "subjects": [f["path"]]})
-            res["disappeared"] = {"commit": last["commit"], "at": f"{f['path']}:{f['removed_at']}"}
+            res["disappeared"] = {"commit": last["commit"], "at": f"{f['path']}:{f['removed_at']}",
+                                  **_under(base["path"])}
         else:
             res["unknowns"].append({
                 "question": f"when did {t!r} disappear?",
@@ -490,6 +496,12 @@ def text_history(repo: Path, text: str, *, regex: bool = False, path: str | None
                 "next_step": f"`git log -m --first-parent {pick[:2]}<text>` diffs each merge against its first "
                              "parent"})
     return res
+
+
+def _under(path: str | None) -> dict:
+    """The scope label of a path-bound ``appeared`` or ``disappeared``; nothing without a path (the result's
+    ``scope`` says path-free then)."""
+    return {"scope": f"under {path}"} if path else {}
 
 
 def _event(c: dict) -> dict:
@@ -541,8 +553,10 @@ def _past_the_path(repo: Path, res: dict, claim: dict, text: str, regex: bool, f
     """The path-free oldest commit against the path-bound first event (D186). A text can be born in another
     file: when the first event under the path created the file (the guzzle class), the first appearance is the
     path-free one and the claim is re-made from it; when it modified the file and an older commit added the text
-    elsewhere (the gin class), the claim names that commit as a lead. Both set ``earlier_elsewhere``. A path-free
-    read that times out leaves a created-file claim one step down, with the reason."""
+    elsewhere (the gin class), the claim names that commit as a lead. Both set ``earlier_elsewhere``. A first
+    appearance the path-free read proved (re-made, or the same commit) is ``first_appearance`` too, labelled
+    ``path-free``, beside the path-bound ``appeared``. A path-free read that times out leaves a created-file
+    claim one step down, with the reason."""
     created = f["new_file"]
     oldest = oldest_appearance(repo, text, regex=regex)
     if oldest is None or oldest.get("timed_out"):
@@ -560,6 +574,8 @@ def _past_the_path(repo: Path, res: dict, claim: dict, text: str, regex: bool, f
             claim.pop("uncertainties", None)
             claim["text"] += " (path-free: the oldest commit that added it anywhere in the project)"
             res["scope"] += "; the first appearance read path-free: the same commit"
+            res["first_appearance"] = {"commit": first["commit"], "at": f"{f['path']}:{f['added_at']}",
+                                       "scope": "path-free"}
         return
     then, here = _when(oldest["date"]), _when(first["date"])
     if then is None or here is None or then >= here:
@@ -580,6 +596,8 @@ def _past_the_path(repo: Path, res: dict, claim: dict, text: str, regex: bool, f
                                    f"created {f['path']} with the text")] \
             + (["a shallow clone: the commits before its boundary are missing"] if res["shallow"] else [])
         res["scope"] += "; the first appearance read path-free (the whole HEAD history)"
+        res["first_appearance"] = {"commit": oldest["sha"], "at": f"{oldest['path']}:{oldest['line']}",
+                                   "scope": "path-free"}
     else:
         claim.setdefault("uncertainties", []).append(f"the text existed earlier at another path: {lead}")
 

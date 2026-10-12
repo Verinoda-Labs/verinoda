@@ -1267,8 +1267,10 @@ class AtlasTools:
                 res.setdefault("next_step", "fewer filters, no path, or a shorter text; regex=true matches "
                                             "changed lines")
             return res
-        return self._run("history_search", go, keep=("status", "scope", "more", "appeared", "disappeared", "claims"),
-                         lock=False)
+        # first_appearance (path-free) is placed before appeared (under the path): read top-down, the path-bound
+        # commit was taken for the first appearance (D186, the guzzle class)
+        return self._run("history_search", go, keep=("status", "scope", "more", "first_appearance", "appeared",
+                                                     "disappeared", "claims"), lock=False)
 
     def map_view(self, view: str, targets: list[str] | None = None) -> dict:
         def go():

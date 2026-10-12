@@ -98,8 +98,11 @@ def test_a_text_still_at_head_has_no_disappearance(repo):
 def test_a_path_narrows_the_history(repo):
     r, shas = repo
     res = history.text_history(r, "RETRY_BUDGET", path="lib")
-    assert res["appeared"] == {"commit": shas[2], "at": "lib/job.py:3"}
-    assert res["disappeared"]["commit"] == shas[3] and "under lib" in res["claims"][1]["text"]
+    assert res["appeared"] == {"commit": shas[2], "at": "lib/job.py:3", "scope": "under lib"}
+    assert res["disappeared"] == {"commit": shas[3], "at": "lib/job.py:3", "scope": "under lib"}
+    assert "under lib" in res["claims"][1]["text"]
+    # lib/job.py arrived with the text: the first appearance is the path-free one, and says so (D186)
+    assert res["first_appearance"] == {"commit": shas[1], "at": "svc.py:2", "scope": "path-free"}
 
 
 def test_a_regex_matches_changed_lines(repo):
@@ -322,7 +325,13 @@ def test_mcp_history_search(repo):
                     {"author": "alice", "head": "HEAD"}, {"message": "x", "regex": True}):
             err = t.history_search(**bad)
             assert err["error"] == "invalid_argument", bad
-        assert t.history_search(text="RETRY_BUDGET", path="lib")["appeared"]["commit"] == shas[2]
+        # the guzzle class through the wrapper (D186): a model reading top-down meets the path-free first
+        # appearance before what arrived under the path, and each of the two says which it is
+        under = t.history_search(text="RETRY_BUDGET", path="lib")
+        assert list(under)[:5] == ["status", "scope", "more", "first_appearance", "appeared"]
+        assert under["first_appearance"] == {"commit": shas[1], "at": "svc.py:2", "scope": "path-free"}
+        assert under["appeared"] == {"commit": shas[2], "at": "lib/job.py:3", "scope": "under lib"}
+        assert shas[1][:10] in under["claims"][0]["text"]
     finally:
         shutil.rmtree(r / ".verinoda")
 
@@ -541,6 +550,9 @@ def test_symbol_history_is_one_flat_list_with_bodies_on_the_ends(tmp_path):
                                                  shas[0][:10]]
     assert next(q["message"] for q in res["quoted"] if q["sha"] == shas[14][:10]) == "because the ledger counts from one"
     assert "HEAD history of calc.py:1-2" in res["scope"]
+    # 2,000 chars holds for these 13-char subjects only: a real subject makes a row about 100 chars (fastapi,
+    # D186: 14 rows 1,420 chars, four quoted bodies 1,023, the rest 525), so 30 real rows are about 3,000 chars
+    # before any body
     assert _size(res) <= 2000, _size(res)
     cut = history.symbol_history(r, None, "calc.py:1-2", limit=14)
     assert len(cut["commits"]) == 14 and cut["more"] is True and "limit" in cut["next_step"]
@@ -560,7 +572,9 @@ def test_text_history_marks_a_created_file_and_searches_path_free_oldest_first(t
     # the path-free search, oldest first, finds the commit that first added it to the project
     res = history.text_history(r, "MAGIC_TOKEN", path="new.py")
     assert res["status"] == "found" and res["events"][0]["new_file"] is True
-    assert res["appeared"] == {"commit": created, "at": "new.py:1"}    # what appeared under the path
+    # what arrived under the path is labelled as such, and the path-free first appearance stands beside it
+    assert res["appeared"] == {"commit": created, "at": "new.py:1", "scope": "under new.py"}
+    assert res["first_appearance"] == {"commit": born, "at": "old.py:1", "scope": "path-free"}
     claim = res["claims"][0]
     assert claim["status"] == "primary_source_verified" and born[:10] in claim["text"] and "old.py:1" in claim["text"]
     assert "path-free" in claim["text"] and any("new.py" in u for u in claim["uncertainties"])
@@ -570,8 +584,9 @@ def test_text_history_marks_a_created_file_and_searches_path_free_oldest_first(t
     # the project's first commit created the file: the path-free oldest is the same commit, the status is restored
     first = history.text_history(r, "MAGIC_TOKEN", path="old.py")
     assert first["events"][0]["new_file"] is True and first["claims"][0]["status"] == "primary_source_verified"
-    assert first["appeared"]["commit"] == born and "earlier_elsewhere" not in first
-    assert "path-free" in first["claims"][0]["text"]
+    assert first["appeared"] == {"commit": born, "at": "old.py:1", "scope": "under old.py"}
+    assert first["first_appearance"] == {"commit": born, "at": "old.py:1", "scope": "path-free"}
+    assert "earlier_elsewhere" not in first and "path-free" in first["claims"][0]["text"]
 
 
 def test_regex_and_text_mode_follow_a_moved_file_when_one_path_is_given(tmp_path):
@@ -586,7 +601,8 @@ def test_regex_and_text_mode_follow_a_moved_file_when_one_path_is_given(tmp_path
     shas.append(_git(r, "rev-parse", "HEAD"))
     # the fastapi class (D186): a one-for-one change before the move, which -S with the new path alone never sees
     res = history.text_history(r, "LIMIT = 20", path="b/new_name.py")
-    assert res["appeared"] == {"commit": shas[1], "at": "a/old_name.py:2"} and "renames followed" in res["scope"]
+    assert res["appeared"] == {"commit": shas[1], "at": "a/old_name.py:2", "scope": "under b/new_name.py"}
+    assert "renames followed" in res["scope"] and "first_appearance" not in res   # a modification, not a birth
     assert [e["commit"] for e in res["events"]] == [shas[1]]    # the pure move shows no occurrence change
     rx = history.text_history(r, "LIMIT = 2[0-9]", regex=True, path="b/new_name.py")
     assert rx["appeared"]["commit"] == shas[1]
@@ -594,7 +610,10 @@ def test_regex_and_text_mode_follow_a_moved_file_when_one_path_is_given(tmp_path
     assert [c["commit"] for c in found["commits"]] == [shas[1]] and "renames followed" in found["scope"]
     # a folder path keeps today's result: no rename detection, the move adds the text at the new path
     folder = history.text_history(r, "LIMIT = 20", path="b")
-    assert folder["appeared"] == {"commit": shas[2], "at": "b/new_name.py:2"} and "pre-move" in folder["scope"]
+    assert folder["appeared"] == {"commit": shas[2], "at": "b/new_name.py:2", "scope": "under b"}
+    assert "pre-move" in folder["scope"]
+    # under the folder the move created the file, so the path-free read names the pre-move commit all the same
+    assert folder["first_appearance"] == {"commit": shas[1], "at": "a/old_name.py:2", "scope": "path-free"}
 
 
 def test_the_general_rule_names_an_earlier_commit_at_another_path(tmp_path):
@@ -607,7 +626,9 @@ def test_the_general_rule_names_an_earlier_commit_at_another_path(tmp_path):
                     date="2026-01-07T10:00:00+00:00")
     # the gin trap-1 class (D186): the path-bound first event is a modification; the text was born in another file
     res = history.text_history(r, "SHARED_KEY", path="app.py")
-    assert res["events"][0]["new_file"] is False and res["appeared"] == {"commit": again, "at": "app.py:2"}
+    assert res["events"][0]["new_file"] is False
+    assert res["appeared"] == {"commit": again, "at": "app.py:2", "scope": "under app.py"}
+    assert "first_appearance" not in res   # the older commit is a lead (earlier_elsewhere), not the answer
     claim = res["claims"][0]
     assert claim["status"] == "primary_source_verified" and again[:10] in claim["text"]
     assert any(u.startswith(f"the text existed earlier at another path: {first[:10]} 2026-01-05 Add the shared key")
@@ -644,6 +665,7 @@ def test_a_timed_out_search_is_partial_not_an_error(repo, monkeypatch):
     monkeypatch.setattr(gitexec, "run", slow_path_free)
     res = history.text_history(r, "RETRY_BUDGET", path="lib")
     assert res["status"] == "found" and res["appeared"]["commit"] == shas[2] and res["events"][0]["new_file"] is True
+    assert "first_appearance" not in res   # not read in time: nothing path-free is said
     claim = res["claims"][0]
     assert claim["status"] == "strong_inference"
     assert any("path-free search timed out" in u for u in claim["uncertainties"])
