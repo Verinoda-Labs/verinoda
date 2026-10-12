@@ -64,6 +64,87 @@ def _evidence_rows(st, cid):
     return Claims(st).evidence(cid)
 
 
+CACHE_PY = '''"""Prices."""
+
+
+class PriceCache:
+    def __init__(self):
+        self.data = {}
+
+    def get(self, key):
+        return self.data.get(key)
+'''
+
+
+def _why_repo(root: Path, with_reason: bool) -> Path:
+    """A repository whose PriceCache lines were changed by four or five commits, newest first: a polish whose
+    message carries a reason word about another topic, a reformat, a rename, and (``with_reason``) the commit
+    that states why a dict is used, fourth from the top: outside the three newest commits."""
+    repo = root / ("why_reason" if with_reason else "why_bare")
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    f = repo / "cache.py"
+    f.write_text(CACHE_PY, encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "add the price cache")
+    if with_reason:
+        f.write_text(CACHE_PY.replace("        self.data = {}", "        # entries expire by time\n        self.data = {}"),
+                     encoding="utf-8")
+        _git(repo, "commit", "-q", "-am", "Keep prices in a dict to avoid lru_cache's count-based expiry")
+    text = f.read_text(encoding="utf-8").replace("def get(self, key):\n        return self.data.get(key)",
+                                                 "def get(self, name):\n        return self.data.get(name)")
+    f.write_text(text, encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "rename the key argument")
+    text = text.replace('class PriceCache:\n', 'class PriceCache:\n    """Prices by key."""\n\n')
+    f.write_text(text, encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "reformat the class")
+    text = text.replace('"""Prices by key."""', '"""Prices by key, newest first."""')
+    f.write_text(text, encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "polish the docstring to ensure clarity")
+    workflow.init(repo)
+    return repo
+
+
+def test_a_why_reads_past_the_three_newest_commits_and_ties_the_reason_to_the_question(tmp_path):
+    repo = _why_repo(tmp_path, with_reason=True)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+    finally:
+        st.close()
+    (s,) = res["subquestions"]
+    assert s["status"] == "met" and res["status"] == "answered"
+    answers = [c for c in res["claims"] if c["id"] in s["answer_claim_ids"]]
+    assert any("count-based expiry" in c["text"] for c in answers)          # the fourth commit, past the old limit of 3
+    assert not any("ensure clarity" in c["text"] for c in answers)         # a reason word about another topic: a lead
+
+
+def test_a_why_with_no_stated_reason_is_unanswered_and_lists_the_commits_as_leads(tmp_path):
+    repo = _why_repo(tmp_path, with_reason=False)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+    finally:
+        st.close()
+    (s,) = res["subquestions"]
+    assert s["status"] == "unmet" and res["status"] == "unanswered"
+    u = next(x for x in res["unknowns"] if "the reason was not found" in x["why"])
+    assert len(u["commits"]) == 4 and all(re.match(r"^[0-9a-f]{7,10} \d{4}-\d{2}-\d{2} ", c) for c in u["commits"])
+    assert u["commits"][0].endswith("polish the docstring to ensure clarity")  # newest first, git's order
+    assert "git show" in u["next_step"] and "history_search" in u["next_step"]
+
+
+def test_overall_status_follows_the_sub_questions():
+    assert analysis.overall_status(["met", "met_with_inference"]) == "answered"
+    assert analysis.overall_status(["met", qp.HUMAN_DECISION]) == "answered"
+    assert analysis.overall_status(["met", "unmet"]) == "partly_answered"
+    assert analysis.overall_status(["unmet"]) == "unanswered"
+    assert analysis.overall_status(["not_supported", "blocked_by_clarification"]) == "unanswered"
+    assert analysis.overall_status([]) == "answered"
+
+
 def test_intents_for():
     assert analysis.intents_for(FLOW_Q)[:2] == ["flow", "dataflow"]
     assert analysis.intents_for("Why does OrderRepository use SQLite?")[0] == "why"
@@ -664,7 +745,7 @@ def test_both_versions_of_a_two_version_question_are_named(proj):
     """D67 review H1: 2.0.1 is not dropped as "contained" in 2.0.10."""
     repo, st = proj
     res = analysis.analyze(st, repo, "Why did 2.0.10 break compute_total when it worked in 2.0.1?", challenge=False)
-    assert res["status"] == "answered" and "plan_fallback" not in res
+    assert res["status"] in analysis.DONE_STATUSES and "plan_fallback" not in res  # the plan ran, whatever it found
     notes = [n for s in res["subquestions"] for n in _version_notes(res, s["id"])]
     assert notes and all("2.0.10 (2.0.10)" in n and "2.0.1 (2.0.1)" in n for n in notes)
 

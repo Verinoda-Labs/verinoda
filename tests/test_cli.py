@@ -761,7 +761,8 @@ def test_analyze_passes_observe_and_maps_statuses_to_exit_codes(repo, capsys, mo
                 "snapshot": None, "claims": [], "unknowns": [], "critique": []}
 
     monkeypatch.setattr(analysis, "analyze", fake)
-    for status, rc in (("answered", 0), ("invalid_plan", 2), ("needs_clarification", 3)):
+    for status, rc in (("answered", 0), ("partly_answered", 0), ("unanswered", 0), ("invalid_plan", 2),
+                       ("needs_clarification", 3)):
         current["status"] = status
         run_cli(capsys, "analyze", "how is the discount applied?", "--observe", "--repo", str(repo), "--json", rc=rc)
     assert seen["observe"] is True and seen["plan"] is None and seen["run_tests"] is False

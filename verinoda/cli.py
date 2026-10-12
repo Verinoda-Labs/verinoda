@@ -43,7 +43,8 @@ CLAIM_ADD_STATUSES = (*_CLAIM_ORDER, "contradicted")
 # `order` ("A before B in F") is stored as a behaviour claim with that proposition.
 CLAIM_ADD_KINDS = ("general", "location", "relation", "config", "order")
 # `verinoda analyze` / `plan check` status -> exit code.
-PLAN_EXIT = {"ready": 0, "answered": 0, "invalid": 2, "invalid_plan": 2, "needs_clarification": 3, "no_index": 1}
+PLAN_EXIT = {"ready": 0, "answered": 0, "partly_answered": 0, "unanswered": 0, "invalid": 2, "invalid_plan": 2,
+             "needs_clarification": 3, "no_index": 1}   # the verdict is the status word; the exit says it ran
 TRACE_MODES = ("auto", "monitoring", "setprofile", "off")   # verinoda.runtime.trace.MODES
 NETWORK_CHOICES = ("off", "cache", "on")                      # verinoda.paths.NETWORK_MODES
 OBSERVE_LIST_CAP = 10

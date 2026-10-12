@@ -94,6 +94,9 @@ CALLERS_LISTED = 6          # calling functions turned into claims; the rest are
 LOCATION_FIRST = {"locate", "define", "behaviour", "performance", "architecture", "usage"}
 UNGROUNDED_MAJORITY = 0.5   # more than this share of content words absent from the repo -> unknown
 MIN_STATUS_DEFAULT = "strong_inference"
+WHY_COMMITS = 20            # commits of a symbol's lines a why-question reads (git log -L, newest first) ...
+WHY_CLAIMS = 3              # ... and at most this many of them, those that state a reason, become claims
+DONE_STATUSES = ("answered", "partly_answered", "unanswered")   # the analysis ran; the word is its verdict (D186)
 PERSISTENCE_TARGET = "(persistence)"
 # An unknown's question is often its sub-question's whole text; for an issue pasted as the question that
 # is the issue again, once per unknown and charged to the context budget each time. It is kept on one line
@@ -1941,6 +1944,10 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
                                          "reason that was asked about"])
         if c is not None:
             found = True
+    leads: list[str] = []   # commits that changed the lines without stating the reason: one line each, to open
+    own_words = {tn.fold_tr(w).lower() for n in names for w in [n, *tn.split_identifier(n)]}
+    topic = [t for t in terms if t not in own_words]   # the question's words that are not the subject's own name
+    sub.extra["why_topic"] = topic   # the verdict gate judges the commits it sees by the same words
     for it in sub.prod[:1]:
         sp = g.span(it["id"]) if it["id"] in g.G else None
         if not sp or not hv["is_git"] or not ctx.budget.ok:
@@ -1949,23 +1956,40 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
         if it["file"] in (rec.stale_files or ()):   # the index's lines are not the file's any more
             why_not = f"{it['file']} changed since the index: its commits were not read"
             continue
-        # the commits whose diffs changed the symbol's lines, each message quoted whole (subject and body):
-        # the author's own words are the "why" evidence, nothing is summarised
+        # the commits whose diffs changed the symbol's lines, each message quoted whole (subject and body): the
+        # author's own words are the "why" evidence when they state a reason about what was asked, nothing is
+        # summarised. The other commits are leads, not claims: the three newest commits of a line range are
+        # rarely the one that explains it (D185: the explaining commit was the eleventh of fourteen)
         try:
-            got = history.symbol_commits(repo, it["file"], a, b, limit=3)
+            got = history.symbol_commits(repo, it["file"], a, b, limit=WHY_COMMITS)
         except ValueError as exc:
             got = {"commits": [], "note": str(exc)}
         ctx.step("git_log_L", f"{it['file']}:{a}-{b}")
         unc = [got["note"]] if got.get("note") else []
         if not got.get("commits") and got.get("note"):
             why_not = got["note"]
+        claimed = 0
         for c in got.get("commits") or []:
-            if rec.claim(f"`{it['symbol']}` lines {a}-{b} were changed in {c['commit'][:10]} ({c['date'][:10]}): "
-                         f"{c['subject']}", kind="history", status="primary_source_verified",
-                         evidence=[(c["evidence"], "supports")], subjects=[it["file"]],
-                         uncertainties=unc or None) is not None:
+            if claimed < WHY_CLAIMS and verdict_gate.states_reason(topic, c["subject"], c.get("body") or "") \
+                    and rec.claim(f"`{it['symbol']}` lines {a}-{b} were changed in {c['commit'][:10]} "
+                                  f"({c['date'][:10]}): {c['subject']}", kind="history",
+                                  status="primary_source_verified", evidence=[(c["evidence"], "supports")],
+                                  subjects=[it["file"]], uncertainties=unc or None) is not None:
                 found = True
-    if not found and not rec.skipped["why"]:
+                claimed += 1
+                continue
+            leads.append(f"{c['commit'][:10]} {c['date'][:10]} {c['subject'][:90]}")
+    if leads:
+        sub.extra["why_leads"] = leads   # for the verdict gate's note, when it sets the claims aside
+    if not found and not rec.skipped["why"] and leads:
+        _unknown(ctx, sub, {"question": sub.sq.get("text") or SUBQUESTIONS["why"],
+                            "why": f"the reason was not found: {len(leads)} commit(s) changed these lines and none "
+                                   "states a reason about it in its message; no decision record explains it",
+                            "commits": leads,
+                            "next_step": "open a commit with `git show <sha>`; `history_search` with the symbol "
+                                         "lists every commit that changed these lines (newest first, both ends "
+                                         "kept); search the issue tracker or PR discussion"})
+    elif not found and not rec.skipped["why"]:
         _unknown(ctx, sub, {"question": sub.sq.get("text") or SUBQUESTIONS["why"],
                             "why": "no decision record or commit message explains it"
                                    + (f" ({why_not})" if why_not else ""),
@@ -2746,7 +2770,8 @@ def _finish_sub(ctx: _Ctx, sub: _Sub, out: dict, handler: str) -> dict:
     out["_flags"] = sub.flags
     # what the verdict gate needs later (verdict_gate.apply): the code the question names or links
     named = sub.extra.get("anchored") or set(sub.seeds) | set(sub.subject_nodes)
-    out["_gate"] = {"subjects": sorted(n for n in named if n in ctx.g.G), "words": list(sub.words)}
+    out["_gate"] = {"subjects": sorted(n for n in named if n in ctx.g.G), "words": list(sub.words),
+                    **{k: sub.extra[k] for k in ("why_topic", "why_leads") if sub.extra.get(k) is not None}}
     # made for this sub-question only as context (definitions of search hits, links among them), not by
     # its handler: a claim is shared by text, so a caller a handler found stays an answer
     out["_context"] = [cid for cid in ctx.rec.by_sq.get(sub.sq["id"], [])
@@ -3371,7 +3396,8 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
     # what answers comes first (a reader, and a size cap that keeps the head, see it); the rest is context
     rank = {cid: i for i, cid in enumerate(dict.fromkeys(answering))}
     out_claims = sorted(out_claims, key=lambda c: rank.get(c["id"], len(rank)))
-    result = {**base, "status": "answered", "plan_check": qp.compact_check(check_res), "subquestions": subs,
+    status = overall_status([s.get("status") or "" for s in subs])
+    result = {**base, "status": status, "plan_check": qp.compact_check(check_res), "subquestions": subs,
               "claims": out_claims, "unknowns": unknowns, "critique": crit, "steps": steps}
     if question.strip():
         from verinoda import facts
@@ -3392,8 +3418,19 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
     pb = rec.precise_budget
     if pb is not None and (pb.sites or pb.skipped):
         result["usage"]["precise"] = pb.as_dict()
-    _store_analysis(store, aid, question, snap, budget, result, [c["id"] for c in out_claims], plan_id, "answered")
+    _store_analysis(store, aid, question, snap, budget, result, [c["id"] for c in out_claims], plan_id, status)
     return result
+
+
+def overall_status(statuses: list[str]) -> str:
+    """The analysis' own status from its sub-questions': ``answered`` when every one is met (with or without
+    inference; a decision question is answered by its brief), ``partly_answered`` when some are, ``unanswered``
+    when none is. Until D186 it read ``answered`` whatever the sub-questions said, and a reader took the word for
+    the verdict (D185)."""
+    done = {"met", "met_with_inference", qp.HUMAN_DECISION}
+    if not statuses or all(s in done for s in statuses):
+        return "answered"
+    return "partly_answered" if any(s in done for s in statuses) else "unanswered"
 
 
 def _store_analysis(store: Store, aid: str, question: str, snap: dict, budget: Budget, result: dict,

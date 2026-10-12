@@ -252,6 +252,22 @@ def test_where_is_x_ticked_needs_a_tick_of_x(fixtures):
     assert s["status"] == "met"
 
 
+def test_a_commit_states_the_reason_asked_about_only_with_the_questions_words():
+    # D185: "Ensure authentication takes constant time, to avoid enumeration attacks" carries a reason word, but it
+    # is the reason for another change; the question's own words (body, query, parameter) are what tie a commit to it
+    terms = ["reset_password", "endpoint", "read", "new", "password", "request", "body", "query", "parameter"]
+    other = "🔒️ Ensure authentication takes constant time, to avoid enumeration attacks (#2105)"
+    gold = ":lock: Update login.py to receive password as body (#33)"
+    gold_body = "Change `new_password` from a query parameter to a body parameter for security."
+    assert vg.states_reason(terms, other) is False
+    assert vg.states_reason(terms, gold, gold_body) is True          # "for security" is a reason; "body", "query" tie it
+    assert vg.states_reason(terms, "♻️ Simplify reset password logic by removing duplicate code (#1440)") is False
+    assert vg.states_reason(terms, "Keep prices in a dict to avoid repeated lookups") is False  # reason, other topic
+    assert vg.states_reason(["PriceCache", "dict"], "Keep prices in a dict to avoid repeated lookups") is True
+    assert vg.states_reason([], other) is True   # a question with no content words cannot be tied: the reason word decides
+    assert vg.states_reason(terms, "") is False
+
+
 def test_a_commit_line_is_not_a_reason(fixtures):
     repo, st = fixtures["pyloop"]
     s = _sub(analysis.analyze(st, repo, "why does Transport pause reading?"))

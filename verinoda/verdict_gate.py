@@ -439,8 +439,43 @@ def qp_bare(label: str) -> str:
 # -- the gate ----------------------------------------------------------------------------------------------------
 
 _REASON = re.compile(r"\b(?:because|since|so that|so as to|to avoid|to prevent|to keep|to make sure|to ensure|"
-                     r"in order to|due to|otherwise|as a result|reason)\b"
+                     r"in order to|due to|otherwise|as a result|reason|"
+                     r"for (?:security|safety|privacy|performance|speed|consistency|clarity|compatibility|correctness|"
+                     r"simplicity|readability|robustness))\b"
                      r"|\b(?:cunku|yuzunden|nedeniyle|sayesinde|diye)\b")
+_WHY_CUES = frozenset({"why", "neden", "nicin", "niye", "reason", "rationale", "decision", "decided", "gerekce", "karar"})
+_LEAD = re.compile(r"changed in ([0-9a-f]{7,40}) \((\d{4}-\d{2}-\d{2})[^)]*\): (.*)")
+
+
+def why_terms(text: str) -> list[str]:
+    """The content words of a why-question: what a commit message must share to be about it."""
+    from verinoda import question_plan as qp
+
+    return [w for w in dict.fromkeys(tn.words(text))
+            if w not in _WHY_CUES and w not in qp._GENERIC_EN and len(w) >= 3 and not w.isdigit()]
+
+
+def states_reason(terms: list[str], subject: str, body: str = "") -> bool:
+    """Does a commit message state the reason a why-question asks about? It needs a reason word (because, to
+    avoid, for security ...) and, when the question has topic words (``terms``: its content words without the
+    subject's own name), one of them among its words, stem for stem: a reason for another change ("to avoid
+    enumeration attacks" on a question about the request body) is not an answer (D185). Identifier parts count
+    (``new_password`` carries "password"); a prefix does not ("read" is not "readthedocs")."""
+    text = tn.fold_tr(f"{subject}\n{body}")
+    if not _REASON.search(text):
+        return False
+    content = [t for t in terms if len(t) >= 3]
+    if not content:
+        return True
+    words = tn.words(text)
+    stems = {_stem(w) for w in words + ident_parts(*words) if len(w) >= 3}
+    return any(_stem(p) in stems for t in content for p in [t, *ident_parts(t)] if len(p) >= 3)
+
+
+def commit_lead(claim_text: str) -> str | None:
+    """A history claim's commit as one line, ``sha date subject``, for a reader to open; None for other text."""
+    m = _LEAD.search(claim_text or "")
+    return f"{m.group(1)[:10]} {m.group(2)} {m.group(3).strip()[:90]}" if m else None
 _CONFIG_GENERIC = frozenset("environment variable variables env config configuration configure configures configured "
                             "setting settings option options flag flags value values set sets read reads which what how "
                             "control controls controlled decide decides decided determine determines limit limits "
@@ -566,7 +601,10 @@ def apply(ctx, sq: dict, rows: list[dict], flags: dict, s: dict, res: dict, gate
                     weak[c["id"]] = "config"
         elif kind == "history" and intent == "why":
             subj_line = (c.get("text") or "").rpartition("): ")[2]
-            if not _REASON.search(tn.fold_tr(subj_line)):
+            quoted = " ".join(str(e.get("excerpt") or "") for e in evidence(c["id"]) if isinstance(e, dict))
+            # the run's topic words (the question's, without the subject's own name) judge the stored analysis too
+            topic = gate.get("why_topic") if isinstance(gate.get("why_topic"), list) else why_terms(en_text)
+            if not states_reason(topic, subj_line, quoted):
                 weak[c["id"]] = "commit"
 
     strong = [c for c in answers if c["id"] not in weak]
@@ -603,13 +641,21 @@ def apply(ctx, sq: dict, rows: list[dict], flags: dict, s: dict, res: dict, gate
                              "or file); they may be unrelated",
                       "next_step": "name the setting or the function the question is about"})
     if intent == "why" and "commit" in kinds and not strong:
-        n = sum(1 for c in answers if weak.get(c["id"]) == "commit")
+        lines = [c for c in answers if weak.get(c["id"]) == "commit"]
+        leads = [lead for lead in (commit_lead(c.get("text") or "") for c in lines) if lead]
+        seen = {lead.split(" ", 1)[0] for lead in leads}
+        # the other commits of the lines, which the run read and did not claim (no reason stated)
+        leads += [lead for lead in (gate.get("why_leads") or []) if lead.split(" ", 1)[0] not in seen]
         capped.append("why: no reason found")
         notes.append({"question": sq.get("text") or "",
-                      "why": f"the reason was not found: {n} commit line(s) say when the code changed, not why, and "
-                             "no decision record, comment or document found states it",
-                      "next_step": "read the comments and docs around the code, or ask its author; record the "
-                                   "answer with `verinoda decide record`"})
+                      "why": f"the reason was not found: {len(lines)} commit line(s) say when the code changed, not "
+                             "why (or state a reason about another change), and no decision record, comment or "
+                             "document found states it",
+                      **({"commits": leads} if leads else {}),
+                      "next_step": "open a commit with `git show <sha>`; `history_search` with the symbol lists every "
+                                   "commit that changed these lines (newest first, both ends kept); read the comments "
+                                   "and docs around the code, or ask its author; record the answer with "
+                                   "`verinoda decide record`"})
 
     # callers: call sites of the callee the graph did not resolve
     if intent == "callers" and not flags.get("not_found") and strong:  # no strong claim: a cap changes nothing
