@@ -221,3 +221,22 @@ def test_reference_fetches_pin_protocols_and_refuse_redirects(monkeypatch, tmp_p
     assert "protocol.file.allow=always" not in seen["argv"]
     with pytest.raises(ValueError, match="--"):
         gitexec.run(None, "clone", url, str(tmp_path / "n.git"), net=url)
+
+
+def test_a_unc_path_hidden_in_a_file_url_is_not_a_local_directory(monkeypatch):
+    # the review of D186's funnel: `file:////server/share/x` and `file://localhost//server/share` have no host in the
+    # URL, and url2pathname turns their path into `\server\share\x` - a look at it would be the connection
+    from pathlib import Path
+
+    from verinoda import gitexec
+
+    def never_a_share(self):
+        # a drive-relative result (`\server\share\x`, one backslash) is a folder of this machine: asking is harmless
+        if str(self).startswith(("\\\\", "//")):
+            raise AssertionError(f"the file system was asked about the share {self}")
+        return False
+
+    monkeypatch.setattr(Path, "is_dir", never_a_share)
+    for src in ("file:////server/share/x", "file://localhost//server/share", r"file:///\server\share", "//server/share",
+                r"\server\share\x"):
+        assert gitexec._local_directory(src) is False, src

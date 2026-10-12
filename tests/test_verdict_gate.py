@@ -372,3 +372,13 @@ def test_the_enumerated_head_negated_is_a_set_difference(q):
 ])
 def test_which_x_does_y_use_asks_what_y_uses(q, expected):
     assert vg.usage_question(q) is expected
+
+
+def test_a_reason_stated_with_so_or_therefore_counts():
+    # "the ledger stores cents, so the total is rounded" states a reason without because/to avoid; the sym_repo of
+    # tests/test_history.py says it that way and its why-question lost its claim when the gate asked for a cue word
+    body = "Invoices showed 10.000000001; the ledger stores cents, so the total is rounded where it is computed."
+    assert vg.states_reason(["round"], "Round totals to cents", body) is True
+    assert vg.states_reason(["cache"], "Keep a cache; therefore lookups stay cheap") is True
+    assert vg.states_reason(["cache"], "Keep a cache, hence fewer lookups") is True
+    assert vg.states_reason(["cache"], "Keep a cache or so") is False       # "so" alone is not a reason

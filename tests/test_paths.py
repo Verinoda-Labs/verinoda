@@ -117,3 +117,23 @@ def test_no_evidence_root_is_joined_outside_the_helper():
             if _ROOT_JOIN.search(line.split("#", 1)[0]):
                 hits.append(f"{rel}:{n}")
     assert hits == []
+
+
+def test_an_evidence_root_on_a_share_is_refused_before_it_is_resolved(tmp_path, monkeypatch):
+    # the review of D186: meta.root comes from the store, which a repository can ship; resolving a UNC root would
+    # itself open the connection, so the refusal is lexical and comes first
+    from pathlib import Path
+
+    from verinoda import paths
+
+    original = Path.resolve
+
+    def guarded(self, *a, **k):
+        if str(self).startswith(("\\\\", "//")):
+            raise AssertionError(f"resolved a share path {self}")
+        return original(self, *a, **k)
+
+    monkeypatch.setattr(Path, "resolve", guarded)
+    for root in (r"\attacker\share\x", "//attacker/share/x", r"\?\C:\x", r"\.\pipe\x"):
+        assert paths.evidence_root_allowed(tmp_path, Path(root)) is False, root
+    assert paths.evidence_root_allowed(tmp_path, tmp_path / "sub") is True

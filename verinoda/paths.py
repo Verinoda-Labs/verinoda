@@ -456,7 +456,14 @@ def evidence_root_allowed(repo: Path, root: Path) -> bool:
     (so a root that is a link to somewhere else is not): the repository and its folders (a reference entry of the
     config counts only when it resolves inside it), ``research_dir(repo)`` with its children (the pinned reference
     checkouts), and the top of the git work tree the project is a folder of (CODEOWNERS evidence of a subfolder
-    project cites it). A root is never taken from the repository's unprotected config."""
+    project cites it). A root is never taken from the repository's unprotected config. A root on a share (a UNC
+    path, a ``\\\\?\\`` device path) is refused before anything is resolved, unless the repository itself lives on
+    that share: resolving it would be the connection, and ``meta.root`` comes from a store a repository can ship."""
+    share = PureWindowsPath(str(root)).drive
+    if str(root).startswith(("\\\\", "//")) or share.startswith(("\\\\", "//")):
+        own = PureWindowsPath(str(repo)).drive
+        if not own.startswith(("\\\\", "//")) or own.lower() != share.lower():
+            return False
     try:
         r = Path(root).resolve()
         repo_r = _resolved(repo)

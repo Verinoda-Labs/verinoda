@@ -439,9 +439,10 @@ def qp_bare(label: str) -> str:
 # -- the gate ----------------------------------------------------------------------------------------------------
 
 _REASON = re.compile(r"\b(?:because|since|so that|so as to|to avoid|to prevent|to keep|to make sure|to ensure|"
-                     r"in order to|due to|otherwise|as a result|reason|"
+                     r"in order to|due to|otherwise|as a result|reason|therefore|hence|thus|to allow|to let|to support|"
                      r"for (?:security|safety|privacy|performance|speed|consistency|clarity|compatibility|correctness|"
                      r"simplicity|readability|robustness))\b"
+                     r"|[,;]\s*so\s"  # "the ledger stores cents, so the total is rounded": a reason without a cue word
                      r"|\b(?:cunku|yuzunden|nedeniyle|sayesinde|diye)\b")
 _WHY_CUES = frozenset({"why", "neden", "nicin", "niye", "reason", "rationale", "decision", "decided", "gerekce", "karar"})
 _LEAD = re.compile(r"changed in ([0-9a-f]{7,40}) \((\d{4}-\d{2}-\d{2})[^)]*\): (.*)")
