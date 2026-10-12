@@ -321,6 +321,7 @@ def test_rules_files_are_own_files_and_shared_files_are_not(env):
 
 def test_cli_lists_every_agent_and_the_rules_text_is_complete(env):
     from verinoda.cli import build_parser
+    from verinoda.mcp.server import STATUS_RULE
 
     choices = next(a for a in build_parser()._subparsers._group_actions[0].choices["install"]._actions
                    if a.dest == "agent").choices
@@ -329,7 +330,9 @@ def test_cli_lists_every_agent_and_the_rules_text_is_complete(env):
     for s in ("statically_verified", "observed", "experiment_verified", "primary_source_verified",
               "strong_inference", "weak_inference", "unknown", "contradicted", "stale"):
         assert f"`{s}`" in text, s
-    assert "Never present `weak_inference` or `unknown` as fact" in text and "{{" not in text
+    # D186: the one status rule is written once, `server.STATUS_RULE`; the template wraps it, so the copy is compared
+    # without its line breaks (tests/test_agents.py does the same for the skills) and cannot drift from the server's
+    assert STATUS_RULE in " ".join(text.split()) and "{{" not in text
     for ln in re.findall(r"^verinoda .*$", text, re.M):
         build_parser().parse_args(shlex.split(ln)[1:])
 

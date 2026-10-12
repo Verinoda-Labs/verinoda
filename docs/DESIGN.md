@@ -59,7 +59,7 @@ own measurements, with their caveats. The benchmark harness results are in
 | D36 | Behaviour probe of changed functions | partial | Built 2026-09-25 (section 9): `verinoda probe FILE::NAME` / `--changed`, MCP `change_probe` (the design named it `behaviour_probe`): inputs from the syntax tree only (annotations, call-site literals and recipes, boundaries mined from comparisons, `len` checks, slices and imported constants of both versions and their callees, standard edges, then hypothesis or a fixed pseudo-random list), one corpus run at the base commit copy and in the working tree through `experiments.run` with a pytest plugin (no new allowlist entry), difference classes with minimal examples reproduced in a second pair of runs and recorded as run-scoped `experiment_verified` claims, properties, undeclared exceptions, nondeterminism, `--scaling`; a static side-effect gate (closure + module-level statements) and an audit hook in the run. No schema change (the design's `probes` table: runs are experiments, results are files under `runs/<probe id>/`). Hand fixtures (49, gold first, in-sample): 22/22 detected (20/20 of those the tests miss), 0 differences on 11 behaviour-preserving edits x 5 seeds (a 12th, labelled equivalent, really changes floats on Python 3.12: reported as `numeric_drift_only`), gate 9/9 refusals and 0/4 wrong ones, median 2.0 s per probe; automated mutants 25/25 killed; unchanged after a review round whose 16 findings were fixed or documented (threads and `multiprocessing` children blocked at run time, a taken module name, process exits, plugin errors, float drift, SQL strings in the gate, `--changed` no pass when a function was not compared), and after a second round of 8 (finalizers and exit handlers blocked at run time, the gate's SQL rule following helpers, defaults, attributes and loops again, float drift only between float literals, no pass when fewer than half of the inputs returned or raised, `asyncio.run` not network, an unparseable changed file, class-state writes, emitted tests for sets and long integers). Not built: `review --probe` (D35), the second minimisation round, the static concurrency signal; methods need a literal-argument constructor call. |
 | D37 | Exact names, one build at a time, freshness on every read (section 10) | implemented | Built 2026-09-26: `naming.resolve` for trace, impact and `node_inspect` (copies give way, ties listed), the copy rule in plan linking, the receiver pass bound to what a file can see, `buildlock` around scan/update, `freshness.check` on query/trace/map and the MCP read tools, analyze's refresh outside its budget (skipped with the stale files named when slow; MCP refreshes in the background). Tests from the evaluators' repros (`tests/test_exact_and_fresh.py`); the eight benchmark sets unchanged. Not done: per-file incremental update (the refresh is still a full rebuild). |
 | D38 | JVM callbacks and mod entry points | partial | Built 2026-09-26 (section 11): a Java / Kotlin method reference passed as an argument is a `registers` edge (never `calls`), stored in the receiver-call sidecar (version 3); `trace` follows it only when no call path exists, labelled `callback`; impact (map, UI, review dependents) follows it after the other edges, marked `registers (callback)`; a relation claim "A calls B" supported only by a method reference (source line, graph edge or a resolver answer) is graded `registers` (none); the map's entry points know fabric.mod.json, Fabric initializers, `@Mod`, `@EventBusSubscriber` / `@SubscribeEvent`, mixin handlers and registered callbacks, and its sinks JVM file writes, `NbtIo` and dirty flags. fastbench: 0 fact changes on all nine sets. Not built: `analyze` flow claims through callbacks, lambdas passed as callbacks, static initializer blocks, inherited targets. |
-| D39 | Honest verdicts | implemented | Built 2026-09-26 (section 12): `verinoda/verdict_gate.py` runs in `analyze` after the claims are made and only caps or refuses (definitions answer only locate questions; copies and reference trees never make `met`; unresolved call sites are named and cap callers; a commit line is not a reason; set differences are `not_supported`). Verdict audit (`verinoda benchmark verdict-audit`, 17 traps + 22 controls on public material, split before tuning, written by the rule author): wrong met dev 9/23 -> 0/23, held-out 8/16 -> 1/16; controls kept dev 13 -> 12, held-out 7 -> 7. No fastbench fact lost. Not done: reasons in comments, a computed set difference, synonyms. |
+| D39 | Honest verdicts | implemented | Built 2026-09-26 (section 12): `verinoda/verdict_gate.py` runs in `analyze` after the claims are made and only caps or refuses (definitions answer only locate questions; copies and reference trees never make `met`; unresolved call sites are named and cap callers; a commit line is not a reason; set differences are `not_supported`). Verdict audit (`verinoda benchmark verdict-audit`, 17 traps + 22 controls on public material, split before tuning, written by the rule author): wrong met dev 9/23 -> 0/23, held-out 8/16 -> 1/16; controls kept dev 13 -> 12, held-out 7 -> 7 (19 of 22 when D39 was built, in `benchmarks/results/verdict-audit-2026-09-26/after.json`; **15 of 22** in the audit at HEAD on 2026-10-12, before and after the first two waves of D186, the same seven controls lost each time, and 15 of 22 in the table of section 133.3; why the audit at HEAD keeps fewer is not investigated; section 158.3). No fastbench fact lost. Not done: reasons in comments, a computed set difference, synonyms. |
 | D40 | Query ranking: tests yield to the code they test, named files and modules, docstring phrases, narrower expansions | implemented | Built 2026-09-26 (section 13) in `search_index.rank` / `analyze_query`, no index change. Dev set (37 questions, written for the change: in-sample): gold file first 13 -> 28, MRR 0.535 -> 0.836, tests in the top 5 of questions not about tests 61/170 -> 26/170. Fastbench: no fact lost, 2 gained. Not done: common English words that are module names get the weak plain-word boost; a lowercase owner still accepts methods (`asyncio.run`). |
 | D41 | Documents and images next to the code: text views of PDF/Office files, Windows OCR | implemented | Built 2026-09-26 (section 14): `doctext.py`; pages, sheets, slides and headings become graph nodes (the markdown extractor over the view), search passages, lexicon words, evidence lines and anchors. Fastbench on fresh indexes: 0 differences over 9 sets. Not done: scanned PDFs (no text layer), audio/video, OCR outside Windows. |
 | D42 | A faster `update` with the same graph | partial | 2026-09-26 (section 15): Leiden in native code by default, compact graph.json writes, memoised path and stem work. Same graph, labels, lexicon and receiver edges as before on four corpora (a 4,690-file mod included). Not done: an update proportional to the change; the cross-file passes still run over the whole corpus. |
@@ -2695,8 +2695,8 @@ twice with `indent=2` (Python's pure encoder) about 2.5 s. The path helpers were
 
 ### 15.2 Decisions (the output does not change)
 
-- `graspologic-native` (abi3 wheels for Windows, macOS and Linux) is a dependency: Leiden runs in native code
-  (clustering 3.4 -> 1.0 s). A simple graph's edges are ordered by their endpoint pair only (the attribute
+- `graspologic-native` (abi3 wheels for Windows, macOS and Linux) is a dependency (since D186 the `leiden` extra, section
+  158): Leiden runs in native code (clustering 3.4 -> 1.0 s). A simple graph's edges are ordered by their endpoint pair only (the attribute
   JSON per edge and per split pass was a second; a pair is unique in a simple graph).
 - graph.json is written on one line through json's C encoder (still JSON, same content).
 - Memoised: a module's stem per node id in the Python member-call pass (350,000 calls), parent path parts in the
@@ -17773,6 +17773,394 @@ checker's prompts, both arms' prompts against the spec's text, the runner's argv
 (tool paths, bare and partial names, hashes, the question's identifiers, a commit's diff), the judge's input, parse and
 retry, the summary's pairing, dropping, reclassification and decision rule, the blinding check, and the blind hand-check
 sample.
+
+## 158. Verinoda Lean: leads instead of an investigation, history where git is blind, one rule for the model (D186, 2026-10-12)
+
+### 158.1 Why
+
+D185 (section 157) found no measured difference in false facts between Claude Code with and without Verinoda (0.056 against
+0.044 of the answers on the answerable tasks) at 1.66x the dollars, and the SWE-bench Lite study (section 156) found 72 = 72
+resolved instances at 1.62x the dollars. What follows rests on the committed results folders and, where marked *session-local*,
+on a review of the local session transcripts of D184 and D185 by scripts that are not in the repository: the results folders
+hold no cost table, so that analysis is not a committed result and cannot be re-run from here.
+
+- **The model read `analyze` as the whole investigation.** The Verinoda arm did exactly the guided minimum (`analyze`, then the
+  answer) in 103 of 120 sessions; the median number of the agent's own tool calls was 2 per session against 4 without
+  Verinoda; 232 of the 315 commits its answers cited came only from Verinoda's output; and `analyze` returned status `answered`
+  in 120 of 120 calls (session-local).
+- **The one class the plain agent is measured to fail was lost inside the tool.** `history_search(symbol=reset_password)` reached
+  the gold commit `546dc8b` at position 11 of 14, and the 12,000-character cap kept 10 of the 14 (session-local). 7 of the 12 false
+  facts on the answerable tasks are the one absence assertion that followed (section 157.3).
+- **The cost was context, not calls.** Per session on SWE-bench Lite (200 sessions, session-local): $0.0794 plain against $0.1288
+  with Verinoda; model calls 4.89 against 6.56; cache-write tokens 9,948 against 18,380. Of the +$4.95 over 100 instances, cache
+  writes were 68 %, cache reads 26 % and output 6 %. The `analyze` result had a median of 10,495 characters and 23 of 100 were cut
+  at the cap; `code_check` ran 99 times and found an absent name 3 times, none acted on; 90 of 100 `analyze` calls started a
+  background update because `verinoda setup` had written `.mcp.json` after the index (D185: 108 of 120 calls re-indexed for it,
+  about 4 s of a 5.7 s median call). The prices that fit Claude Code's reported `total_cost_usd` are $2 / $4 / $0.20 / $10 per
+  million tokens (uncached input, cache write, cache read, output; the D185 run fits cache reads at $0.10): a reported figure, not
+  an invoice. Verinoda's JSON tokenizes at about 0.4 tokens per character.
+
+The goal set for this work was to beat both Graphify and the tool-less agent on accuracy and on cost. The measurements allow only
+a narrower target, and D186 sets only that one. It is a target, not a result:
+
+> The target, not yet measured: accuracy no worse than tool-less Claude Code's; dollars per session inside the paired interval of
+> tool-less Claude Code (modelled at 1.1-1.2x, down from 1.62-1.66x); and history handled correctly on the three cases checked on
+> the study clones (fastapi, a one-for-one change inside a moved file; guzzle, text born in another file; gin, text whose first
+> event under the path was only a modification).
+
+Where each part stands (the sources are in 158.3). *Accuracy*: D185 measured no difference in false facts (+0.011, 95 % interval
+-0.044 to +0.078), which is not equality; the strict citation check is lower for the Verinoda arm (0.793 against 0.803, no interval
+computed); the no-model benchmark did not move, but it ran on `c678d46`, before the lead view. The accuracy of the redesigned tool
+with a model is **not measured**. *Dollars*: modelled only; no session of the redesigned tool has been priced. *History*: one query
+on each of the three study clones, read-only runs, not a scored measure.
+
+The 1.1-1.2x, the displacement counts and the table below are **modelled** and not re-derived here: they are copied from section 2
+of `docs/drafts/2026-10-12-verinoda-lean-design.md`, which is session-local arithmetic over the transcripts of D184 and D185 and the
+fitted prices above (a committed draft, not a result).
+
+"Cheaper than plain Claude Code" is **not** claimed. By that model a tool that replaces the agent's *search* can at best displace
+the search calls the plain agent makes (1.31 per SWE-bench session, 0.89 per D185 session: the plain agent's own model calls that
+only searched; session-local), and that is less than one Verinoda call costs with its result; parity would need `analyze` to
+displace a Read as well, which `show="lead"` (158.2) is the experiment for, with a stop rule. The cost model is arithmetic over the
+fitted prices, not a measurement:
+
+| change (per session, SWE-bench prices; D185 is about half) | modelled |
+|---|---|
+| no ToolSearch turn: the tools stay in front of the model | -$0.006 (isolated session) to -$0.009 (warm prefix) |
+| `code_check` off by default (40 of 99 calls were a call of their own, 59 were bundled with an edit) | -$0.009 |
+| `analyze` output of about 10,400 characters -> 2,500 | -$0.017 (cache write), and smaller re-reads |
+| the `nudge` text and the skill listing cut | -$0.003 |
+| the remaining fixed text (instructions, the rule, the schemas in front) | +$0.006 |
+| the `analyze` call with a 2,500-character result | +$0.011 (4,000 characters: +$0.0145) |
+| one displaced own model call | -$0.0116 (D185: -$0.0074) |
+
+At today's displacement (0.74 displaced model calls on SWE-bench, 1.70 on D185) the table gives plain +$0.009 to +$0.012 per
+session on SWE-bench (1.11-1.15x) and +$0.006 to +$0.011 on D185 (1.10-1.19x); parity on SWE-bench would need 1.49 displaced
+model calls with a 2,500-character result. All of this is modelled.
+
+### 158.2 Decisions
+
+The plan (`docs/drafts/2026-10-12-verinoda-lean-plan.md`) ran in three waves on the branch `symbiosis-redesign-2026-10-12`; waves
+1 and 2 (its Tasks 1 to 6) are merged, this section is the first task of the third.
+
+- **The D185 mechanism, first half, was shipped before the plan.** A commit list in a capped MCP response keeps both ends and
+  names the dropped commits as `sha date` (the gold commit was position 11 of 14 and was cut silently). A why-question reads 20
+  commits of the symbol's lines (`git log -L`, one call) and claims at most three: those whose message states a reason *and*
+  shares a topic word with the question (stem for stem, the subject's own name left out); the others are leads, one line each, in
+  an `unknown` whose next step names `git show` and `history_search`. A when-question, which shares the handler, claims the
+  commits about its words, else the newest, with no reason asked (the design review found the reason gate had reached it). The
+  top-level status is derived from the sub-questions (`answered`, `partly_answered`, `unanswered`; the CLI exit code stays 0 for
+  all three), a claim the verdict gate set aside is not listed as an answer, the "documents state intent" note needs a document,
+  and Verinoda's own files (`.mcp.json` holding only its server, the marked skill files) are not a change for the index: nothing
+  changed means no refresh.
+- **`analyze` over MCP returns leads, not an investigation.** `analysis.analyze`'s result dict and `analysis_view.render_text` are
+  unchanged, so the no-model benchmark (in-process `analyze` and `render_text`) and ContextBench (the CLI) never see the new
+  shape; `analysis_view.lead_view(res, budget=2500, show=None)` builds it from that dict. In this order: `status` and
+  `understood_as`; the `snapshot`; whatever of `errors`, `clarifications`, `plan_fallback`, `intent_check`, `budget_exhausted`
+  and `plan_id` is present (never cut); each sub-question with its status and its answer claims *whole* (text, status, evidence
+  locators); at most eight `leads`, one line each, `path:a-b  symbol  (answer|claim|linked|passage)`; the `unknowns` with their
+  next steps; at most six `context` claims as `id status text` lines (`claim_inspect` gives the rest); one `coverage` string
+  (snapshot, stale files, refresh skipped, and `project_query <names>` as the way to the passages). Passages, plan-check links,
+  critique, steps, usage and the refresh prose are not in the MCP response (`verinoda analyze --json` keeps them). The builder
+  holds the budget itself, at most 2,500 characters of compact JSON (about 1,000 tokens), and cuts in a fixed order: context
+  lines, then leads beyond the answers' files, then the facts beyond the first, then an unknown's commit list from the middle;
+  answer claims, clarifications and errors are never cut, and the generic cap, left at 12,000 characters for everything else,
+  never sets `truncated` on it. Leads are ranked answers' files first, whatever their path (a decision record or a test file that
+  answers the question is the first lead), then source before test, example, documentation, generated and vendored paths, and the
+  cap of eight never drops an answer's file. `ANALYZE_FIRST_CUT` and `lean_capped` are gone; `lean` stays as the compact whole
+  result.
+- **`show="lead"` is an experiment with a stop rule, and off.** `analyze(..., show="lead")` adds the numbered lines of the first
+  lead's narrowest cited span (at most 60 lines) inside 4,500 characters, read through `paths.contained_path`. It is returned to a
+  call the model made and never injected: the one measured up-front injection (the mod's former `search` mode; see the mod's
+  README) lost facts, 207 against 212. The aim is an `analyze` that displaces a Read. The stop rule was fixed in the design before any run: if
+  the Verinoda arm's own model calls are not at least 1.5 below the plain arm's on the cost sample, the variant stays off and the
+  cost target stays the modelled 1.1-1.2x of 158.1.
+- **`history_search` returns one flat list.** Every commit once, as a row `sha[:10] date author subject[:90]`, newest first, up to
+  the limit (default 30, at most 100). `quoted` carries the message bodies (clipped at 300 characters) of the first three rows,
+  the last three and any row whose message states a reason. Symbol mode has no `claims` list any more (a claim per commit repeated
+  every row). Every result states its `scope` (what was searched and what was not, in one sentence) and `more` (the tool's own
+  limit was reached; `truncated` stays the compactor's key), and the compactor keeps both ends of a list of rows and names the
+  dropped commits. The design's budget, at most 2,000 characters for 30 rows, is not met with real subjects and is restated in
+  158.3: a real row is about 100 characters.
+- **History where git is blind**, two classes and one general rule, each checked on the study clones (158.3). *Text born in
+  another file* (the guzzle class): `_parse_patches` records `new_file` when the path-bound first event creates the file
+  (`--- /dev/null`); the claim then carries the uncertainty that it was created at this path and the text may have lived in
+  another file, a path-free search runs oldest first (`git log -S`, its last line, then `git show -U0` of that one commit; never
+  the newest-first read, which cuts the oldest), and the claim returns to `primary_source_verified` with scope "path-free" when
+  the oldest commit is the same one, or is re-made from the older commit that added the text elsewhere (`first_appearance`). A
+  path-bound `appeared` says `under <path>`, and `first_appearance` is met first in the response. *A one-for-one change inside a
+  moved file* (the fastapi class): `-S` is blind to it with or without a path (`546dc8b` is in none of the 22
+  `git log -Snew_password` commits), so one file path now passes `--follow` and drops `--no-renames` in text, regex and
+  `commits(diff=)` mode (the move commit then shows no occurrence change and drops out); a folder path keeps the old reading.
+  *The general rule for any path-bound text search*: when the path-free oldest commit is older than the path-bound first event,
+  the claim's uncertainty and `earlier_elsewhere` name it. "Older" is decided by ancestry (`git merge-base --is-ancestor`) and by
+  author date only for separate lines of history, because dates tie on a scripted import and a rebase reorders them. A
+  why-question whose symbol history has no commit stating a reason, and a "when was X added" question, add the path-free first
+  appearance of the question's code term (a backticked token, a snake_case or a camelCase identifier; never a plain word or a
+  dotted expression) as a **lead, never as the answer**. Time-outs: `VERINODA_MCP_GIT_TIMEOUT` (60 s for `-S`, `-G` and `-L`; 20 s
+  for `rev-parse` and `ls-files`); on expiry the tool answers `status: partial`, `timed_out: true`, what was searched and the next
+  call, never a bare error, and a timed-out path-free read leaves the claim one step down ("path-free search timed out").
+  `history_search` runs outside the server's global lock, since it reads git and the loaded graph only. Defence in depth:
+  `--literal-pathspecs` on every call with a user path (a path is a file or folder prefix, not a glob), a `..` component refused,
+  `--end-of-options` before revisions, the revision of `symbol_commits` validated.
+- **One status rule in the text.** `server.STATUS_RULE` says it once: state as fact only what carries `statically_verified`,
+  `primary_source_verified`, `observed` or `experiment_verified`; `strong_inference` and below are not facts; Verinoda's output is
+  a lead, so before stating "no such change", "first added in" or why something changed, confirm with one git or grep check of
+  your own; `truncated: true` or `more: true` proves no absence; a question one grep or one file read answers needs no Verinoda
+  call. The measured basis is that 7 of the 12 false facts on the answerable D185 tasks asserted an absence. It replaces "never
+  state weak_inference or unknown as fact" and "truncated: true means lists were cut" in the server instructions, and is copied
+  into both skills and into the rules text written for the other agents (`agents/templates/agent_RULES.md`); `tests/test_agents.py`
+  and `tests/test_more_agents.py` compare each copy with the constant, so they cannot drift. The skill bodies are cut to at most 60
+  lines: the question-plan and reference protocols and the long command lists go to `verinoda <command> --help`, and what stays
+  is the rule, which tool answers which question, how to cite, setup, and a line each for decisions, the debug ledger and
+  critique. The `run_tool` description keeps `name {arguments}: one clause` and loses its value lists (a wrong value comes back
+  from `run_tool` as an error that lists the valid ones); the four listed descriptions lose what their parameter descriptions
+  already say. `change_review` over MCP drops `concerns_checked` and `reviewers` and says its coverage in one line of at most 199
+  characters (`verinoda review --json` keeps all of it). `code_check` stays an MCP tool; the mod no longer tells the model to call
+  it after every edit.
+- **The mod keeps three things** (`claude-mods/verinoda-live` 0.7.0). *Tools in front*: the server's three core tools (`analyze`,
+  `project_query`, `run_tool`) are listed in front of the model, not behind ToolSearch (`tool.describe`, `isDeferred: false`; a
+  tool the model must look up first is not called: 0 of 286 study sessions with the tools deferred, against 51 of 63 with a tool
+  listed in front, and the ToolSearch turn costs a model call of its own). The hook pins only tools present at session start. *The
+  call rule*: a `prompt.compose` section (`verinoda-live:rule`, about 530 characters) while the request's tools name the Verinoda
+  server, telling the model to call `analyze` once first for a why, when or what-does-it-affect question and to treat what comes
+  back as a lead. *Freshness*: `verinoda update --fast` at the end of a turn that edited indexed files, in the background, with a
+  status line; `verinoda graph-state --json` (new; exit 0 always) replaces the Python probe the mod ran. Deleted: the `auto` modes
+  (`search`, `nudge`), the assist features and their tools, the commit-review guard on every git shell command, the session-start
+  `check --stdin` warm-up and the locate daemon start. The check after edits stays and is **off** by default (setting `check`,
+  `/verinoda-check`). The measured reasons for each deletion are in the mod's README ("What was measured, and what went"). The
+  improvement pane, the language pane and the mascot are untouched.
+- **Nothing the mod runs comes from the repository.** A cloned repository can ship a `verinoda.exe` at its root, a `.venv/` with
+  one inside, or a `.verinoda/` folder. The mod resolves `verinoda` once at session start by walking `PATH` (with `PATHEXT` on
+  Windows) and takes the first program in a folder that is not inside the project, so an activated project `.venv` first on
+  `PATH` is skipped; a `cli` setting that points into the project or to a network share is refused the same way, and with no
+  program outside the project nothing runs at all (the bare-name fallback went in a review: the child inherits the same `PATH`).
+  Every process has the user's home as its working directory, because Windows searches a child's working directory before
+  `PATH`, and `--repo` names the project. `update`, `graph-state` and `check` run only where the person chose the index: the
+  session's own folder, the one the settings name, or one on `verinoda trust --list`. Not checked: whether `$.process.run` on
+  Windows searches the child's working directory (the home directory and the absolute program are the guard either way).
+- **Security in the package.** *One git funnel*: `verinoda/gitexec.py` (`run`, `popen`) is the only place that builds a git
+  command line, and `tests/test_gitexec.py` walks the syntax trees of `verinoda/**/*.py` and fails on any other git argv (the
+  benchmark harnesses and the vendored `project_index` are outside it). Every call carries `--no-optional-locks -c
+  core.fsmonitor=false -c core.quotepath=off` and `GIT_OPTIONAL_LOCKS=0`, loses the repository-local environment (`GIT_DIR`, ...)
+  and never inherits stdin; a time-out or a missing git is a result (exit code 124 or 127), never an exception. In a repository
+  the user has not trusted (`verinoda trust`), `status`, `diff`, `diff-index` and `update-index` are refused (exit code 126, the
+  keys named) when `.git/config` names a command (`core.fsmonitor` that is not a boolean, `core.sshCommand`, `filter.*`,
+  `diff.*.command`, `diff.*.textconv`, `include.*`), and `snapshot.git_info` keeps the refusal in `refused`. A clone, fetch or
+  ls-remote names its source, pins the protocols to https and ssh (`file` only for a directory of this machine), refuses redirects
+  and puts `--` before the source. *Path containment at the sources*: `paths.contained_path(root, rel)` rejects lexically first,
+  with Windows rules on every OS (a drive, a UNC prefix, a `\\?\` device path, an `x:stream` suffix, `..`), and only then joins
+  and resolves, so a link or junction out of the repository is refused too and no UNC path is resolved (resolving it would be the
+  connection). `index.load()` drops nodes whose `source_file` escapes, and the readers of a path taken from an index or a store go
+  through the helper (`Graph.span` and `source`, `search_index`, `entail`, `question_plan`, `relations`, `sentences`, `precise`,
+  `research`, `evidence.check_source`, the lead lines of `show="lead"`). Recorded evidence may be read only from an allowlist of
+  roots (`paths.evidence_root_allowed`): the repository, the project's git work-tree top (CODEOWNERS evidence of a subfolder
+  project cites it), `.verinoda/research` and its children, and reference entries that resolve inside the repository; evidence with
+  another root is `gone`, and MCP `evidence_inspect` omits `root` and `file_exists` for it. *Elsewhere*: the locate daemon's
+  state (port, token) lives in the user config folder keyed by the repository's real path, no longer in `.verinoda/` (a clone
+  could ship a file naming a port of its choosing); a decision record written over MCP is `agent_asserted`, not enforced and
+  superseding nothing until `verinoda decide accept ADR-N` confirms it in a terminal.
+- **Deletions and dependency cuts**, each with a measured or a security reason. The upstream Graphify command line inside
+  `verinoda/project_index` and the `verinoda index -- ...` pass-through: 18 modules (12,533 lines: `cli`, `__main__`, `install`,
+  `hooks`, `tree_html`, `diagnostics`, `wiki`, `scip_ingest`, `semantic_cleanup`, `affected`, `cross_repo_calls`,
+  `cross_repo_types`, `multigraph_compat`, `global_graph`, `pg_introspect`, `benchmark`, `cargo_introspect`, `manifest`) and the
+  126 skill Markdown files (24,844 lines) that only that command line used. The LLM, PR and media layer (`llm`, `prs`,
+  `transcribe`, `google_workspace`, `callflow_html`, `exporters/graphdb`, the second MCP/HTTP server of `serve.py`, the LLM
+  tiebreak of `dedup.py`, the tweet, arXiv, web and YouTube fetchers of `ingest.py`; about 5,500 lines). No Verinoda command and
+  no measured result reached any of it. Each hand edit of a vendored file the removal forced carries `Verinoda patch (D186)` and
+  a line in `docs/UPSTREAM.md`. `tests_upstream/` lost 94 files (they import a removed module, run the upstream command line or
+  use a name the kept modules lost) and 22 were trimmed; `tools/skillgen` is retired; `tools/port_upstream.py` deletes the removed
+  surface again after a re-sync. `graspologic-native` leaves the dependencies (it brought 107 MB of scipy that nothing imports)
+  and becomes the `leiden` extra, for every Python version;
+  without it `cluster.py` uses networkx's Louvain; `_code_stamp` hashes the installed version of `graspologic-native`, so an
+  index built under one backend re-clusters once under the other. The extras kimi, ollama, bedrock, anthropic, gemini, openai,
+  video, neo4j, falkordb, postgres and google, and the `markdownify` line of `pdf`, are gone; a `benchmark = ["tiktoken",
+  "anthropic"]` extra holds what the harness needs (exact token counts, `--llm anthropic`). The Louvain gate before merging is in
+  158.3.
+- **Kept, with the reason.** The Minecraft/JVM family (115 of the 284 facts of the `query` approach in
+  `benchmarks/results/compare-2026-10-12-branch/`: `glow_mod` 48 and `forge_mod` 67); the `ui` (no default cost, the only graph
+  viewer); the lab tools behind `--profile full` (zero agent exposure in the agent studies, but a split is weeks of work: the
+  backlog row "Lab tools split"); the benchmark package (reproducibility of the headline); the grammar set (a corpus check is
+  needed before any cut: the row "Grammar cut").
+- **The harness for the re-runs** (D185's, extended; no measured file touched). `claims_run.py` takes a guide text from the config
+  (an empty text means no guide paragraph: the mod's own section speaks), tasks, repeats and arms from the command line;
+  `claims_mech_strict.py` scores citations strictly (the cited lines only, whole-word identifiers, none taken from the question,
+  a quoted commit subject must be the commit's) and writes its own file. D185's lenient check had kept 77 of 150 moved locations
+  and 65 of 120 swapped commits "confirmed" in the review's perturbation test (157.3).
+- **What the reviews changed after the tasks.** The lead rank puts an answer's file first whatever its path, and the cap of eight
+  never drops it. The mod's bare-name fallback went (an activated project `.venv` first on `PATH` with no program outside it: the
+  child resolves the bare name through the same `PATH`, so the home working directory guards only the cwd-search vector). A share
+  hidden in a file URL (`file:////server/share/x`) and an evidence root on a share are refused before anything is resolved. The
+  JSON-only file list and the search index's stored names go through the containment. `verinoda graph-state` looks without
+  writing (the mod polls it every second during a build), and a `.verinoda` folder without a graph is "no graph", never "fresh".
+  The verdict gate's reason cues gained the plain "<fact>, so <consequence>" form. A path-bound `appeared` says `under <path>` and
+  the proven path-free commit is `first_appearance`, met first (a model reading the keys in order met the path-bound commit first
+  with nothing to say it was only the arrival under the path). Two commits of one second are ordered by ancestry, not by date. The
+  vendored-builder pin of the incremental update follows the D186 edits of `build.py` and `export.py`.
+
+### 158.3 Measured
+
+Labels: **committed** (a results folder of this repository); **commit** (a figure in the message of the commit named, from a run
+on this machine, Windows 11 with Python 3.12.0, with no result file); **session-local** (transcript analysis or a scratch script,
+not a committed result); **modelled** (arithmetic over the fitted prices; here always copied from section 2 of the draft design, never
+re-derived); **not measured**.
+
+- **The no-model headline did not move (committed).** `benchmarks/results/compare-2026-10-12-branch/`: the eight public sets,
+  `--llm none`, `--repeat 1`, on the branch at `c678d46` (the D185-mechanism commits only, before the waves of this section)
+  against `compare-2026-10-02/after-fix`. The `query` approach 284/319 -> 284/319 facts and `analyze` 285/319 -> 285/319, every
+  question's found-fact set identical (no fact lost, none gained); `analyze` tokens per question lower on 14 of the 86 questions
+  (-9 to -87), higher on none. Python 3.12.0 against the baseline's 3.13.14, Leiden clustering (graspologic-native installed),
+  timings not compared. The same sets after all of D186 are among the runs below that have not been made.
+- **The verdict audit (run, output not committed).** `verinoda benchmark verdict-audit --split all` at HEAD before the redesign and
+  again after waves 1 and 2: 39 cases, wrong met 1 (`forge-maxheat-declared`), above ceiling 0, controls kept **15 of 22**, the
+  same seven controls lost each time. The figure is not new: the table in section 133.3 (`benchmarks/results/host-intent-2026-10-01/`)
+  has 15/22 in all three conditions. The D39 row at the top of this document gave 19 of 22 (dev 12 of 13, held-out 7 of 9), the
+  figure of 2026-09-26 in `benchmarks/results/verdict-audit-2026-09-26/after.json`, where the controls lost were `pyloop-why-adr`,
+  `forge-maxheat-declared` and `verinoda-mcp-size-env`. Why the audit at HEAD keeps 15 where that file keeps 19 is **not
+  investigated**: the output of the HEAD runs was not committed, so the seven controls they lost are not listed here and no cause
+  is named. The row now carries both figures with their dates. The plan commits a before and after pair under
+  `benchmarks/results/verdict-audit-2026-10-1x/`.
+- **Where the gold file sits in the leads (session-local, offline).** The 100 SWE-bench `analyze` outputs of D184, re-ranked with
+  the new lead order (one path extraction for both orders; the gold files from the study's `results.jsonl`): the gold file is at
+  rank 1 in 31 of 100 in the order the model read, 60 of 100 under the new one; in the top three 46 -> 76; in the top eight
+  71 -> 86; absent from the output 8 -> absent from the eight leads 11. The last figure went the wrong way: the cap of eight
+  leaves the gold file out in three more instances. **Not measured:** whether the model's first Read follows the first lead.
+- **History on the study clones (commit messages of the history commits; read-only runs on this machine).** fastapi,
+  `history_search(symbol=...)` for `reset_password`: 14 rows, `546dc8b` among them, four quoted bodies, 2,989 characters of compact
+  JSON (rows 1,420, bodies 1,023, the rest 525), 0.11-0.12 s, against 28,725 characters before. guzzle, text `>>>>>>>>` with path
+  `src/MessageFormatter.php`: the first event is `new_file`, the claim is re-made path-free from `91f1e347`
+  (`src/Guzzle/Log/MessageFormatter.php:43`), 0.58-0.66 s, 3,153 characters (2,973 before `first_appearance` was added). gin, text
+  `math.MaxInt8 / 2` with path `context.go`: `earlier_elsewhere` names `15216a0`, 0.22 s, 3,151 characters. The ancestry check that
+  orders the path-free commit against the path-bound one takes 54 to 78 ms at its worst (the root commit against HEAD) on the ten
+  study clones (1,371 to 6,103 commits). The design review's timings, which the implementation did not repeat: `--follow` adds at
+  most 0.05 s per call on histories up to 6,100 commits, and the automatic path-free `-S` read costs 0.2 to 2.7 s on the ten
+  study clones.
+- **The `history_search` budget is restated.** The design asked for at most 2,000 characters for 30 rows. A row with a real subject
+  is about 100 characters (fastapi: 101), so 30 rows are about 3,000 characters before any quoted body, and four bodies were 1,023
+  characters; both are arithmetic from the 14-row measurement, not a measurement of a 30-row history. The 2,000 holds for the short
+  subjects of the fixture test, which says so in a comment. Nothing was trimmed: of the 525 characters that are neither rows nor
+  bodies only `head_lines` (22) and `symbol` (50) could go without the CLI renderer and the tests losing what they read.
+- **Sizes of the agent-facing text (commits b05d29e, 9378fd7, b230c70; the example project `orders_app` with one signature edit,
+  not a real repository).** Core server instructions 1,303 -> 1,687 characters (the rule is 470, the two clauses it replaces 86;
+  limit 1,700); `run_tool` description 845 -> 590 (limit 600); the four listed descriptions 1,053 -> 686; the core menu on the wire
+  4,721 -> 4,099 (4,870 -> 4,248 with decision records; the limits in `tests/test_mcp.py` come down from 4,800 and 4,950 to 4,200
+  and 4,350); skill bodies 243 -> 58 lines (claude, 16,928 -> 5,510 characters) and 242 -> 59 (codex, 17,162 -> 5,827);
+  `change_review` over MCP: `concerns_checked`, `reviewers` and `coverage` were 2,574 of 11,425 characters, the coverage line is
+  now 94. The D185 fastapi why question through `analyze` on the study copy: 10,355 -> 1,987 characters, status `answered`, the
+  answer claim names `546dc8bdcb`, the first lead is `backend/app/api/routes/login.py:78-97`, and 2,976 characters with
+  `show="lead"` (20 lines).
+- **Probes with a model (one headless session each on the study's fastapi copy; observations, not a scored measure).** The study's
+  stance-only prompt and no mod: Grep, Read, Read, Bash, then "the history doesn't give a reason", the measured failure. The tools
+  in front but no rule: the same path. The tools in front and the one-paragraph rule, in the prompt or as the mod's own section:
+  `analyze`, Grep, `git show 546dc8b` (and a Read), and the answer cites `546dc8b` "for security", in 3 to 4 API calls. Listing
+  the tools alone did not make the model call them. A live session with the mod and the server connected recorded that the rule
+  section is added exactly when the request's tools name the Verinoda server (one haiku call, commit 2bcde62).
+- **The D185 citation check, strict (run over the D185 work folder, outside the repository; output not committed; commit 29d6dec).**
+  Plain arm 905 confirmed / 216 wrong / 6 missing of 1,127 citations (0.803); Verinoda arm 1,047 / 254 / 20 of 1,321 (0.793); the
+  lenient check of D185 gave 0.975 and 0.958. The strict figure is a lower bound as the lenient one is an upper bound (157.3); the
+  re-runs report both. The Verinoda arm is the lower in both checks; no interval was computed.
+- **Tests.** After wave 1, on the merged tree (the changed areas): 31 test files, 1,084 passed, 2 failed, the two skill-length
+  cases that fail on a clean checkout (AGENTS.md); the skill rewrite of wave 2 fixed both (bodies of 58 and 59 lines). The mod:
+  85 tests pass (`claude plugin test`), `tsc --noEmit` exits 0, `claude plugin validate` passed. `tests_upstream` after the
+  deletions: 38 failed, 3,645 passed, 130 skipped (3,813 collected against 5,786 before; on the same machine before D186: 54
+  failed, 5,451 passed, 280 skipped, 1 xfailed); the 38 are failures of the kinds that were there before (an absent terraform
+  grammar, Windows file types, a watch test on a deleted working directory, java and markdown cases; `docs/UPSTREAM.md` has the
+  account). The Louvain gate, the whole product suite in a venv made from this `pyproject.toml` without graspologic-native (commit
+  f0753cd): 20 failed, 5,285 passed, 21 skipped, 3 deselected in 38:00. Of the 20: five of AGENTS.md's six known failures; the
+  trigram race `test_two_searches_at_once_do_not_fail` (it fails about half the time on the committed code too); the handle test of
+  `test_fswatch` (a Windows race, passed on two reruns); `test_history.py::test_a_name_resolves_through_the_index_and_is_never_replaced`
+  (fails on an untouched HEAD in a venv with graspologic-native, and is not on AGENTS.md's list); and 12 of
+  `tests/test_incremental.py`, caused by the vendored-builder pin and fixed in the next commit (17 passed in both venvs). None is
+  Louvain's.
+- **Install size.** Without `graspologic-native` the default install drops about 107 MB of scipy that nothing imports: 293 MB
+  (D183, 63 packages) -> about 185 MB, the second figure from a reviewer's `du`, not re-measured on a fresh install.
+- **Cost: modelled, not measured.** The 1.1-1.2x of 158.1 is arithmetic, copied from the draft design's section 2 and not
+  re-derived; no session of the redesigned tool has been priced.
+
+<!-- TASK8: numbers from benchmarks/results/claims-rerun-2026-10-1x/ -->
+**Not run yet: the plan's verification runs.** The re-run of six D185 tasks (`fastapi__full-stack-fastapi-template-why-1`,
+`junegunn__fzf-why-1`, `guzzle__guzzle-trap-1`, `gin-gonic__gin-trap-1`, `axios__axios-when-1`, `sharkdp__bat-when-1`; the
+Verinoda arm, three repeats, the status rule as the guide text, the mod loaded, model `claude-sonnet-5-5`) and the cost sample (24
+answerable D185 tasks, one repeat, both arms: the paired mean dollar difference with its bootstrap interval, own model calls per
+arm, Verinoda characters per session, cache-write tokens per arm) are the plan's last task, with the eight sets and the verdict
+audit once more after D186. Their numbers go here, each with its results folder. The success rule was fixed before any session:
+the interval of the paired difference excludes +$0.015 (the modelled 1.1-1.2x holds) and Verinoda's output is at most 4,500
+characters per session; `show="lead"` stays off unless the Verinoda arm's own model calls are at least 1.5 below the plain arm's.
+Until then every statement about dollars in this section is modelled, and none about the accuracy of the redesigned tool with a
+model is a measurement.
+
+**Not measured, listed once.** The accuracy and the dollars of the redesigned tool with a model (the runs above); what a model
+does with the shorter instruction and skill text, and the text sizes on a real repository; whether the model's first Read follows
+the first lead; the effect of `show="lead"`; the 60 s time-out and the ancestry walk on a 50,000-commit repository; `status`
+latency with `--no-optional-locks` on a stale-stat tree; the cost of one `resolve()` per file read in `span` and `source`; `http.followRedirects=false` against a live host; the eight-set headline and the
+clustering time on large graphs with Louvain (every result so far ran with Leiden; 3.4 s against 1.0 s on this repository is
+D42's `pyproject.toml` comment, not a re-measurement); the install size on a fresh install; the mod's pane in a real terminal.
+
+### 158.4 Not done
+
+- **The plan's verification runs** (158.3): the six D185 tasks re-run, the cost sample, and the eight sets and the verdict audit
+  after D186 as committed results. SWE-bench is not re-run (the draft design's estimate, in its section 8, is about $25 and 7 hours
+  of Docker per repeat; not measured); ContextBench's `analyze` arm is not re-run because the CLI's `render_text` did not change.
+- **`show="lead"`** is built and off. A second 24-pair sample for it is run only if the first is affordable.
+- **Deliberately not built.** A project brain or session-start card: no study spans two sessions or a compaction, and the one
+  measured up-front injection lost facts (207 against 212); it is recorded as a two-session study design (the backlog row "Two-session persistence study"), not as
+  code. More file-recall studies on small repositories, and more guided-protocol variants: both measured at the ceiling.
+- **A broader when-rule** (the backlog row "The when-rule's limits"). The first appearance of a code term is a lead for a when-question, never the answer,
+  and is read oldest first only for "when was X added/introduced" where X is the term itself. Against the eight D185 when tasks
+  the rule fires on one (axios, where the oldest is the gold); on four others the term's first appearance predates the asked-about
+  change by 7 to 16 years (both counts are the design's, in section 4.3 of the draft, session-local and not re-derived here), which
+  is why it is a lead and why a looser rule would manufacture the false-history class on a kind of question that had zero false
+  facts in D185. The gate's `history` rule is not extended to diffs.
+- **Security items deferred.** An owner stamp for `.verinoda` (detecting an index that came with a clone or a copy; the cost of
+  migrating copied indexes is open; the backlog row "Owner stamp for `.verinoda`") and read-only queries by default (the
+  latency of rebuilding a stale index in memory is not measured; the row "Read-only queries by default"). The best-effort private-host check for reference fetches is not built: the connection of
+  a fetch is not pinned, so DNS rebinding stays open, as the design said.
+- **Known gaps.** A removed Verinoda-own file still counts as a change for the index (the marker check runs on a file that is
+  gone); rare. The lexical rule of `contained_path` rejects every `:` in a relative path, which is how it rejects an `x:stream`
+  suffix: a file with a colon in its name (legal on Linux and macOS) is dropped from the loaded graph and cannot be read as
+  evidence (found while writing this section by calling `paths.escapes_lexically("data/ns:thing.json")`; no test pins it, and how
+  many repositories hold such a file is not measured). The reason test of the why-handler is a heuristic (reason words and a
+  topic word shared with the question): an explaining commit that fails it stays a lead, named in the unknown with `git show` as
+  the next step.
+- **Deferred to the backlog** (`docs/BACKLOG.md`, the section "Deferred from D186" holds all seven rows; four are named
+  above): the lab-tools split, the grammar cut and the Louvain headline re-measurement.
+
+### 158.5 Tests
+
+`tests/test_analysis_view.py`: the lead view keeps the answer claims whole and the rest as lines; leads put answers' files first
+and noise paths last; the budget is never exceeded and `truncated` never set; clarifications and errors are kept whole; a why
+result with twenty lead commits fits and keeps both ends; an answer in a documentation path is the first lead; `show="lead"` stays
+within 4,500 characters; the coverage line names the refresh state. `tests/test_mcp.py`: `analyze` is a lead view of the stored
+claims and stays under its budget; `show="lead"` adds the first lead's lines, read under the repository only; `cap_response` keeps
+both ends of a commit list and names the dropped; `history_search` runs outside the server lock; `evidence_inspect` omits `root`
+and `file_exists` for rejected evidence; the instructions carry the one status rule; the `run_tool` description is under 600
+characters; `change_review` has no bookkeeping and a one-line coverage. `tests/test_history.py`: a symbol's history is one flat
+list with bodies on the ends; a created file is marked and searched path-free, oldest first; commits of one second are ordered
+by ancestry, not by date; regex and text mode follow a moved file; the general rule names an earlier commit at another path; a
+timed-out search is partial, not an error; literal pathspecs and end-of-options. `tests/test_analysis.py`: a why reads past the
+three newest commits; a why with no stated reason is unanswered, lists the commits as leads and adds the term's first
+appearance; a why whose symbol history times out is no tool error; a config holding only Verinoda's server is not a change for
+the index; a when-question is answered by the commits about it; the overall status follows the sub-questions.
+`tests/test_verdict_gate.py`: weak claims are not listed as answers; a commit states the reason asked about only with the
+question's words; "so" and "therefore" state a reason. `tests/test_gitexec.py` (new): the safety flags and environment, input and
+bytes, a time-out is a result, a risky config refuses `status` and `diff` in an untrusted repository, the refusal is said in
+`git_info`, no bare git argv outside `gitexec`, reference fetches pin protocols and refuse redirects, a share hidden in a file URL.
+`tests/test_paths.py` (new): lexical rejection before the file system is asked, a plain relative file, a symlinked root outside
+the repository, the work-tree top of a subfolder project, no evidence root joined outside the helper, a root on a share refused
+before it is resolved. `tests/test_evidence.py` (an escaping root is `gone`), `tests/test_index.py` (nodes whose `source_file`
+escapes are dropped), `tests/test_locate_daemon.py` (the state in the user config folder), `tests/test_decide.py` (agent-asserted
+until the CLI confirms), `tests/test_research.py` (fetches name their source), `tests/test_cli.py` (`graph-state` reports the lock
+and the files behind), `tests/test_reviewers.py`. `tests/test_agents.py` and `tests/test_more_agents.py`: each skill carries the
+server's status rule in at most 60 lines and names the tool for each kind of question, and the rules text for the other agents
+carries the same rule. `tests/test_packaging.py`: the default install has no upstream CLI, LLM layer or scipy; the index build
+path imports after the deletions; the port script deletes the upstream tests of the removed surface. `tests/test_claims_study.py`:
+the guide text from the config, the flags, the strict citation check. The mod's `hooks/features.test.ts` and
+`hooks/check.test.ts`: the tools in front with the engine's description kept; the call rule only while the Verinoda server is
+connected; a `verinoda.exe` at the root or in the `.venv` is not used; a `cli` setting inside the project is refused; nothing
+runs without Verinoda on `PATH` outside the project, not even the trust list; a `.verinoda` in an untrusted ancestor starts
+neither `update` nor `graph-state`; the trust list is read once per session and a list that cannot be read counts as not
+trusted; the check after edits is off by default and, on, adds one line only when a name is absent; the settings no longer know
+`auto`, `assist` or `guard`; a folder with no graph is never "fresh".
 
 ## Sources
 

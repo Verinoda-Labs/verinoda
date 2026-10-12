@@ -2970,7 +2970,7 @@ G=<UPSTREAM_VENV>/Scripts/graphify.exe
 # replace machine paths in result files written by an older harness (run on the machine that wrote them)
 .venv/Scripts/python -m verinoda.benchmark sanitize <file>.json
 
-# optional, measures model tokens/cost (needs the key and `pip install anthropic`)
+# optional, measures model tokens/cost (needs the key and `pip install "verinoda[benchmark]"`)
 #   add: --llm anthropic        (model: claude-sonnet-5, or set VERINODA_BENCH_MODEL)
 
 # unit + end-to-end tests of the benchmark itself (no network, no LLM)
@@ -3158,7 +3158,7 @@ Neither is the tokenizer of any Claude model.
 Verinoda: 1 call (analyze's internal steps are recorded separately).
 
 **Model cost** is measured **only** with `--llm anthropic`, `ANTHROPIC_API_KEY`
-set and the `anthropic` package installed: each context plus the question is
+set and the `anthropic` package installed (`pip install "verinoda[benchmark]"`): each context plus the question is
 sent to the Messages API (`claude-sonnet-5` unless `VERINODA_BENCH_MODEL` is
 set), tokens come from the response `usage`, cost from this table, and the
 same gold-fact rule is applied to the answer. Without the key every model

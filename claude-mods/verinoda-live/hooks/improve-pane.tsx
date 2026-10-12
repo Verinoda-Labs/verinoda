@@ -64,7 +64,8 @@ export function improveSections(sections: readonly { id: string; text: string; s
 }
 
 export function registerImprove(on: On): void {
-  // First-class, as the assist tools are: a tool the model must look up first is not called.
+  // First-class, as the Verinoda server's core tools are (MCP_CORE_TOOLS in register.tsx): a tool the model must look up
+  // first is not called.
   on('tool.describe', { tool: [IMPROVE_PROPOSE, IMPROVE_REPORT] }, ($, e) => {
     const spec = IMPROVE_SPECS.find(s => `mcp__verinoda-live__${s.name}` === e.tool)
     return { description: spec?.description ?? e.description, isDeferred: false }

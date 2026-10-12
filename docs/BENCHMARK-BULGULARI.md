@@ -1,6 +1,7 @@
 # Verinoda: benchmark bulguları ve bilinen eksikler
 
-Tarih: 2026-10-11. Kaynak: `benchmarks/results/**`, `docs/SYMBIOSIS-GAPS.md`, `docs/BACKLOG.md` (bölüm 13 ve 20).
+Tarih: 2026-10-11 (§5: 2026-10-13). Kaynak: `benchmarks/results/**`, `docs/SYMBIOSIS-GAPS.md`, `docs/BACKLOG.md` (bölüm 13, 20 ve "Deferred from D186" bölümü),
+`docs/DESIGN.md` (bölüm 158, §5 için).
 Bu belge ölçülenleri ve ölçülmeyenleri ayırır. Bir sayı burada yoksa, ölçülmediği anlamına gelir.
 
 ## En yeni sonuç (2026-10-11): yanlış iddia çalışması, Verinoda'nın tezi ölçüldü
@@ -35,7 +36,7 @@ karşı puanlar; atıflar mekanik doğrulanır.
 **Ne demek:** Bu depo kümesinde ve bu duruşla, üç ayrı ölçüde de ölçülen bir fark yok: dosya bulma (önceki çalışmalar),
 çözüm oranı (SWE-bench, 72 = 72) ve yanlış iddia oranı (+0,011 [−0,044, +0,078]). Üçü de aralığıyla okunmalı: bu çalışmada
 yarıya iniş büyüklüğünde bir etki dışlanmadı, körleme başarısız ve elle kontrol bekliyor. Ajana dönük hatta kalan tek
-önceden kayıtlı deney test kanalı (§5, madde 1); o da fark göstermezse hat kapanır. Açık hat, insana dönük denetim katmanı.
+önceden kayıtlı deney test kanalı (§5.4, madde 1); o da fark göstermezse hat kapanır. Açık hat, insana dönük denetim katmanı.
 
 ## 1. SWE-bench Lite, 100 örnek
 
@@ -145,19 +146,106 @@ Ajan bildirimleri yalnızca toplam token verir. Bir Verinoda çağrısının ken
 - Bayat indeksin ajan davranışına etkisi.
 - Çağrı başına maliyet.
 
-## 5. Önerilen sıra (2026-10-11'de yeniden yazıldı)
+## 5. Önerilen sıra (2026-10-13'te yeniden yazıldı, D186 sonrası)
 
 Ajana dönük hat üç farklı ölçümde (dosya bulma, çözüm oranı, yanlış iddia) ölçülen bir fark vermedi; her birinde fark
 aralığın içinde kaldı. Aynı sorunun bir varyantını daha koşmak (örneğin "tek `analyze`, `code_check` yok" protokolü)
-önerilmez; üç aralık da aynı yöne işaret ediyor.
+önerilmez; üç aralık da aynı yöne işaret ediyor. D186 (Verinoda Lean, `docs/DESIGN.md` bölüm 158) bu sonuca yeni bir deneyle
+değil, ölçülen mekanizmaları düzelten bir değişiklikle yanıt verdi. Aşağıda sırayla: ne gönderildi, koşular şimdiye kadar ne
+gösterdi, ne ölçülmedi ve sıra. Sayıların kaynağı her satırda yazılı; "yerel çözümleme", oturum kayıtlarından yapılmış ve
+depoda sonuç klasörü olmayan çözümleme demektir.
+
+### 5.1 Ne gönderildi (D186)
+
+- **`analyze` MCP cevabı bir soruşturma değil, ipucu:** hüküm (`answered` / `partly_answered` / `unanswered`), cevap iddiaları
+  tam, `dosya:satır` ile en çok sekiz ipucu, en çok altı bağlam satırı; 2.500 karakteri aşmaz (eskiden SWE-bench'te ortanca
+  10.495 karakter, fastapi sorusunda 10.355; yerel çözümleme). Sebep:
+  D185'te Verinoda kolu oturumların 103/120'sinde yönlendirilen asgariyle (`analyze`, sonra cevap) bitti ve `analyze` 120/120
+  çağrıda `answered` dedi (yerel çözümleme).
+- **`history_search` tek düz liste; git'in kör olduğu iki sınıf düzeltildi.** Taşınmış dosyada tek satırlık değişiklik
+  (`--follow`; D185'in 12 yanlış olgusunun 7'sinin kaynağı: altın commit 546dc8b 14 commit'in 11.'siydi ve 12.000 karakterlik
+  sınır ilk 10'u tuttu) ve metnin başka bir dosyada doğmuş olması (yoldan bağımsız en eski görünüş). Zaman aşımı hata değil,
+  kısmi sonuçtur.
+- **Modele tek bir durum kuralı:** yalnız doğrulanmış durumlar olgudur; Verinoda çıktısı ipucudur, "böyle bir değişiklik yok"
+  demeden önce kendi git/grep kontrolünü yap; kesik liste yokluğu kanıtlamaz. Aynı cümle sunucu yönergelerinde, iki beceri
+  dosyasında (58 ve 59 satır) ve öteki ajanların kural dosyasında.
+- **Mod (0.7.0):** araçlar modelin önünde (ToolSearch'ün arkasında değil), bir paragraflık çağrı kuralı, tazelik. Arama
+  (`search`), dürtme (`nudge`), `assist`, commit-inceleme bekçisi ve ısınma kalktı; düzenleme sonrası ad denetimi varsayılan
+  olarak kapalı; depodan hiçbir program çalıştırılmaz.
+- **Paket:** tek git kapısı, yol kapsama, daemon durumunun depodan çıkması; yukarı akış Graphify komut satırı (`verinoda index`),
+  LLM/PR/medya katmanı ve `graspologic-native` bağımlılığı (scipy dahil yaklaşık 107 MB) paketten çıktı.
+
+Hedef şudur ve **henüz ölçülmedi**: doğrulukta düz Claude Code'dan kötü olmamak (D185 ölçülen bir fark bulmadı, aralık -0,044
+ile +0,078; bu eşitlik demek değildir); dolarda düz Claude Code'un eşleştirilmiş aralığı içinde (modellenen 1,1-1,2 kat;
+SWE-bench'te 1,62 ve D185'te 1,66 katından aşağı); git'in kör olduğu, depo kopyalarında denenen üç durumda (fastapi, guzzle, gin)
+doğru geçmiş. 1,1-1,2 kat ile aşağıdaki arama çağrısı sayıları `docs/drafts/2026-10-12-verinoda-lean-design.md` bölüm 2'den
+alınmıştır: D184 ve D185 oturum kayıtları ile `total_cost_usd`'ye en iyi uyan fiyatlar üzerinde yerel aritmetik; burada yeniden
+türetilmedi, model olarak okunmalı. **"Düz Claude'dan ucuz" iddia edilmez:** arama çağrılarını yerine koyan bir araç en çok düz
+ajanın yaptığı arama çağrılarını kaldırabilir (SWE-bench'te oturum başına 1,31 arama çağrısı, D185'te 0,89; modelleme), bu da bir
+Verinoda çağrısının sonucuyla birlikte maliyetinden azdır.
+
+### 5.2 Koşular şimdiye kadar ne gösterdi
+
+Hiçbiri yeniden tasarlanan aracın maliyetinin ya da ajan davranışının puanlı bir ölçümü değil: tek oturumluk denemeler gözlemdir,
+katı atıf kontrolü D185'in (eski araçla verilmiş) cevaplarını puanlar.
+
+- **Modelsiz benchmark, sekiz küme (işlenmiş sonuç: `benchmarks/results/compare-2026-10-12-branch/`):** dalın c678d46
+  sürümünde olgu kaybı da kazancı da yok (sorgu 284/319 → 284/319, analyze 285/319 → 285/319); `analyze` soru başına token'ı
+  86 sorunun 14'ünde düştü (-9 ile -87), hiçbirinde artmadı. D186'nın tamamından sonraki koşu henüz yapılmadı.
+- **Hüküm denetimi (koşuldu, çıktısı commit'lenmedi):** 39 vaka, yanlış `met` 1 (`forge-maxheat-declared`), tavan üstü 0,
+  korunan kontrol 15/22; ilk iki dalga öncesinde ve sonrasında aynı yedi kontrol kayıp. `DESIGN.md` D39 satırı 19/22 diyordu
+  (2026-09-26, `benchmarks/results/verdict-audit-2026-09-26/after.json`); HEAD'de 15/22 çıktı ve fark nedeni araştırılmadı. Satır
+  artık ikisini de tarihiyle söylüyor.
+- **SWE-bench `analyze` çıktılarının çevrimdışı yeniden sıralanması (yerel çözümleme):** altın dosya 1. sırada 31 → 60/100,
+  ilk 3'te 46 → 76, ilk 8'de 71 → 86; çıktıda hiç olmayan 8 → ipuçlarında hiç olmayan 11 (kötüleşen tek sayı: sekiz ipucu sınırı).
+- **Uçtan uca, çalışma kopyalarında (commit iletilerindeki ölçümler):** fastapi görevinde `analyze` 10.355 → 1.987 karakter,
+  `history_search` 28.725 → 2.989 karakter (14 satır, 546dc8b içinde); guzzle'da ilk olay `new_file` ve iddia yoldan bağımsız
+  91f1e347'den yeniden kuruluyor; gin'de `earlier_elsewhere` 15216a0'ı adlandırıyor. "30 satır için en çok 2.000 karakter"
+  hedefi gerçek konu satırlarıyla tutmadı (satır başına yaklaşık 100 karakter).
+- **Tek oturumluk denemeler (gözlem, ölçü değil):** yalnız duruş istemi ve modsuz: Grep, Read, Read, Bash ve "geçmiş gerekçe
+  vermiyor" (ölçülen hata); araçlar önde ama kuralsız: aynı yol; araçlar önde ve tek paragraflık kuralla: `analyze` → Grep →
+  `git show 546dc8b`, cevap 546dc8b'yi "güvenlik için" diye anıyor, 3-4 API çağrısı.
+- **D185 cevaplarında katı mekanik atıf kontrolü (yerel koşu, çıktısı commit'lenmedi):** düz 905 doğrulanan / 216 yanlış / 6 eksik
+  (0,803), Verinoda 1.047 / 254 / 20 (0,793); D185'in gevşek kontrolü 0,975 ve 0,958 vermişti. Gevşek kontrol üst sınır, katı
+  kontrol alt sınırdır; Verinoda kolu iki kontrolde de daha düşük, aralık hesaplanmadı.
+- **Testler:** birinci dalga sonrası birleşik ağaçta 31 test dosyası, 1.084 geçti, 2 başarısız (temiz çıkışta da başarısız olan
+  iki beceri uzunluğu testi; ikinci dalgada düzeldi); mod: 85 test geçti; `tests_upstream` silmelerden sonra 38 başarısız (hepsi
+  daha önce de başarısız olan türden), 3.645 geçti, 130 atlandı; Louvain kapısı (graspologic-native'siz tüm ürün takımı): 20
+  başarısız, hiçbiri Louvain'den değil.
+
+### 5.3 Ölçülmedi
+
+- **Dolar ve doğruluk.** Yeniden tasarlanan aracın bir modelle doğruluğu ölçülmedi. 1,1-1,2 kat modellenmiştir (taslak tasarımın
+  bölüm 2'sindeki aritmetik, burada yeniden türetilmedi), ölçülmemiştir. Yeniden koşular henüz yapılmadı: D185'in altı görevi
+  (Verinoda kolu, üç tekrar) ve 24 çiftlik maliyet örneği (24 cevaplanabilir görev, iki kol). Başarı ölçütü önceden belirli:
+  eşleştirilmiş farkın aralığı +0,015 $'ı dışlamalı ve Verinoda çıktısı oturum başına en çok 4.500 karakter olmalı. Sayılar ve
+  sonuç klasörü `docs/DESIGN.md` 158.3'e yazılacak.
+- Modelin ilk Read'inin 1. ipucunu izleyip izlemediği; `show="lead"`'in etkisi (kapalı; Verinoda kolunun kendi model çağrıları
+  düz kolunkinden en az 1,5 az değilse kapalı kalır); modelin kısalmış metinle ne yaptığı; metin boyutlarının gerçek bir depoda
+  değeri (ölçümler örnek proje `orders_app` üzerinde).
+- 50.000 commit'lik bir depoda 60 sn'lik zaman aşımı; `--no-optional-locks` ile eskimiş bir ağaçta `status` gecikmesi.
+- Başlık sayıları ve kümeleme süresi Louvain ile (şimdiye kadarki her sonuç Leiden ile koşuldu); temiz bir kurulumda boyut.
+- SWE-bench yeniden koşulmadı (taslak tasarımın bölüm 8'indeki tahmin yaklaşık 25 $ ve tekrar başına 7 saat Docker; ölçülmedi);
+  ContextBench `analyze` kolu, CLI'nin `render_text`'i değişmediği için yeniden koşulmadı.
+
+### 5.4 Sıra
+
+Önce, yeni bir çalışma değil, D186 planının son adımı: §5.3'teki yeniden koşular ile D186 sonrası sekiz küme ve hüküm
+denetimi, sonuç klasörleriyle commit'lenerek. Dolar rakamı o zamana kadar bir modeldir ve yeniden tasarlanan aracın doğruluğu ölçülmemiştir.
 
 1. **Ajan tarafında kalan tek açık deney: test kanalı.** SWE-bench çalışmasında iki kolda da proje testleri çalışmıyordu;
    literatürün en yüksek getiri dediği kanal hiç ölçülmedi. Aynı 100 örnek, bağımlılıkları kurulu Docker ortamında, önce
    düz, sonra Verinoda ile. Bu da sıfır verirse ajan hattı kapanır.
 2. **Duruş mu, araç mı?** Yanlış iddia çalışmasına duruşsuz bir düz kol ekle (10 tuzak × 3 tekrar, opak kopya adlarıyla,
-   ~2 $). Düşük uydurma oranının kaynağı talimatsa, ürünün ajana söyleyecek tek şeyi o beş cümledir. Ayrıca mekanik atıf
-   kontrolünü sıkılaştırıp aynı cevaplara yeniden uygulamak (ölçülen dosyaları yeniden üretir; kişinin kararı).
+   ~2 $). Düşük uydurma oranının kaynağı talimatsa, ürünün ajana söyleyecek tek şeyi o beş cümledir. Mekanik atıf kontrolünün
+   sıkılaştırılması yapıldı (D186): ölçülen dosyalara dokunmayan yeni bir dosya, `benchmarks/agent_compare/claims_mech_strict.py`;
+   sonucu §5.2'de; yeniden koşular iki kontrolü birlikte raporlar.
 3. **İnsana dönük denetim katmanı.** Verinoda'nın ölçülmemiş tek değer iddiası: ajanın söylediğini kanıta bağlayan, inceleyen
    kişinin güvenebileceği bir katman. Ölçüsü insanla: inceleme süresi, yakalanan yanlış iddia, güven.
-4. Çağrı başına token kullanımı artık ölçülüyor (D178; `analyze` ~2.700 tahmini token / çağrı). Proje başına MCP bağlama ve
-   `setup` yan dosyaları (madde 4, 5) ürün hijyeni olarak kalır.
+4. Çağrı başına token kullanımı artık ölçülüyor (D178; D186 öncesi `analyze` ~2.700 tahmini token / çağrıydı; yeni cevap en çok
+   2.500 karakter, 0,4 token/karakterle yaklaşık 1.000 token olarak hesaplanır, ölçülmedi). Proje başına MCP bağlama ve `setup`
+   yan dosyaları (madde 4, 5) ürün hijyeni olarak kalır.
+5. **Ertelenenler (`docs/BACKLOG.md`, "Deferred from D186" bölümü):** iki oturumlu kalıcılık çalışması (proje beyni: hiçbir çalışma iki oturumu ya da
+   bağlam sıkıştırmasını kapsamadı; ölçülen tek önden enjeksiyon olgu kaybettirdi, 207'ye karşı 212), Louvain ile başlık
+   sayılarının yeniden ölçümü, `.verinoda` sahip damgası, varsayılan salt-okunur sorgu, laboratuvar araçlarının ayrılması, gramer
+   kırpması ve when-kuralının sınırları.
