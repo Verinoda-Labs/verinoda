@@ -21,6 +21,12 @@ verinoda benchmark verdict-audit --split all
 | `before-feae584.json` | feae584 | the branch point of D186 (the commit before wave 1), run in a detached worktree of that commit |
 | `after-wave1-7fc52be.json` | 7fc52be | the merged tree after wave 1 (Tasks 1, 2, 5, 6 and the review minors) |
 | `after-wave2-f34a223.json` | f34a223 | the merged tree after wave 2 (Tasks 3 and 4) |
+| `after-review-575b2a5.json` | 575b2a5 | the tree after the final review's fix pass (the call-rule fix, the stemmer, the mention-only document, the why window) |
+
+The after-review run is identical to the wave-2 run in every verdict and every answer text (summed `seconds` 29.8); one
+row gained an unknown: `orders-why-commit` (met_with_inference, a decision document that only names the symbol) now also
+carries "the reason was not found: 1 commit(s) changed these lines and none states a reason about it in its message; no
+decision record explains it" with the commit as a lead, which is what the fix pass meant it to carry.
 
 The JSON schema is `verinoda.verdict_audit_result/1`. It does not record the commit; the commits above come from the
 session ledger. The `seconds` field of a row is the wall time of one `analyze` call (indexing excluded); summed over
