@@ -45,6 +45,7 @@ _DELETED_NAMES = "|".join(map(re.escape, DELETED_MODULES))
 _TEST_OF_DELETED = re.compile(
     rf"verinoda\.project_index\.({_DELETED_NAMES}|exporters\.graphdb)\b"
     rf"|from verinoda\.project_index import [^\n]*\b({_DELETED_NAMES})\b"
+    r"|\bpush_to_(falkordb|neo4j)\b"  # export.py no longer re-exports the graph-database pushers
     r'|"-m",\s*"verinoda\.project_index"|-m verinoda\.project_index\b|project_index/skill|tools\.skillgen',
 )
 # tests of the removed surface that import none of it: upstream's own ARCHITECTURE.md table (kept verbatim
