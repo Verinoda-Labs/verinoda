@@ -21,11 +21,10 @@ as possible:
 
 from __future__ import annotations
 
-import os
 import re
-import subprocess
 from pathlib import Path
 
+from verinoda import gitexec
 from verinoda.references.classify import git_slug
 
 GIT_NET_TIMEOUT = 300
@@ -33,25 +32,13 @@ GIT_LOCAL_TIMEOUT = 60
 
 
 def run_git(args: list[str], *, cwd: Path | None = None, git_dir: Path | None = None,
-            timeout: float = GIT_LOCAL_TIMEOUT) -> tuple[int, str, str]:
-    cmd = ["git"]
-    if git_dir is not None:
-        cmd += ["--git-dir", str(git_dir)]
-    elif cwd is not None:
-        cmd += ["-C", str(cwd)]
-    cmd += ["-c", "core.longpaths=true", "-c", "core.autocrlf=false", *args]
-    env = dict(os.environ)
-    env.update({"GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never", "GIT_ASKPASS": "",
-                "SSH_ASKPASS": ""})
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                           timeout=timeout, env=env, stdin=subprocess.DEVNULL)
-    except FileNotFoundError:
-        return 127, "", "git executable not found on PATH"
-    except subprocess.TimeoutExpired:
-        return 124, "", f"git {args[0] if args else ''} timed out after {timeout:.0f}s"
-    except OSError as exc:
-        return 126, "", f"could not run git: {exc}"
+            timeout: float = GIT_LOCAL_TIMEOUT, net: str | None = None) -> tuple[int, str, str]:
+    """``(exit code, stdout, stderr)`` through :mod:`verinoda.gitexec` (D186); ``net`` names the source of a
+    clone, fetch or ls-remote (the protocol flags are added; ``--`` precedes it in ``args``)."""
+    pre = ["--git-dir", str(git_dir)] if git_dir is not None else []
+    r = gitexec.run(None if git_dir is not None else cwd, *pre, "-c", "core.longpaths=true", "-c",
+                    "core.autocrlf=false", *args, timeout=timeout,
+                    env={"GCM_INTERACTIVE": "never", "GIT_ASKPASS": "", "SSH_ASKPASS": ""}, net=net)
     return r.returncode, r.stdout, r.stderr
 
 

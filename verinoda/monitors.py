@@ -197,15 +197,11 @@ def matches(repo: Path, m: dict) -> dict:
 
 def _git_grep(repo: Path, args: list[str]) -> tuple[int, str, str]:
     """(exit code, stdout, stderr) of ``git grep`` in ``repo``: its exit code tells no match from an error."""
-    import subprocess
+    from verinoda import gitexec
 
-    from verinoda.treestate import _GIT_SAFE
-
-    try:
-        r = subprocess.run(["git", "-C", str(repo), *_GIT_SAFE, "grep", *args], capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=120, stdin=subprocess.DEVNULL)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return 2, "", str(exc)
+    r = gitexec.run(repo, "grep", *args, timeout=120)
+    if r.timed_out or r.returncode in (126, 127):  # git grep's own 2 is an error too
+        return 2, "", r.stderr
     return r.returncode, r.stdout, r.stderr
 
 
@@ -215,11 +211,10 @@ def _git_grep_rows(repo: Path, args: list[str], timeout: float = 120) -> tuple[i
     import subprocess
     import threading
 
-    from verinoda.treestate import _GIT_SAFE
+    from verinoda import gitexec
 
     try:
-        proc = subprocess.Popen(["git", "-C", str(repo), *_GIT_SAFE, "grep", *args], stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
+        proc = gitexec.popen(repo, "grep", *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except OSError as exc:
         return 2, [], str(exc)
     timer = threading.Timer(timeout, proc.kill)

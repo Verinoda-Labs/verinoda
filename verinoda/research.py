@@ -51,7 +51,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import urllib.error
 import urllib.parse
 from collections import OrderedDict, defaultdict
@@ -59,6 +58,7 @@ from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 
 from verinoda import evidence as evmod
+from verinoda import gitexec
 from verinoda.paths import configure_index_env, ensure_atlas, research_dir
 from verinoda.store import Store, new_id, now
 
@@ -110,23 +110,13 @@ def _h6(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8")).hexdigest()[:6]
 
 
-def _git(cwd: Path | None, *args: str, timeout: float = GIT_LOCAL_TIMEOUT) -> tuple[int, str, str]:
-    """Run git without a shell and without interactive prompts."""
-    cmd = ["git"]
-    if cwd is not None:
-        cmd += ["-C", str(cwd)]
-    cmd += ["-c", "core.longpaths=true", "-c", "core.autocrlf=false", "-c", "advice.detachedHead=false", *args]
-    env = dict(os.environ)
-    env.update({"GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"})
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                           timeout=timeout, env=env, stdin=subprocess.DEVNULL)
-    except FileNotFoundError:
-        return 127, "", "git executable not found on PATH"
-    except subprocess.TimeoutExpired:
-        return 124, "", f"git {args[0] if args else ''} timed out after {timeout:.0f}s"
-    except OSError as exc:
-        return 126, "", f"could not run git: {exc}"
+def _git(cwd: Path | None, *args: str, timeout: float = GIT_LOCAL_TIMEOUT,
+         net: str | None = None) -> tuple[int, str, str]:
+    """Run git without a shell and without interactive prompts (:mod:`verinoda.gitexec`, D186). ``net`` names
+    the source of a clone, fetch or ls-remote: the protocol flags are added and ``--`` must precede it."""
+    r = gitexec.run(cwd, "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "-c",
+                    "advice.detachedHead=false", *args, timeout=timeout, env={"GCM_INTERACTIVE": "never"},
+                    net=net)
     return r.returncode, r.stdout, r.stderr
 
 

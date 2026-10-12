@@ -877,13 +877,11 @@ _MANIFEST_RX = re.compile(r"^(package\.json|pyproject\.toml|go\.mod|Cargo\.toml|
 
 
 def _git(repo: Path, *args: str, data: bytes | None = None) -> bytes:
-    import subprocess
+    from verinoda import gitexec
 
-    r = subprocess.run(["git", "-C", str(repo), "-c", "core.quotepath=off", *args], input=data,
-                       capture_output=True, timeout=120)
+    r = gitexec.run(repo, *args, input=data, binary=True, timeout=120)
     if r.returncode != 0:
-        raise PackageCheckError(f"git {' '.join(args[:2])} failed: "
-                                f"{r.stderr.decode('utf-8', 'replace').strip()[:200]}")
+        raise PackageCheckError(f"git {' '.join(args[:2])} failed: {r.stderr.strip()[:200]}")
     return r.stdout
 
 

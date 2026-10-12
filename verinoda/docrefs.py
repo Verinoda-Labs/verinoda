@@ -179,16 +179,12 @@ class _Tree:
         """Which of ``rels`` git ignores, in one ``git check-ignore -z --stdin`` call."""
         if not rels:
             return
-        import subprocess
+        from verinoda import gitexec
 
-        try:
-            # NUL-separated bytes: no quoting of unusual names, no CR added to the input on Windows
-            r = subprocess.run(["git", "-C", str(self.repo), "check-ignore", "--no-index", "-z", "--stdin"],
-                               input=b"\0".join(x.encode("utf-8") for x in sorted(rels)) + b"\0",
-                               capture_output=True, timeout=60)
-            self._ignored = {x.decode("utf-8", "replace") for x in r.stdout.split(b"\0") if x}
-        except (OSError, subprocess.TimeoutExpired):
-            self._ignored = set()
+        # NUL-separated bytes: no quoting of unusual names, no CR added to the input on Windows
+        r = gitexec.run(self.repo, "check-ignore", "--no-index", "-z", "--stdin",
+                        input=b"\0".join(x.encode("utf-8") for x in sorted(rels)) + b"\0", binary=True, timeout=60)
+        self._ignored = {x.decode("utf-8", "replace") for x in r.stdout.split(b"\0") if x}
 
     def renames(self) -> dict[str, str]:
         if self._renames is None:

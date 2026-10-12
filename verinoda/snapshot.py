@@ -23,10 +23,10 @@ from __future__ import annotations
 import hashlib
 import os
 import sqlite3
-import subprocess
 import time
 from pathlib import Path
 
+from verinoda import gitexec
 from verinoda.store import Store, new_id, now
 
 _SKIP_DIRS = {
@@ -42,18 +42,12 @@ RACY_MARGIN_NS = 2_000_000_000
 
 
 def git(repo: Path, *args: str, check: bool = False, timeout: float = 60) -> str | None:
-    """Run git and return stdout, or None when git/repo is unavailable.
+    """Run git and return stdout, or None when git/repo is unavailable (a time-out, a refusal, a non-zero exit).
 
-    stdin is never inherited: under the MCP server Verinoda's stdin is the
-    protocol pipe, and on Windows a git child holding it can hang.
+    :mod:`verinoda.gitexec` builds the call (D186): the safety flags, no inherited stdin, no
+    repository-local environment.
     """
-    try:
-        r = subprocess.run(
-            ["git", "-C", str(repo), *args], capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=timeout, stdin=subprocess.DEVNULL,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
+    r = gitexec.run(repo, *args, timeout=timeout)
     if r.returncode != 0:
         if check:
             raise RuntimeError(f"git {' '.join(args)} failed: {r.stderr.strip()}")

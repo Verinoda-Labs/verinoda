@@ -207,13 +207,9 @@ def lookup(repo: Path, target: str, *, graph=None, stale=None, max_sites: int = 
                 "\"backlog\": {\"files\": [...]} in .verinoda/config.json)"}
     t = target.strip()
     if t in table:
-        import subprocess
+        from verinoda import gitexec
 
-        try:
-            listed = subprocess.run(["git", "ls-files"], cwd=repo, capture_output=True, text=True,
-                                    timeout=60).stdout.split("\n")
-        except (OSError, subprocess.SubprocessError):
-            listed = []
+        listed = gitexec.run(repo, "ls-files", timeout=60).stdout.split("\n")
         if not [f for f in listed if f]:
             from verinoda.snapshot import listed_files
 

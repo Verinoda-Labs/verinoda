@@ -58,6 +58,7 @@ import subprocess
 import threading
 from pathlib import Path
 
+from verinoda import gitexec
 from verinoda.snapshot import _GIT_SKIP_DIRS, _SKIP_DIRS, git, hash_files, list_files
 
 # the ledger's test files ("test" on a changed file, the test_edited rule): the one rule of verinoda.testcode,
@@ -72,7 +73,8 @@ MAX_HUNK_LINES = 40        # added/removed lines kept per hunk in the recorded d
 MAX_HUNKS = 60             # hunks kept per file in the recorded diff summary
 _SHA_RE = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
 _REGULAR_MODES = ("100644", "100755")
-_GIT_SAFE = ("--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "core.quotepath=off")
+# the name the callers know; gitexec adds the flags to every call itself (D186)
+_GIT_SAFE = gitexec.SAFE_FLAGS
 # Characters file systems ignore when comparing names (HFS+), which git itself refuses around ".git".
 _IGNORABLE = re.compile("[​-‏‪-‮⁠-⁤⁪-⁯﻿]")
 _RESERVED_PARTS = {".git", "git~1", ".verinoda"}
@@ -197,7 +199,7 @@ def _own_filter(repo: Path):
 # -- git plumbing -----------------------------------------------------------------------------
 
 def _git(repo: Path, *args: str, timeout: float = 120) -> str | None:
-    return git(repo, *_GIT_SAFE, *args, timeout=timeout)
+    return git(repo, *args, timeout=timeout)
 
 
 _PREFIXES: dict[str, str] = {}
@@ -307,8 +309,8 @@ def read_blobs(repo: Path, specs: list[str], *, timeout: float = 300) -> dict[st
     if not asked:
         return out
     try:
-        proc = subprocess.Popen(["git", "-C", str(repo), *_GIT_SAFE, "cat-file", "--batch"],
-                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        proc = gitexec.popen(repo, "cat-file", "--batch", stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL)
     except OSError:
         return out
 

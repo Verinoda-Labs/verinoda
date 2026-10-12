@@ -560,7 +560,7 @@ def test_update_rendering_and_error_exit(monkeypatch, capsys, tmp_path):
 
 
 def test_research_git_never_reads_stdin(monkeypatch):
-    from verinoda import research
+    from verinoda import gitexec, research
 
     seen: dict = {}
 
@@ -568,7 +568,7 @@ def test_research_git_never_reads_stdin(monkeypatch):
         seen.update(kw, cmd=cmd)
         return subprocess.CompletedProcess(cmd, 0, "git version x", "")
 
-    monkeypatch.setattr(research.subprocess, "run", fake_run)
+    monkeypatch.setattr(gitexec.subprocess, "run", fake_run)  # research._git runs git through the funnel (D186)
     assert research._git(None, "--version") == (0, "git version x", "")
     assert seen["stdin"] is subprocess.DEVNULL and seen["env"]["GIT_TERMINAL_PROMPT"] == "0"
 

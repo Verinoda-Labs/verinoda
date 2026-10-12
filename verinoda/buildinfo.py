@@ -29,11 +29,11 @@ import functools
 import json
 import os
 import re
-import shutil
-import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
+
+from verinoda import gitexec
 
 PKG_DIR = Path(__file__).resolve().parent
 ARCHIVAL = "data/git_archival.txt"
@@ -119,17 +119,11 @@ def read_head(root: Path) -> tuple[str | None, str | None]:
     return None, branch
 
 
-def _git(root: Path, *args: str) -> subprocess.CompletedProcess | None:
-    """``git`` with fixed arguments in the package's own source folder; None when it cannot run."""
-    exe = shutil.which("git")
-    if not exe:
-        return None
-    try:
-        return subprocess.run([exe, "--no-optional-locks", *args], cwd=root, capture_output=True, text=True,
-                              encoding="utf-8", errors="replace", timeout=_GIT_TIMEOUT, stdin=subprocess.DEVNULL,
-                              check=False)
-    except (OSError, subprocess.SubprocessError):
-        return None
+def _git(root: Path, *args: str) -> gitexec.GitResult | None:
+    """``git`` with fixed arguments in the package's own source folder; None when it cannot run (no git, a
+    time-out, a refusal)."""
+    r = gitexec.run(root, *args, timeout=_GIT_TIMEOUT)
+    return None if r.returncode in (124, 126, 127) else r
 
 
 def local_changes(root: Path) -> bool | None:
