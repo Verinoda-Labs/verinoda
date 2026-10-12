@@ -322,6 +322,30 @@ def config_digest(path: Path) -> str | None:
     return "j:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def nothing_but_own(path: Path) -> bool:
+    """Does this MCP config hold no server other than Verinoda's own and nothing else? That is the file
+    ``verinoda setup`` writes; the index has nothing to read in it, so its appearance is not a change (D186: every
+    analysis re-indexed for it). False for a file that is not an MCP config, cannot be read, or holds more."""
+    path = Path(path)
+    if path.name not in MCP_CONFIG_NAMES:
+        return False
+    try:
+        doc = json.loads(path.read_bytes().decode("utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return False
+    if not isinstance(doc, dict) or set(doc) - {"mcpServers", "servers", "mcp"}:
+        return False
+    nested = doc.get("mcp")
+    if nested is not None and (not isinstance(nested, dict) or set(nested) - {"servers"}):
+        return False
+    for servers in (doc.get("mcpServers"), doc.get("servers"), (nested or {}).get("servers")):
+        if servers is None:
+            continue
+        if not isinstance(servers, dict) or any(not is_own_mcp_entry(n, s) for n, s in servers.items()):
+            return False
+    return True
+
+
 def config_digests(repo: Path, rels) -> dict[str, str]:
     """``{rel: config_digest}`` for the MCP configs among ``rels`` (project-relative paths)."""
     repo = Path(repo)

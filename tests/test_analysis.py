@@ -137,6 +137,28 @@ def test_a_why_with_no_stated_reason_is_unanswered_and_lists_the_commits_as_lead
     assert "git show" in u["next_step"] and "history_search" in u["next_step"]
 
 
+def test_a_config_holding_only_verinodas_server_is_not_a_change_for_the_index(tmp_path):
+    # `verinoda setup` writes .mcp.json after the index is built; the file has nothing the index reads, yet every
+    # analyze re-indexed for it (108 of 120 D185 calls, 90 of 100 SWE-bench calls, about 4 s each)
+    repo = _copy_example(tmp_path / "orders_app")
+    workflow.init(repo)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        own = {"command": "python", "args": ["-m", "verinoda", "mcp", "serve", "--repo-of", ".mcp.json"]}
+        (repo / ".mcp.json").write_text(json.dumps({"mcpServers": {"verinoda": own}}), encoding="utf-8")
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        ir = res["index_refresh"]
+        assert ir["ran"] is False and ir["changed_count"] == 0 and "skipped" not in ir
+        assert not any("does the index describe" in (u.get("question") or "") for u in res["unknowns"])
+        (repo / ".mcp.json").write_text(json.dumps({"mcpServers": {"verinoda": own, "other": {"command": "x"}}}),
+                                        encoding="utf-8")
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        assert res["index_refresh"]["ran"] is True and res["index_refresh"]["changed_count"] == 1  # another server
+    finally:
+        st.close()
+
+
 def test_overall_status_follows_the_sub_questions():
     assert analysis.overall_status(["met", "met_with_inference"]) == "answered"
     assert analysis.overall_status(["met", qp.HUMAN_DECISION]) == "answered"

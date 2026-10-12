@@ -3040,10 +3040,20 @@ def _refresh_estimate(repo: Path, store: Store, snap: dict, state: dict,
                       g=None) -> tuple[float | None, list[str], bool]:
     """``(expected seconds, changed files, graph rebuild needed)`` of refreshing the index now
     (``g``: the loaded graph, which spares reading graph.json)."""
-    from verinoda import buildlock, workflow
+    from verinoda import buildlock, selffiles, workflow
     from verinoda.snapshot import changed_files
 
     diff = changed_files(store.snapshot_files(snap["id"]), state["files"])
+    own = selffiles.own_filter(repo)
+
+    def index_reads(rel: str) -> bool:
+        # Verinoda's own files (skills, marked blocks) and a config holding only its server entry are what
+        # `verinoda setup` leaves behind after a build: nothing the index reads changed with them (D186)
+        if own(rel):
+            return False
+        return rel in diff["removed"] or not (selffiles.is_mcp_config(rel) and selffiles.nothing_but_own(repo / rel))
+
+    diff = {k: [f for f in v if index_reads(f)] for k, v in diff.items()}
     changed = diff["modified"] + diff["added"] + diff["removed"]
     in_graph = None
     if g is not None:
@@ -3092,6 +3102,9 @@ def _refresh_index(store: Store, repo: Path, snap: dict | None, state: dict, mod
     if snap is not None and graph_path_exists(repo):
         est, changed, rebuild = _refresh_estimate(repo, store, snap, state, g)
         info["changed_count"] = len(changed)
+        if not changed:  # nothing the index reads has changed: the snapshot stands, no update is run
+            step("refresh_index", "working tree unchanged for the index; not refreshed")
+            return {**info, "_snapshot": snap}
         if mode == "skip":
             skip_why = "not asked to refresh"
         elif mode == "auto":
