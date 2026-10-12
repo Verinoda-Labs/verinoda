@@ -70,11 +70,19 @@ def git_info(repo: Path) -> dict:
 
     A directory that is not a git work tree, or a repository without a commit,
     reports ``is_git: False`` (as before). Changes under ``.verinoda`` never
-    make the tree dirty.
+    make the tree dirty. An untrusted repository whose own config names a
+    command (a ``filter.*`` such as git-lfs installs locally, a diff command;
+    :func:`verinoda.gitexec.untrusted_config_risk`, D186) gets no ``status``
+    run: ``is_git: False`` with the refusal in ``refused``, so the user can
+    decide with ``verinoda trust``.
     """
-    out = git(repo, "status", "--porcelain=v2", "--branch", "--untracked-files=normal")
-    if out is None:
-        return {"commit": None, "branch": None, "dirty": False, "is_git": False}
+    r = gitexec.run(repo, "status", "--porcelain=v2", "--branch", "--untracked-files=normal")
+    if r.returncode != 0:
+        none = {"commit": None, "branch": None, "dirty": False, "is_git": False}
+        if r.returncode == 126 and "verinoda trust" in r.stderr:
+            none["refused"] = r.stderr
+        return none
+    out = r.stdout
     oid = head = None
     dirty = False
     for line in out.splitlines():

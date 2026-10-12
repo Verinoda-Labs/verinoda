@@ -2933,7 +2933,8 @@ def prune_missing_files(repo: Path, gp: Path | None = None) -> list[str]:
 def graph_source_files(repo: Path, gp: Path | None = None) -> set[str]:
     """The files graph.json has nodes from, read from the JSON alone: the ``source_file``
     values :func:`load` would give its nodes (a repeated id keeps the last value it was
-    given), with no graph built and no receiver pass."""
+    given; a file outside the repository is left out, as :func:`load` leaves its node out),
+    with no graph built and no receiver pass."""
     gp = Path(gp) if gp else graph_path(Path(repo).resolve())
     data = json.loads(gp.read_text(encoding="utf-8"))
     last: dict = {}
@@ -2943,7 +2944,7 @@ def graph_source_files(repo: Path, gp: Path | None = None) -> set[str]:
             last[nid] = n["source_file"]
         else:
             last.setdefault(nid, None)
-    return {sf for sf in last.values() if sf}
+    return {sf for sf in last.values() if sf and not (isinstance(sf, str) and escapes_lexically(sf))}
 
 
 def graphify_query_text(repo: Path, question: str, budget: int = 2000) -> str:

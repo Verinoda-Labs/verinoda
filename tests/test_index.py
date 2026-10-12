@@ -404,6 +404,8 @@ def test_index_load_drops_nodes_whose_source_file_escapes(tmp_path):
         assert nid not in g.G or g.source(nid) is None
     assert g.G.number_of_edges() == 0
     assert g.source("ok")[2].startswith("def ok")
+    # the JSON-only reading agrees with load (the file list of a scan never names the outside either)
+    assert index.graph_source_files(repo, gp) == {"pkg/ok.py"}
 
 
 def test_path_identity_memo_keeps_the_graph_byte_identical(tmp_path):

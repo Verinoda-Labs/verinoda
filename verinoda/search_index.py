@@ -1210,8 +1210,9 @@ def update(repo: Path, graph=None, changed=None, *, rebuild: bool = False, db: P
             w.add_file(g, f, data, st, gsig)
             indexed += 1
         live = set(files)
-        for f in stored:
-            if f not in live or not (repo / f).exists():
+        for f in stored:  # a stored name is read from the database: joined through the helper (D186)
+            p = contained_path(repo, f)
+            if f not in live or p is None or not p.exists():
                 w.remove_file(f)
                 removed += 1
         m = _meta(conn)

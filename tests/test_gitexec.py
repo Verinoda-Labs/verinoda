@@ -141,6 +141,22 @@ def test_a_risky_config_refuses_status_and_diff_in_an_untrusted_repository(monke
     assert gitexec.run(repo, "status").returncode == 0 and seen["argv"][-1] == "status"
 
 
+def test_a_refused_status_is_said_in_git_info(monkeypatch, tmp_path):
+    """An untrusted repository with git-lfs installed locally (`git lfs install --local` writes filter.lfs.* into
+    .git/config) is not read as "not git" silently: the refusal and the way out are in the answer."""
+    from verinoda import snapshot
+
+    monkeypatch.setenv(paths.CONFIG_DIR_ENV, str(tmp_path / "user"))
+    repo = tmp_path / "r"
+    _config(repo, '[filter "lfs"]\n\tclean = git-lfs clean -- %f\n\tsmudge = git-lfs smudge -- %f\n'
+                  "\tprocess = git-lfs filter-process\n\trequired = true\n")
+    info = snapshot.git_info(repo)
+    assert info["is_git"] is False and info["commit"] is None
+    assert "filter.lfs.clean" in info["refused"] and "verinoda trust" in info["refused"]
+    paths.set_trust(repo)
+    assert "refused" not in snapshot.git_info(repo)  # trusted: git runs (and finds no repository here)
+
+
 def _starts_with_git(node: ast.AST) -> bool:
     return (isinstance(node, (ast.List, ast.Tuple)) and bool(node.elts)
             and isinstance(node.elts[0], ast.Constant) and node.elts[0].value == "git")
