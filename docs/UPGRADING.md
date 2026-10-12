@@ -616,7 +616,9 @@ section 158. No schema change (`atlas.db` stays at v10) and no migration to run.
   nothing; `verinoda decide accept ADR-N` in a terminal, with no guard ids, confirms it. **`evidence_inspect`** omits `root` and
   `file_exists` for evidence whose root or path is refused (below).
 - **One status rule.** The server instructions, both skills and the rules text written for the other agents carry the same
-  sentence about what counts as a fact and that Verinoda's output is a lead. The skills are 58 and 59 lines and no longer carry
+  sentence about what counts as a fact, that Verinoda's output is a lead, and that on a why, when, which-commit or
+  what-does-it-affect question `analyze` is called first (the earlier "a question one grep answers needs no call" let the model
+  skip it in 39 of 39 headless sessions). The skills are 58 and 59 lines and no longer carry
   the question-plan and reference protocols (`verinoda <command> --help` and the full MCP profile have them): re-run
   `verinoda setup` (or `verinoda install`) to bring the new files; the MCP instructions come from the server itself.
 - **Git.** Every git call goes through `verinoda.gitexec`. In a repository you have not trusted (`verinoda trust`), `status`,
@@ -637,8 +639,9 @@ section 158. No schema change (`atlas.db` stays at v10) and no migration to run.
   settings `auto`, `assist` and `python` and the commands `/verinoda-auto`, `/verinoda-assist` and `/verinoda-guard` are gone,
   with the search and nudge modes, the assist tools and the commit-review guard; a choice stored by the removed commands is
   ignored. The check after edits is now **off** unless the `check` setting or `/verinoda-check on` turns it on (it was on). New:
-  the server's three core tools are listed in front of the model, and a prompt section `verinoda-live:rule` (about 530
-  characters) is added while the Verinoda MCP server is connected. An empty `cli` now means `verinoda` on `PATH` outside the
+  the server's three core tools are listed in front of the model, a prompt section `verinoda-live:rule` (about 630
+  characters, naming `analyze` as the first tool call on a history question) is added while the Verinoda MCP server is
+  connected, and the engine's reminder of the tools behind ToolSearch no longer names the three listed tools. An empty `cli` now means `verinoda` on `PATH` outside the
   project: a program inside the project (its `.venv`) is never run, and with none outside it nothing runs until `cli` names
   one; a `.verinoda` found above the session's folder is used only when `verinoda trust` knows it.
 - **Maintainers.** `tools/port_upstream.py` deletes the removed upstream surface and the tests of it after a sync, and

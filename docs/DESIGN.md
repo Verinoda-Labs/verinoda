@@ -17906,8 +17906,10 @@ The plan (`docs/drafts/2026-10-12-verinoda-lean-plan.md`) ran in three waves on 
 - **One status rule in the text.** `server.STATUS_RULE` says it once: state as fact only what carries `statically_verified`,
   `primary_source_verified`, `observed` or `experiment_verified`; `strong_inference` and below are not facts; Verinoda's output is
   a lead, so before stating "no such change", "first added in" or why something changed, confirm with one git or grep check of
-  your own; `truncated: true` or `more: true` proves no absence; a question one grep or one file read answers needs no Verinoda
-  call. The measured basis is that 7 of the 12 false facts on the answerable D185 tasks asserted an absence. It replaces "never
+  your own; `truncated: true` or `more: true` proves no absence; on a why, when, which-commit or what-does-it-affect question,
+  call `analyze` first, Grep, Read and git after it. The measured basis is that 7 of the 12 false facts on the answerable D185
+  tasks asserted an absence, and that the sentence this last one replaced ("a question one grep or one file read answers needs
+  no Verinoda call") was the way out the model took in 39 of 39 headless sessions of the re-run (158.3). It replaces "never
   state weak_inference or unknown as fact" and "truncated: true means lists were cut" in the server instructions, and is copied
   into both skills and into the rules text written for the other agents (`agents/templates/agent_RULES.md`); `tests/test_agents.py`
   and `tests/test_more_agents.py` compare each copy with the constant, so they cannot drift. The skill bodies are cut to at most 60
@@ -17921,10 +17923,14 @@ The plan (`docs/drafts/2026-10-12-verinoda-lean-plan.md`) ran in three waves on 
 - **The mod keeps three things** (`claude-mods/verinoda-live` 0.7.0). *Tools in front*: the server's three core tools (`analyze`,
   `project_query`, `run_tool`) are listed in front of the model, not behind ToolSearch (`tool.describe`, `isDeferred: false`; a
   tool the model must look up first is not called: 0 of 286 study sessions with the tools deferred, against 51 of 63 with a tool
-  listed in front, and the ToolSearch turn costs a model call of its own). The hook pins only tools present at session start. *The
-  call rule*: a `prompt.compose` section (`verinoda-live:rule`, about 530 characters) while the request's tools name the Verinoda
-  server, telling the model to call `analyze` once first for a why, when or what-does-it-affect question and to treat what comes
-  back as a lead. *Freshness*: `verinoda update --fast` at the end of a turn that edited indexed files, in the background, with a
+  listed in front, and the ToolSearch turn costs a model call of its own). The host caches the `tool.describe` answers for the
+  session (a tool that appears later is not re-placed), and its reminder of the tools behind ToolSearch is composed before those
+  answers apply: it named the three pinned tools and said a direct call would fail, so the mod takes their names out of it
+  (`prompt.attachment`). *The call rule*: a `prompt.compose` section (`verinoda-live:rule`, about 630 characters) while the
+  request's tools name the Verinoda server, naming the first tool call on a why, when, which-commit or what-does-it-affect
+  question (`analyze` with the question; Grep, Read and git after it) and saying that what comes back is a lead. Its first
+  wording ("call `analyze` once first ... a question one grep or one file read answers needs no Verinoda call") got no call in
+  39 of 39 re-run sessions (158.3). *Freshness*: `verinoda update --fast` at the end of a turn that edited indexed files, in the background, with a
   status line; `verinoda graph-state --json` (new; exit 0 always) replaces the Python probe the mod ran. Deleted: the `auto` modes
   (`search`, `nudge`), the assist features and their tools, the commit-review guard on every git shell command, the session-start
   `check --stdin` warm-up and the locate daemon start. The check after edits stays and is **off** by default (setting `check`,
@@ -18042,26 +18048,39 @@ re-derived); **not measured**.
   bodies only `head_lines` (22) and `symbol` (50) could go without the CLI renderer and the tests losing what they read.
 - **Sizes of the agent-facing text (commits b05d29e, 9378fd7, b230c70; the example project `orders_app` with one signature edit,
   not a real repository).** Core server instructions 1,303 -> 1,687 characters (the rule is 470, the two clauses it replaces 86;
-  limit 1,700); `run_tool` description 845 -> 590 (limit 600); the four listed descriptions 1,053 -> 686; the core menu on the wire
-  4,721 -> 4,099 (4,870 -> 4,248 with decision records; the limits in `tests/test_mcp.py` come down from 4,800 and 4,950 to 4,200
-  and 4,350); skill bodies 243 -> 58 lines (claude, 16,928 -> 5,510 characters) and 242 -> 59 (codex, 17,162 -> 5,827);
+  limit 1,700), then 1,734 once the rule's last sentence names the first call (the rule 517; limit 1,800); `run_tool` description
+  845 -> 590 (limit 600); the four listed descriptions 1,053 -> 686; the core menu on the wire 4,721 -> 4,099 (4,870 -> 4,248 with
+  decision records; the limits in `tests/test_mcp.py` come down from 4,800 and 4,950 to 4,200 and 4,350), then 4,178 with
+  `analyze`'s "start here" description; skill bodies 243 -> 58 lines (claude, 16,928 -> 5,510 characters) and 242 -> 59 (codex, 17,162 -> 5,827);
   `change_review` over MCP: `concerns_checked`, `reviewers` and `coverage` were 2,574 of 11,425 characters, the coverage line is
   now 94. The D185 fastapi why question through `analyze` on the study copy: 10,355 -> 1,987 characters, status `answered`, the
   answer claim names `546dc8bdcb`, the first lead is `backend/app/api/routes/login.py:78-97`, and 2,976 characters with
   `show="lead"` (20 lines).
-- **Probes with a model (one headless session each on the study's fastapi copy; observations, not a scored measure).** The study's
-  stance-only prompt and no mod: Grep, Read, Read, Bash, then "the history doesn't give a reason", the measured failure. The tools
-  in front but no rule: the same path. The tools in front and the one-paragraph rule, in the prompt or as the mod's own section:
-  `analyze`, Grep, `git show 546dc8b` (and a Read), and the answer cites `546dc8b` "for security", in 3 to 4 API calls. Listing
-  the tools alone did not make the model call them. A live session with the mod and the server connected recorded that the rule
-  section is added exactly when the request's tools name the Verinoda server (one haiku call, commit 2bcde62).
+- **Probes with a model (observations, not a scored measure).** One headless session each on the study's fastapi copy: the
+  study's stance-only prompt and no mod: Grep, Read, Read, Bash, then "the history doesn't give a reason", the measured failure;
+  the tools in front but no rule: the same path; the tools in front and the first one-paragraph rule, in the prompt or as the
+  mod's own section: `analyze`, Grep, `git show 546dc8b` (and a Read), the answer citing `546dc8b` "for security", in 3 to 4 API
+  calls. That one session misled the design: **the D186 re-run (158.3; 39 headless Verinoda-arm sessions with that rule in the
+  system prompt and the tools in front) made no Verinoda call at all**, first tool Grep in 38 and Bash in 1, while the debug
+  log of a probe shows `tool.describe` moving the three tools in front before the first API request, so the pin was not the
+  cause. Two causes were found: the rule's way out ("a question one grep or one file read answers needs no Verinoda call") and
+  the engine's reminder of the tools behind ToolSearch, which named the three pinned tools and said a direct call would fail.
+  Probes on the six re-run tasks, one session each: the rule without the way out 3 of 6 calls; plus the reminder corrected 4 of
+  6; plus "your first tool call is `analyze`" in the rule and an `analyze` description that says so 5 of 6; the committed
+  configuration (that rule, the corrected reminder, the server's description and status rule) 6 of 6, both when-questions
+  included. A context block attached on `prompt.submit` never reached a `-p` session (3 of 3): in a scripted session only the
+  system prompt and the tool descriptions reach the model. The 39 zero-call sessions are kept as measured data beside the
+  re-run's results (`superseded-zero-call/`), not as its comparison. A live session with the mod and the server connected
+  recorded that the rule section is added exactly when the request's tools name the Verinoda server (one haiku call, commit
+  2bcde62).
 - **The D185 citation check, strict (run over the D185 work folder, outside the repository; output not committed; commit 29d6dec).**
   Plain arm 905 confirmed / 216 wrong / 6 missing of 1,127 citations (0.803); Verinoda arm 1,047 / 254 / 20 of 1,321 (0.793); the
   lenient check of D185 gave 0.975 and 0.958. The strict figure is a lower bound as the lenient one is an upper bound (157.3); the
   re-runs report both. The Verinoda arm is the lower in both checks; no interval was computed.
 - **Tests.** After wave 1, on the merged tree (the changed areas): 31 test files, 1,084 passed, 2 failed, the two skill-length
   cases that fail on a clean checkout (AGENTS.md); the skill rewrite of wave 2 fixed both (bodies of 58 and 59 lines). The mod:
-  85 tests pass (`claude plugin test`), `tsc --noEmit` exits 0, `claude plugin validate` passed. `tests_upstream` after the
+  86 tests pass (`claude plugin test`; the 86th pins the corrected deferred-tools reminder), `tsc --noEmit` exits 0,
+  `claude plugin validate` passed. `tests_upstream` after the
   deletions: 38 failed, 3,645 passed, 130 skipped (3,813 collected against 5,786 before; on the same machine before D186: 54
   failed, 5,451 passed, 280 skipped, 1 xfailed); the 38 are failures of the kinds that were there before (an absent terraform
   grammar, Windows file types, a watch test on a deleted working directory, java and markdown cases; `docs/UPSTREAM.md` has the

@@ -23,8 +23,8 @@ Answer rules:
 - State as fact only what carries statically_verified, primary_source_verified, observed or experiment_verified;
   strong_inference and below are not facts. Verinoda output is a lead: before stating 'no such change', 'first added
   in' or why something changed, confirm with one git or grep check of your own. truncated: true or more: true proves
-  no absence: narrow the call or check with git/grep yourself. A question one grep or one file read answers needs no
-  Verinoda call.
+  no absence: narrow the call or check with git/grep yourself. On a why, when, which-commit or what-does-it-affect
+  question, call analyze first: Grep, Read and git come after it.
 - For `unknown` give the next step instead of a guess.
 - Graph edges are extractions, not verification. Scores, rankings and name matches are inference at most.
 - Cite the narrowest lines that support a claim. Run `verinoda update .` after big edits, and

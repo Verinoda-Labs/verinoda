@@ -203,8 +203,17 @@ katı atıf kontrolü D185'in (eski araçla verilmiş) cevaplarını puanlar.
   91f1e347'den yeniden kuruluyor; gin'de `earlier_elsewhere` 15216a0'ı adlandırıyor. "30 satır için en çok 2.000 karakter"
   hedefi gerçek konu satırlarıyla tutmadı (satır başına yaklaşık 100 karakter).
 - **Tek oturumluk denemeler (gözlem, ölçü değil):** yalnız duruş istemi ve modsuz: Grep, Read, Read, Bash ve "geçmiş gerekçe
-  vermiyor" (ölçülen hata); araçlar önde ama kuralsız: aynı yol; araçlar önde ve tek paragraflık kuralla: `analyze` → Grep →
-  `git show 546dc8b`, cevap 546dc8b'yi "güvenlik için" diye anıyor, 3-4 API çağrısı.
+  vermiyor" (ölçülen hata); araçlar önde ama kuralsız: aynı yol; araçlar önde ve ilk tek paragraflık kuralla: `analyze` → Grep →
+  `git show 546dc8b`, cevap 546dc8b'yi "güvenlik için" diye anıyor, 3-4 API çağrısı. **Bu tek oturum tasarımı yanılttı:** D186
+  yeniden koşusunda (Verinoda kolu, 39 başsız oturum, aynı kural sistem isteminde, araçlar önde) model Verinoda'yı hiç çağırmadı
+  (ilk araç 38'inde Grep, 1'inde Bash); bir denemenin hata ayıklama günlüğü üç aracın ilk API isteğinden önce öne alındığını
+  gösteriyor, yani neden öne alma değil. İki neden bulundu: kuraldaki kaçış cümlesi ("tek grep'in ya da tek dosya okumanın
+  cevapladığı soru Verinoda çağrısı gerektirmez") ve motorun ToolSearch arkasındaki araçlar hatırlatmasının öne alınmış üç aracı
+  da sayıp "doğrudan çağrı başarısız olur" demesi. Altı yeniden-koşu görevinde birer oturumluk denemeler: kaçışsız kural 6'da 3
+  çağrı; artı düzeltilmiş hatırlatma 6'da 4; artı "ilk araç çağrın `analyze`" ifadesi ve bunu söyleyen bir `analyze` açıklaması
+  6'da 5; commit'lenen yapı 6'da 6 (iki "ne zaman" sorusu dahil). `prompt.submit` üzerinden kullanıcı dönüşüne eklenen bir
+  bağlam bloğu `-p` oturumuna hiç ulaşmadı (3'te 3). Sıfır çağrılı 39 oturum ölçülmüş veri olarak yeniden koşunun yanında
+  saklanır (`superseded-zero-call/`), karşılaştırmanın parçası değildir.
 - **D185 cevaplarında katı mekanik atıf kontrolü (yerel koşu, çıktısı commit'lenmedi):** düz 905 doğrulanan / 216 yanlış / 6 eksik
   (0,803), Verinoda 1.047 / 254 / 20 (0,793); D185'in gevşek kontrolü 0,975 ve 0,958 vermişti. Gevşek kontrol üst sınır, katı
   kontrol alt sınırdır; Verinoda kolu iki kontrolde de daha düşük, aralık hesaplanmadı.
