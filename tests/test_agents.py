@@ -162,7 +162,9 @@ def test_skill_templates_are_complete(env, agent):
     # audit: a verified status is "verified at snapshot X with evidence", never unconditional fact
     assert "fact, cite" not in body and "verified at snapshot X" in body and "snapshot.commit" in body
     assert body.count("| fact") == 0
-    assert len(body.splitlines()) < 240  # concise: the business logic lives in the core
+    # concise: the business logic lives in the core, the rest of the CLI in `verinoda <command> --help` (D186: 243
+    # lines before; the 60 are the body below the front matter, whose allowed-tools list is permission config)
+    assert len(body.splitlines()) <= 60
     # review D63 L3/M3: the project's own config sets mcp.profile only when the user trusts the project, and
     # trusting is the user's decision, never the agent's
     assert "in `.verinoda/config.json` and a restart" not in body and "user-level Verinoda config" in body
@@ -187,32 +189,31 @@ def test_skill_templates_are_complete(env, agent):
 
 
 @pytest.mark.parametrize("agent", ["claude", "codex"])
-def test_skills_understand_the_question_and_resolve_references_first(agent):
-    """D9 and the reference protocol: the skills drive the core; they do not re-implement it."""
+def test_the_skill_carries_the_servers_status_rule_in_at_most_60_lines(env, agent):
+    """D186 §4.6: the one status rule is written once, `server.STATUS_RULE`, and copied into the skill and the server
+    instructions; the test compares the copy with the constant so the two cannot drift."""
+    from verinoda.mcp.server import STATUS_RULE
+
     _, body = frontmatter(agents.render_skill(agent).decode("utf-8"))
-    understand = body.split("## Understand the question first", 1)[1].split("\n## ", 1)[0]
-    for needle in ("verinoda plan draft", "question_plan_draft", "split compound questions", "gloss_en",
-                   "copy versions exactly as the user wrote them", "never add a candidate",
-                   "verinoda plan check", "question_plan_check", "plan_json", "answers", "clarification_id",
-                   "verinoda analyze --plan", "Understood as / Anladığım", "one block per",
-                   "sub-question with its verdict", "blocked_by_clarification"):
-        assert needle in understand, needle
-    # the steps come in order: draft -> edit -> check -> ask -> analyze -> answer
-    order = [understand.index(k) for k in ("plan draft", "split compound", "plan check", "Ask only",
-                                            "analyze --plan", "Understood as")]
-    assert order == sorted(order)
-    refs = body.split("## References the user gives", 1)[1].split("\n## ", 1)[0]
-    for needle in ("links", "package names", "versions", "commits", "PR/issue", "papers", "docs",
-                   'verinoda resolve "<message>"', "reference_resolve", "<name> @ <pin> (basis: <basis>)",
-                   "mismatch", "Never substitute the default branch", "questions_for_user", "next_step",
-                   "verinoda research --resolution <id> --reference-id <rN>"):
-        assert needle in refs, needle
-    # deeper verification is optional and named
-    assert "--observe" in body and "verinoda observe" in body and "resolve-call" in body
-    assert "Optional deeper verification" in body
-    # the answer format starts with the reading of the question
-    fmt = body.split("## Answer format", 1)[1]
-    assert fmt.lstrip().startswith('1. "Understood as / Anladığım: ..."')
+    assert len(body.splitlines()) <= 60
+    assert STATUS_RULE in " ".join(body.split())  # wrapped in the template: compare without the line breaks
+    for tool in ("history_search", "analyze", "update", "code_check"):
+        assert tool in body, tool
+
+
+@pytest.mark.parametrize("agent", ["claude", "codex"])
+def test_the_skill_names_the_tool_for_each_kind_of_question(agent):
+    """D186: the skills point at the core's tools; the long protocols (question plans, references, research,
+    verification) were cut from them and live behind `verinoda <command> --help`. What stays is which tool answers
+    which question, how to cite, and who answers a clarification."""
+    _, body = frontmatter(agents.render_skill(agent).decode("utf-8"))
+    tools = body.split("## Which tool for which question", 1)[1].split("\n## ", 1)[0]
+    for tool in ("analyze", "history_search", "project_query", "change_review", "code_check", "index_update"):
+        assert f"`{tool}`" in tools, tool
+    assert "`understood_as`" in tools and "needs_clarification" in tools  # the answer starts with the reading
+    assert "Cite the narrowest `path:line`" in body and "verinoda <command> --help" in body
+    # the user is asked, never answered for: the clarification goes through the agent's own question tool
+    assert ("AskUserQuestion" if agent == "claude" else "request_user_input") in tools
 
 
 @pytest.mark.parametrize("agent", ["claude", "codex"])
@@ -222,6 +223,10 @@ def test_skill_examples_parse_with_the_real_cli(agent):
     text = agents.render_skill(agent).decode("utf-8")
     blocks = re.findall(r"```bash\n(.*?)```", text, re.S)
     lines = [ln for b in blocks for ln in b.splitlines() if ln.startswith("verinoda ")]
+    # D186: the lean skill shows its commands inline; every one without a placeholder must parse too (a command a
+    # placeholder stands in for, `verinoda api <name>`, is left to its own tests; the ownership comment names `install`)
+    shown = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+    lines += [" ".join(m.split()) for m in re.findall(r"`(verinoda [^`<>|]+)`", shown)]
     seen = set()
     for ln in lines:
         argv = shlex.split(ln)[1:]
@@ -230,16 +235,11 @@ def test_skill_examples_parse_with_the_real_cli(agent):
         # text by default (2026-09-26): the CLI's text is written for the model; JSON cost 2-5x the tokens
         # (analyze 3,824 vs 717, decide brief 13,206 vs 2,985) and the skill reads no field the text leaves out
         assert "--json" not in argv, ln
-    for cmd in ("analyze", "trace", "verify", "research", "challenge", "query", "map", "update",
-                "feedback add", "feedback process", "experiment run", "compare", "claim show",
-                "plan", "resolve", "observe", "resolve-call"):
+    # D186: one example per kind of question of the lean skill (the long protocols' examples went with them)
+    for cmd in ("analyze", "history", "query", "review", "check", "update"):
         assert cmd in seen, cmd
     assert "Add `--json` only for a field the text" in " ".join(text.split())
     assert "doctor --brief" in text and "doctor --json" not in text
-    # the plan flow is shown end to end: draft, check, then analyze with the plan file
-    assert any(ln.startswith("verinoda plan draft ") for ln in lines)
-    assert any(ln.startswith("verinoda plan check ") for ln in lines)
-    assert any(ln.startswith("verinoda analyze --plan ") for ln in lines)
 
 
 # -- project scope ---------------------------------------------------------------------------

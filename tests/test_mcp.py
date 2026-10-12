@@ -395,8 +395,9 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     # locate and coupled (one catalog line for both) take it to 4,563 (the records menu to about 4,712): the two
     # limits are raised on purpose, by 100 and 150; analyze's show argument (D186, the experiment the cost sample
     # measures) takes it to 4,721 (the records menu to 4,870): both raised by 200, to come down with the shorter
-    # descriptions of the one status rule
-    assert len(wire) < 4800
+    # descriptions of the one status rule: run_tool's 845 -> 590 characters, the four listed tools' 1,053 -> 686 take
+    # it to 4,099 (the records menu to 4,248); both limits come down by 600
+    assert len(wire) < 4200
     assert '"title"' not in wire and "outputSchema" not in wire
     text = instructions("core")
     # tq, locate and coupled are named in run_tool's catalog only: a sentence for them in the instructions waits
@@ -404,7 +405,9 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     assert all(n in text for n in CORE_TOOLS if n not in ("tq", "locate", "coupled")) and "tq" not in text
     assert "locate" not in text and "coupled" not in text
     assert "--profile full" in text and "question_plan_draft" not in text
-    assert len(text) < len(instructions("full")) and len(text) < 1400
+    # 1,303 before the one status rule (D186): the rule is 470 characters and takes the place of one clause in the
+    # head and one in the tail
+    assert len(text) < len(instructions("full")) and len(text) < 1700
     assert "decision_check" not in instructions("core", decisions=False)
     assert "decision_check" not in mcp_server.build_server(repo).verinoda_instructions
     rec = tmp_path / "with_records"
@@ -415,7 +418,7 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     gate = next(t for t in with_records if t["name"] == GATEWAY)
     assert {"decision_check", "dependency_ask"} <= set(gate["inputSchema"]["properties"]["name"]["enum"])
     # decision_check's line already took this menu to 4,598 characters; dependency_ask's line did not add to it
-    assert len(json.dumps(with_records, separators=(",", ":"))) < 4950
+    assert len(json.dumps(with_records, separators=(",", ":"))) < 4350
     assert "dependency_ask {source, target}" in gate["description"]
     full = mcp_server.build_server(repo, profile="full")
     assert full.verinoda_profile == "full" and len(listing(full)) == len(TOOL_NAMES)
@@ -427,6 +430,79 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     assert resolve_profile(tmp_path) == "core"
     with pytest.raises(ValueError, match="unknown MCP tool profile"):
         resolve_profile(proj, "everything")
+
+
+def test_instructions_carry_the_one_status_rule():
+    """D186: one status rule, in the instructions' tail (the skills copy it): what counts as a fact, that Verinoda's
+    output is a lead to confirm with one check of the agent's own, and that a cut list proves no absence. It
+    replaces "never state weak_inference or unknown as fact" and "truncated: true means lists were cut"."""
+    rule = mcp_server.STATUS_RULE
+    assert "{" not in rule and "}" not in rule  # the instructions go through str.format (build_server, the hub)
+    for profile in ("core", "full"):
+        text = mcp_server.instructions(profile)
+        assert text.count(rule) == 1, profile  # one rule, said once
+        assert "means lists were cut" not in text and "never state weak_inference" not in text, profile
+    core = mcp_server.instructions("core")
+    for needle in ("primary_source_verified", "truncated", "one grep"):
+        assert needle in core, needle
+    assert len(core) < 1700
+
+
+def test_run_tool_description_is_under_600_chars(repo):
+    """D186: run_tool's description is one clause per tool behind it, no value lists; every tool is still named."""
+    anyio = pytest.importorskip("anyio")
+    listed = [t.model_dump(by_alias=True, exclude_none=True, mode="json") if hasattr(t, "model_dump") else t
+              for t in anyio.run(mcp_server.build_server(repo).list_tools)]
+    gate = next(t for t in listed if t["name"] == mcp_server.GATEWAY)
+    behind = gate["inputSchema"]["properties"]["name"]["enum"]
+    text = mcp_server.gateway_description(behind)
+    assert text == gate["description"] and len(text) < 600
+    hooks = {"grep_context", "read_context"}  # the hooks' own calls: reached through run_tool, not advertised
+    assert all(n in text for n in behind if n not in hooks)
+
+
+def test_change_review_response_has_no_bookkeeping(repo, monkeypatch):
+    """D186: over MCP, change_review leaves out what ran (concerns_checked) and who to ask (reviewers) and says its
+    coverage in one line; `verinoda review --json` keeps all three. The three were 56% of a response in the usage
+    logs. The line names what was not checked (each item cut at its reason) and counts the limits, with where to
+    read them."""
+    import copy
+
+    from verinoda import review as rv
+
+    full = {"summary": "1 change", "exit": 0, "mode": "worktree", "counts": {"changes": 1}, "concerns": {},
+            "concerns_checked": {"security": "no finding from rules (a)", "config": "no finding from rules (b)"},
+            "reviewers": {"suggested": [{"author": "A", "lines": 1, "of": 1, "claim": {"status": "strong_inference"}}],
+                          "declared": [], "related_commits": []},
+            "coverage": {"method": "changed definitions from symbol facts of both versions; dependents over the "
+                                   "last snapshot's graph (depth 3) by change kind; concern rule tables",
+                         "limits": [f"limit {i}: " + "x" * 120 for i in range(7)],
+                         "not_checked": ["security (a planned change has no diff to compare)",
+                                         "health (a planned change has no new version to measure)"]}}
+    monkeypatch.setattr(rv, "review", lambda *a, **k: copy.deepcopy(full))
+    res = AtlasTools(repo).change_review()
+    assert "concerns_checked" not in res and "reviewers" not in res
+    assert res["summary"] == "1 change" and res["exit"] == 0  # the rest of the response is untouched
+    cov = res["coverage"]
+    assert isinstance(cov, str) and len(cov) < 200 and "\n" not in cov
+    assert cov.startswith("changed definitions from symbol facts of both versions")
+    assert "not checked: security, health" in cov and "7 limits" in cov and "review --json" in cov
+    # however long the items are, it stays one line under the bound, the first names first, the limits still counted
+    names = ("security", "health", "perf", "style", "docs", "tests", "types", "hotspot order")
+    full["coverage"]["not_checked"] = [f"{n} " + "y" * 150 for n in names]
+    cov = AtlasTools(repo).change_review()["coverage"]
+    assert isinstance(cov, str) and len(cov) < 200 and "not checked: security yyy" in cov
+    assert cov.startswith("changed definitions") and "..." in cov and cov.endswith("7 limits in `verinoda review --json`")
+    full["coverage"] = {"method": "m", "limits": [], "not_checked": []}  # nothing to say: no empty clauses
+    assert AtlasTools(repo).change_review()["coverage"] == "m"
+
+
+def test_change_review_coverage_is_one_line_on_a_planned_change(repo):
+    """The shape a real review has: a planned change has no diff, and the line says security was not checked."""
+    res = AtlasTools(repo).change_review(targets=["orders/pricing.py::compute_total"], change="body")
+    assert "error" not in res, res
+    assert "concerns_checked" not in res and "reviewers" not in res
+    assert isinstance(res["coverage"], str) and len(res["coverage"]) < 200 and "security" in res["coverage"]
 
 
 @pytest.mark.parametrize("config, why", [('{"mcp": "full"}', "mcp is not a JSON object"),

@@ -382,6 +382,23 @@ def compact_check_result(res: dict) -> dict:
     return out
 
 
+def _review_coverage_line(cov: Any) -> str:
+    """change_review's coverage as one line under 200 characters (D186): the first clause of its method, what was
+    not checked (each item cut at its reason) and how many limits there are; ``verinoda review --json`` has the
+    method whole, every limit and every reason."""
+    if not isinstance(cov, dict):
+        return _clip(str(cov or ""), 199)
+    head = str(cov.get("method") or "").split(";")[0].strip()
+    limits = cov.get("limits") if isinstance(cov.get("limits"), list) else []
+    tail = f"{len(limits)} limits in `verinoda review --json`" if limits else ""
+    unchecked = cov.get("not_checked") if isinstance(cov.get("not_checked"), list) else []
+    names = ", ".join(dict.fromkeys(n for n in (str(x).split(" (", 1)[0].strip() for x in unchecked) if n))
+    # what is left of the 199 characters goes to the names: they are what the model must not read as checked
+    room = 199 - len(head) - len(tail) - 2 * len("; ") - len("not checked: ")
+    parts = [head, f"not checked: {_clip(names, max(room, 24))}" if names else "", tail]
+    return _clip("; ".join(p for p in parts if p), 199)
+
+
 def cap_response(obj: dict, limit: int = MAX_RESPONSE_CHARS, *, first: tuple[str, ...] = (),
                  keep_tail: tuple[str, ...] = ("history",), keep: tuple[str, ...] = ()) -> dict:
     """Cut ``obj`` until its compact JSON (truncation note included) fits ``limit`` chars.
@@ -1383,14 +1400,15 @@ class AtlasTools:
                     raise ToolFailure("invalid_argument", str(exc)[:600], "base is a git revision such as HEAD~1; "
                                       "targets are 'path/file.py' or 'path/file.py::Qual.name'") from None
             res.pop("files", None)
+            # D186: what ran and who to ask are `review --json`'s; with coverage they were 56% of an MCP response
+            for bookkeeping in ("concerns_checked", "reviewers"):
+                res.pop(bookkeeping, None)
+            if isinstance(res.get("coverage"), dict):
+                res["coverage"] = _review_coverage_line(res["coverage"])
             ms = res.get("made_stale")
             if isinstance(ms, dict) and not any(ms.get(k) for k in ("claims", "notes", "decisions")):
                 # nothing made stale: the counts say what was compared; the limits stay in `review --json`
                 res["made_stale"] = {k: ms[k] for k in ("counts", "checked") if k in ms}
-            if isinstance(res.get("reviewers"), dict):
-                from verinoda import reviewers
-
-                res["reviewers"] = reviewers.compact(res["reviewers"])
             if isinstance(res.get("affected"), dict):
                 from verinoda import affected as aff
 
@@ -1406,8 +1424,8 @@ class AtlasTools:
                 res["affected_tests"] = testmap.compact(aff)
             return res
         return self._run("change_review", go, need="graph",
-                         # the findings come before the lists that lead to them: what to read first, the tests,
-                         # what ran (concerns_checked) and what went stale are cut before any concern is
+                         # the findings come before the lists that lead to them: what to read first, the tests
+                         # and what went stale are cut before any concern is
                          keep=("summary", "exit", "counts", "affected_tests", "risk", "concerns", "unknown", "changes", "api_changes",
                                "decisions", "differential", "since_last"),
                          first=("dependents", "binding_readers", "skipped", "read_first"))
@@ -2290,31 +2308,38 @@ DEFAULT_PROFILE = "core"
 # names them with their arguments; every listed tool is standing context in every request.
 CORE_DIRECT: tuple[str, ...] = ("project_query", "analyze", "code_check", "index_update")
 GATEWAY = "run_tool"
-# what the gateway's description says of each tool behind it: its arguments and what it returns
+# What the gateway's description says of each tool behind it: its arguments and one clause (D186: no value lists; a
+# wrong value comes back as an error that lists the valid ones). The menu is standing context in every request.
 GATEWAY_CATALOG: dict[str, str] = {
-    "node_inspect": "node_inspect {name}: a symbol's definition and edges with file:line",
-    "relation_trace": "relation_trace {source, target, mode?: flow|any}: call paths between symbols",
-    "map_view": "map_view {view: hierarchy|dependencies|dataflow|config|tests|history|impact|cycles|outline|dead|hotspots|sides|repo|"
-                "dsm|model|saved, targets?}",
-    "claim_list": "claim_list {status?}, claim_inspect {claim_id}, evidence_inspect {evidence_id}: claims, "
-                  "evidence re-checked",
-    "change_review": "change_review {targets?, change?: body|signature|remove} before editing, {since_last?} after: "
-                     "what it touches",
+    "node_inspect": "node_inspect {name}: a symbol's definition and edges",
+    "relation_trace": "relation_trace {source, target}: call paths between symbols",
+    "map_view": "map_view {view, targets?}: architecture views (impact, hierarchy, ...)",
+    "claim_list": "claim_list {status?}, claim_inspect {claim_id}, evidence_inspect {evidence_id}: claims, evidence",
+    "change_review": "change_review {targets?, change?, since_last?}: what an edit touches",
     "decision_check": "decision_check {changed_only?}: tree vs accepted decisions",
     "dependency_ask": "dependency_ask {source, target}: may source import it",
-    "history_search": "history_search {text|symbol|message|base, ...}: when text came/went, commits, compare",
-    "tq": "tq {questions}: typed questions (calls, reaches, callers, which...), many per call",
-    "locate": "locate {text, anchors?}: files an issue touches and what changes with them; "
-              "coupled {files}: what changes with files",
+    "history_search": "history_search {text|symbol|message|base}: when text came or went, commits",
+    "tq": "tq {questions}: typed questions, many per call",
+    "locate": "locate {text}, coupled {files}: files an issue touches, files that change together",
     # behind run_tool only in a server over several projects (the single-project core menu has no room for them)
     "list_projects": "list_projects {}: the projects served",
     "index_status": "index_status {}: a project's index state and stale files",
 }
 
+# The one status rule (D186): what counts as a fact, that Verinoda's output is a lead to confirm with one check of the
+# agent's own, and that a cut list proves no absence. Measured basis: 7 of the 12 false facts on the answerable D185
+# tasks asserted an absence. It sits in the instructions' tail and is copied into the two skills (tests/test_agents.py
+# compares the copy). No braces: the instructions go through str.format.
+STATUS_RULE = ("State as fact only what carries statically_verified, primary_source_verified, observed or "
+               "experiment_verified; strong_inference and below are not facts. Verinoda output is a lead: before "
+               "stating 'no such change', 'first added in' or why something changed, confirm with one git or grep "
+               "check of your own. truncated: true or more: true proves no absence: narrow the call or check with "
+               "git/grep yourself. A question one grep or one file read answers needs no Verinoda call.")
+
 _INSTRUCTIONS_HEAD = """Verinoda: evidence-first answers about the repository {repo}.
 Questions: project_query (where is X; hits are leads) or analyze (claims with evidence: start the answer with its
-understood_as, one block per sub-question; never state weak_inference or unknown as fact). One symbol: node_inspect;
-call paths: relation_trace; architecture: map_view; earlier claims: claim_list, claim_inspect, evidence_inspect.
+understood_as, one block per sub-question). One symbol: node_inspect; call paths: relation_trace;
+architecture: map_view; earlier claims: claim_list, claim_inspect, evidence_inspect.
 Cite the narrowest lines that support a claim (source lines are numbered), not the whole span of a header.
 Editing: change_review before and after (report every concern); index_update after editing; code_check only on
 code you wrote or edited, not to read code."""
@@ -2356,8 +2381,8 @@ reference_id) inspects one at its pin; reference_compare compares a mechanism.
 
 _INSTRUCTIONS_CORE_HEAD = """Verinoda: evidence-first answers about the repository {repo}.
 Questions: project_query (where is X; hits are leads) or analyze (claims with evidence: start the answer with its
-understood_as, one block per sub-question; never state weak_inference or unknown as fact). Cite the narrowest lines
-that support a claim (source lines are numbered), not the whole span of a header. index_update after editing;
+understood_as, one block per sub-question). Cite the narrowest lines that support a claim (source lines are
+numbered), not the whole span of a header. index_update after editing;
 code_check only on code you wrote or edited, not to read code. run_tool reaches node_inspect, relation_trace,
 map_view, claim_list, claim_inspect, evidence_inspect, change_review (before and after editing: report every
 concern) and history_search (when a text appeared or disappeared: the commit is the evidence)."""
@@ -2371,8 +2396,7 @@ runtime tracing): `verinoda mcp serve --profile full`, or the `verinoda` CLI."""
 
 _INSTRUCTIONS_TAIL = """
 Rules: graph edges are extractions, never verification. Missing evidence -> 'unknown' plus a next step, never a
-guess. "truncated": true means lists were cut. Errors: {{"error", "message", "hint"}}; not_initialised/no_index:
-call index_update."""
+guess. """ + STATUS_RULE + """ Errors: {{"error", "message", "hint"}}; not_initialised/no_index: call index_update."""
 
 
 def instructions(profile: str = DEFAULT_PROFILE, *, decisions: bool = True) -> str:
@@ -2432,7 +2456,7 @@ def gateway_description(behind: list[str]) -> str:
         if key in GATEWAY_CATALOG and key not in said:
             said.add(key)
             parts.append(GATEWAY_CATALOG[key])
-    return ("Run one more Verinoda tool (name, arguments). " + "; ".join(parts) + ".")
+    return ("Run one more Verinoda tool: " + "; ".join(parts) + ".")
 
 
 INSTRUCTIONS = instructions("full")
@@ -2447,9 +2471,8 @@ DESCRIPTIONS: dict[str, str] = {
         "of each file (its own commits), relative imports and includes, .c/.h partners, same-name twins. "
         "Leads, not verified claims; the result says what history could not be read."),
     "project_query": (
-        "Where is X / what handles Y: ranked code locations as plain text (path:lines headers, call outlines, "
-        "numbered source lines; up to 6000 chars, truncation stated). format='json' for programs. Hits are "
-        "leads, not verified claims."),
+        "Where is X / what handles Y: ranked code locations as text with numbered source lines. Hits are leads, "
+        "not claims."),
     "node_inspect": (
         "One symbol or file (id, label, 'path/file.py::symbol', 'Class.method', path): location, source (at "
         "most 30 lines) and edges in and out with file:line. A 'scored' resolution is a guess: check "
@@ -2500,9 +2523,8 @@ DESCRIPTIONS: dict[str, str] = {
         "nowhere is not_found with did_you_mean, never replaced). Stored (plan_id). status: ready | "
         "needs_clarification (ask the user, record answers[] with clarification_id) | invalid (an error)."),
     "analyze": (
-        "Answer a question as a verdict, its answer claims and leads with file:line; under 2,500 chars; leads are "
-        "what to read next, not verified claims; show='lead' adds the first lead's lines. needs_clarification is a "
-        "normal result (ask the user). Re-indexes first if the tree changed."),
+        "A verdict, its answer claims and leads with file:line. Leads are what to read next, not claims. "
+        "needs_clarification is a normal result (ask the user). Re-indexes first if the tree changed."),
     "plan_audit": (
         "Re-judge an earlier analysis' sub-questions on the current claim statuses (refresh=true re-indexes "
         "first, so claims whose files changed are stale); 'changed' lists the verdicts that moved."),
@@ -2530,10 +2552,9 @@ DESCRIPTIONS: dict[str, str] = {
         "other languages): definitive | dynamic | ambiguous | external | unresolved. With target_path/target_line "
         "a verdict: confirms | refutes | undetermined (definitive answers only). Read-only."),
     "code_check": (
-        "Python, Java, Kotlin, TS/JS imports; other languages: not_checked (exit 4). For code you wrote or "
-        "edited: do the modules, names, methods, arguments and keys it uses exist in the project and its "
-        "environment? Input: paths, diff (a revision; nothing: changes against HEAD), or snippet + as_path. "
-        "Each site: exists | absent (nearest names) | unknown | not_installed | guarded; exit 3 = absent."),
+        "Python, Java, Kotlin, TS/JS imports; other languages: not_checked. For code you wrote or edited: do the "
+        "modules, names, methods and arguments it uses exist? No arguments: the changes against HEAD. Each site: "
+        "exists | absent (nearest names) | unknown | not_installed | guarded."),
     "api_members": (
         "The real members of a Python module, class or function (dotted target) in the project's environment, "
         "or of a Java class on the build's classpath (access included): name, kind, signature, file:line, "
@@ -2575,8 +2596,8 @@ DESCRIPTIONS: dict[str, str] = {
         "the user's notes on it or on a glob matching it, Cursor/Kiro rules for it - as a PostToolUse hook "
         "output; {} when nothing does."),
     "index_update": (
-        "Re-index after editing files (on a folder never scanned: the first scan); claims whose files changed "
-        "become stale. mode: noop | incremental | full | first_scan."),
+        "Re-index after editing files (a never-scanned folder: the first scan); claims on changed files become "
+        "stale."),
     "list_projects": (
         "The projects this server answers for: name (what the project argument takes), path, index state, "
         "trusted, and whether the graph is kept in memory."),
