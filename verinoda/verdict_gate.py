@@ -461,13 +461,19 @@ def states_reason(terms: list[str], subject: str, body: str = "") -> bool:
     subject's own name), one of them among its words, stem for stem: a reason for another change ("to avoid
     enumeration attacks" on a question about the request body) is not an answer (D185). Identifier parts count
     (``new_password`` carries "password"); a prefix does not ("read" is not "readthedocs")."""
-    text = tn.fold_tr(f"{subject}\n{body}")
-    if not _REASON.search(text):
+    if not _REASON.search(tn.fold_tr(f"{subject}\n{body}")):
         return False
+    return shares_topic(terms, subject, body)
+
+
+def shares_topic(terms: list[str], subject: str, body: str = "") -> bool:
+    """Does a commit message share one of the question's topic words, stem for stem (identifier parts count, a
+    prefix does not)? True when the question has no topic words: nothing to tie to. A when-question's commits are
+    chosen by this alone; a why-question's need a reason word as well (:func:`states_reason`)."""
     content = [t for t in terms if len(t) >= 3]
     if not content:
         return True
-    words = tn.words(text)
+    words = tn.words(tn.fold_tr(f"{subject}\n{body}"))
     stems = {_stem(w) for w in words + ident_parts(*words) if len(w) >= 3}
     return any(_stem(p) in stems for t in content for p in [t, *ident_parts(t)] if len(p) >= 3)
 

@@ -277,6 +277,10 @@ def test_a_commit_states_the_reason_asked_about_only_with_the_questions_words():
     assert vg.states_reason(["PriceCache", "dict"], "Keep prices in a dict to avoid repeated lookups") is True
     assert vg.states_reason([], other) is True   # a question with no content words cannot be tied: the reason word decides
     assert vg.states_reason(terms, "") is False
+    # a when-question needs the topic, not the reason
+    assert vg.shares_topic(["key", "argument", "renamed"], "rename the key argument") is True
+    assert vg.shares_topic(["dict"], "reformat the class") is False
+    assert vg.shares_topic(terms, gold, gold_body) is True and vg.shares_topic(terms, other) is False
 
 
 def test_a_commit_line_is_not_a_reason(fixtures):

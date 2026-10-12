@@ -159,6 +159,27 @@ def test_a_config_holding_only_verinodas_server_is_not_a_change_for_the_index(tm
         st.close()
 
 
+def test_a_when_question_is_answered_by_the_commits_about_it_whether_or_not_they_state_a_reason(tmp_path):
+    # intent `history` shares the why handler; the reason gate is the why-question's (a review of D186 found the
+    # gate had reached when-questions, turning an introducing commit with a plain message into a lead)
+    repo = _why_repo(tmp_path, with_reason=True)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "When was the key argument of PriceCache.get renamed?")
+        (s,) = res["subquestions"]
+        assert s["status"] == "met" and res["status"] == "answered"
+        texts = [c["text"] for c in res["claims"] if c["id"] in s["answer_claim_ids"]]
+        assert any("rename the key argument" in t for t in texts)        # a plain message, no reason word
+        res = analysis.analyze(st, repo, "When did PriceCache start keeping prices in a dict?")
+        (s,) = res["subquestions"]
+        texts = [c["text"] for c in res["claims"] if c["id"] in s["answer_claim_ids"]]
+        assert any("count-based expiry" in t for t in texts)             # the fourth newest, about the question
+        assert not any("documents state intent" in u["why"] for u in res["unknowns"])
+    finally:
+        st.close()
+
+
 def test_overall_status_follows_the_sub_questions():
     assert analysis.overall_status(["met", "met_with_inference"]) == "answered"
     assert analysis.overall_status(["met", qp.HUMAN_DECISION]) == "answered"

@@ -1908,6 +1908,7 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
     names = {i["symbol"].strip(".()") for i in sub.items} | {Path(i["file"]).name for i in sub.items}
     files = {i["file"] for i in sub.items}
     terms = _decision_terms(ctx, sub)
+    asks_why = sub.sq.get("intent") != "history"   # a when-question (intent history) shares this handler
     found = found_doc = False   # found_doc: a decision document was cited (its intent may have aged, below)
     why_not = None   # why the symbol's commits could not be read, for the unknown
     for dec in hv["decisions"]:
@@ -1968,20 +1969,28 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
         unc = [got["note"]] if got.get("note") else []
         if not got.get("commits") and got.get("note"):
             why_not = got["note"]
-        claimed = 0
-        for c in got.get("commits") or []:
-            if claimed < WHY_CLAIMS and verdict_gate.states_reason(topic, c["subject"], c.get("body") or "") \
+        commits = got.get("commits") or []
+        if asks_why:
+            # a why is answered by a commit whose message states a reason about what was asked
+            answers = [c for c in commits if verdict_gate.states_reason(topic, c["subject"], c.get("body") or "")]
+        else:
+            # a when is answered by the commits that changed the lines: those about the question's words first,
+            # else the newest (the three newest were the whole answer until D186)
+            answers = [c for c in commits if verdict_gate.shares_topic(topic, c["subject"], c.get("body") or "")] \
+                or commits
+        chosen = {c["commit"] for c in answers[:WHY_CLAIMS]}
+        for c in commits:
+            if c["commit"] in chosen \
                     and rec.claim(f"`{it['symbol']}` lines {a}-{b} were changed in {c['commit'][:10]} "
                                   f"({c['date'][:10]}): {c['subject']}", kind="history",
                                   status="primary_source_verified", evidence=[(c["evidence"], "supports")],
                                   subjects=[it["file"]], uncertainties=unc or None) is not None:
                 found = True
-                claimed += 1
                 continue
             leads.append(f"{c['commit'][:10]} {c['date'][:10]} {c['subject'][:90]}")
     if leads:
         sub.extra["why_leads"] = leads   # for the verdict gate's note, when it sets the claims aside
-    if not found and not rec.skipped["why"] and leads:
+    if not found and not rec.skipped["why"] and leads:   # a why with commits that state no reason (a when claims them)
         _unknown(ctx, sub, {"question": sub.sq.get("text") or SUBQUESTIONS["why"],
                             "why": f"the reason was not found: {len(leads)} commit(s) changed these lines and none "
                                    "states a reason about it in its message; no decision record explains it",
