@@ -1,60 +1,79 @@
 # verinoda-live: a Claude Code mod for Verinoda
 
-A function-hooks plugin ("mod") for Claude Code that keeps a Verinoda index fresh while Claude edits, helps the agent
-use it, and reviews commits. It finds the project (the nearest folder at or above the session's with a `.verinoda` index; never a home
-folder or a drive root unless the settings name it) and the CLI (the project's `.venv` one, else `verinoda` on
-PATH) by itself; `/config` overrides both (`root`, `cli`, `python`) and turns the mascot's motion off (`motion`).
+A function-hooks plugin ("mod") for Claude Code that puts the Verinoda MCP server's tools in front of the model with a
+one-paragraph call rule, keeps a Verinoda index fresh while Claude edits, and can check each edit for names that do not
+exist. It finds the project (the nearest folder at or above the session's with a `.verinoda` index; never a home folder
+or a drive root unless the settings name it) and the CLI (`verinoda` on PATH, outside the project) by itself; `/config`
+overrides both (`root`, `cli`), turns the check after edits on (`check`) and the mascot's motion off (`motion`).
 
 ## What it does
 
 | feature | how | default |
 |---|---|---|
-| Re-index after edits | Edit / Write / NotebookEdit inside `ROOT` mark the file; at the end of the main loop's turn one `verinoda update --fast` runs (subagent turns do not start one). A failed update keeps its files for `/verinoda-update`. | on |
-| Graph state | After `--fast` the graph is rebuilt in the background; the status line says `text fresh · graph pending…` until no build holds the lock and no file changed since the latest snapshot, then `fresh ✓`. A graph left behind with no build coming (files changed outside Claude's edit tools) is named, and `/verinoda-update` takes it in. Edits made while the build runs wait for it and are indexed when it ends. | on |
-| Auto-context (`/verinoda-auto nudge\|search\|off`) | On a code question the person types in a session started inside `ROOT`: **nudge** attaches an instruction to start with `verinoda analyze` (nothing runs before the prompt); **search** runs `verinoda query` on the prompt (filter syntax taken apart) and attaches its passages. The `auto` setting (`/config`, or `pluginConfigs` in the settings of a scripted session) is the mode a session starts in; a choice made with `/verinoda-auto` is kept and wins, except in a scripted session (`claude -p`, the Agent SDK), which does not read what was chosen in a terminal (the store is shared by every session that loads the mod and rewritten by each at its end) and takes the settings as given. The prompt of a `claude -p` / Agent SDK run counts as the person's. A nudge goes with any code question up to 20,000 characters (a pasted bug report is one); a search is only for prompts up to 2,000. | off |
-| Check after edits (`/verinoda-check on\|off`) | After each Edit / Write of a Python, Java or Kotlin file inside `ROOT`, `verinoda check --diff` (falling back to the file itself without git) reads the changed lines; names on them that do not exist in the project or its environment are told to the model with the edit's result (as a PostToolUse note), with the nearest real names. The session start warms the checker (its first run in an environment builds a name index, about 90 s); a cached check takes about 3 s, never more than 60 s, and never fails the edit. The pane shows the last check (`k` toggles). | on |
-| Review after commits (`/verinoda-guard on\|off`) | When a Bash or PowerShell command moved the project's `HEAD` (read before and after), `verinoda review --base HEAD~1` runs in the background and a toast gives its risk and findings; a commit made while one runs is reviewed after it. | off |
-| Where a change belongs (`/verinoda-assist off\|inject\|tool\|full\|strict`, or a list of `inject, coupled, tool, prompt, gate`) | Ways to put what `verinoda locate` and `verinoda coupled` know (the files a change touches besides the first one an agent finds: what changes together with them in the git history, same-stem partners, same-name twins, imports) in front of the agent, each its own feature. **inject** adds the located files to a code question (the agent is not asked to call anything). **coupled** adds to the result of each source file the agent opens (at most 6 files per session) the files that change together with it. **tool** registers `locate` and `coupled` as tools, listed in front of the model (`tool.describe` with `isDeferred: false`: a plugin's tool is otherwise behind ToolSearch, which the agent studies never saw it use) and **prompt** adds a paragraph to the system prompt. **gate** answers the first search of a task (Grep, Glob, or grep, rg, find in a shell) with the located files instead of running it; the agent searches again if it still wants to. Presets: `inject`; `tool` (tool, prompt); `full` (coupled, tool, prompt); `strict` (full, gate). A daemon keeps the graph loaded (`verinoda locate --daemon`, started at session start; the commands the mod runs ask it by themselves); without one, or with a Verinoda that has none, every lookup is a command that loads the graph itself. The `assist` setting is where a session starts; a choice made with `/verinoda-assist` is kept and wins. Whether any of this raises the files an agent finds is measured in `benchmarks/agent_compare/DESIGN_ASSIST.md` (the pre-registration) and the results next to it. | off |
+| Tools in front | `mcp__verinoda__analyze`, `project_query` and `run_tool` are placed in the model's tool list, not behind ToolSearch (a tool the model must look up first is not called: 0 of 286 study sessions with the tools deferred, 51 of 63 with a tool listed in front; the ToolSearch turn costs a model call of its own). Their descriptions stay the server's. | on |
+| The call rule | While the Verinoda MCP server is connected (its tools are in the request), one paragraph in the system prompt (section `verinoda-live:rule`, about 530 characters): for a why, when or what-does-it-affect question, call `analyze` once first; its output is a lead, not the answer, so confirm with one git or grep check before stating "no such change", "first added in" or why something changed; `statically_verified` and `primary_source_verified` claims are verified, `strong_inference` and below are not; a question one grep or one file read answers needs no call. Listing alone did not make the model call the tool; with the rule it called `analyze` first and cited the commit that states the reason (one headless session each, D186 spec §3). | on |
+| Re-index after edits | Edit / Write / NotebookEdit inside `ROOT` mark the file; at the end of the main loop's turn one `verinoda update --fast` runs (subagent turns do not start one). A failed update keeps its files for `/verinoda-update`. Only in a project the person opened (the session's own folder), named in the settings, or trusted with `verinoda trust`: a `.verinoda` found in an ancestor they never opened runs nothing, the pane says so, and `/verinoda-update` names the command that allows it. | on |
+| Graph state | After `--fast` the graph is rebuilt in the background; the status line says `text fresh · graph pending…` until `verinoda graph-state` reports no build holding the lock and no file changed since the latest snapshot, then `fresh ✓`. A graph left behind with no build coming (files changed outside Claude's edit tools) is named, and `/verinoda-update` takes it in. Edits made while the build runs wait for it and are indexed when it ends. | on |
+| Check after edits (`/verinoda-check on\|off`, setting `check`) | After each Edit / Write of a Python, Java or Kotlin file inside `ROOT`, `verinoda check --diff` (falling back to the file itself without git) reads the changed lines; names on them that do not exist in the project or its environment are told to the model in one line with the edit's result (as a PostToolUse note), with the nearest real names. Nothing is said when nothing is absent. A cached check takes about 3 s, never more than 60 s, and never fails the edit. The pane shows the last check (`k` toggles). A choice made with `/verinoda-check` is kept and wins in a terminal; a scripted session (`claude -p`, the Agent SDK) takes the setting as given. | off |
 | `/verinoda-improve [what to look at]` pane | A vague request ("make this better") becomes a list the person can recognise their wish in. The command asks Claude to look and **change nothing**; Claude hands the mod a ranked list through `improve_propose`; a second Turkish pane (`İyileştirme`) shows it in three groups (possible problems with `file:line` evidence, functional improvements, matters of taste) with nothing selected, the seven best ranked first and the rest folded. The person marks each item (`u` apply, `k` keep, `c` check first for a suspected problem), may add items of their own, and sends with `g`; only then does Claude work, on what was chosen, and report each outcome through `improve_report`. A suspicion is never drawn as a fact (`kanıtsız`, `tahmin`), an item without a decision is never read as rejected, and every change that was not on the list is reported. Nothing of it runs, and neither tool is listed to the model, before the command (or the `improveOffer` setting: one line in the system prompt that offers the list instead of guessing). A scripted session gets none of it. No Verinoda index is needed and nothing is stored. | command only |
-| `/verinoda-panel` pane | In Turkish (technical nouns kept): the index state as glyph + words + colour with the one action that applies (`u`), the last commit review with its risk band and a 2-line summary (`d` for the rest), auto-context as a fixed three-way control (`1`-`3`) and commit review as a two-way control (`r`), and a purple Claude mascot with glasses in the room left over, animated like Claude Code's own (it blinks and shuffles its feet; while Verinoda works it reads, a glint sweeping its lenses; `hooks/mascot.tsx`, drawn by the surface as a `Client`, so frames repaint only its region; still on surfaces without `Client`) (hidden inline, below 24 columns or when the content needs the rows). | - |
+| `/verinoda-panel` pane | In Turkish (technical nouns kept): the index state as glyph + words + colour with the one action that applies (`u`), the check after edits as a two-way control (`k`), and a purple Claude mascot with glasses in the room left over, animated like Claude Code's own (it blinks and shuffles its feet; while Verinoda works it reads, a glint sweeping its lenses; `hooks/mascot.tsx`, drawn by the surface as a `Client`, so frames repaint only its region; still on surfaces without `Client`) (hidden inline, below 24 columns or when the content needs the rows). | - |
 
-## Nudge, search or off: what was measured
+## Nothing runs from the repository
 
-Two pre-registered studies with a model in the loop:
+A cloned repository can ship a `verinoda.exe` at its root, a `.venv/` with one inside, or a `.verinoda/` folder of its
+own. The mod runs none of them (D186 §4.6):
 
-- on 57 questions over corpora of 37-226 files (`benchmarks/results/agent-compare-2026-10-02/`): offered Verinoda,
-  the agent called it in 6 of 57 sessions; told to start with `analyze` (what **nudge** says), it found the same
-  facts as searching by hand at 16 % fewer input tokens, 22 % fewer output tokens and 29 % fewer tool calls;
-  handed `query` results up front (what **search** does), it found 5-6 facts fewer: ranked leads anchor it;
-- on 51 questions over the ten real-world repositories (`benchmarks/results/agent-compare-realworld-2026-10-02/`):
-  told to start with `analyze`, it found the same facts (109 against 107 of 113, no measurable difference) at
-  **1.14x** input tokens and 0.84x output tokens: one more turn per session, the agent still reading the cited code.
-  The input saving of the small corpora did not replicate.
+- `verinoda` is resolved once at session start by walking `PATH` (with `PATHEXT` on Windows) and taking the first
+  program found in a folder that is not inside the project, so an activated project `.venv` first on `PATH` is skipped;
+  a `cli` setting that points into the project, or to a network share, is refused the same way. Without one outside
+  the project nothing runs at all, not even `trust --list`: the status line says `verinoda not found on PATH outside
+  the project · set cli`, the pane says it in Turkish, and `/verinoda-update` answers the same (a bare name handed to
+  the child would be resolved through the same `PATH`, to the project's own program). The mod needs no python of its
+  own: the graph's state comes from `verinoda graph-state --json`.
+- Every run has the user's home folder as its working directory (a drive root without one), never the repository,
+  because Windows searches a child's working directory before `PATH` and whether `$.process.run` does is unverified;
+  `--repo` names the project.
+- `update --fast`, `graph-state` and `check` run only where the person chose the index: the folder they opened, the
+  one their settings name, or one `verinoda trust --list` knows (read once per session, through the CLI). A `.verinoda`
+  in an ancestor they never opened is shown as `güvenilmiyor` and runs nothing.
 
-And what freshness itself is worth (`benchmarks/results/agent-compare-stale-2026-10-02/`, 50 questions about code
-that changed after the index was built): the fresh index the mod keeps and a stale one found the same facts, and no
-stale index led the agent into describing removed code (it reads the files on disk). On projects under 300 files
-`analyze` refreshes a stale index by itself, so there the mod adds nothing; on the larger ones a stale index cost
-about a fifth more input tokens than no index, and the fresh one brought that back (significant in one of two runs).
+`hooks/features.test.ts` puts a fake `verinoda.exe` in the project root and in its `.venv`, names both first on `PATH`,
+and checks that every process the mod runs is the one outside the project, from the home folder; with no other on
+`PATH` it checks that nothing runs, not even the trust list, and that the pane names the `cli` setting.
 
-And the check after edits (`benchmarks/results/agent-compare-guard-2026-10-02/`, 30 coding tasks, 60 real sessions):
-with it and without it the agent passed every hidden test and left no name that does not exist; the check never
-fired, because the agent read the code before every edit. It works (a deliberate removed name is caught and the model
-told), it costs about nothing, and it is on by default as a safety net; it did not change an outcome in this study.
+## What was measured, and what went (D186)
 
-And on a 27,078-file repository (`benchmarks/results/agent-compare-big-2026-10-02/`, 40 real Home Assistant bug reports,
-160 real sessions, twice): the agent with the mod and its nudge, with Graphify's own integration and with nothing found
-the same files (recall 37.3, 37.0 and 35.8 of 40; no decision reaches a claim, and a second run shows the differences
-are chance). The nudge reached every session and the agent never used Verinoda (0 of 80 sessions there, and 0 of 126 on seL4,
-the C microkernel, `benchmarks/results/agent-compare-sel4-2026-10-02/`, where an index was most likely to matter: 21 real
-bug reports, each session run three times, recall of 21 = 17.67 with nothing, 17.78 with the mod, no claim). The tools work
-(a probe asked the agent to use them and they did). An instruction at the moment of the first `grep`, Graphify's hook, was
-followed by use of its tool in a third of the seL4 sessions; the nudge, given with the prompt, in none. The mod added nothing
-to Verinoda's own setup in either study.
+The 0.6 mod had an auto-context mode (`nudge`: an instruction to start with `verinoda analyze`; `search`: `verinoda
+query` results attached to the prompt), a commit review after each git command that moved HEAD, assist features
+(located files injected, coupled-file notes, `locate` and `coupled` tools, a gate on the first search), a session-start
+warm-up of the checker, and the check after edits on by default. They are gone because the measurements gave no reason
+to keep them:
 
-So neither mode is a measured win on real code: **nudge** trades input tokens for output tokens at the same facts,
-**search** costs facts. Both stay off until the person turns one on. What the mod adds regardless of the mode is
-an index that stays fresh while Claude edits, and commit reviews.
+- **nudge**: on 57 questions over corpora of 37-226 files (`benchmarks/results/agent-compare-2026-10-02/`) the same
+  facts at 16 % fewer input tokens; on 51 questions over ten real repositories
+  (`benchmarks/results/agent-compare-realworld-2026-10-02/`) the same facts at **1.14x** input tokens: the saving did
+  not replicate. On a 27,078-file repository and on seL4 (`agent-compare-big-2026-10-02/`, `agent-compare-sel4-2026-10-02/`)
+  the agent used Verinoda in 0 of 206 nudged sessions. In the false-claims study (D185) the nudge fired once per
+  session, 875 characters, telling the model to run the CLI while the guide said to use the server.
+- **search**: 5-6 facts fewer on the small corpora (207 against 212) at 1.29x output.
+- **assist** (`inject`, `coupled`, `tool`, `prompt`, `gate`): development-set numbers only
+  (`benchmarks/agent_compare/DESIGN_ASSIST.md`); the confirmatory run has no result file, and `gate` denied the
+  model's own first search.
+- **commit review**: a guard on every shell command that mentioned git, reading HEAD before and after; no study
+  measured a gain.
+- **check after edits**: on 30 coding tasks (`benchmarks/results/agent-compare-guard-2026-10-02/`, 60 real sessions)
+  it fired 0 times in 65 edits; on SWE-bench Lite (D184) it found an absent name in 3 of 99 calls, none acted on, at
+  about $0.009 per session. It works (a deliberate removed name is caught and the model told), so it stays, off.
+- **the warm-up**: a `check --stdin` at every session start to build the checker's name index, for a check that
+  rarely runs.
+
+What replaces their delivery role is the tools in front and the call rule: in one headless session on the study's
+fastapi copy the model called `analyze` at its first tool call, confirmed the lead with `git show` and cited the commit
+that states the reason (546dc8b), where two sessions without the rule asserted the history gives none (D186 spec §3;
+one session each, an observation, not a scored measure). What freshness itself is worth is measured in
+`benchmarks/results/agent-compare-stale-2026-10-02/`: on projects under 300 files `analyze` refreshes a stale index by
+itself; on the larger ones a stale index cost about a fifth more input tokens, and the fresh one the mod keeps brought
+that back.
 
 ## Developing it
 
@@ -62,11 +81,12 @@ The live copy Claude Code hot-reloads is the session's dev-mods folder; this fol
 from here in a terminal with `claude --plugin-dir <this repository>/claude-mods/verinoda-live`.
 
 - `claude plugin validate <folder>`: what the module hooks and calls, and anything the engine would refuse.
-- `claude plugin test <folder>`: `hooks/register.test.ts` (re-index and graph watcher) and `hooks/features.test.ts`
-  (question heuristic, prompt origins, the three modes, commit review, robustness, the pane on terminal and desktop).
-  `hooks/improve.test.ts` holds the improvement list (the proposed list and its first sight, decisions, the three prompts, reports, the wired command, tools and pane); `hooks/improve.ts` is its pure part and `hooks/improve-pane.tsx` its pane and hooks.
-  `hooks/assist.test.ts` holds the assist features (presets, the tools and their placement, inject, the note on a file
-  read, the gate, the daemon and its fallback, `/verinoda-assist`); `hooks/assist.ts` is their pure part.
+- `claude plugin test <folder>`: `hooks/register.test.ts` (re-index and graph watcher), `hooks/features.test.ts` (the
+  tools in front and the call rule, nothing run from the repository, the trust gate, the check after edits, the
+  settings, the project, robustness, the pane on terminal and desktop), `hooks/check.test.ts` (the check after edits
+  and its note), `hooks/improve.test.ts` (the improvement list: the proposed list and its first sight, decisions, the
+  three prompts, reports, the wired command, tools and pane; `hooks/improve.ts` is its pure part and
+  `hooks/improve-pane.tsx` its pane and hooks) and `hooks/mascot.test.ts`.
 - Type-check: after the engine has loaded the mod once it writes `.claude-plugin/types/` and a `tsconfig.json`;
   then `tsc -p <folder>`. Both are generated and not kept here.
 

@@ -19,7 +19,7 @@ what you need before changing it. The improvement checklist pane (D175) is descr
 
 - **`.claude-plugin/types/claude-code/index.d.ts`** (about 15,000 lines) declares every event's input and result, every call
   on `$` with a doc comment and an example, and every element's props. It is the authority. Grep it for the name at hand:
-  `export type ButtonProps`, `export type InputProps`, `export type PaneOpenArgs`, `export type PromptSubmitArgs`,
+  `export type ButtonProps`, `export type InputProps`, `export type PaneOpenArgs`, `export type PromptComposeInput`,
   `export type ToolSpec`, `export type CommandRunResult`, `Pane: {`, `'tool.call'`.
 - Claude Code writes that folder each time it loads the mod, and git ignores it. If it is missing, start
   `claude --plugin-dir claude-mods/verinoda-live` once in a terminal (or ask the person to). Written against Claude Code
@@ -32,15 +32,15 @@ what you need before changing it. The improvement checklist pane (D175) is descr
 
 | file | holds |
 |---|---|
-| `hooks/register.tsx` | the wiring: every `on(...)`, the session state (atoms), the module state (`live`, `cfg`), the pane's drawing |
-| `hooks/assist.ts` | the pure part of the assist features (parsing, rendering, tool specs); `hooks/assist.test.ts` tests it and its wiring |
+| `hooks/register.tsx` | the wiring: every `on(...)`, the session state (atoms), the module state (`live`, `cfg`), the tools-in-front hook and the call rule, where Verinoda runs from, the trust gate, the pane's drawing |
 | `hooks/improve.ts`, `hooks/improve-pane.tsx` | the improvement list: its pure part (`improve.test.ts` tests it and its wiring) and its pane and hooks; `register.tsx` calls a few lines of it |
 | `hooks/mascot.tsx` | a `Client` module: the animated mascot |
 | `types/index.d.ts` | the contract: `PluginState['verinoda-live']` (every `$.state` key) and `McpToolInputs` (the tools' arguments) |
 | `hooks/*.test.ts` | the tests, run by `claude plugin test` |
 
-A new feature follows `assist`: its logic that needs no `$` goes in a file of its own with its own tests, and `register.tsx`
-gets as little as wires it in. `register.tsx` is about 1,270 lines; do not grow it by a feature's whole body.
+A new feature follows `improve`: its logic that needs no `$` goes in a file of its own with its own tests, and `register.tsx`
+gets as little as wires it in. `register.tsx` is about 760 lines (1,270 before D186 cut the auto-context, assist and review
+features); do not grow it by a feature's whole body.
 
 ## Checks: all three pass before you say it is done
 
@@ -48,13 +48,13 @@ Run from the repository root.
 
 ```
 claude plugin validate claude-mods/verinoda-live        # ends with "Validation passed"
-claude plugin test claude-mods/verinoda-live            # 124 pass, 0 fail in 6 files (88 in 5 before the improvement list)
+claude plugin test claude-mods/verinoda-live            # 84 pass, 0 fail in 5 files (125 in 6 before D186)
 npx --yes -p typescript tsc -p claude-mods/verinoda-live --noEmit   # exit 0 and no output (without --noEmit it writes .js files beside the sources)
 ```
 
 `validate` also lists what the module hooks, calls, reads and writes: read that list after a change, it is the quickest
 sign that the engine sees what you meant. It holds every `$.state` key the module names to the contract in
-`types/index.d.ts`.
+`types/index.d.ts`, and every `$.env.get` name (see fact 15).
 
 ## How the tests work
 
@@ -65,10 +65,10 @@ drive the plugin through `$`:
 ```ts
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-test('the pane draws the settings and a press changes one', async ($, on) => {
+test('the pane draws the setting and a press changes it', async ($, on) => {
   const clock = mock.clock(on)          // $.clock under the test's control
-  mock.store(on, { auto: 'nudge' })     // $.store with what an earlier session chose (mock.store(on): empty)
-  world(on)                             // fs, process.run, prompt.submit, tool.call ... answered here
+  mock.store(on, { check: true })       // $.store with what an earlier session chose (mock.store(on): empty)
+  world(on)                             // fs, env, process.run, prompt.compose, tool.call ... answered here
   await $.session.start({ cwd: 'C:/work/proj', surface: 'terminal', isInteractive: true } as never)
   await clock.settle()                  // the background work session.start began has answered
   const pane = await $.ui.mount({
@@ -76,9 +76,9 @@ test('the pane draws the settings and a press changes one', async ($, on) => {
     props: { title: 'Verinoda', isFocused: true, bodyColumns: 48, placement: 'dock', scroll: { offset: 0, bodyRows: 40 } } as never,
   })
   expect(await pane.find({ text: /✓ Index güncel/ })).toBeDefined()
-  expect((await pane.find({ key: 'auto-off' }))?.props.label).toBe('Kapalı')
-  await $.ui.press({ plugin: 'verinoda-live', key: 'auto-off' })            // a Button, by its key
-  expect((await pane.find({ key: 'auto-off' }))?.props.label).toBe('● Kapalı')
+  expect((await pane.find({ key: 'check-off' }))?.props.label).toBe('Kapalı')
+  await $.ui.press({ plugin: 'verinoda-live', key: 'check-off' })          // a Button, by its key
+  expect((await pane.find({ key: 'check-off' }))?.props.label).toBe('● Kapalı')
 })
 ```
 
@@ -86,9 +86,14 @@ An `Input` a feature draws is typed into with `await $.ui.input({ plugin: 'verin
 (Enter with that text; `kind: 'change'` for an edit without Enter).
 
 `$.command.run({ command: 'verinoda-panel', args: '' } as never)` runs a command;
-`$.tool.call({ tool: 'mcp__verinoda-live__locate', text: '...' } as never)` calls a tool as the model would;
-`$.prompt.submit(...)` raises a prompt; a hook the test registers on `prompt.submit` sees what the plugin submitted. Read
-`hooks/features.test.ts` (the pane, on terminal and desktop) and `hooks/assist.test.ts` (tools) before writing a test.
+`$.tool.call({ tool: 'mcp__verinoda-live__improve_propose', ... } as never)` calls a tool as the model would, and what it
+resolves to carries the `context` a hook added; `$.prompt.compose({ model, promptModel, surfaces, tools, outputStyle, traits })`
+renders the system prompt (the plugin's `prompt.compose` hook reads `e.tools`, so a test names the tools the request offers);
+`$.tool.describe({ tool, description, isDeferred: true })` asks where a tool is listed. Read `hooks/features.test.ts` (the pane
+on terminal and desktop, the trust gate, nothing run from the repository) and `hooks/improve.test.ts` (tools) before writing a
+test. The test body's own `$` drives the plugin (session, tool, command, prompt, ui); only the plugin's `$` inside a hook has
+`fs`, `env` and `process`, so a test answers those with `on('fs.stat', ...)`, `mock.env(on, {...})` and `on('process.run', ...)`
+and never calls them itself.
 
 ## Conventions of this mod
 
@@ -103,12 +108,22 @@ An `Input` a feature draws is typed into with `await $.ui.input({ plugin: 'verin
 - Work that must not hold up a hook is started with `background(promise)`.
 - Every element that can be pressed, typed into or found by a test has a `key`.
 - Comments say why (and what was measured), not what the next line does.
+- **Nothing the mod runs comes from the opened repository** (D186 §4.6): the CLI is `cfg.cli`, resolved once from `PATH`
+  outside the root (`resolveTools`), every process goes through `runCli` with the user's home as its working directory and
+  `--repo` naming the project, and `update`, `graph-state` and `check` run only when `live.isAllowed` (the root is the
+  session's folder, named in the settings, or on `verinoda trust --list`). A new process the mod runs keeps all three.
+  When `PATH` names no program outside the root, `cfg.cli` is empty and nothing runs (`nocli`: `runCli` rejects,
+  `live.isAllowed` is false, the trust list is not read); never fall back to a bare name, which the child resolves
+  through the same `PATH`. A test world that expects a run names a `PATH` outside the project (`mock.env`).
 
 ## Facts about the host that cost time to find
 
-1. **A plugin's tool is deferred behind ToolSearch unless a hook says otherwise**, and a tool the model must look up first is
-   not called. `tool.describe` answers `{ description, isDeferred: false }` for the mod's tools (see the hook in
-   `register.tsx`); add a new tool to its matcher.
+1. **A plugin's tool, and an MCP server's, is deferred behind ToolSearch unless a hook says otherwise**, and a tool the
+   model must look up first is not called. `tool.describe` answers `{ description, isDeferred: false }` for the mod's own
+   tools (the improvement list's, in `improve-pane.tsx`) and for the Verinoda server's three core tools
+   (`MCP_CORE_TOOLS` in `register.tsx`, named as the model names them, `mcp__verinoda__<tool>`); add a new tool to the
+   matcher that fits. The hook pins only tools present at session start; a tool that appears after the first model call
+   stays deferred, because moving it into the tools array invalidates the cached prefix (about 16k tokens).
 2. **A plugin tool's result must be a plain string** (`{ result: 'text' }`). Any other shape fails the engine's check.
 3. **`$.store` is one file per plugin, shared by every session that loads the mod and rewritten by each at its end.** A
    choice stored in one terminal once reached scripted sessions that never asked for it. A session with nobody at the
@@ -130,9 +145,9 @@ An `Input` a feature draws is typed into with `await $.ui.input({ plugin: 'verin
    hook returns; this was not tried): start it with `background(...)`.
 8. A plugin's prompt is shown to the model as "the plugin sent a message" unless it is submitted with `asUser: true`, which
    the model reads bare, as the person's own words (the transcript still names the plugin, and an `@file` mention in a
-   plugin's prompt is not expanded). This mod's own `prompt.submit` hook treats an `asUser` plugin prompt as the person's
-   (`isPersonsPrompt`): it starts a task for the gate and may attach auto-context. A prompt the mod itself submits must be
-   let through that hook untouched.
+   plugin's prompt is not expanded). The improvement list's prompts are submitted so. The mod hooks `prompt.submit` no more
+   (the auto-context and the gate went with D186), so nothing is attached to any prompt; the call rule is a `prompt.compose`
+   section instead, present while the request's tools name the Verinoda server's.
 9. `/verinoda` belongs to the Verinoda agent skill, which takes the slash before a plugin command: the mod's commands are
    `verinoda-<word>`.
 10. Surfaces differ: `mobile` has no `Input` and no `Select`; narrow on `e.surface` and draw without them there. A tree that
@@ -151,6 +166,10 @@ An `Input` a feature draws is typed into with `await $.ui.input({ plugin: 'verin
     ends.
 14. In the test engine a mounted pane redraws what a tool call or a turn event changed when it is next read (`find`,
     `drawn`): read before you press. The engine raises no `turn.complete` for a command; a test raises it.
+15. **`$.env.get` takes a literal name** (`$.env.get('PATH')`, never `$.env.get(name)`): the host lists the variables a
+    module reads and refuses the module at load otherwise, in `validate` and in every test.
+16. `$.process.run` has no `which`: a program is found by walking `$.env.get('PATH')` with `$.fs.stat` (`fromPath` in
+    `register.tsx`), which runs nothing; `where` would itself be a program found by the child's own search.
 
 ## What you cannot check, and must say so
 

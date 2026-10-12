@@ -1,9 +1,5 @@
-// What the verinoda-live pane draws from, held by the host for the session (the two settings are also kept in the
+// What the verinoda-live pane draws from, held by the host for the session (the check setting is also kept in the
 // mod's store across sessions).
-
-// off: nothing; nudge: ask the agent to start with Verinoda's analyze (measured: same facts, lower cost);
-// search: attach Verinoda's query results to the prompt (measured: lower cost but a few facts fewer).
-export type AutoMode = 'off' | 'nudge' | 'search'
 
 // The index as the pane shows it; every kind has a glyph and words, colour only reinforces them.
 export type IndexKind =
@@ -17,6 +13,8 @@ export type IndexKind =
   | 'failed' // the last update failed; its files are kept
   | 'unknown' // the graph state could not be read
   | 'noindex' // no .verinoda in the project
+  | 'nocli' // no verinoda on PATH outside the project (and no `cli` setting naming one): nothing runs (D186)
+  | 'untrusted' // the .verinoda found is in an ancestor the person did not open or trust: nothing runs (D186)
 
 export type IndexState = {
   kind: IndexKind
@@ -24,33 +22,10 @@ export type IndexState = {
   waiting: boolean // pending while a graph build runs: they go in when it ends
   since: number | null // ms: when the graph build started (graph)
   at: number | null // ms: when the index was last seen fresh in this session
-  error: string // failed: the first line of the CLI's error
+  error: string // failed: the first line of the CLI's error; untrusted: the folder with the index; nocli: the name looked for
 }
 
 export type Notice = { text: string; tone: 'ok' | 'warn' | 'err' }
-
-export type ContextInfo = {
-  prompt: string // the prompt's head, for the pane
-  mode: AutoMode
-  ok: boolean
-  chars: number // attached characters (0 when nothing was attached)
-  seconds: number
-  note: string // why nothing was attached, or the empty string
-  at: number // ms
-}
-
-export type ReviewInfo = {
-  ok: boolean
-  risk: string // "52/100 (high)" or the empty string, for the toast
-  score: number | null
-  of: number
-  band: string // low | medium | high, as the review names it, or the empty string
-  findings: number
-  summary: string // the review's own one-paragraph summary, cut at 600 characters
-  seconds: number
-  sha: string // the reviewed commit, short
-  at: number // ms
-}
 
 // The last check of an edit (`verinoda check`): what the model was told, for the pane.
 export type CheckInfo = {
@@ -98,10 +73,8 @@ export type ImproveState = {
 }
 
 declare module 'claude-code' {
-  // The tools the mod registers (feature `tool`), so a `tool.call` hook can name them and read their arguments.
+  // The tools the mod registers (the improvement list's), so a `tool.call` hook can name them and read their arguments.
   interface McpToolInputs {
-    'mcp__verinoda-live__locate': { text: string; files?: string[] }
-    'mcp__verinoda-live__coupled': { files: string[] }
     'mcp__verinoda-live__improve_propose': {
       subject: string
       items: { id: string; group: 'problem' | 'improvement' | 'taste'; title: string; observation: string; why: string;
@@ -118,15 +91,8 @@ declare module 'claude-code' {
       status: string
       idx: IndexState
       notice: Notice | null
-      auto: AutoMode
-      guard: boolean
-      check: boolean // check every edit of a Python, Java or Kotlin file (on unless turned off)
+      check: boolean // check every edit of a Python, Java or Kotlin file (off unless the setting or /verinoda-check turns it on)
       lastCheck: CheckInfo | null
-      lastContext: ContextInfo | null
-      lastReview: ReviewInfo | null
-      reviewing: string | null // the short sha of the commit under review
-      expanded: boolean // the review summary shown whole
-      assist: string // the assist setting: a preset (off, inject, tool, full, strict) or a list of features
       improve: ImproveState // the improvement checklist pane's whole state
     }
   }

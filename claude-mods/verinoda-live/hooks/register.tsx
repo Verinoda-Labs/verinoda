@@ -1,12 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AutoMode, CheckInfo, ContextInfo, ImproveState, IndexKind, IndexState, Notice, ReviewInfo } from '../types'
-import {
-  ASSIST_USAGE, assistFeatures, assistPrompt, COUPLED_TOOL, coupledNote, isBlockedSearch, isSourceFile, LOCATE_TOOL, parseAssist,
-  renderLocate, TOOL_SPECS,
-} from './assist'
-import type { Features, Located } from './assist'
+import type { CheckInfo, ImproveState, IndexKind, IndexState, Notice } from '../types'
 import { IMPROVE_SPECS, initialImprove, reviewPrompt, undoSend } from './improve'
 import { COMMAND as IMPROVE_COMMAND, endOfTurn, improveSections, mod as improveMod, registerImprove } from './improve-pane'
 import { frameRows, MASCOT_HEIGHT, MASCOT_WIDTH } from './mascot'
@@ -17,98 +12,63 @@ const GRAPH_POLL_MS = 1_000
 const GRAPH_WAIT_MS = 10 * 60_000
 // Unlocked yet behind this long: no build is coming (files changed outside Claude's edit tools).
 const GRAPH_STALL_MS = 15_000
-// Auto-context runs `query` (median 2.2 s, at most 4.5 s on the agent study's corpora), not `analyze` (up to 55 s
-// on this repository): it runs before the prompt is sent, so it must be quick.
-const CONTEXT_TIMEOUT_MS = 15_000
-const CONTEXT_MAX_CHARS = 12_000
-const REVIEW_TIMEOUT_MS = 3 * 60_000
 // The host's longest wait for a process (10 min). `verinoda update` itself waits up to 600 s for the build lock, so
 // the mod never starts one while its own background build holds it (reindex defers to the watcher instead).
 const UPDATE_TIMEOUT_MS = 600_000
+const TRUST_TIMEOUT_MS = 20_000
 const NOTICE_MS = 6_000
-
-// `update --fast` takes the text in at once and rebuilds the graph in a background `verinoda update`.
-// The graph has caught up when no build holds the lock and no file changed since the latest snapshot
-// (the background build records it); the lock alone misses a build that has not taken it yet.
-// Run with the repo as cwd, `-c` puts the cwd ('') first on sys.path, which would import the repo's own verinoda/
-// when the repo is Verinoda's source; dropped first (`-P` would need Python 3.11, Verinoda supports 3.10).
-const GRAPH_STATE =
-  'import sys; sys.path[:] = [p for p in sys.path if p]; ' +
-  'import json; from pathlib import Path; from verinoda import buildlock, freshness; ' +
-  "r = Path(sys.argv[1]); print(json.dumps({'locked': buildlock.is_locked(r), " +
-  "'behind': freshness.check(r).get('count', 0)}))"
 const EDIT_TOOLS = ['Edit', 'Write', 'NotebookEdit'] as const
-const SHELL_TOOLS = ['Bash', 'PowerShell'] as const
+// the Verinoda MCP server's tools, as the model names them; the three of its core profile are listed in front
+const MCP_TOOL_PREFIX = 'mcp__verinoda__'
+const MCP_CORE_TOOLS = ['mcp__verinoda__analyze', 'mcp__verinoda__project_query', 'mcp__verinoda__run_tool'] as const
 
 // After each edit of a file `verinoda check` reads (Python, Java, Kotlin), the names the edited lines use that do not
-// exist in the project or its environment are told to the model with the edit's result. A cached check takes about
-// 3 s; the first one in an environment builds a name index (about 90 s on sqlmodel), so the session start warms it
-// on a snippet that is not in the project. The edit never waits longer than CHECK_TIMEOUT_MS for it.
+// exist in the project or its environment are told to the model with the edit's result. Off unless asked (D186 §4.4):
+// 0 notes in 65 edits of the guard study, an absent name in 3 of 99 SWE-bench calls and none acted on. A cached check
+// takes about 3 s; the edit never waits longer than CHECK_TIMEOUT_MS for it.
 const CHECKABLE = /\.(py|pyi|java|kt|kts)$/i
 const CHECK_TIMEOUT_MS = 60_000
-const WARM_TIMEOUT_MS = 300_000
 const CHECK_NOTE_MAX = 8
-const WARM_SNIPPET = 'import os\n\n\ndef _verinoda_warm(x):\n    return os.path.join(x.name, "a")\n'
 
-// A prompt worth a code search: a question by its mark, its first word or a Turkish question particle. Boundaries
-// are spelled out because \b is ASCII-only and Turkish words end in letters it does not know.
-const END = String.raw`(?=[\s?.,!:;]|$)`
-const QUESTION_START = new RegExp(
-  String.raw`^(how|why|where|what|which|who|when|does|do|is|are|can|could|should|explain|show|find|list|trace|` +
-    String.raw`nasıl|neden|niye|niçin|nerede|nereden|nereye|ne|neler|hangi|kim|kimler|açıkla|göster|bul|listele)` + END,
-  'i',
-)
-const QUESTION_PARTICLE = new RegExp(String.raw`\s(mi|mı|mu|mü|misin|mısın|mudur|müdür)` + END, 'i')
-// Turkish puts its question word anywhere ("Kor Ocağı her tickte ne yapıyor"); so do English how/why/where/which.
-const QUESTION_ANYWHERE = new RegExp(
-  String.raw`(?:^|[\s"'(])(nasıl|neden|niye|niçin|nerede|nereden|nereye|ne|neler|hangi|hangisi|kim|kimler|how|why|where|which)` + END,
-  'i',
-)
-// A shell command that may move HEAD; whether it did is read from HEAD itself, before and after.
-const GIT_WORD = /\bgit\b/
-
-// The assist features (./assist.ts) run `verinoda locate` and `verinoda coupled`. A daemon, when the CLI has one, keeps the
-// graph loaded (loading it takes 3 s on seL4 and about 30 s on Home Assistant) and the commands ask it by themselves; the mod
-// only runs them. (A call of the host's own HTTP has a time limit that a big repository's answer can pass: the first
-// version asked the daemon that way and Home Assistant's answers, 10 to 100 s, were dropped.) A command's limit is ten minutes.
-const LOCATE_TIMEOUT_MS = 300_000
-const DAEMON_START_TIMEOUT_MS = 120_000
-const LOCATE_TEXT_MAX = 4_000 // of a report, what the lookup is given: a command line has a limit
-const LOCATE_ANSWER_MAX = 1_800
-const ANCHORS_MAX = 5
-const COUPLED_BUDGET = 6 // notes about a file's partners, per session: each is a lookup and a few hundred tokens
-const TASK_MIN_CHARS = 40 // a prompt shorter than this is not a task to locate
-const ASSIST_TOOL = (name: string) => `mcp__verinoda-live__${name}`
-// the Verinoda MCP server's listed tools (its core profile), as the model names them
-const MCP_CORE_TOOLS = ['mcp__verinoda__analyze', 'mcp__verinoda__project_query', 'mcp__verinoda__run_tool'] as const
+// The call rule (D186 §4.6), a section of the system prompt while the Verinoda MCP server is connected. The tools listed
+// in front alone did not make the model call them (one headless session: Grep, Read, Read, Bash); with this paragraph it
+// called analyze first, confirmed the lead with `git show` and cited the commit that states the reason (546dc8b) where
+// two sessions without it asserted the history gives none. The one own check it asks for costs about one model call on
+// history questions and is priced in the design's cost model (1.1-1.2x of plain Claude Code, modelled).
+export const RULE_SECTION = 'verinoda-live:rule'
+export const CALL_RULE =
+  'For a why, when or what-does-it-affect question about this repository, call `mcp__verinoda__analyze` once with the ' +
+  'question first: it returns a verdict and leads with file:line and commits. Its output is a lead, not the answer: ' +
+  "confirm with one git or grep check of your own before stating 'no such change', 'first added in' or why something " +
+  'changed. `statically_verified` and `primary_source_verified` claims are verified; `strong_inference` and below are ' +
+  'not. A question one grep or one file read answers needs no Verinoda call.'
 
 const CHECKING: IndexState = { kind: 'checking', n: 0, waiting: false, since: null, at: null, error: '' }
 
-// Session state the drawing reads (declared in ../types); settings are also kept in $.store across sessions.
+// Session state the drawing reads (declared in ../types); the check setting is also kept in $.store across sessions.
 const status = atom({ plugin: 'verinoda-live', key: 'status' } as const, '')
 const idx = atom({ plugin: 'verinoda-live', key: 'idx' } as const, CHECKING)
 const notice = atom({ plugin: 'verinoda-live', key: 'notice' } as const, null as Notice | null)
-const auto = atom({ plugin: 'verinoda-live', key: 'auto' } as const, 'off' as AutoMode)
-const guard = atom({ plugin: 'verinoda-live', key: 'guard' } as const, false)
-const check = atom({ plugin: 'verinoda-live', key: 'check' } as const, true)
+const check = atom({ plugin: 'verinoda-live', key: 'check' } as const, false)
 const lastCheck = atom({ plugin: 'verinoda-live', key: 'lastCheck' } as const, null as CheckInfo | null)
-const lastContext = atom({ plugin: 'verinoda-live', key: 'lastContext' } as const, null as ContextInfo | null)
-const lastReview = atom({ plugin: 'verinoda-live', key: 'lastReview' } as const, null as ReviewInfo | null)
-const reviewing = atom({ plugin: 'verinoda-live', key: 'reviewing' } as const, null as string | null)
-const expanded = atom({ plugin: 'verinoda-live', key: 'expanded' } as const, false)
-const assist = atom({ plugin: 'verinoda-live', key: 'assist' } as const, 'off')
 // the improvement list's state (D175); ./improve-pane.tsx declares the same source, because the scan reads an atom where it is used
 const improve = atom({ plugin: 'verinoda-live', key: 'improve' } as const, initialImprove())
 
-// Where Verinoda is, settled at session start from the plugin's settings (`userConfig`), else found: the project is
-// the nearest folder at or above the session's with a .verinoda index; the CLI is the project's own .venv one if it
-// has one, else `verinoda` on PATH; the Python beside that CLI reads the graph's state.
-const cfg = { cli: 'verinoda', python: 'python', motion: true, auto: 'off' as AutoMode, assist: 'off' }
+// Where Verinoda runs from, settled at session start (D186 §4.6: nothing the mod runs comes from the opened repository).
+// `cli` is the program: the setting's path when it lies outside the project, else what PATH names outside the project,
+// else nothing (''), and then nothing runs: the child inherits this PATH, so a bare name handed to it would be the
+// project's own program when that is the only one (an activated .venv with no install outside). `cwd` is the working
+// directory of every run: the user's home (a drive root without one), never the repository, because Windows searches a
+// child's working directory before PATH and whether $.process.run does is unverified; `--repo` names the project. The
+// settings' `python` went with the python probe (`verinoda graph-state`).
+const cfg = { cli: '', cwd: '', check: false, motion: true }
 
 // Module state: a reload starts it over, which only forgets edits not yet indexed.
 const live = {
   root: undefined as string | undefined,
   cwd: '',
+  missingCli: '', // the name PATH had no program for outside the project; '' once one is found (or the settings name one)
+  isAllowed: false, // a program was found, and the root is the session's folder, the settings' one, or trusted with `verinoda trust`
   pending: new Set<string>(),
   isChecking: true, // the session-start look at the graph has not answered yet
   isRunning: false,
@@ -121,50 +81,14 @@ const live = {
   isUnknown: false,
   failed: null as { n: number; error: string } | null,
   freshAt: null as number | null,
-  isReviewing: false,
-  reviewAgain: false, // a commit landed while a review ran: review once more when it ends
-  task: '', // the person's latest prompt long enough to be a task: what the gate and the tools locate from
-  reads: [] as string[], // the project's files the model has opened, relative, in order
-  coupledAsked: new Set<string>(),
-  usedLocate: false, // the model called the locate tool for this task
-  gated: false, // the gate has answered the first search of this task
-  daemonStart: undefined as Promise<void> | undefined,
 }
 
 export function norm(p: string): string {
   return p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
 }
 
-// The person's own words: typed at the composer, sent through the Remote Control bridge, or submitted by a plugin
-// as the person's (`asUser`); never a notification, a peer, a schedule or a plugin speaking for itself.
-export function isPersonsPrompt(origin: { kind: string; asUser?: true } | undefined): boolean {
-  if (origin === undefined) return false
-  // `sdk` is `claude -p` and the Agent SDK: the script's own prompt is the person's, there is no one else it could be
-  return origin.kind === 'composer' || origin.kind === 'bridge' || origin.kind === 'sdk' ||
-    (origin.kind === 'plugin' && origin.asUser === true)
-}
-
-// `max` is what a prompt may be to count: a search takes the prompt as its query, so it stays short (2,000); a nudge
-// searches nothing, and a bug report pasted into the question is still a question about where the code is.
-export const NUDGE_MAX_CHARS = 20_000
-export function looksLikeCodeQuestion(text: string, max = 2_000): boolean {
-  const t = text.trim()
-  if (t.length < 12 || t.length > max || /^[/!#]/.test(t)) return false
-  return t.includes('?') || QUESTION_START.test(t) || QUESTION_PARTICLE.test(t) || QUESTION_ANYWHERE.test(t)
-}
-
-// The nudge is round 2's `verinoda_first` instruction of the agent comparison (benchmarks/agent_compare): with it the
-// agent found the same facts as searching by hand at 16 % fewer input and 29 % fewer tool calls. Nothing runs first.
-export function nudgeBlock(root: string, verinoda: string): string {
-  // the path has no spaces, so it runs unquoted in bash and PowerShell alike
-  return (
-    `[Verinoda auto-context] This project has a Verinoda code index (${root}). For this question, start by running ` +
-    `Verinoda's analyze on it before any other search: ${verinoda} analyze "<the question>" --repo ${root} ` +
-    `(and ${verinoda} query "<names it surfaces>" --repo ${root}); then verify and complete with your own reading ` +
-    'as needed. Use this CLI with --repo: a Verinoda MCP server, if one is connected, may index another folder. ' +
-    'Its claims carry file:line evidence and a status; never state an inference or unknown as fact.'
-  )
-}
+// slashes made forward, case kept: a case-sensitive file system finds a folder only as it is spelled
+const slashes = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '')
 
 export function isCheckable(path: string): boolean {
   return CHECKABLE.test(path)
@@ -184,50 +108,25 @@ function badSites(report: { sites?: CheckSite[] }, rel: string): CheckSite[] {
     (s.verdict === 'absent' || s.verdict === 'mismatch') && norm(s.path ?? '') === norm(rel))
 }
 
-// The note the model reads after an edit: the edited file's sites `verinoda check` found absent or mismatched (an
-// unknown is not checked, so it is never reported), with the nearest real names; undefined when there are none.
+// The note the model reads after an edit, one line: the edited file's sites `verinoda check` found absent or mismatched
+// (an unknown is not checked, so it is never reported), each with the nearest real names; undefined when there are none,
+// which is nearly always (D186 §4.4), so a note is rare and short.
 export function checkNote(root: string, file: string, report: { sites?: CheckSite[] }, cli: string): string | undefined {
   const rel = relPath(root, file)
   const bad = badSites(report, rel)
   if (bad.length === 0) return undefined
-  const lines = bad.slice(0, CHECK_NOTE_MAX).map(s => {
+  const sites = bad.slice(0, CHECK_NOTE_MAX).map(s => {
     const near = (s.nearest ?? []).map(n => n.name).filter(Boolean).slice(0, 3)
-    return `- ${s.at ?? rel} ${s.expr ?? s.name ?? ''}: ${s.message ?? s.verdict}${near.length ? `; nearest: ${near.join(', ')}` : ''}`
+    return `${s.at ?? rel} ${s.expr ?? s.name ?? ''}: ${s.message ?? s.verdict}${near.length ? ` (nearest: ${near.join(', ')})` : ''}`
   })
-  const more = bad.length > CHECK_NOTE_MAX ? [`(${bad.length - CHECK_NOTE_MAX} more: ${cli} check --diff --repo ${root})`] : []
-  return [
-    `[Verinoda check] The lines you just changed in ${rel} use ` +
-      `${bad.length === 1 ? 'a name that does' : `${bad.length} names that do`} not exist in this project or its ` +
-      'environment (a static check; runtime-made names are never reported):',
-    ...lines,
-    ...more,
-    'Fix them before relying on this code; the nearest real names are listed, and ' +
-      `${cli} api <module or class> --repo ${root} lists what one defines.`,
-  ].join('\n')
+  const more = bad.length > CHECK_NOTE_MAX ? ` (+${bad.length - CHECK_NOTE_MAX} more: ${cli} check --diff --repo ${root})` : ''
+  const what = bad.length === 1 ? 'a name that does' : `${bad.length} names that do`
+  return `[Verinoda check] The lines you changed in ${rel} use ${what} not exist in this project or its environment ` +
+    `(a static check; runtime-made names are never reported): ${sites.join('; ')}${more}`
 }
 
-// `verinoda query` reads filters in its question (path: file: lang: symbol: is:, /regex/, AND OR NOT); a prompt is
-// plain text, so those spellings are taken apart before it is passed on.
-export function plainQuery(prompt: string): string {
-  return prompt
-    .replace(/(^|[\s(])(-?)(path|file|lang|language|symbol|is):(?=\S)/gi, '$1$2$3 ')
-    .replace(/(^|\s)\/([^/\s][^/]*)\/(?=\s|$)/g, '$1$2')
-    .replace(/(^|\s)(AND|OR|NOT)(?=\s|$)/g, (_, pre: string, op: string) => pre + op.toLowerCase())
-    .replace(/[()]/g, ' ')
-}
-
-export function contextBlock(root: string, retrieved: string): string {
-  const body = retrieved.length > CONTEXT_MAX_CHARS ? `${retrieved.slice(0, CONTEXT_MAX_CHARS)}\n[cut]` : retrieved
-  return (
-    `[Verinoda auto-context] Ranked code passages Verinoda retrieved for this prompt from its index of ${root} ` +
-    '(the index can be behind the working tree). They are leads with file:line locations, not verified answers: ' +
-    'use what helps, check what you rely on.\n\n' +
-    body
-  )
-}
-
-// Work left running after a hook returns (a re-index, the graph watcher, a review): a reload or the end of the
-// session aborts its $ calls, which is no error of the person's, so the rejection is dropped here.
+// Work left running after a hook returns (a re-index, the graph watcher): a reload or the end of the session aborts
+// its $ calls, which is no error of the person's, so the rejection is dropped here.
 function background(work: Promise<unknown>): void {
   work.catch(() => undefined)
 }
@@ -236,14 +135,16 @@ function plural(n: number): string {
   return `${n} file${n === 1 ? '' : 's'}`
 }
 
-function seconds(fromMs: number, toMs: number): number {
-  return Math.round((toMs - fromMs) / 100) / 10
-}
-
 function isInside(path: string, root: string): boolean {
   const p = norm(path)
   const r = norm(root)
   return p === r || p.startsWith(`${r}/`)
+}
+
+// Is the Verinoda MCP server connected? The request's tool list names its tools; a `.mcp.json` would only say it is
+// configured. No index is needed: the server indexes the project it was set up for.
+export function isServerConnected(tools: readonly string[] | undefined): boolean {
+  return (tools ?? []).some(t => t.startsWith(MCP_TOOL_PREFIX))
 }
 
 // The index state from the module's fields, as the pane reads it and as the status line says it (in English, as the
@@ -253,6 +154,11 @@ export function indexState(): { state: IndexState; line: string } {
   const at = (kind: IndexKind, n: number, line: string, extra: Partial<IndexState> = {}) =>
     ({ state: { ...base, kind, n, ...extra }, line })
   if (live.root === undefined) return at('noindex', 0, `no .verinoda index at or above ${live.cwd}`)
+  // before the trust gate: without the CLI the trust list cannot be read, so trust is unknown, not refused
+  if (live.missingCli !== '') {
+    return at('nocli', 0, `${live.missingCli} not found on PATH outside the project · set \`cli\``, { error: live.missingCli })
+  }
+  if (!live.isAllowed) return at('untrusted', 0, `index at ${live.root} not trusted · verinoda trust ${live.root}`, { error: live.root })
   if (live.isRunning) return at('updating', live.runningCount, `updating (${plural(live.runningCount)})…`)
   if (live.failed !== null) {
     return at('failed', live.failed.n, `update failed · ${plural(live.failed.n)} kept for /verinoda-update`, { error: live.failed.error })
@@ -274,63 +180,36 @@ function publish($: EngineInterface): void {
   update($, idx, () => state).catch(() => undefined)
 }
 
-const MODES: readonly AutoMode[] = ['off', 'nudge', 'search']
-
-export function asMode(value: unknown): AutoMode {
-  if (value === true) return 'nudge' // 0.2.0-dev stored a boolean
-  return MODES.includes(value as AutoMode) ? (value as AutoMode) : 'off'
-}
-
-async function setAuto($: EngineInterface, mode: AutoMode): Promise<void> {
-  await update($, auto, () => mode)
-  await $.store.set('auto', mode)
-}
-
-async function setGuard($: EngineInterface, value: boolean): Promise<void> {
-  await update($, guard, () => value)
-  await $.store.set('guard', value)
-}
-
 async function setCheck($: EngineInterface, value: boolean): Promise<void> {
   await update($, check, () => value)
   await $.store.set('check', value)
 }
 
-async function setAssist($: EngineInterface, value: string): Promise<void> {
-  await update($, assist, () => value)
-  await $.store.set('assist', value)
-}
-
-async function features($: EngineInterface): Promise<Features> {
-  return assistFeatures(await read($, assist))
-}
-
-// Auto-context and commit review start off, the check after edits on; what the person chose last is kept in the store.
-// A scripted session (`claude -p`, the Agent SDK) has nobody at the keyboard, so what was chosen there is not read: it
-// takes the settings (`pluginConfigs`) as they are given. (The store is shared by every session that loads the mod and
-// rewritten by each at its end: a choice made once in a terminal would otherwise reach the arms of a study that never
-// asked for it, and did.)
+// The check after edits starts from the setting (`userConfig.check`, off unless set); what the person chose last with
+// /verinoda-check is kept in the store and wins. A scripted session (`claude -p`, the Agent SDK) has nobody at the
+// keyboard, so what was chosen there is not read: it takes the settings (`pluginConfigs`) as they are given. (The store
+// is shared by every session that loads the mod and rewritten by each at its end: a choice made once in a terminal
+// would otherwise reach the arms of a study that never asked for it, and did.)
 async function loadSettings($: EngineInterface, isInteractive: boolean): Promise<void> {
-  // the setting (`userConfig.auto`) is where a session starts that has never been asked; a stored choice wins
-  const storedChoice = (key: string) => (isInteractive ? $.store.get(key) : Promise.resolve(undefined))
-  const stored = await storedChoice('auto')
-  const mode = stored === undefined ? cfg.auto : asMode(stored)
-  const isGuard = (await storedChoice('guard')) === true
-  const isCheck = (await storedChoice('check')) !== false
-  const storedAssist = await storedChoice('assist')
-  await update($, auto, () => mode)
-  await update($, guard, () => isGuard)
-  await update($, check, () => isCheck)
-  await update($, assist, () => (typeof storedAssist === 'string' ? storedAssist : cfg.assist))
+  const stored = isInteractive ? await $.store.get('check') : undefined
+  await update($, check, () => (typeof stored === 'boolean' ? stored : cfg.check))
+}
+
+// Every run of the CLI: the resolved program, the user's home as the working directory, the project named with --repo.
+// Without a program nothing is run (the gates on `live.isAllowed` never ask; every caller takes the rejection as a run
+// that failed): a bare name must never reach $.process.run, whose child would resolve it through this process's PATH.
+function runCli($: EngineInterface, args: string[], timeoutMs?: number) {
+  if (cfg.cli === '') return Promise.reject(new Error('verinoda not found on PATH outside the project; set `cli`'))
+  return $.process.run([cfg.cli, ...args], { cwd: cfg.cwd, ...(timeoutMs === undefined ? {} : { timeoutMs }) })
 }
 
 // `check --diff` reads the lines changed against HEAD (and new files whole); a project without git, or a diff the
 // CLI cannot read, falls back to the edited file whole. Exit 3 (something absent) and 4 (something not checked) are
 // answers too. Whatever happens, the edit itself has already gone through.
 async function runCheck($: EngineInterface, root: string, file: string): Promise<{ sites?: CheckSite[] } | undefined> {
-  for (const argv of [[cfg.cli, 'check', '--diff', '--json', '--repo', root], [cfg.cli, 'check', file, '--json', '--repo', root]]) {
+  for (const args of [['check', '--diff', '--json', '--repo', root], ['check', file, '--json', '--repo', root]]) {
     try {
-      const { exitCode, stdout } = await $.process.run(argv, { cwd: root, timeoutMs: CHECK_TIMEOUT_MS })
+      const { exitCode, stdout } = await runCli($, args, CHECK_TIMEOUT_MS)
       if (exitCode !== 0 && exitCode !== 3 && exitCode !== 4) continue
       const report = JSON.parse(stdout) as { sites?: CheckSite[] }
       if (typeof report === 'object' && report !== null) return report
@@ -351,21 +230,16 @@ async function checkEdit($: EngineInterface, root: string, file: string): Promis
   return note
 }
 
-// The first check in an environment builds its name index; done once at session start, on code outside the project.
-async function warmCheck($: EngineInterface, root: string): Promise<void> {
-  try {
-    await $.process.run([cfg.cli, 'check', '--stdin', '--as', '_verinoda_warm.py', '--json', '--repo', root],
-      { cwd: root, stdin: WARM_SNIPPET, timeoutMs: WARM_TIMEOUT_MS })
-  } catch {
-    // a cold first check is slower, nothing more
-  }
-}
-
 type GraphState = { locked: boolean; behind: number }
 
+// `update --fast` takes the text in at once and rebuilds the graph in a background `verinoda update`. The graph has
+// caught up when no build holds the lock and no file changed since the latest snapshot (the background build records
+// it); the lock alone misses a build that has not taken it yet. `verinoda graph-state` answers both (D186: the CLI's
+// own subcommand; the mod used to run a python of its own for this, `-c` with the repository as its working directory,
+// which put the repository first on sys.path).
 async function graphState($: EngineInterface, root: string): Promise<GraphState | undefined> {
   try {
-    const { exitCode, stdout } = await $.process.run([cfg.python, '-c', GRAPH_STATE, root], { cwd: root })
+    const { exitCode, stdout } = await runCli($, ['graph-state', '--repo', root, '--json'])
     if (exitCode !== 0) return undefined
     const d = JSON.parse(stdout) as Partial<GraphState>
     return typeof d.locked === 'boolean' && typeof d.behind === 'number' ? { locked: d.locked, behind: d.behind } : undefined
@@ -377,7 +251,7 @@ async function graphState($: EngineInterface, root: string): Promise<GraphState 
 // One look at the graph (session start, or the pane's "check again"): fresh, a build to watch, or behind.
 async function checkGraph($: EngineInterface): Promise<void> {
   const root = live.root
-  if (root === undefined || live.isRunning || live.isGraphBehind) return
+  if (root === undefined || !live.isAllowed || live.isRunning || live.isGraphBehind) return
   live.isChecking = true
   live.isUnknown = false
   live.isSlow = false
@@ -440,8 +314,6 @@ async function exists($: EngineInterface, path: string): Promise<boolean> {
 
 // The project: the folder the settings name, else the nearest one at or above the session's with a .verinoda index.
 async function findRoot($: EngineInterface, named: string, cwd: string): Promise<string | undefined> {
-  // slashes made forward, case kept: a case-sensitive file system finds the folder only as it is spelled
-  const slashes = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '')
   if (named !== '') return (await exists($, `${slashes(named)}/.verinoda`)) ? slashes(named) : undefined
   // a home folder or a drive root is never taken for a project unless the settings name it (Verinoda's own first
   // scan refuses them too): every edit anywhere under it would re-index it
@@ -460,27 +332,79 @@ async function findRoot($: EngineInterface, named: string, cwd: string): Promise
   return undefined
 }
 
-// The CLI and its Python: the settings' when given; else the project's .venv; else what PATH finds.
+// The user's home, where every run of the CLI starts; without one (neither variable set), the drive root, which is
+// outside any project the mod would take (findRoot refuses drive roots).
+async function homeFolder($: EngineInterface, root: string): Promise<string> {
+  const profile = await $.env.get('USERPROFILE').catch(() => undefined)
+  const home = await $.env.get('HOME').catch(() => undefined)
+  for (const v of [profile, home]) if (typeof v === 'string' && v.trim() !== '') return slashes(v.trim())
+  const drive = /^[A-Za-z]:/.exec(root)
+  return drive === null ? '/' : `${drive[0]}/`
+}
+
+// The program as PATH names it, outside the project: the first folder of PATH that is not inside the root and holds
+// it (with a PATHEXT extension on Windows); undefined when none does. Nothing is run to find it (`where` would itself
+// be a program found by the child's own search), and the project's own .venv on PATH (an activated one) is skipped.
+async function fromPath($: EngineInterface, name: string, root: string): Promise<string | undefined> {
+  const path = await $.env.get('PATH').catch(() => undefined)
+  if (typeof path !== 'string' || path === '') return undefined
+  const isWindows = /^[A-Za-z]:/.test(root)
+  const pathext = isWindows ? await $.env.get('PATHEXT').catch(() => undefined) : undefined
+  const exts = isWindows
+    ? (typeof pathext === 'string' && pathext !== '' ? pathext : '.EXE;.CMD;.BAT').split(';').map(x => x.trim().toLowerCase()).filter(Boolean)
+    : ['']
+  for (const entry of path.split(isWindows ? ';' : ':')) {
+    const dir = slashes(entry.trim().replace(/^"|"$/g, ''))
+    if (dir === '' || isInside(dir, root)) continue
+    for (const ext of exts) {
+      const candidate = `${dir}/${name}${ext}`
+      const found = await $.fs.stat(candidate).catch(() => undefined)
+      if (found !== undefined && found.kind !== 'dir') return candidate
+    }
+  }
+  return undefined
+}
+
+// The program and the working directory of every run (D186 §4.6: the mod never runs anything from the opened
+// repository, not even a `.venv` it ships). A `cli` setting is taken when it is a bare name (looked up on PATH like the
+// default) or a path outside the root; a path inside the root, or on a network share, is refused like a found one. A
+// name PATH has no program for outside the root leaves no program at all (`nocli`): the OS would find the one inside.
 async function resolveTools($: EngineInterface, root: string, options: Record<string, unknown>): Promise<void> {
-  const given = (k: string) => (typeof options[k] === 'string' ? (options[k] as string).trim() : '')
-  const venv = [`${root}/.venv/Scripts/verinoda.exe`, `${root}/.venv/bin/verinoda`]
-  let cli = given('cli')
-  if (cli === '') {
-    for (const c of venv) if (await exists($, c)) { cli = c; break }
+  cfg.cwd = await homeFolder($, root)
+  live.missingCli = ''
+  const given = typeof options.cli === 'string' ? slashes(options.cli.trim()) : ''
+  const isPath = /[/\\]/.test(given)
+  if (given !== '' && isPath && !isInside(given, root) && !given.startsWith('//')) {
+    cfg.cli = given
+    return
   }
-  cfg.cli = cli || 'verinoda'
-  let python = given('python')
-  if (python === '' && /[/\\]/.test(cfg.cli)) {
-    const dir = cfg.cli.replace(/\\/g, '/').replace(/\/[^/]*$/, '')
-    for (const c of [`${dir}/python.exe`, `${dir}/python`]) if (await exists($, c)) { python = c; break }
+  const name = given !== '' && !isPath ? given : 'verinoda'
+  cfg.cli = (await fromPath($, name, root)) ?? ''
+  if (cfg.cli === '') live.missingCli = name
+}
+
+// Is the root a project the person trusted (`verinoda trust`)? The list is read through the CLI (its file lives in the
+// user's config dir), once per session; a list that cannot be read trusts nothing.
+async function isTrusted($: EngineInterface, root: string): Promise<boolean> {
+  try {
+    const { exitCode, stdout } = await runCli($, ['trust', '--list', '--json'], TRUST_TIMEOUT_MS)
+    if (exitCode !== 0) return false
+    const d = JSON.parse(stdout) as { trusted?: { path?: unknown; subfolders?: unknown }[] }
+    const key = norm(root)
+    return (Array.isArray(d.trusted) ? d.trusted : []).some(e => {
+      if (typeof e.path !== 'string') return false
+      const p = norm(e.path)
+      // with `subfolders` every folder below counts, except one under a .verinoda folder (reference checkouts live there)
+      return key === p || (e.subfolders === true && key.startsWith(`${p}/`) && !key.slice(p.length + 1).split('/').includes('.verinoda'))
+    })
+  } catch {
+    return false
   }
-  cfg.python = python || 'python'
-  cfg.motion = options.motion !== false
 }
 
 // What a re-index came to: `text` is the command's answer (English, as before); `code` lets the pane say it.
 type Outcome = {
-  code: 'noindex' | 'running' | 'graph-fresh' | 'fresh' | 'waiting' | 'updated' | 'failed'
+  code: 'noindex' | 'nocli' | 'untrusted' | 'running' | 'graph-fresh' | 'fresh' | 'waiting' | 'updated' | 'failed'
   n: number
   text: string
 }
@@ -488,6 +412,14 @@ type Outcome = {
 async function reindex($: EngineInterface): Promise<Outcome> {
   const { root, pending } = live
   if (root === undefined) return { code: 'noindex', n: 0, text: `no .verinoda index at or above ${live.cwd}` }
+  if (live.missingCli !== '') {
+    return { code: 'nocli', n: 0, text: `${live.missingCli} was not found on PATH outside the project, and a program inside it ` +
+      '(its .venv, say) is never run: set `cli` in the plugin settings to one outside, or install verinoda on PATH' }
+  }
+  if (!live.isAllowed) {
+    return { code: 'untrusted', n: 0, text: `the index at ${root} is in a folder above the session's that is not trusted: ` +
+      `run \`verinoda trust ${root}\` or start Claude Code in it` }
+  }
   if (live.isRunning) return { code: 'running', n: live.runningCount, text: 'an update is already running' }
   if (pending.size === 0 && live.isGraphBehind) {
     return { code: 'graph-fresh', n: 0, text: 'text index fresh; the graph is still being rebuilt' }
@@ -516,10 +448,7 @@ async function reindex($: EngineInterface): Promise<Outcome> {
   }
   publish($)
   try {
-    const { exitCode, stderr } = await $.process.run(
-      [cfg.cli, 'update', '--fast', '--repo', root],
-      { cwd: root, timeoutMs: UPDATE_TIMEOUT_MS },
-    )
+    const { exitCode, stderr } = await runCli($, ['update', '--fast', '--repo', root], UPDATE_TIMEOUT_MS)
     if (exitCode !== 0) {
       fail(`çıkış ${exitCode}: ${stderr.trim().split('\n').pop()?.slice(0, 160) ?? ''}`)
       return { code: 'failed', n: count, text: `update failed (exit ${exitCode}): ${stderr.slice(0, 300)}` }
@@ -538,6 +467,8 @@ async function reindex($: EngineInterface): Promise<Outcome> {
 
 const NOTICE_TEXT: Record<Outcome['code'], (n: number) => Notice> = {
   noindex: () => ({ text: 'Bu projede index yok', tone: 'err' }),
+  nocli: () => ({ text: 'verinoda bulunamadı · `cli` ayarı', tone: 'err' }),
+  untrusted: () => ({ text: 'Klasöre güvenilmiyor · verinoda trust', tone: 'err' }),
   running: n => ({ text: `Zaten güncelleniyor (${n} dosya)`, tone: 'ok' }),
   'graph-fresh': () => ({ text: 'Metin güncel · graph hâlâ kuruluyor', tone: 'ok' }),
   fresh: () => ({ text: 'Index zaten güncel', tone: 'ok' }),
@@ -561,202 +492,10 @@ async function recheckFromPane($: EngineInterface): Promise<void> {
   await update($, notice, () => null)
 }
 
-// Verinoda's query on the prompt, as one context block; undefined (with the reason recorded) when nothing is attached.
-async function retrieve($: EngineInterface, prompt: string): Promise<string | undefined> {
-  const root = live.root
-  if (root === undefined) return undefined
-  const t0 = await $.clock.now()
-  const record = (info: Pick<ContextInfo, 'ok' | 'chars' | 'note'>, t1: number) =>
-    update($, lastContext, () => ({ prompt: prompt.trim().slice(0, 80), seconds: seconds(t0, t1), mode: 'search' as const, at: t1, ...info }))
-  try {
-    const { exitCode, stdout, stderr } = await $.process.run(
-      [cfg.cli, 'query', plainQuery(prompt), '--repo', root, '--max-chars', '6000'],
-      { cwd: root, timeoutMs: CONTEXT_TIMEOUT_MS },
-    )
-    const t1 = await $.clock.now()
-    if (exitCode !== 0 || stdout.trim() === '') {
-      await record({ ok: false, chars: 0, note: exitCode !== 0 ? `query exit ${exitCode}: ${stderr.slice(0, 120)}` : 'nothing found' }, t1)
-      return undefined
-    }
-    const block = contextBlock(root, stdout.trim())
-    await record({ ok: true, chars: block.length, note: '' }, t1) // shown in the pane, not over the index state
-    return block
-  } catch (err) {
-    await record({ ok: false, chars: 0, note: `query failed: ${String(err).slice(0, 120)}` }, await $.clock.now())
-    return undefined
-  }
-}
-
-// ---- the assist features: lookups, tools, notes (./assist.ts holds the pure parts) ------------------------------
-
-// The daemon, started in the background at session start when a feature will ask for it (it listens at once and loads the
-// graph meanwhile); the commands find it by themselves. An old CLI that knows no `locate --daemon` exits non-zero, and
-// every lookup is then a command that loads the graph itself.
-async function startDaemon($: EngineInterface, root: string): Promise<void> {
-  try {
-    await $.process.run([cfg.cli, 'locate', '--daemon', 'start', '--repo', root, '--json'], { cwd: root, timeoutMs: DAEMON_START_TIMEOUT_MS })
-  } catch {
-    // no daemon, nothing lost
-  }
-}
-
-function wantsDaemon(f: Features): boolean {
-  return f.inject || f.coupled || f.tool || f.gate
-}
-
-function ensureDaemon($: EngineInterface, f: Features): void {
-  if (live.root === undefined || !inProject() || live.daemonStart !== undefined || !wantsDaemon(f)) return
-  live.daemonStart = startDaemon($, live.root)
-  background(live.daemonStart)
-}
-
-function parseLocated(text: string): Located | undefined {
-  try {
-    const d = JSON.parse(text) as unknown
-    return typeof d === 'object' && d !== null && !Array.isArray(d) ? (d as Located) : undefined
-  } catch {
-    return undefined
-  }
-}
-
-type Lookup = { op: 'locate'; text: string; anchors: string[] } | { op: 'coupled'; files: string[] }
-
-// One lookup: the command, which asks this repository's daemon when one runs; undefined when it fails.
-async function lookup($: EngineInterface, root: string, q: Lookup): Promise<Located | undefined> {
-  await live.daemonStart?.catch(() => undefined)
-  const argv = q.op === 'locate'
-    ? [cfg.cli, 'locate', '--repo', root, '--json', '--max-chars', String(LOCATE_ANSWER_MAX), ...q.anchors.flatMap(a => ['--anchor', a]), '--', q.text]
-    : [cfg.cli, 'coupled', '--repo', root, '--json', ...q.files]
-  try {
-    const { exitCode, stdout } = await $.process.run(argv, { cwd: root, timeoutMs: LOCATE_TIMEOUT_MS })
-    return exitCode === 0 ? parseLocated(stdout) : undefined
-  } catch {
-    return undefined
-  }
-}
-
-async function registerAssistTools($: EngineInterface): Promise<void> {
-  for (const spec of TOOL_SPECS) {
-    await $.tool.register({ name: spec.name, description: spec.description, inputSchema: spec.inputSchema as unknown as Record<string, unknown> })
-  }
-}
-
 async function registerImproveTools($: EngineInterface): Promise<void> {
   for (const spec of IMPROVE_SPECS) {
     await $.tool.register({ name: spec.name, description: spec.description, inputSchema: spec.inputSchema as unknown as Record<string, unknown> })
   }
-}
-
-// A path as the lookups spell it: relative to the project, slashes forward.
-function toRel(root: string, file: string): string {
-  const p = file.replace(/\\/g, '/')
-  return isInside(p, root) ? relPath(root, p) : p.replace(/^\.\//, '')
-}
-
-// The assist features serve a session that started inside the project, as the prompt hook always did: a session
-// started somewhere else with the project named in the settings gets no tools, no prompt line, no gate and no notes.
-function inProject(): boolean {
-  return live.root !== undefined && isInside(live.cwd, live.root)
-}
-
-function noteRead(rel: string): void {
-  if (!live.reads.includes(rel) && live.reads.length < 50) live.reads.push(rel)
-}
-
-// A prompt that could be a task starts a new hunt: the gate may answer its first search, the tool counts as not yet used.
-function startTask(text: string): void {
-  const t = text.trim()
-  if (t.length < TASK_MIN_CHARS || /^[/!#]/.test(t)) return
-  live.task = t
-  live.reads = [] // what was read for the last task is not what this one starts from
-  live.gated = false
-  live.usedLocate = false
-}
-
-export function locateBlock(answer: string): string {
-  return (
-    "[Verinoda locate] Files Verinoda's index, the project's git history and sibling directories point to for this " +
-    'request. They are leads, not verified answers: read them, check what you rely on, and name every file that ' +
-    `needs the change.\n\n${answer}`
-  )
-}
-
-export function gateText(answer: string): string {
-  return (
-    "[Verinoda] This search was not run. Before searching, Verinoda's index, the project's git history and sibling " +
-    `directories point to these files for the task:\n\n${answer}\n\nRead them first and name every file that needs ` +
-    'the change; run the search again only if you still need it.'
-  )
-}
-
-// What the last commit changed, by concern: Verinoda's review of the working tree against the commit's parent.
-async function reviewCommit($: EngineInterface, sha: string): Promise<void> {
-  const root = live.root
-  if (root === undefined) return
-  if (live.isReviewing) {
-    live.reviewAgain = true
-    return
-  }
-  live.isReviewing = true
-  const short = sha.slice(0, 7)
-  await update($, reviewing, () => short)
-  const t0 = await $.clock.now()
-  const failedInfo = (summary: string, t1: number): ReviewInfo =>
-    ({ ok: false, risk: '', score: null, of: 100, band: '', findings: 0, summary, seconds: seconds(t0, t1), sha: short, at: t1 })
-  try {
-    const { exitCode, stdout } = await $.process.run(
-      [cfg.cli, 'review', '--json', '--repo', root, '--base', 'HEAD~1', '--max-chars', '4000'],
-      { cwd: root, timeoutMs: REVIEW_TIMEOUT_MS },
-    )
-    const t1 = await $.clock.now()
-    if (exitCode !== 0 && exitCode !== 3) {  // 3: findings or unknowns to report, an answer
-      await update($, lastReview, () => failedInfo(`çıkış ${exitCode}`, t1))
-      return
-    }
-    const d = JSON.parse(stdout) as {
-      summary?: string
-      risk?: { score?: number; of?: number; band?: string }
-      counts?: { findings?: number }
-    }
-    const score = d.risk?.score ?? null
-    const of = d.risk?.of ?? 100
-    const band = d.risk?.band ?? ''
-    const risk = score === null ? '' : `${score}/${of} (${band || '?'})`
-    const info: ReviewInfo = {
-      ok: true, risk, score, of, band, findings: d.counts?.findings ?? 0, summary: (d.summary ?? '').slice(0, 600),
-      seconds: seconds(t0, t1), sha: short, at: t1,
-    }
-    await update($, lastReview, () => info)
-    await update($, expanded, () => false)
-    $.ui.toast(`Verinoda review of the commit: risk ${risk || 'n/a'}, ${info.findings} finding(s) · /verinoda-panel`)
-  } catch (err) {
-    await update($, lastReview, () => failedInfo(String(err).slice(0, 200), 0))
-  } finally {
-    live.isReviewing = false
-    await update($, reviewing, () => null).catch(() => undefined)
-    if (live.reviewAgain) {
-      live.reviewAgain = false
-      const head = await gitHead($, root)
-      background(reviewCommit($, head ?? sha))
-    }
-  }
-}
-
-async function gitHead($: EngineInterface, root: string): Promise<string | undefined> {
-  try {
-    const { exitCode, stdout } = await $.process.run(['git', '-C', root, 'rev-parse', 'HEAD'], { cwd: root, timeoutMs: 10_000 })
-    return exitCode === 0 ? stdout.trim() : undefined
-  } catch {
-    return undefined
-  }
-}
-
-export function modeCommand(arg: string, current: AutoMode): AutoMode | undefined {
-  const a = arg.trim().toLowerCase()
-  if (a === '') return current === 'off' ? 'nudge' : 'off'
-  if (a === 'on' || a === 'açık' || a === 'aç') return 'nudge'
-  if (a === 'kapalı' || a === 'kapat') return 'off'
-  return MODES.includes(a as AutoMode) ? (a as AutoMode) : undefined
 }
 
 export function settingCommand(arg: string, current: boolean): boolean | undefined {
@@ -797,32 +536,16 @@ export function describeIndex(s: IndexState): { head: string; tone: Tone; detail
     case 'failed': return { head: `✗ Güncelleme başarısız · ${s.n} dosya bekletiliyor`, tone: 'err', details: [s.error], action: 'retry' }
     case 'unknown': return { head: '? Graph durumu okunamadı', tone: 'idle', details: [], action: 'recheck' }
     case 'noindex': return { head: "? Bu projede Verinoda index'i yok", tone: 'idle', details: ['Proje klasöründe çalıştır:', 'verinoda init, sonra verinoda update'], action: null }
+    case 'nocli':
+      return { head: '▲ verinoda bulunamadı · `cli` ayarı', tone: 'warn',
+        details: [`PATH'te projenin dışında ${s.error} yok`, "projenin kendi .venv'indeki asla çalıştırılmaz", '/config ile `cli` ayarına dışarıdaki yolunu yaz'], action: null }
+    case 'untrusted':
+      return { head: "▲ Üstteki klasörün index'ine güvenilmiyor", tone: 'warn',
+        details: [s.error, `izin için: verinoda trust ${s.error}`, "ya da Claude Code'u o klasörde başlat"], action: null }
   }
 }
 
 export const ACTION_LABEL: Record<Action, string> = { update: 'Şimdi güncelle', retry: 'Tekrar dene', recheck: 'Tekrar kontrol et' }
-
-export function describeReview(r: ReviewInfo | null, sha: string | null): { head: string; tone: Tone; meta: string } | null {
-  if (sha !== null) return { head: `◐ İnceleniyor · ${sha}…`, tone: 'busy', meta: '' }
-  if (r === null) return null
-  const meta = `${r.sha} · ${hhmm(r.at)}`
-  if (!r.ok) return { head: `✗ İnceleme başarısız (${r.summary})`, tone: 'err', meta }
-  const tail = `${r.findings} bulgu`
-  if (r.score === null) return { head: `? Risk yok · ${tail}`, tone: 'idle', meta }
-  const score = `${r.score}/${r.of}`
-  if (r.band === 'high') return { head: `▲ Yüksek risk ${score} · ${tail}`, tone: 'err', meta }
-  if (r.band === 'medium') return { head: `● Orta risk ${score} · ${tail}`, tone: 'warn', meta }
-  return { head: `✓ Düşük risk ${score} · ${tail}`, tone: 'ok', meta }
-}
-
-export const MODE_LABEL: Record<AutoMode, string> = { off: 'Kapalı', nudge: 'Yönlendir', search: 'Arama' }
-export const MODE_HINT: Record<AutoMode, string> = {
-  off: 'Sorulara bağlam eklenmez',
-  nudge: 'Önerilen · Claude önce analyze çalıştırır',
-  search: 'Arama sonuçları eklenir · ölçümde daha zayıf',
-}
-export const OUTSIDE_HINT = '▲ Oturum proje dışında başladı; bağlam eklenmez'
-export const GUARD_HINT = 'Commit sonrası risk ve bulgular bildirilir'
 export const CHECK_HINT = "Python/Java/Kotlin düzenlemesindeki var olmayan isimler Claude'a söylenir"
 
 export function checkLine(c: CheckInfo | null): { text: string; tone: Tone } | null {
@@ -832,24 +555,17 @@ export function checkLine(c: CheckInfo | null): { text: string; tone: Tone } | n
   return { text: `Son kontrol: ${c.file} · ${c.n} isim bulunamadı, Claude'a söylendi`, tone: 'warn' }
 }
 
-export function contextLine(c: ContextInfo | null): { text: string; tone: Tone } | null {
-  if (c === null) return null
-  const head = `"${c.prompt.slice(0, 40)}${c.prompt.length > 40 ? '…' : ''}"`
-  if (c.mode === 'nudge') return { text: `Son ${hhmm(c.at)} · yönlendirildi · ${head}`, tone: 'idle' }
-  if (c.ok) return { text: `Son ${hhmm(c.at)} · ${c.chars.toLocaleString('tr')} karakter eklendi (${c.seconds.toLocaleString('tr')} sn) · ${head}`, tone: 'idle' }
-  return { text: `Son ${hhmm(c.at)} · eklenmedi: ${c.note === 'nothing found' ? 'sonuç yok' : 'arama hatası'} · ${head}`, tone: 'warn' }
-}
-
 // The mascot (./mascot.tsx) is drawn by the surface as a `Client`, animated there; a surface without `Client`
 // (VS Code, mobile) gets its first frame, still.
 const ANIMATED_SURFACES = ['terminal', 'desktop']
 const MOOD: Record<Tone, Mood> = { ok: 'idle', idle: 'idle', busy: 'busy', warn: 'warn', err: 'err' }
 
-export function mascotCaption(s: IndexState, r: ReviewInfo | null, sha: string | null): { text: string; tone: Tone } {
-  if (s.kind === 'failed' || (r !== null && !r.ok)) return { text: 'Bir şey ters gitti', tone: 'err' }
-  if (r !== null && r.ok && r.band === 'high' && sha === null) return { text: "Commit'e bir bak", tone: 'err' }
+export function mascotCaption(s: IndexState): { text: string; tone: Tone } {
+  if (s.kind === 'failed') return { text: 'Bir şey ters gitti', tone: 'err' }
+  if (s.kind === 'untrusted') return { text: 'İzin bekliyor', tone: 'warn' }
+  if (s.kind === 'nocli') return { text: 'Ayar bekliyor', tone: 'warn' }
   if (s.kind === 'pending' || s.kind === 'behind' || s.kind === 'slow') return { text: 'Güncelleme bekliyor', tone: 'warn' }
-  if (s.kind === 'updating' || s.kind === 'graph' || s.kind === 'checking' || sha !== null) return { text: 'Kodu okuyorum…', tone: 'busy' }
+  if (s.kind === 'updating' || s.kind === 'graph' || s.kind === 'checking') return { text: 'Kodu okuyorum…', tone: 'busy' }
   if (s.kind === 'noindex') return { text: 'Index yok', tone: 'idle' }
   return { text: 'Her şey güncel', tone: 'idle' }
 }
@@ -864,10 +580,19 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     live.cwd = await $.session.cwd()
-    cfg.auto = asMode(options.auto)
-    cfg.assist = typeof options.assist === 'string' ? options.assist : 'off'
-    live.root = await findRoot($, typeof options.root === 'string' ? options.root.trim() : '', live.cwd)
-    if (live.root !== undefined) await resolveTools($, live.root, options)
+    cfg.check = options.check === true
+    cfg.motion = options.motion !== false
+    const named = typeof options.root === 'string' ? options.root.trim() : ''
+    live.root = await findRoot($, named, live.cwd)
+    live.isAllowed = false
+    if (live.root !== undefined) {
+      await resolveTools($, live.root, options)
+      // the index is used where the person chose it: the folder they opened, the one their settings name, or one they
+      // trusted with `verinoda trust`; a .verinoda in an ancestor they never opened is not, so a hostile repository's
+      // index can make the mod run nothing (D186 §4.6). Without a program outside the project not even the trust list
+      // is read.
+      live.isAllowed = live.missingCli === '' && (named !== '' || norm(live.root) === norm(live.cwd) || (await isTrusted($, live.root)))
+    }
     await loadSettings($, e.isInteractive !== false)
     // the improvement list (D175): its command is always there, its tools only for a person and when a list is in play or offered
     improveMod.interactive = e.isInteractive !== false
@@ -875,97 +600,32 @@ export const register: Register = (on, options) => {
     await $.command.register(IMPROVE_COMMAND)
     if (improveMod.interactive && (improveMod.offered || (await read($, improve)).phase !== 'idle')) await registerImproveTools($)
     await $.command.register({ name: 'verinoda-update', description: 'Re-index the files edited this session now.' })
-    await $.command.register({ name: 'verinoda-assist', description: 'Where a change belongs: locate files, what changes together, a tool and the first search (off, inject, tool, full, strict).' })
-    await $.command.register({ name: 'verinoda-auto', description: 'Code questions: nudge (start with Verinoda analyze), search (attach results) or off.' })
-    await $.command.register({ name: 'verinoda-guard', description: 'Review each commit with Verinoda afterwards: on, off, or toggle.' })
     await $.command.register({ name: 'verinoda-check', description: 'Check each edit of Python/Java/Kotlin code for names that do not exist: on, off, or toggle.' })
     // not plain `verinoda`: the Verinoda agent skill of that name takes `/verinoda` first
-    await $.command.register({ name: 'verinoda-panel', description: 'Open the Verinoda pane: index state, settings, last context and review.' })
+    await $.command.register({ name: 'verinoda-panel', description: 'Open the Verinoda pane: index state and the check setting.' })
     publish($)
     background(checkGraph($))
-    if (live.root !== undefined && (await read($, check))) background(warmCheck($, live.root))
-    const f = await features($)
-    if (inProject() && f.tool) await registerAssistTools($) // awaited: listed by the first turn
-    ensureDaemon($, f)
     return next(e)
   })
 
-  // The tools are first-class: their schemas in the prompt's list, not behind ToolSearch, where the agent studies found
-  // a tool that must first be looked up is not called (in this build a plugin's tool is deferred unless a hook says not).
-  on('tool.describe', { tool: [LOCATE_TOOL, COUPLED_TOOL] }, ($, e) => {
-    const spec = TOOL_SPECS.find(s => ASSIST_TOOL(s.name) === e.tool)
-    return { description: spec?.description ?? e.description, isDeferred: false }
-  })
-
-  // The server's core tools likewise (D186): deferred, they were called in 0 of 286 sessions, and the ToolSearch turn
-  // that loads them costs a model call; listed in front, `locate` was called in 51 of 63. The descriptions stay the server's.
+  // The server's core tools are first-class: their schemas in the prompt's list, not behind ToolSearch, where the agent
+  // studies found a tool that must first be looked up is not called (0 of 286 sessions with the tools deferred; `locate`
+  // listed in front was called in 51 of 63), and the ToolSearch turn that loads them costs a model call (D186). In this
+  // build a plugin's or a server's tool is deferred unless a hook says not. The descriptions stay the server's.
   on('tool.describe', { tool: [...MCP_CORE_TOOLS] }, ($, e) => ({ description: e.description, isDeferred: false }))
 
+  // The call rule rides the system prompt while the server is connected; the improvement list's offer (D175) with it.
   on('prompt.compose', async ($, e, next) => {
     const out = await next(e)
-    const f = await features($)
     const sections = improveSections(out.sections)
-    if (!f.prompt || !inProject()) return sections === out.sections ? out : { sections }
-    return { sections: [...sections, { id: 'verinoda-live:assist', text: assistPrompt(f), scope: 'session' as const }] }
-  })
-
-  // The tools answer a plain string: any other shape fails the engine's check of a plugin's tool result.
-  on('tool.call', { tool: LOCATE_TOOL }, async ($, e) => {
-    live.usedLocate = true
-    const root = live.root
-    if (root === undefined || !inProject()) return { result: 'verinoda locate: this session did not start in a project with a Verinoda index' }
-    const text = typeof e.text === 'string' ? e.text.trim() : ''
-    if (text === '') return { result: 'verinoda locate needs the text of the bug report or task (the text argument)' }
-    const named = Array.isArray(e.files) ? e.files.filter((f): f is string => typeof f === 'string' && f !== '') : []
-    const anchors = (named.length > 0 ? named.map(f => toRel(root, f)) : live.reads).slice(0, ANCHORS_MAX)
-    const located = await lookup($, root, { op: 'locate', text: text.slice(0, LOCATE_TEXT_MAX), anchors })
-    if (located === undefined) return { result: 'verinoda locate failed (the CLI did not answer); search the code yourself' }
-    return { result: renderLocate(located, LOCATE_ANSWER_MAX) ?? 'verinoda locate found no file for this text' }
-  })
-
-  on('tool.call', { tool: COUPLED_TOOL }, async ($, e) => {
-    const root = live.root
-    if (root === undefined || !inProject()) return { result: 'verinoda coupled: this session did not start in a project with a Verinoda index' }
-    const files = Array.isArray(e.files) ? e.files.filter((f): f is string => typeof f === 'string' && f !== '').map(f => toRel(root, f)).slice(0, ANCHORS_MAX) : []
-    if (files.length === 0) return { result: 'verinoda coupled needs the files to look up (the files argument)' }
-    const located = await lookup($, root, { op: 'coupled', files })
-    if (located === undefined) return { result: 'verinoda coupled failed (the CLI did not answer); search the code yourself' }
-    return { result: renderLocate(located, LOCATE_ANSWER_MAX) ?? 'verinoda coupled found no file that changes together with these' }
-  })
-
-  // A file the model opens brings the files that change together with it: attached to a call the agent makes anyway.
-  on('tool.call', { tool: 'Read' }, async ($, e, next) => {
-    const ran = await next(e)
-    const root = live.root
-    if (root === undefined || !inProject() || ran.deny !== undefined || ran.isError === true || typeof e.file_path !== 'string') return ran
-    if (!isInside(e.file_path, root)) return ran
-    const rel = toRel(root, e.file_path)
-    if (rel.startsWith('.verinoda/')) return ran
-    noteRead(rel)
-    // one note per file whatever its spelling (a path is as the model typed it: another case, a drive letter in lower case)
-    const key = rel.toLowerCase()
-    if (!(await features($)).coupled || !isSourceFile(rel) || live.coupledAsked.has(key) || live.coupledAsked.size >= COUPLED_BUDGET) return ran
-    live.coupledAsked.add(key)
-    const note = coupledNote(rel, await lookup($, root, { op: 'coupled', files: [rel] }))
-    return note === undefined ? ran : { ...ran, context: [...(ran.context ?? []), note] }
-  })
-
-  // The task's first search is answered with the files that point to it, and run again if still wanted: the answer
-  // reaches an agent that did not ask. Once per task, and never once the model has called the tool itself.
-  on('tool.call', { tool: ['Grep', 'Glob', ...SHELL_TOOLS] }, async ($, e, next) => {
-    const root = live.root
-    if (root === undefined || !inProject() || live.gated || live.usedLocate || live.task === '' || !isBlockedSearch(e)) return next(e)
-    if (!(await features($)).gate) return next(e)
-    live.gated = true
-    const located = await lookup($, root, { op: 'locate', text: live.task.slice(0, LOCATE_TEXT_MAX), anchors: live.reads.slice(0, ANCHORS_MAX) })
-    const answer = renderLocate(located, LOCATE_ANSWER_MAX)
-    return answer === undefined ? next(e) : { deny: gateText(answer) }
+    if (!isServerConnected(e.tools)) return sections === out.sections ? out : { sections }
+    return { sections: [...sections, { id: RULE_SECTION, text: CALL_RULE, scope: 'session' as const }] }
   })
 
   on('tool.call', { tool: EDIT_TOOLS }, async ($, e, next) => {
     const ran = await next(e)
     const root = live.root
-    if (root === undefined || ran.deny !== undefined || ran.isError === true) return ran
+    if (root === undefined || !live.isAllowed || ran.deny !== undefined || ran.isError === true) return ran
 
     const path = e.tool === 'NotebookEdit' ? e.notebook_path : e.tool === 'Edit' || e.tool === 'Write' ? e.file_path : undefined
     const file = path === undefined ? '' : norm(path)
@@ -976,47 +636,6 @@ export const register: Register = (on, options) => {
     // the edit has gone through: nothing the check does may change that
     const note = await checkEdit($, root, path.replace(/\\/g, '/')).catch(() => undefined)
     return note === undefined ? ran : { ...ran, context: [...(ran.context ?? []), note] }
-  })
-
-  // After a command that moved the project's HEAD (a commit, an amend, an alias of either), review what it changed;
-  // HEAD is read before and after, so a git command that made no commit there is never reviewed.
-  on('tool.call', { tool: SHELL_TOOLS }, async ($, e, next) => {
-    const root = live.root
-    if (root === undefined || !GIT_WORD.test(e.command) || !(await read($, guard))) return next(e)
-    const before = await gitHead($, root)
-    const ran = await next(e)
-    const after = await gitHead($, root)
-    if (ran.deny === undefined && before !== undefined && after !== undefined && after !== before) background(reviewCommit($, after))
-    return ran
-  })
-
-  // A code question typed in the project gets the nudge (or, in search mode, Verinoda's results) as context.
-  on('prompt.submit', async ($, e, next) => {
-    // the improvement list's own prompts (D175) are the person's decision, sent as theirs: no task, no context
-    if (e.origin?.kind === 'plugin' && e.origin.name === 'verinoda-live') return next(e)
-    const isUser = isPersonsPrompt(e.origin)
-    if (isUser) startTask(e.text)
-    if (live.root === undefined || !isUser || !isInside(live.cwd, live.root)) return next(e)
-    const blocks: string[] = []
-    if ((await features($)).inject && looksLikeCodeQuestion(e.text, NUDGE_MAX_CHARS)) {
-      const located = await lookup($, live.root, { op: 'locate', text: e.text.trim().slice(0, LOCATE_TEXT_MAX), anchors: [] })
-      const answer = renderLocate(located, LOCATE_ANSWER_MAX)
-      if (answer !== undefined) blocks.push(locateBlock(answer))
-    }
-    const mode = await read($, auto)
-    if (mode !== 'off' && looksLikeCodeQuestion(e.text, mode === 'nudge' ? NUDGE_MAX_CHARS : 2_000)) {
-      let block: string | undefined
-      if (mode === 'nudge') {
-        const nudge = nudgeBlock(live.root, cfg.cli)
-        block = nudge
-        const at = await $.clock.now()
-        await update($, lastContext, () => ({ prompt: e.text.trim().slice(0, 80), mode, ok: true, chars: nudge.length, seconds: 0, note: '', at }))
-      } else {
-        block = await retrieve($, e.text)
-      }
-      if (block !== undefined) blocks.push(block)
-    }
-    return next(blocks.length === 0 ? e : { ...e, context: [...(e.context ?? []), ...blocks] })
   })
 
   // One re-index per turn, not per edit; left running so the turn ends at once.
@@ -1035,33 +654,6 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'verinoda-update' }, async $ => ({ text: (await reindex($)).text }))
 
-  on('command.run', { command: 'verinoda-auto' }, async ($, e) => {
-    const mode = modeCommand(e.args, await read($, auto))
-    if (mode === undefined) return { text: 'usage: /verinoda-auto [nudge|search|off] (no argument toggles nudge/off)' }
-    await setAuto($, mode)
-    const where = mode !== 'off' && live.root !== undefined && !isInside(live.cwd, live.root) ? ` (only for sessions started in ${live.root})` : ''
-    return { text: `auto-context: ${mode}${where}` }
-  })
-
-  on('command.run', { command: 'verinoda-assist' }, async ($, e) => {
-    if (e.args.trim() === '') return { text: `assist: ${await read($, assist)} (${ASSIST_USAGE})` }
-    const value = parseAssist(e.args)
-    if (value === undefined) return { text: ASSIST_USAGE }
-    await setAssist($, value)
-    const f = assistFeatures(value)
-    if (inProject() && f.tool) await registerAssistTools($)
-    ensureDaemon($, f)
-    const where = value !== 'off' && live.root !== undefined && !isInside(live.cwd, live.root) ? ` (only for sessions started in ${live.root})` : ''
-    return { text: `assist: ${value}${where}` }
-  })
-
-  on('command.run', { command: 'verinoda-guard' }, async ($, e) => {
-    const value = settingCommand(e.args, await read($, guard))
-    if (value === undefined) return { text: 'usage: /verinoda-guard [on|off]' }
-    await setGuard($, value)
-    return { text: `review after commits ${value ? 'on' : 'off'}` }
-  })
-
   on('command.run', { command: 'verinoda-check' }, async ($, e) => {
     const value = settingCommand(e.args, await read($, check))
     if (value === undefined) return { text: 'usage: /verinoda-check [on|off]' }
@@ -1078,12 +670,6 @@ export const register: Register = (on, options) => {
     const { Box, Button, Text } = $.ui.resolve(e)
     const s = await read($, idx)
     const said = await read($, notice)
-    const mode = await read($, auto)
-    const isGuard = await read($, guard)
-    const ctx = await read($, lastContext)
-    const rev = await read($, lastReview)
-    const sha = await read($, reviewing)
-    const isExpanded = await read($, expanded)
     const isCheck = await read($, check)
     const lastChk = await read($, lastCheck)
 
@@ -1116,86 +702,10 @@ export const register: Register = (on, options) => {
     if (action !== null) used += 1
     if (said !== null) used += 1
 
-    if (s.kind === 'noindex') return <Box flexDirection="column">{indexBlock}</Box>
+    // nothing runs in these three states, so a setting would do nothing and is not drawn
+    if (s.kind === 'noindex' || s.kind === 'nocli' || s.kind === 'untrusted') return <Box flexDirection="column">{indexBlock}</Box>
 
-    // 2 · the last commit
-    const rv = describeReview(rev, sha)
-    const showReview = rv !== null || isGuard
-    const summary = rev !== null && rev.ok && rev.findings > 0 && sha === null ? rev.summary : ''
-    const clamp = columns * 2 - 3
-    const isCut = summary.length > clamp
-    const shown = isExpanded || !isCut ? summary : `${summary.slice(0, clamp)}…`
-    const emptyReview = 'Henüz commit incelenmedi'
-    const reviewBlock = !showReview ? null : (
-      <Box key="review" flexDirection="column">
-        {!isInline && <Text bold>Son commit</Text>}
-        {rv === null
-          ? <Text dimColor wrap="truncate">{emptyReview}</Text>
-          : <Text bold={rv.tone === 'err'} color={tone(rv.tone)} wrap="wrap">{isInline ? `Son commit: ${rv.head}` : rv.head}</Text>}
-        {!isInline && rv !== null && rv.meta !== '' && <Text dimColor wrap="truncate">{`  ${rv.meta}`}</Text>}
-        {!isInline && shown !== '' && <Text wrap="wrap">{shown}</Text>}
-        {!isInline && isCut && (
-          <Button key="review-more" label={isExpanded ? 'Kısalt' : 'Ayrıntı'} hotkey="d" variant="secondary"
-            onPress={() => update($, expanded, x => !x)} />
-        )}
-      </Box>
-    )
-    if (reviewBlock !== null) {
-      if (!isInline) used += 2 // the title and the gap above it
-      count(rv === null ? emptyReview : rv.head)
-      if (!isInline && rv !== null && rv.meta !== '') used += 1
-      if (!isInline && shown !== '') count(shown)
-      if (!isInline && isCut) used += 1
-    }
-
-    // 3 · auto-context: all three modes in a fixed order, the selected one primary and marked
-    const outside = mode !== 'off' && live.root !== undefined && !isInside(live.cwd, live.root)
-    const last = mode === 'off' ? null : contextLine(ctx)
-    const isNarrow = columns < 36
-    const contextEl = (
-      <Box key="context" flexDirection="column">
-        {!isInline && <Text bold>Otomatik bağlam</Text>}
-        <Box flexDirection={isNarrow ? 'column' : 'row'} columnGap={1}>
-          {isInline && <Text>Bağlam</Text>}
-          {MODES.map((m, i) => (
-            <Button key={`auto-${m}`} label={`${m === mode ? '● ' : ''}${MODE_LABEL[m]}`} hotkey={String(i + 1)}
-              variant={m === mode ? 'primary' : 'secondary'} onPress={() => (m === mode ? undefined : setAuto($, m))} />
-          ))}
-        </Box>
-        {!isInline && (outside
-          ? <Text color="yellow" wrap="wrap">{OUTSIDE_HINT}</Text>
-          : <Text dimColor wrap="wrap">{MODE_HINT[mode]}</Text>)}
-        {!isInline && last !== null && (
-          <Text dimColor={last.tone === 'idle'} color={last.tone === 'warn' ? 'yellow' : undefined} wrap="truncate">{last.text}</Text>
-        )}
-      </Box>
-    )
-    if (!isInline) {
-      used += 2 // the title and the gap above it
-      used += isNarrow ? MODES.length : 1
-      count(outside ? OUTSIDE_HINT : MODE_HINT[mode])
-      if (last !== null) used += 1
-    }
-
-    // 4 · review after commits: the same two-option control; r always flips it
-    const guardEl = (
-      <Box key="guard" flexDirection="column">
-        <Box flexDirection={columns < 40 ? 'column' : 'row'} columnGap={1}>
-          <Text bold={!isInline}>{isInline ? 'İnceleme' : 'Commit incelemesi'}</Text>
-          <Button key="guard-on" label={isGuard ? '● Açık' : 'Açık'} hotkey={isGuard ? undefined : 'r'}
-            variant={isGuard ? 'primary' : 'secondary'} onPress={() => (isGuard ? undefined : setGuard($, true))} />
-          <Button key="guard-off" label={isGuard ? 'Kapalı' : '● Kapalı'} hotkey={isGuard ? 'r' : undefined}
-            variant={isGuard ? 'secondary' : 'primary'} onPress={() => (isGuard ? setGuard($, false) : undefined)} />
-        </Box>
-        {!isInline && <Text dimColor wrap="wrap">{GUARD_HINT}</Text>}
-      </Box>
-    )
-    if (!isInline) {
-      used += 2 + (columns < 40 ? 2 : 0) // the row (stacked when narrow) and the gap above it
-      count(GUARD_HINT)
-    }
-
-    // 5 · the check after edits: the same two-option control; k always flips it; the last check under it
+    // 2 · the check after edits: a two-option control; k always flips it; the last check under it
     const lastLine = checkLine(lastChk)
     const checkEl = (
       <Box key="check" flexDirection="column">
@@ -1214,7 +724,7 @@ export const register: Register = (on, options) => {
       </Box>
     )
     if (!isInline) {
-      used += 2 + (columns < 40 ? 2 : 0)
+      used += 2 + (columns < 40 ? 2 : 0) // the row (stacked when narrow) and the gap above it
       count(CHECK_HINT)
       if (lastLine !== null) used += 1
     }
@@ -1223,21 +733,20 @@ export const register: Register = (on, options) => {
       return (
         <Box flexDirection="column">
           {indexBlock}
-          {reviewBlock}
-          <Box flexDirection="row" columnGap={2} flexWrap="wrap">{contextEl}{guardEl}{checkEl}</Box>
+          <Box flexDirection="row" columnGap={2} flexWrap="wrap">{checkEl}</Box>
         </Box>
       )
     }
 
-    // 6 · footer: only the keys that exist in this drawing
-    const keys = [action !== null ? 'u güncelle' : '', '1-3 bağlam', 'r inceleme', 'k kontrol', isCut ? 'd ayrıntı' : ''].filter(Boolean)
+    // 3 · footer: only the keys that exist in this drawing
+    const keys = [action !== null ? 'u güncelle' : '', 'k kontrol'].filter(Boolean)
     const footer = e.props.isFocused ? keys.join(' · ') : 'Kısayollar için ctrl+x tab'
     used += 2 // the footer and the gap above it
 
-    // 6 · the mascot, only in the room left over: never cropped, never pushing content
+    // 4 · the mascot, only in the room left over: never cropped, never pushing content
     const spare = bodyRows - used
-    const caption = mascotCaption(s, rev, sha)
-    const showMascot = columns >= 24 && !isExpanded && spare >= MASCOT_HEIGHT + 3
+    const caption = mascotCaption(s)
+    const showMascot = columns >= 24 && spare >= MASCOT_HEIGHT + 3
     const mascotProps: MascotProps = {
       mood: MOOD[caption.tone], caption: caption.text, captionColor: tone(caption.tone), captionDim: caption.tone === 'idle',
     }
@@ -1262,9 +771,6 @@ export const register: Register = (on, options) => {
     return (
       <Box flexDirection="column" rowGap={1}>
         {indexBlock}
-        {reviewBlock}
-        {contextEl}
-        {guardEl}
         {checkEl}
         {mascot}
         <Text dimColor wrap="truncate">{footer}</Text>
