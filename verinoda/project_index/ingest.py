@@ -1,6 +1,7 @@
-# fetch URLs (tweet/arxiv/pdf/web) and save as annotated markdown
+# fetch a PDF or image URL into a raw folder, and save a query result as a memory document
+# Verinoda patch (D186): the tweet, arXiv, web page and YouTube fetchers left the package with transcribe.py
+# and the markdownify extra (docs/UPSTREAM.md); `ingest` keeps the PDF and image downloads.
 from __future__ import annotations
-import json
 import re
 import uuid
 import urllib.error
@@ -8,7 +9,8 @@ import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
-from verinoda.project_index.security import safe_fetch, safe_fetch_text, validate_url
+from verinoda.project_index.reflect import OUTCOMES
+from verinoda.project_index.security import safe_fetch, validate_url
 
 
 def _yaml_str(s: str) -> str:
@@ -82,132 +84,6 @@ def _detect_url_type(url: str) -> str:
     return "webpage"
 
 
-def _fetch_html(url: str) -> str:
-    return safe_fetch_text(url)
-
-
-def _html_to_markdown(html: str, url: str) -> str:
-    """Convert HTML to clean markdown. Uses markdownify if available, else basic strip."""
-    # Always pre-strip script/style so their text content never leaks into output
-    html = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
-    html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
-    try:
-        from markdownify import markdownify
-        return markdownify(html, heading_style="ATX", bullets="-", strip=["img"])
-    except ImportError:
-        # Fallback: basic tag strip
-        text = re.sub(r"<[^>]+>", " ", html)
-        text = re.sub(r"\s+", " ", text).strip()
-        return text[:8000]
-
-
-def _fetch_tweet(url: str, author: str | None, contributor: str | None) -> tuple[str, str]:
-    """Fetch a tweet URL. Returns (content, filename)."""
-    # Normalize to twitter.com for oEmbed
-    oembed_url = url.replace("x.com", "twitter.com")
-    oembed_api = f"https://publish.twitter.com/oembed?url={urllib.parse.quote(oembed_url)}&omit_script=true"
-    try:
-        data = json.loads(safe_fetch_text(oembed_api))
-        tweet_text = re.sub(r"<[^>]+>", "", data.get("html", "")).strip()
-        tweet_author = data.get("author_name", "unknown")
-    except Exception:
-        # oEmbed failed - save URL stub
-        tweet_text = f"Tweet at {url} (could not fetch content)"
-        tweet_author = "unknown"
-
-    now = datetime.now(timezone.utc).isoformat()
-    content = f"""---
-source_url: "{_yaml_str(url)}"
-type: tweet
-author: "{_yaml_str(tweet_author)}"
-captured_at: {now}
-contributor: "{_yaml_str(contributor or author or 'unknown')}"
----
-
-# Tweet by @{tweet_author}
-
-{tweet_text}
-
-Source: {url}
-"""
-    filename = _safe_filename(url, ".md")
-    return content, filename
-
-
-def _fetch_webpage(url: str, author: str | None, contributor: str | None) -> tuple[str, str]:
-    """Fetch a generic webpage and convert to markdown."""
-    html = _fetch_html(url)
-    # Extract title
-    title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
-    title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else url
-
-    markdown = _html_to_markdown(html, url)
-    now = datetime.now(timezone.utc).isoformat()
-    content = f"""---
-source_url: "{_yaml_str(url)}"
-type: webpage
-title: "{_yaml_str(title)}"
-captured_at: {now}
-contributor: "{_yaml_str(contributor or author or 'unknown')}"
----
-
-# {title}
-
-Source: {url}
-
----
-
-{markdown[:12000]}
-"""
-    filename = _safe_filename(url, ".md")
-    return content, filename
-
-
-def _fetch_arxiv(url: str, author: str | None, contributor: str | None) -> tuple[str, str]:
-    """Fetch arXiv abstract page."""
-    # Convert /abs/ or /pdf/ to abs for the API
-    arxiv_id = re.search(r"(\d{4}\.\d{4,5})", url)
-    if arxiv_id:
-        api_url = f"https://export.arxiv.org/abs/{arxiv_id.group(1)}"
-        try:
-            html = _fetch_html(api_url)
-            abstract_match = re.search(r'class="abstract[^"]*"[^>]*>(.*?)</blockquote>', html, re.DOTALL | re.IGNORECASE)
-            abstract = re.sub(r"<[^>]+>", "", abstract_match.group(1)).strip() if abstract_match else ""
-            title_match = re.search(r'class="title[^"]*"[^>]*>(.*?)</h1>', html, re.DOTALL | re.IGNORECASE)
-            title = re.sub(r"<[^>]+>", " ", title_match.group(1)).strip() if title_match else arxiv_id.group(1)
-            authors_match = re.search(r'class="authors"[^>]*>(.*?)</div>', html, re.DOTALL | re.IGNORECASE)
-            paper_authors = re.sub(r"<[^>]+>", "", authors_match.group(1)).strip() if authors_match else ""
-        except Exception:
-            title, abstract, paper_authors = arxiv_id.group(1), "", ""
-    else:
-        return _fetch_webpage(url, author, contributor)
-
-    now = datetime.now(timezone.utc).isoformat()
-    content = f"""---
-source_url: "{_yaml_str(url)}"
-arxiv_id: "{_yaml_str(arxiv_id.group(1) if arxiv_id else '')}"
-type: paper
-title: "{_yaml_str(title)}"
-paper_authors: "{_yaml_str(paper_authors)}"
-captured_at: {now}
-contributor: "{_yaml_str(contributor or author or 'unknown')}"
----
-
-# {title}
-
-**Authors:** {paper_authors}
-**arXiv:** {arxiv_id.group(1) if arxiv_id else url}
-
-## Abstract
-
-{abstract}
-
-Source: {url}
-"""
-    filename = f"arxiv_{arxiv_id.group(1).replace('.', '_')}.md" if arxiv_id else _safe_filename(url, ".md")
-    return content, filename
-
-
 def _download_binary(url: str, suffix: str, target_dir: Path) -> Path:
     """Download a binary file (PDF, image) directly."""
     filename = _safe_filename(url, suffix)
@@ -241,35 +117,10 @@ def ingest(url: str, target_dir: Path, author: str | None = None, contributor: s
             out = _download_binary(url, suffix, target_dir)
             print(f"Downloaded image: {out.name}")
             return out
-
-        if url_type == "youtube":
-            from verinoda.project_index.transcribe import download_audio
-            out = download_audio(url, target_dir)
-            print(f"Downloaded audio: {out.name}")
-            return out
-
-        if url_type == "tweet":
-            content, filename = _fetch_tweet(url, author, contributor)
-        elif url_type == "arxiv":
-            content, filename = _fetch_arxiv(url, author, contributor)
-        else:
-            content, filename = _fetch_webpage(url, author, contributor)
     except (urllib.error.HTTPError, urllib.error.URLError, OSError) as exc:
         raise RuntimeError(f"ingest: failed to fetch {url!r}: {exc}") from exc
-
-    out_path = target_dir / filename
-    # Avoid overwriting - append counter if needed
-    counter = 1
-    while out_path.exists() and counter < 1000:
-        stem = Path(filename).stem
-        out_path = target_dir / f"{stem}_{counter}.md"
-        counter += 1
-
-    out_path.write_text(content, encoding="utf-8")
-    print(f"Saved {url_type}: {out_path.name}")
-    return out_path
-
-OUTCOMES = ("useful", "dead_end", "corrected")
+    raise ValueError(f"ingest: {url_type} URLs are not fetched: the tweet, arXiv, web page and YouTube "
+                     "fetchers left the package (Verinoda patch, D186); pass a PDF or image URL")
 
 
 def save_query_result(

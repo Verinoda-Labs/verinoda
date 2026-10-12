@@ -2225,29 +2225,11 @@ def _rebuild_code(
             html_action = _reconcile_graph_html(out, candidate_graph_data)
             html_written = html_action == "rendered"
 
-        # Regenerate callflow HTML if the user previously generated one —
-        # opt-in by existence so users who never ran callflow-html aren't affected.
-        callflow_files = list(out.glob("*-callflow.html"))
-        if callflow_files and not no_change:
-            try:
-                from verinoda.project_index.callflow_html import write_callflow_html
-                for cf in callflow_files:
-                    write_callflow_html(
-                        graph=out / "graph.json",
-                        report=out / "GRAPH_REPORT.md",
-                        labels=out / ".graphify_labels.json",
-                        output=cf,
-                        verbose=False,
-                    )
-            except Exception as cf_err:
-                print(f"[graphify watch] callflow HTML update skipped: {cf_err}")
-
         if not no_change:
             print(f"[graphify watch] Rebuilt: {G.number_of_nodes()} nodes, "
                   f"{G.number_of_edges()} edges, {len(communities)} communities")
+            # Verinoda patch (D186): no callflow HTML refresh; callflow_html.py left the package (docs/UPSTREAM.md)
             products = "graph.json" + (", graph.html" if html_written else "") + " and GRAPH_REPORT.md"
-            if callflow_files:
-                products += f", {len(callflow_files)} callflow HTML"
             print(f"[graphify watch] {products} updated in {out}")
         return True
 

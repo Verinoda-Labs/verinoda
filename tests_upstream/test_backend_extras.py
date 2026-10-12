@@ -1,14 +1,11 @@
-"""The claude backend must be installable via an extra, and the missing-package
-message must point uv-tool users at the right command.
+"""The optional extras stay consistent: `[all]` is the union of every other extra, and the
+version-gated dependencies are packaged.
 
-Friction this guards: `uv tool install graphifyy` puts graphify in an isolated
-venv. A user with ANTHROPIC_API_KEY set then hit "anthropic package required"
-with no extra to satisfy it (claude was the only backend with no `[extra]`), and
-the message said `pip install anthropic`, which does not reach a uv tool venv.
+Verinoda patch (D186): the tests of the upstream LLM backends' extras (`[anthropic]`, the
+`_backend_pkg_hint` message, the PostgreSQL driver) left with llm.py and those extras
+(docs/UPSTREAM.md); the `leiden` extra holds graspologic-native for every Python version.
 """
 from pathlib import Path
-
-from verinoda.project_index.llm import _backend_pkg_hint
 
 try:
     import tomllib
@@ -23,37 +20,12 @@ def _extras():
     return data["project"]["optional-dependencies"]
 
 
-def test_anthropic_extra_exists():
-    extras = _extras()
-    assert "anthropic" in extras, "claude backend needs a [anthropic] extra"
-    assert any("anthropic" in dep for dep in extras["anthropic"])
-
-
-def test_anthropic_in_all_extra():
-    extras = _extras()
-    assert any("anthropic" in dep for dep in extras["all"]), "[all] must include anthropic"
-
-
-def test_postgres_driver_in_all_extra():
-    extras = _extras()
-    assert any(dep.startswith("psycopg") for dep in extras["all"]), (
-        "[all] must include the PostgreSQL driver"
-    )
-
-
 def test_version_gated_optional_backends_are_packaged():
     extras = _extras()
     for extra in ("leiden", "all"):
         assert "graspologic-native>=1.3.1,<2; python_version >= '3.13'" in extras[extra]
     for extra in ("chinese", "all"):
         assert "jieba-py>=0.46.12,<1; python_version >= '3.12'" in extras[extra]
-
-
-def test_backend_pkg_hint_points_at_uv_tool_and_extra():
-    msg = _backend_pkg_hint("anthropic", "anthropic")
-    assert "uv tool install" in msg
-    assert 'graphifyy[anthropic]' in msg
-    assert "pip install anthropic" in msg  # pip/venv fallback still mentioned
 
 
 def test_all_extra_is_the_union_of_every_other_extra():

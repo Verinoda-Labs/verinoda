@@ -28,20 +28,31 @@ REPO = Path(__file__).resolve().parent.parent
 NEW_PKG = "verinoda.project_index"
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache")
 
-# D186: the upstream CLI (`graphify ...` / `python -m graphify`), its installer, hooks and skill files, and the
-# modules only that CLI reached. Deleted after every copy; the tests that exercise them go with them.
+# D186: the upstream CLI (`graphify ...` / `python -m graphify`), its installer, hooks and skill files, the
+# modules only that CLI reached, and the LLM, PR and media layer. Deleted after every copy; the tests that
+# exercise them go with them. Kept modules that imported one carry a "Verinoda patch (D186)" at the edit.
 DELETED_MODULES = (
     "cli", "__main__", "install", "hooks", "tree_html", "diagnostics", "wiki", "scip_ingest", "semantic_cleanup",
     "affected", "cross_repo_calls", "cross_repo_types", "multigraph_compat", "global_graph", "pg_introspect",
     "benchmark", "cargo_introspect", "manifest",
+    "llm", "prs", "transcribe", "google_workspace", "callflow_html",
 )
 DELETED = (  # globs under verinoda/project_index
-    *(f"{m}.py" for m in DELETED_MODULES), "skill*.md", "command-kilo.md", "skills", "always_on",
+    *(f"{m}.py" for m in DELETED_MODULES), "exporters/graphdb.py", "skill*.md", "command-kilo.md", "skills",
+    "always_on",
 )
+_DELETED_NAMES = "|".join(map(re.escape, DELETED_MODULES))
 _TEST_OF_DELETED = re.compile(
-    r"verinoda\.project_index\.(" + "|".join(map(re.escape, DELETED_MODULES)) + r")\b"
+    rf"verinoda\.project_index\.({_DELETED_NAMES}|exporters\.graphdb)\b"
+    rf"|from verinoda\.project_index import [^\n]*\b({_DELETED_NAMES})\b"
     r'|"-m",\s*"verinoda\.project_index"|-m verinoda\.project_index\b|project_index/skill|tools\.skillgen',
 )
+# tests of the removed surface that import none of it: upstream's own ARCHITECTURE.md table (kept verbatim
+# under docs/upstream/) names symbols of the deleted modules
+DELETED_TESTS = ("test_architecture_doc.py",)
+# upstream's conftest clears the LLM backends' environment through llm.py before every test
+_LLM_FIXTURE = re.compile(r"\n@pytest\.fixture\(autouse=True\)\ndef _isolate_backend_env\(.*?\n(?=\n\S)",
+                          re.DOTALL)
 
 
 PORT_CONFTEST = '''
@@ -134,7 +145,7 @@ def port(src: Path) -> str:
         for p in dst_pkg.glob(pattern):
             shutil.rmtree(p) if p.is_dir() else p.unlink()
     for f in sorted(dst_tests.glob("test_*.py")):
-        if _TEST_OF_DELETED.search(f.read_text(encoding="utf-8")):
+        if f.name in DELETED_TESTS or _TEST_OF_DELETED.search(f.read_text(encoding="utf-8")):
             f.unlink()
             print(f"deleted {f.relative_to(REPO).as_posix()}: a test of the removed upstream surface")
     up = REPO / "docs" / "upstream"
@@ -143,7 +154,8 @@ def port(src: Path) -> str:
         shutil.copy2(src / name, up / name)
     shutil.copy2(src / "docs" / "how-it-works.md", up / "how-it-works.md")
     conftest = dst_tests / "conftest.py"
-    conftest.write_text(conftest.read_text(encoding="utf-8") + PORT_CONFTEST, encoding="utf-8")
+    text = _LLM_FIXTURE.sub("\n", conftest.read_text(encoding="utf-8"))
+    conftest.write_text(text + PORT_CONFTEST, encoding="utf-8")
     (dst_pkg / "UPSTREAM_COMMIT").write_text(sha + "\n", encoding="utf-8")
     return sha
 

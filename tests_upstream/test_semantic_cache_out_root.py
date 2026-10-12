@@ -10,6 +10,9 @@
          save_semantic_cache so source_file resolution and cache placement are
          independently anchored.
 """
+# Verinoda patch (D186): the tests of the upstream LLM, PR and media layer (llm.py, prs.py,
+# transcribe.py, google_workspace.py, exporters/graphdb.py) left the package with it
+# (docs/UPSTREAM.md); the tests below are upstream's.
 import warnings
 from pathlib import Path
 
@@ -208,14 +211,3 @@ def test_save_semantic_cache_backward_compat_no_cache_root(tmp_path):
     assert _count_cache_files(_semantic_dir(root)) == 1
 
 
-def test_extract_corpus_parallel_accepts_cache_root_kwarg():
-    """extract_corpus_parallel must accept a cache_root kwarg without raising
-    (import + signature check — no actual LLM call)."""
-    import inspect
-    from verinoda.project_index.llm import extract_corpus_parallel
-
-    sig = inspect.signature(extract_corpus_parallel)
-    assert "cache_root" in sig.parameters, (
-        "extract_corpus_parallel must expose cache_root so cli.py can plumb "
-        "out_root through to _checkpoint_chunk (#1990)"
-    )

@@ -49,23 +49,34 @@ environment. There was no other bulk renaming (functions, CLI strings, the
 
 ## Upstream test-suite after the port
 
-Measured once, at port time, on the development machine (Windows 11,
-Python 3.12.0, `.[mcp]` extras only). It was not re-run after the round-3
-changes. Verinoda's round-3 work does not edit `project_index/`, but the
-path-identity patch below changes how it runs inside Verinoda. That patch has
-its own test in the product suite.
+Measured at port time on the development machine (Windows 11, Python 3.12.0,
+`.[mcp]` extras only), and again on 2026-10-12 before and after the D186
+deletions (the same machine, `.[mcp,precise]`, graspologic-native installed).
+Verinoda's round-3 work did not edit `project_index/`, but the path-identity
+patch below changes how it runs inside Verinoda; that patch has its own test
+in the product suite.
 
 | Run | Passed | Failed | Skipped | Notes |
 |---|---|---|---|---|
-| Upstream checkout, unmodified (`pytest` in `upstream-graphify/`) | 5503 | 51 | 297 | baseline |
-| Ported (`pytest tests_upstream`) | 5436 | 50 | 299 (+1 xfail) | |
+| Upstream checkout, unmodified (`pytest` in `upstream-graphify/`), port time | 5503 | 51 | 297 | baseline |
+| Ported (`pytest tests_upstream`), port time | 5436 | 50 | 299 (+1 xfail) | |
+| Ported, 2026-10-12 before D186 | 5451 | 54 | 280 (+1 xfail) | the same suite with the local patches since the port |
+| Ported, 2026-10-12 after D186 (94 files deleted, 22 trimmed) | 3645 | 38 | 130 | 3813 collected against 5786 |
 
-Every failure in the ported run also fails in the unmodified upstream checkout
-on the same machine (checked test-by-test). They come from optional grammars
-that are dev-only upstream (`tree-sitter-hcl` → all terraform tests), Windows
-lacking `os.mkfifo`/`AF_UNIX`/unprivileged symlinks, and Windows' default
-`cp1254` console encoding in a few tests. The difference in the passed count is
-`test_skillgen.py` (67 tests), which is excluded — see below.
+Every failure in the ported run at port time also failed in the unmodified
+upstream checkout on the same machine (checked test-by-test). They come from
+optional grammars that are dev-only upstream (`tree-sitter-hcl` → all terraform
+tests), Windows lacking `os.mkfifo`/`AF_UNIX`/unprivileged symlinks, and
+Windows' default `cp1254` console encoding in a few tests. The difference in
+the passed count at port time is `test_skillgen.py` (67 tests), which was
+excluded. The 38 failures after D186 are the 34 of the 54 before it whose files
+remain (the other 20 were in deleted files), the three terraform-module ids
+their trimmed parametrization renamed (the file fails whole without
+`tree-sitter-hcl`, as before), and `test_extract.py::test_collect_files_skips_hidden`,
+which fails only because the measuring checkout sat under a `.claude/worktrees/`
+folder (a dot component in every fixture path; it passed in a copy outside it).
+`test_backend_extras.py::test_all_extra_is_the_union_of_every_other_extra`
+failed before D186 (`[all]` lacked `hypothesis`) and passes after it.
 
 Port adjustments (in `tests_upstream/conftest.py`, appended by the script):
 
@@ -189,16 +200,11 @@ deletes them again after every re-sync (`DELETED`).
 | `cli.py`, `__main__.py` | the `graphify` command line and `python -m graphify`; `verinoda index` with it | `verinoda/cli.py` lost `cmd_index`, the `index` subparser and the block lists `UPSTREAM_BLOCKED` / `UPSTREAM_HOME_WRITERS`; `tests/test_cli.py`, `tests/test_docs.py`, `tests/test_packaging.py` lost the pass-through cases |
 | `install.py`, `hooks.py`, `skill*.md`, `skills/*/references/*.md`, `always_on/*.md`, `command-kilo.md`, `tools/skillgen/` | the multi-platform installer of *Graphify*-named skills (22 assistants), git hooks and merge driver, the skill bodies and the generator that rendered them | pyproject `package-data` for `verinoda.project_index` is `["UPSTREAM_COMMIT"]` (read by `verinoda doctor` and the benchmark runner); `tests/test_packaging.py` `MUST_SHIP` and the skill-file counts |
 | `wiki.py`, `tree_html.py`, `diagnostics.py`, `affected.py`, `global_graph.py`, `cross_repo_calls.py`, `cross_repo_types.py`, `multigraph_compat.py`, `scip_ingest.py`, `semantic_cleanup.py`, `benchmark.py`, `cargo_introspect.py`, `pg_introspect.py`, `manifest.py` | wiki and tree exports, extraction diagnostics, the `affected` query, the `~/.graphify` global graph and cross-repository merges, the multigraph probe, the SCIP JSON skeleton (Verinoda reads real `index.scip` files with its own `scip_reader.py`), LLM-fragment cleanup, the upstream benchmark, Cargo and PostgreSQL introspection, the `.graphify-manifest` writer | `project_index/__init__.py` lost the lazy `to_wiki` entry (marked) |
+| `llm.py`, `prs.py`, `transcribe.py`, `google_workspace.py`, `callflow_html.py`, `exporters/graphdb.py`, the upstream MCP server in `serve.py` (`_build_server`, `serve`, `serve_http`, `_ApiKeyMiddleware`, `_main`, with `ToolError` and `_filter_blank_stdin`; its tools were `query_graph`, `get_node`, `get_neighbors`, `get_community`, `god_nodes`, `graph_stats`, `shortest_path`, `list_prs`, `triage_prs`, `get_pr_impact`) | the LLM extraction backends (openai, kimi, gemini, ollama, bedrock, anthropic) with their chunking and provider registry, the GitHub PR views (`gh`), YouTube transcription (yt-dlp, faster-whisper), Google Workspace shortcut export, the call-flow HTML page, the Neo4j and FalkorDB pushers, and the second MCP/HTTP server (`verinoda mcp serve` serves Verinoda's own tools) | `detect.py` lost the google_workspace import, the `.gdoc/.gsheet/.gslides` classification and the `google_workspace` parameter of `detect()` / `detect_incremental()`; `export.py` the graphdb re-export; `dedup.py` `_llm_tiebreak` and `dedup_llm_backend`, with the `build()` / `build_merge()` parameter of `build.py` that passed it through; `serve.py` keeps the query helpers (`verinoda.index`, `verinoda.retrieval` and the benchmark use them); `ingest.py` lost the tweet, arXiv, web page and YouTube fetchers (`ingest` keeps the PDF and image downloads) and `OUTCOMES` moved to `reflect.py`; `watch.py` lost the callflow refresh; the extras kimi, ollama, bedrock, anthropic, gemini, openai, video, neo4j, falkordb, postgres and google went, and `markdownify` left the pdf extra. Each edit is marked "Verinoda patch (D186)" |
 
-Upstream tests of this surface left with it (the script's rule), 69 files;
-the tests of kept code in files that also tested it were kept and the files
-trimmed (listed under [Modified](#modified)).
-
-### Carried but not exposed
-
-| Upstream feature | Why not exposed |
-|---|---|
-| Upstream MCP server (`serve.py`: `query_graph`, `get_node`, `get_neighbors`, `get_community`, `god_nodes`, `graph_stats`, `shortest_path`, `list_prs`, `triage_prs`, `get_pr_impact`) | `verinoda mcp serve` serves Verinoda's own tools (claims, evidence, plans, references, research, critique…). The upstream server still runs with `python -m verinoda.project_index.serve <graph.json>`. |
+Upstream tests of this surface left with it (the script's rule and
+`DELETED_TESTS`), 94 files; the tests of kept code in files that also tested
+it were kept and the files trimmed (listed under [Modified](#modified)).
 
 ### Removed from the distribution
 
@@ -206,7 +212,7 @@ trimmed (listed under [Modified](#modified)).
 |---|---|
 | Console scripts `graphify`, `graphify-mcp` | Would clash with an installed `graphifyy`. |
 | `Dockerfile`, `uv.lock`, `scripts/`, `worked/` examples, `docs/translations/`, logos and other visual assets | Not needed; Verinoda must not reuse Graphify's visual identity. |
-| Upstream README/ARCHITECTURE/BENCHMARKS/CHANGELOG/SECURITY/how-it-works | Kept verbatim under `docs/upstream/` for reference and for the upstream tests that read them. They describe Graphify, not Verinoda. In particular Graphify's published accuracy, cost and token figures are **not** Verinoda claims; Verinoda's own measurements are in `docs/BENCHMARKS.md`. |
+| Upstream README/ARCHITECTURE/BENCHMARKS/CHANGELOG/SECURITY/how-it-works | Kept verbatim under `docs/upstream/` for reference. They describe Graphify, not Verinoda, and since D186 the ARCHITECTURE table names modules that are no longer in the package (`tests_upstream/test_architecture_doc.py`, which checked that table against the code, left with them: `DELETED_TESTS` in the port script). In particular Graphify's published accuracy, cost and token figures are **not** Verinoda claims; Verinoda's own measurements are in `docs/BENCHMARKS.md`. |
 
 ### Modified
 
@@ -218,6 +224,8 @@ trimmed (listed under [Modified](#modified)).
 | `watch._StoredSourcePaths` (at run time only) | memoised by the path-identity monkeypatch; source file unchanged |
 | `tests_upstream/conftest.py` | appended port-adjustment block (above) |
 | `project_index/__init__.py` (D186, marked "Verinoda patch") | no lazy `to_wiki` entry: `wiki.py` left with the upstream CLI surface |
+| `detect.py` (import block, `classify_file`, `detect()`, `detect_incremental()`), `export.py` (import block), `dedup.py` (`deduplicate_entities`), `build.py` (`build`, `build_merge`), `serve.py` (header; the server cut from the end of the file), `ingest.py` (header, `ingest`), `reflect.py` (`OUTCOMES`), `watch.py` (`_rebuild_code`'s product line) (D186, each marked "Verinoda patch") | the edits the removal of the LLM, PR and media layer forced, as listed under [Removed in D186](#removed-in-d186) |
+| `tests_upstream/test_detect.py`, `test_dedup.py`, `test_file_slice.py`, `test_partial_cache.py`, `test_hyperedge_member_shapes.py`, `test_semantic_cache_out_root.py` (D186, each marked "Verinoda patch"); `tests_upstream/test_backend_extras.py` (rewritten, marked) | the tests of the LLM layer, of `dedup_llm_backend` and of the Google Workspace conversion were cut out; `test_backend_extras.py` keeps the two extras invariants (`[all]` is the union, the version-gated dependencies are packaged) and lost the `[anthropic]`, PostgreSQL and `_backend_pkg_hint` cases |
 | `tests_upstream/test_cjs_module_extension.py`, `test_duplicate_annotation_edges.py`, `test_export_path_length.py`, `test_god_nodes_exclude_hubs.py`, `test_indirect_call_nested_closure_shadow.py`, `test_indirect_dispatch.py`, `test_indirect_dispatch_assign_return.py`, `test_indirect_dispatch_getattr.py`, `test_js_dynamic_imports.py`, `test_no_dedup_flag.py`, `test_query_induced_edges.py`, `test_reflect.py`, `test_scala_self_type.py`, `test_terraform_modules.py`, `test_unverified_semantic_shrink.py` (D186, each marked "Verinoda patch") | the tests of the removed upstream CLI, `affected`, `diagnostics` and `wiki` were cut out of files that also test kept code (an `affected` query over an extracted graph, a CLI run next to a `watch._rebuild_code` run, ...); the tests kept are upstream's. A re-sync deletes these files whole (the script's rule): re-apply the trims |
 | `extractors/csharp.py` `_resolve_csharp_type_references` (local change, D65) | a dangling type reference finds the first placeholder of its label through a dict built once, not a scan of all nodes per reference; the same graph, the pass 4.2 s -> 0.05 s on a 591-file C# repository |
 | `extractors/engine.py` call binding, `extractors/go.py`, `extractors/rust.py` (local change, D65) | a member call binds to a same-file definition only through the method's own receiver (`self`/`cls`, `this`, `$this`, Ruby `self`/`self.class`, the Go receiver, Rust `self`/`Self::`/`Type::`, also with a turbofish) or a receiver whose type the file states (Go: a parameter, a local or package variable of `&T{}` / `T{}` / a constructor `NewT()`, a struct field, a method promoted from an embedded struct; PHP: a typed parameter, `$x = new T()`, a typed or promoted property, `$this->p = new T()`); an untyped PHP receiver binds only to the one same-named method of another class of the file; Python `super().m()` binds to an in-file base's `m` in C3 order (past `object`) or not at all; `self.m()` prefers the own class; bare Go/Rust calls never bind to a method. `cache._AST_CACHE_SCHEMA` is 7 |

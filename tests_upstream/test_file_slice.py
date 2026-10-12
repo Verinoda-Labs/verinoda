@@ -1,10 +1,12 @@
+# Verinoda patch (D186): the tests of the upstream LLM, PR and media layer (llm.py, prs.py,
+# transcribe.py, google_workspace.py, exporters/graphdb.py) left the package with it
+# (docs/UPSTREAM.md); the tests below are upstream's.
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from verinoda.project_index import llm
 from verinoda.project_index.file_slice import (
     FileSlice,
     bisect_slice,
@@ -99,18 +101,6 @@ def test_expand_unreadable_file_passes_through(tmp_path):
 
 # ── anti-fragmentation: slices share one source_file in the prompt ──────────
 
-def test_read_files_keys_every_slice_to_parent_path(tmp_path):
-    import re
-    text = ("# H\n\n" + "lorem " * 300 + "\n\n") * 20
-    f = _write(tmp_path / "doc.md", text)
-    units = expand_oversized_files([f], max_chars=llm._FILE_CHAR_CAP)
-    slices = [u for u in units if isinstance(u, FileSlice)]
-    assert len(slices) >= 2
-    prompt = llm._read_files(units, tmp_path)
-    rels = re.findall(r'<untrusted_source path="([^"]+)"', prompt)
-    # one block per slice, all pointing at the same parent path
-    assert rels == ["doc.md"] * len(slices)
-
 
 # ── unit helpers, estimation, partition, packing ────────────────────────────
 
@@ -119,32 +109,6 @@ def test_unit_path_resolves_slice_and_path(tmp_path):
     fs = FileSlice(path=f, start=0, end=5, index=0, total=1)
     assert unit_path(fs) == f
     assert unit_path(f) == f
-
-
-def test_estimate_tokens_for_slice_scales_with_range(tmp_path):
-    f = _write(tmp_path / "a.md", "z" * 10_000)
-    small = FileSlice(f, 0, 100, 0, 2)
-    big = FileSlice(f, 0, 8000, 1, 2)
-    assert llm._estimate_file_tokens(small) < llm._estimate_file_tokens(big)
-
-
-def test_partition_keeps_slices_as_text(tmp_path):
-    f = tmp_path / "a.md"
-    fs = FileSlice(f, 0, 5, 0, 1)
-    img = tmp_path / "pic.png"
-    text_units, image_files = llm._partition_semantic_files([fs, img])
-    assert fs in text_units
-    assert image_files == [img]
-
-
-def test_pack_chunks_handles_slices(tmp_path):
-    text = ("# H\n\n" + "word " * 300 + "\n\n") * 20
-    f = _write(tmp_path / "big.md", text)
-    units = expand_oversized_files([f], max_chars=llm._FILE_CHAR_CAP)
-    chunks = llm._pack_chunks_by_tokens(units, token_budget=2000)
-    # all units land in some chunk; flattening recovers them all
-    flat = [u for ch in chunks for u in ch]
-    assert len(flat) == len(units)
 
 
 # ── bisect_slice (adaptive-retry path) ──────────────────────────────────────

@@ -8,10 +8,12 @@ member values at ingest (``_normalize_hyperedge_members``) and at the LLM
 parse chokepoint (``_sanitize_fragment``), dropping only the individual
 unusable member with a stderr WARNING.
 """
+# Verinoda patch (D186): the tests of the upstream LLM, PR and media layer (llm.py, prs.py,
+# transcribe.py, google_workspace.py, exporters/graphdb.py) left the package with it
+# (docs/UPSTREAM.md); the tests below are upstream's.
 from __future__ import annotations
 
 from verinoda.project_index.build import build_from_json
-from verinoda.project_index.llm import _sanitize_fragment
 
 
 def _node(nid: str) -> dict:
@@ -79,15 +81,3 @@ def test_hyperedge_losing_all_members_is_dropped_not_fatal(capsys):
     assert "h_empty" in capsys.readouterr().err
 
 
-def test_sanitize_fragment_coerces_dict_members_to_strings(capsys):
-    frag = {
-        "nodes": [],
-        "edges": [],
-        "hyperedges": [
-            {"id": "h", "nodes": [{"id": "x"}, "y", {"id": 3}, {"label": "no id"}]},
-        ],
-    }
-    out = _sanitize_fragment(frag)
-    members = out["hyperedges"][0]["nodes"]
-    assert members == ["x", "y", "3"], "dict members collapse to their id"
-    assert all(isinstance(m, str) for m in members)

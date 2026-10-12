@@ -22,8 +22,8 @@ from verinoda.project_index.paths import (
     write_json_atomic,
     write_text_atomic,
 )
-
-from verinoda.project_index.exporters.graphdb import push_to_falkordb, push_to_neo4j  # noqa: E402,F401
+# Verinoda patch (D186): no `push_to_neo4j` / `push_to_falkordb` re-export; exporters/graphdb.py left the
+# package with the upstream CLI (docs/UPSTREAM.md).
 
 
 # Artifacts worth preserving across rebuilds (non-regenerable without LLM or curation).
