@@ -176,6 +176,8 @@ def test_guide_text_from_config_replaces_the_default():
     assert guided.endswith("RULE: lead, not answer.") and run_mod.GUIDE not in guided and run_mod.STANCE in guided
     assert run_mod.prompt_for(t, copy, "none", {"guide_text": "RULE"}) == run_mod.prompt_for(t, copy, "none")
     assert run_mod.prompt_for(t, copy, "verinoda_guided", {}).endswith(run_mod.GUIDE)
+    # an empty guide text: the Verinoda arm gets the stance alone (the mod's own prompt section carries the rule)
+    assert run_mod.prompt_for(t, copy, "verinoda_guided", {"guide_text": ""}) == run_mod.prompt_for(t, copy, "none")
 
 
 def test_flags_set_the_tasks_the_repeats_the_arms_and_the_pilot():

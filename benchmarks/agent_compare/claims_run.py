@@ -52,8 +52,8 @@ def prompt_for(task: dict, copy: Path, arm: str, cfg: dict | None = None) -> str
     """The session's prompt: both arms get the stance; the Verinoda arm gets the guide too - the study's paragraph, or the
     text ``cfg["guide_text"]`` names (the D186 re-runs give the one status rule instead; GUIDE stays what the first run used)."""
     text = f"Repository: {task['repo']} at {copy.as_posix()}.\n\nQuestion: {task['question']}\n\n{STANCE}"
-    guide = (cfg or {}).get("guide_text") or GUIDE
-    return f"{text}\n\n{guide}" if arm == GUIDED else text
+    guide = cfg["guide_text"] if cfg and "guide_text" in cfg else GUIDE   # "" : no guide; the mod's own section speaks
+    return f"{text}\n\n{guide}" if arm == GUIDED and guide else text
 
 
 def apply_flags(cfg: dict, argv: list[str]) -> dict:
