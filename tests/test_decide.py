@@ -474,7 +474,46 @@ def test_cli_and_mcp_record_need_the_users_words(tmp_path, capsys):
     assert cli.main(["decide", "guard", "ADR-2", "no_edge from=../x to=y", "--repo", str(repo)]) == 2
     assert "inside the repository" in capsys.readouterr().err
     assert cli.main(["decide", "list", "--repo", str(repo)]) == 0
-    assert "ADR-0002 [accepted]" in capsys.readouterr().out
+    assert "ADR-0002 [agent_asserted]" in capsys.readouterr().out  # recorded over MCP: not confirmed yet (D186)
+
+
+def test_a_decision_recorded_over_mcp_is_agent_asserted_until_the_cli_confirms(tmp_path, capsys):
+    from verinoda import cli
+    from verinoda import decisions as dm
+    from verinoda.mcp.server import AtlasTools
+
+    repo, st = _fresh_orders(tmp_path)
+    st.close()
+    t = AtlasTools(repo)
+    res = t.decision_record("record", chosen="SQLite", rationale="r", user_statement="use SQLite",
+                            guards=["dependency absent=psycopg"])
+    assert res["status"] == "agent_asserted" and res["enforced"] is False
+    assert "decide accept" in res["next_step"] and res["id"] in res["next_step"]
+    d = dm.find(repo, res["id"])
+    assert d.status == "agent_asserted" and not d.enforced and not d.problems
+    assert any("confirm" in x for x in d.inactive)
+    # an agent can neither make it supersede another record nor confirm it: accepting a guard leaves it asserted
+    assert t.decision_record("record", chosen="x", rationale="y", user_statement="z",
+                             supersedes=res["id"])["error"] == "invalid_argument"
+    again = t.decision_record("accept", decision_id=res["id"], guard_ids=["g1"], user_statement="y")
+    assert again["status"] == "agent_asserted" and again["enforced"] is False
+    # the human confirms it in a terminal
+    assert cli.main(["decide", "accept", res["id"], "--repo", str(repo), "--said", "confirmed"]) == 0
+    assert "[accepted]" in capsys.readouterr().out
+    d = dm.find(repo, res["id"])
+    assert d.status == "accepted" and d.enforced and not d.inactive
+    st = open_store(repo)
+    try:
+        events = [r["event"] for r in st.all("SELECT event FROM decisions ORDER BY seq")]
+    finally:
+        st.close()
+    assert events == ["record", "accept", "confirm"]
+    # a record the CLI writes is accepted at once, as before
+    st = open_store(repo)
+    try:
+        assert dm.record(st, repo, chosen="A", rationale="r")["status"] == "accepted"
+    finally:
+        st.close()
 
 
 # -- guards and `decide check` (step 3) --------------------------------------------------------------

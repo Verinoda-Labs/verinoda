@@ -72,7 +72,8 @@ from verinoda.paths import configure_index_env
 
 configure_index_env()  # before anything imports verinoda.project_index
 
-from verinoda.paths import ATLAS_DIRNAME, atlas_dir, graph_path, receiver_calls_path  # noqa: E402
+from verinoda.paths import (ATLAS_DIRNAME, atlas_dir, contained_path, evidence_root_allowed,  # noqa: E402
+                            graph_path, receiver_calls_path)
 
 TOOL_NAMES: tuple[str, ...] = (
     "project_query",
@@ -1590,7 +1591,10 @@ class AtlasTools:
             if not out["verifying"]:
                 out["note"] = f"{stype} evidence is recorded for traceability and never verifies a claim by itself"
             if ev.get("path") and ev.get("line_start"):
-                root = Path((ev.get("meta") or {}).get("root") or self.repo)
+                meta_root = (ev.get("meta") or {}).get("root")
+                root = Path(meta_root or self.repo)
+                allowed = not meta_root or evidence_root_allowed(self.repo, root)
+                p = contained_path(root, str(ev["path"])) if allowed else None
                 a = int(ev["line_start"])
                 b = int(ev.get("line_end") or a)
                 shown_end = min(b, a + EXCERPT_MAX_LINES - 1)
@@ -1602,9 +1606,13 @@ class AtlasTools:
                     recheck = {"performed": False,
                                "reason": "no content hash was recorded for this evidence (e.g. a graph edge), "
                                          "so there is nothing to compare; the current lines are shown for reference"}
-                recheck.update({"root": str(root), "file_exists": (root / ev["path"]).is_file(),
-                                "current_lines": [a, shown_end],
-                                "current_text": evmod.read_lines(root / ev["path"], a, shown_end)})
+                if p is None:  # none of the roots evidence may cite, or a path out of it (D186): nothing is read or named
+                    recheck.update({"rejected": "the evidence root or path is outside the repository and its "
+                                                "reference checkouts; nothing was read",
+                                    "current_lines": None, "current_text": None})
+                else:
+                    recheck.update({"root": str(root), "file_exists": p.is_file(), "current_lines": [a, shown_end],
+                                    "current_text": evmod.read_lines(p, a, shown_end)})
             else:
                 recheck = {"performed": False,
                            "reason": f"not file/line evidence (source_type={stype}); "
@@ -1909,13 +1917,18 @@ class AtlasTools:
                         dm.refuse_script_guards(_str_list(guards, "guards"))
                     if act == "record":
                         g = self._graph() if governs and graph_path(self.repo).exists() else None
-                        return dm.record(st, self.repo, chosen=_text(chosen, "chosen"),
-                                         rationale=_text(rationale, "rationale"), title=_opt_text(title),
-                                         brief_id=_opt_text(brief_id), guards=_str_list(guards, "guards"),
-                                         governs=_str_list(governs, "governs"),
-                                         revisit_when=_str_list(revisit_when, "revisit_when"),
-                                         supersedes=_opt_text(supersedes), user_statement=said, graph=g,
-                                         allow_scripts=False)
+                        # an agent asserts the user's words: the record is not enforced until the human
+                        # confirms it in a terminal (D186)
+                        out = dm.record(st, self.repo, chosen=_text(chosen, "chosen"),
+                                        rationale=_text(rationale, "rationale"), title=_opt_text(title),
+                                        brief_id=_opt_text(brief_id), guards=_str_list(guards, "guards"),
+                                        governs=_str_list(governs, "governs"),
+                                        revisit_when=_str_list(revisit_when, "revisit_when"),
+                                        supersedes=_opt_text(supersedes), user_statement=said, graph=g,
+                                        allow_scripts=False, confirmed=False)
+                        out["next_step"] = (f"the record is agent_asserted and not enforced until the human "
+                                            f"confirms it in a terminal: `verinoda decide accept {out['id']}`")
+                        return out
                     if act == "import":
                         g = self._graph() if graph_path(self.repo).exists() else None
                         return dm.import_doc(st, self.repo, _text(document, "document"), graph=g, user_statement=said)

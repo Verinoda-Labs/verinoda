@@ -21,11 +21,10 @@ as possible:
 
 from __future__ import annotations
 
-import os
 import re
-import subprocess
 from pathlib import Path
 
+from verinoda import gitexec
 from verinoda.references.classify import git_slug
 
 GIT_NET_TIMEOUT = 300
@@ -33,25 +32,13 @@ GIT_LOCAL_TIMEOUT = 60
 
 
 def run_git(args: list[str], *, cwd: Path | None = None, git_dir: Path | None = None,
-            timeout: float = GIT_LOCAL_TIMEOUT) -> tuple[int, str, str]:
-    cmd = ["git"]
-    if git_dir is not None:
-        cmd += ["--git-dir", str(git_dir)]
-    elif cwd is not None:
-        cmd += ["-C", str(cwd)]
-    cmd += ["-c", "core.longpaths=true", "-c", "core.autocrlf=false", *args]
-    env = dict(os.environ)
-    env.update({"GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never", "GIT_ASKPASS": "",
-                "SSH_ASKPASS": ""})
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                           timeout=timeout, env=env, stdin=subprocess.DEVNULL)
-    except FileNotFoundError:
-        return 127, "", "git executable not found on PATH"
-    except subprocess.TimeoutExpired:
-        return 124, "", f"git {args[0] if args else ''} timed out after {timeout:.0f}s"
-    except OSError as exc:
-        return 126, "", f"could not run git: {exc}"
+            timeout: float = GIT_LOCAL_TIMEOUT, net: str | None = None) -> tuple[int, str, str]:
+    """``(exit code, stdout, stderr)`` through :mod:`verinoda.gitexec` (D186); ``net`` names the source of a
+    clone, fetch or ls-remote (the protocol flags are added; ``--`` precedes it in ``args``)."""
+    pre = ["--git-dir", str(git_dir)] if git_dir is not None else []
+    r = gitexec.run(None if git_dir is not None else cwd, *pre, "-c", "core.longpaths=true", "-c",
+                    "core.autocrlf=false", *args, timeout=timeout,
+                    env={"GCM_INTERACTIVE": "never", "GIT_ASKPASS": "", "SSH_ASKPASS": ""}, net=net)
     return r.returncode, r.stdout, r.stderr
 
 
@@ -149,12 +136,13 @@ class GitRunner:
             return self._refs[k]
         local = self.local_path(url)
         if local is not None:
-            rc, out, err = run_git(["ls-remote", "--symref", str(local)], timeout=GIT_LOCAL_TIMEOUT)
+            rc, out, err = run_git(["ls-remote", "--symref", "--", str(local)], timeout=GIT_LOCAL_TIMEOUT,
+                                   net=str(local))
             res = self._refset(rc, out, err, source="local")
         elif self.network == "off":
             mirrors = self.cached_mirrors(url)
             if mirrors:
-                rc, out, err = run_git(["ls-remote", "--symref", str(mirrors[0])])
+                rc, out, err = run_git(["ls-remote", "--symref", "--", str(mirrors[0])], net=str(mirrors[0]))
                 res = self._refset(rc, out, err, source="cached_mirror")
                 res["as_of"] = "last fetch of the cached mirror (network off)"
             else:
@@ -163,13 +151,14 @@ class GitRunner:
         else:
             self.network_calls += 1
             self.log.append(f"ls-remote {url}")
-            rc, out, err = run_git(["ls-remote", "--symref", url, "HEAD", "refs/heads/*", "refs/tags/*"],
-                                   timeout=GIT_NET_TIMEOUT)
+            rc, out, err = run_git(["ls-remote", "--symref", "--", url, "HEAD", "refs/heads/*", "refs/tags/*"],
+                                   timeout=GIT_NET_TIMEOUT, net=url)
             res = self._refset(rc, out, err, source="ls-remote")
             if not res["ok"]:
                 mirrors = self.cached_mirrors(url)
                 if mirrors:
-                    rc2, out2, err2 = run_git(["ls-remote", "--symref", str(mirrors[0])])
+                    rc2, out2, err2 = run_git(["ls-remote", "--symref", "--", str(mirrors[0])],
+                                              net=str(mirrors[0]))
                     cached = self._refset(rc2, out2, err2, source="cached_mirror")
                     if cached["ok"]:
                         cached["as_of"] = "last fetch of the cached mirror (ls-remote failed)"
@@ -201,16 +190,16 @@ class GitRunner:
         ref = f"refs/merge-requests/{number}/head" if gitlab else f"refs/pull/{number}/head"
         local = self.local_path(url)
         if local is not None:
-            rc, out, _ = run_git(["ls-remote", str(local), ref])
+            rc, out, _ = run_git(["ls-remote", "--", str(local), ref], net=str(local))
         elif self.network != "off":
             self.network_calls += 1
             self.log.append(f"ls-remote {url} {ref}")
-            rc, out, _ = run_git(["ls-remote", url, ref], timeout=GIT_NET_TIMEOUT)
+            rc, out, _ = run_git(["ls-remote", "--", url, ref], timeout=GIT_NET_TIMEOUT, net=url)
         else:
             mirrors = self.cached_mirrors(url)
             if not mirrors:
                 return None
-            rc, out, _ = run_git(["ls-remote", str(mirrors[0]), ref])
+            rc, out, _ = run_git(["ls-remote", "--", str(mirrors[0]), ref], net=str(mirrors[0]))
         if rc == 0 and out.strip():
             sha = out.split()[0]
             table[number] = sha
@@ -255,8 +244,8 @@ class GitRunner:
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     self.network_calls += 1
                     self.log.append(f"clone --bare --filter=blob:none {url}")
-                    rc, _, err = run_git(["clone", "--bare", "--quiet", "--filter=blob:none", url, str(dest)],
-                                         timeout=GIT_NET_TIMEOUT)
+                    rc, _, err = run_git(["clone", "--bare", "--quiet", "--filter=blob:none", "--", url, str(dest)],
+                                         timeout=GIT_NET_TIMEOUT, net=url)
                     self._objects[k] = dest if rc == 0 else None
                     if rc != 0:
                         self.log.append(f"blobless clone failed: {err.strip()[-200:]}")
@@ -267,8 +256,8 @@ class GitRunner:
             missing = [s for s in need if s and not self.has_commit(gd, s)]
             if missing and self.network != "off" and self.local_path(url) is None:
                 self.network_calls += 1
-                run_git(["fetch", "--quiet", "--filter=blob:none", "origin", *missing], git_dir=self._gd(gd),
-                        timeout=GIT_NET_TIMEOUT)
+                run_git(["fetch", "--quiet", "--filter=blob:none", "--", "origin", *missing], git_dir=self._gd(gd),
+                        timeout=GIT_NET_TIMEOUT, net=url)
         return gd
 
     @staticmethod

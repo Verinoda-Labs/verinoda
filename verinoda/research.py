@@ -51,7 +51,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import urllib.error
 import urllib.parse
 from collections import OrderedDict, defaultdict
@@ -59,7 +58,8 @@ from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 
 from verinoda import evidence as evmod
-from verinoda.paths import configure_index_env, ensure_atlas, research_dir
+from verinoda import gitexec
+from verinoda.paths import configure_index_env, contained_path, ensure_atlas, research_dir
 from verinoda.store import Store, new_id, now
 
 configure_index_env()
@@ -110,23 +110,13 @@ def _h6(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8")).hexdigest()[:6]
 
 
-def _git(cwd: Path | None, *args: str, timeout: float = GIT_LOCAL_TIMEOUT) -> tuple[int, str, str]:
-    """Run git without a shell and without interactive prompts."""
-    cmd = ["git"]
-    if cwd is not None:
-        cmd += ["-C", str(cwd)]
-    cmd += ["-c", "core.longpaths=true", "-c", "core.autocrlf=false", "-c", "advice.detachedHead=false", *args]
-    env = dict(os.environ)
-    env.update({"GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"})
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                           timeout=timeout, env=env, stdin=subprocess.DEVNULL)
-    except FileNotFoundError:
-        return 127, "", "git executable not found on PATH"
-    except subprocess.TimeoutExpired:
-        return 124, "", f"git {args[0] if args else ''} timed out after {timeout:.0f}s"
-    except OSError as exc:
-        return 126, "", f"could not run git: {exc}"
+def _git(cwd: Path | None, *args: str, timeout: float = GIT_LOCAL_TIMEOUT,
+         net: str | None = None) -> tuple[int, str, str]:
+    """Run git without a shell and without interactive prompts (:mod:`verinoda.gitexec`, D186). ``net`` names
+    the source of a clone, fetch or ls-remote: the protocol flags are added and ``--`` must precede it."""
+    r = gitexec.run(cwd, "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "-c",
+                    "advice.detachedHead=false", *args, timeout=timeout, env={"GCM_INTERACTIVE": "never"},
+                    net=net)
     return r.returncode, r.stdout, r.stderr
 
 
@@ -152,8 +142,9 @@ def _read_lines(root: Path, rel: str, cache: dict | None = None) -> list[str]:
     key = str(root / rel)
     if cache is not None and key in cache:
         return cache[key]
+    p = contained_path(root, rel)
     try:
-        lines = (root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+        lines = p.read_text(encoding="utf-8", errors="replace").splitlines() if p is not None else []
     except OSError:
         lines = []
     if cache is not None:
@@ -265,8 +256,10 @@ def _qualified(mirror: Path, ref: str, hint: str) -> dict | None:
 
 
 def _resolve_candidates(mirror: Path, candidates: list[tuple[str, str | None]], *, allow_fetch: bool,
-                        notes: list[str], hint: str = "none") -> tuple[str | None, str | None, str | None, str | None]:
-    """-> (sha, matched_ref, ref_kind, subpath). A name collision is appended to ``notes`` as ``M5: ...``."""
+                        notes: list[str], hint: str = "none",
+                        source: str | None = None) -> tuple[str | None, str | None, str | None, str | None]:
+    """-> (sha, matched_ref, ref_kind, subpath). A name collision is appended to ``notes`` as ``M5: ...``.
+    ``source`` is the mirror's origin (URL or local path): the fetches name it for the protocol flags (D186)."""
 
     def local_try(ref: str) -> tuple[str | None, str | None]:
         if ref.startswith("refs/"):
@@ -293,11 +286,12 @@ def _resolve_candidates(mirror: Path, candidates: list[tuple[str, str | None]], 
         return None, None, None, None
     for ref, sub in candidates:
         if ref.startswith("refs/"):
-            rc, _, err = _git(mirror, "fetch", "--quiet", "origin", f"+{ref}:{ref}", timeout=GIT_NET_TIMEOUT)
+            rc, _, err = _git(mirror, "fetch", "--quiet", "--", "origin", f"+{ref}:{ref}", timeout=GIT_NET_TIMEOUT,
+                              net=source)
             if rc != 0:
                 notes.append(f"fetch of {ref} failed: {_tail(err, 160)}")
         elif _SHA_RE.match(ref):
-            rc, _, err = _git(mirror, "fetch", "--quiet", "origin", ref, timeout=GIT_NET_TIMEOUT)
+            rc, _, err = _git(mirror, "fetch", "--quiet", "--", "origin", ref, timeout=GIT_NET_TIMEOUT, net=source)
             if rc == 0:
                 sha = _rev(mirror, "FETCH_HEAD")
                 if sha and sha.lower().startswith(ref.lower()):
@@ -305,8 +299,10 @@ def _resolve_candidates(mirror: Path, candidates: list[tuple[str, str | None]], 
             notes.append(f"fetch of commit {ref} failed: {_tail(err, 160)}")
             continue
         else:
-            _git(mirror, "fetch", "--quiet", "origin", f"+refs/tags/{ref}:refs/tags/{ref}", timeout=GIT_NET_TIMEOUT)
-            _git(mirror, "fetch", "--quiet", "origin", f"+refs/heads/{ref}:refs/heads/{ref}", timeout=GIT_NET_TIMEOUT)
+            _git(mirror, "fetch", "--quiet", "--", "origin", f"+refs/tags/{ref}:refs/tags/{ref}",
+                 timeout=GIT_NET_TIMEOUT, net=source)
+            _git(mirror, "fetch", "--quiet", "--", "origin", f"+refs/heads/{ref}:refs/heads/{ref}",
+                 timeout=GIT_NET_TIMEOUT, net=source)
         sha, kind = local_try(ref)
         if sha:
             return sha, ref, kind, sub
@@ -389,7 +385,8 @@ def _research_git(store: Store, repo: Path, spec: dict, ref: str | None, res: di
     fetch_ok = True
     if not (mirror / "HEAD").exists():
         slugdir.mkdir(parents=True, exist_ok=True)
-        rc, _, err = _git(None, "clone", "--bare", "--quiet", str(source), str(mirror), timeout=GIT_NET_TIMEOUT)
+        rc, _, err = _git(None, "clone", "--bare", "--quiet", "--", str(source), str(mirror), timeout=GIT_NET_TIMEOUT,
+                          net=str(source))
         if rc != 0:
             res["status"] = "error" if is_local and rc not in (124,) else "unreachable"
             res["error"] = f"git clone of {source} failed: {_tail(err)}"
@@ -404,7 +401,8 @@ def _research_git(store: Store, repo: Path, spec: dict, ref: str | None, res: di
         _git(mirror, "config", "core.autocrlf", "false")
         res["clone"] = "cloned"
     else:
-        rc, _, err = _git(mirror, "fetch", "--quiet", "--tags", "--force", "origin", timeout=GIT_NET_TIMEOUT)
+        rc, _, err = _git(mirror, "fetch", "--quiet", "--tags", "--force", "--", "origin", timeout=GIT_NET_TIMEOUT,
+                          net=str(source))
         fetch_ok = rc == 0
         res["clone"] = "reused+fetched" if fetch_ok else "reused (fetch failed)"
         if not fetch_ok:
@@ -421,10 +419,11 @@ def _research_git(store: Store, repo: Path, spec: dict, ref: str | None, res: di
         sha = _rev(mirror, sha_in) if sha_in else None
         if not sha and sha_in and (fetch_ok or is_local):
             if str(pin.get("ref") or "").startswith("refs/"):
-                _git(mirror, "fetch", "--quiet", "origin", f"+{pin['ref']}:{pin['ref']}", timeout=GIT_NET_TIMEOUT)
+                _git(mirror, "fetch", "--quiet", "--", "origin", f"+{pin['ref']}:{pin['ref']}",
+                     timeout=GIT_NET_TIMEOUT, net=str(source))
             sha = _rev(mirror, sha_in)
             if not sha:
-                _git(mirror, "fetch", "--quiet", "origin", sha_in, timeout=GIT_NET_TIMEOUT)
+                _git(mirror, "fetch", "--quiet", "--", "origin", sha_in, timeout=GIT_NET_TIMEOUT, net=str(source))
                 sha = _rev(mirror, sha_in)
         if not sha:
             res["status"] = "unreachable" if not fetch_ok and not is_local else "error"
@@ -445,7 +444,7 @@ def _research_git(store: Store, repo: Path, spec: dict, ref: str | None, res: di
             res["pin"] = f"pinned {kind} {name} -> {sha}" + (f" (basis {pin['basis']})" if pin.get("basis") else "")
     elif candidates:
         sha, matched, rkind, sub = _resolve_candidates(mirror, candidates, allow_fetch=fetch_ok or is_local,
-                                                       notes=notes, hint=hint)
+                                                       notes=notes, hint=hint, source=str(source))
         for n in notes:
             if n.startswith("M5: "):
                 res.setdefault("mismatches", []).append({"code": "M5", "name": "ref_name_collision",
@@ -1864,7 +1863,7 @@ def _trace_base(store: Store, repo: Path, spec: dict, res: dict, topic: str | No
     notes: list[str] = []
     if cls == "git_compare" and cmp:
         base, _, _, _ = _resolve_candidates(mirror, [(cmp["base"], None)], allow_fetch=True, notes=notes,
-                                            hint="heads_first")
+                                            hint="heads_first", source=spec.get("url") or spec.get("path"))
     elif cls in ("pull_request", "merge_request"):
         tip = _rev(mirror, "HEAD")
         base = _git(mirror, "merge-base", head, tip)[1].strip() if tip else None

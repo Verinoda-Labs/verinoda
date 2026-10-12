@@ -149,7 +149,7 @@ def test_a_daemon_is_started_found_and_stopped_by_its_state_file(orders):
         first = locate_daemon.start(orders, idle_timeout=120)
         assert first["running"] is True and first["started"] is True and first["url"].startswith("http://127.0.0.1:")
         assert len(first["token"]) >= 32 and first["pid"] > 0
-        state = orders / ".verinoda" / "locate-daemon.json"
+        state = locate_daemon.state_path(orders)
         assert state.is_file() and json.loads(state.read_text(encoding="utf-8"))["token"] == first["token"]
         code, res = call(first["url"], "/locate", first["token"], {"text": TEXT})
         assert code == 200 and res["files"][0]["path"] == "orders/pricing.py"
@@ -159,12 +159,37 @@ def test_a_daemon_is_started_found_and_stopped_by_its_state_file(orders):
     finally:
         assert locate_daemon.stop(orders) == {"running": False}
     assert locate_daemon.status(orders) == {"running": False}
-    assert not (orders / ".verinoda" / "locate-daemon.json").exists()
+    assert not locate_daemon.state_path(orders).exists()
     assert locate_daemon.stop(orders) == {"running": False}  # nothing to stop is not an error
 
 
+def test_daemon_state_lives_in_the_user_config_dir_keyed_by_repo(orders, tmp_path):
+    """The port and token never sit inside the repository (a clone could ship a file naming a port), but in the
+    user's own directory, one file per repository by its real path (D186)."""
+    from verinoda.paths import user_config_dir
+
+    sp = locate_daemon.state_path(orders)
+    assert sp.parent == user_config_dir() / "locate-daemon" and sp.suffix == ".json" and len(sp.stem) == 40
+    assert locate_daemon.state_path(orders / "orders" / "..") == sp  # the real path, not its spelling
+    assert locate_daemon.state_path(str(orders)) == sp
+    other = tmp_path / "other"
+    other.mkdir()
+    assert locate_daemon.state_path(other) != sp
+    d = locate_daemon.Daemon(orders, token="t" * 40, idle_timeout=600, state_file=True)
+    t = threading.Thread(target=d.serve_forever, daemon=True)
+    t.start()
+    assert d.ready.wait(60)
+    try:
+        assert sp.is_file() and json.loads(sp.read_text(encoding="utf-8"))["token"] == d.token
+        assert not (orders / ".verinoda" / "locate-daemon.json").exists()
+    finally:
+        d.shutdown()
+        t.join(10)
+
+
 def test_a_state_file_nobody_answers_for_is_stale_and_removed(orders):
-    state = orders / ".verinoda" / "locate-daemon.json"
+    state = locate_daemon.state_path(orders)
+    state.parent.mkdir(parents=True, exist_ok=True)
     state.write_text(json.dumps({"pid": 1, "url": "http://127.0.0.1:9", "host": "127.0.0.1", "port": 9, "token": "x" * 40,
                                  "repo": str(orders)}), encoding="utf-8")
     assert locate_daemon.status(orders) == {"running": False}
@@ -237,7 +262,7 @@ def test_the_daemon_listens_before_the_graph_is_loaded_and_coupled_answers_meanw
 # -- what an independent review found ----------------------------------------------------------------------------
 
 def _state(orders, **kw) -> Path:
-    state = orders / ".verinoda" / "locate-daemon.json"
+    state = locate_daemon.state_path(orders)
     state.parent.mkdir(parents=True, exist_ok=True)
     state.write_text(json.dumps({"pid": 1, "host": "127.0.0.1", "token": "x" * 40, "repo": str(orders), **kw}), encoding="utf-8")
     return state

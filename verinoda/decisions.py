@@ -30,7 +30,8 @@ take precedence, see :func:`decisions_dir_source`) with a front matter::
 A value after ``key:`` is JSON when it parses as JSON (``null``, lists, objects), else plain text. The
 front matter is what ``decide check`` enforces; ``decided-by`` is always ``human`` (a record that says
 otherwise is reported and not enforced). Nothing here chooses: a record exists only because a human ran
-``decide record`` (or an agent did with the user's words in ``user_statement``).
+``decide record`` (or an agent did with the user's words in ``user_statement``; such a record has status
+``agent_asserted`` and is not enforced until the human confirms it with ``decide accept ADR-N``, D186).
 
 Every change is also appended to the ``decisions`` table (schema v5) as the whole state after the event
 (record, import, guard, accept, waive, supersede); the table is the audit log, the file is what is
@@ -86,7 +87,9 @@ FORMAT_VERSION = 1
 DEFAULT_DIR = ".verinoda/decisions"
 # where the folder comes from when nothing names it (decisions_dir_source): a missing folder is no error then
 DEFAULT_SOURCE = "the default (nothing configured)"
-STATUSES = ("proposed", "accepted", "superseded", "rejected", "deprecated")
+# agent_asserted: written over MCP in the human's words, not enforced until the human confirms it in a terminal (D186)
+STATUSES = ("proposed", "accepted", "agent_asserted", "superseded", "rejected", "deprecated")
+_UNCONFIRMED = "recorded over MCP by an agent, not confirmed"
 GUARD_KINDS = ("only_in", "no_edge", "layers", "allow_edges", "public", "dependency", "script")
 # the guards that read graph edges: the index is loaded (and refreshed first) for them
 EDGE_KINDS = ("no_edge", "layers", "allow_edges", "public")
@@ -138,8 +141,8 @@ class Decision:
     body: str = ""
     path: Path | None = None
     problems: list[str] = field(default_factory=list)
-    # not enforced for a reason another record gives (a later record supersedes it), though its own file
-    # reads fully: verinoda may still rewrite it
+    # not enforced for a reason another record gives (a later record supersedes it) or its own status gives
+    # (agent_asserted: not confirmed yet), though its own file reads fully: verinoda may still rewrite it
     inactive: list[str] = field(default_factory=list)
     # entries that are not applied (a waiver whose `until` is not a date): the rest is enforced
     warnings: list[str] = field(default_factory=list)
@@ -479,12 +482,15 @@ def parse(path: Path) -> Decision | None:
                 if w.get("until") not in (None, "") and _date_or_none(w.get("until")) is None]
     warnings += [f"link {x['kind']} {x['id']}: the kind is not one of {', '.join(sorted(REVERSE_LINK))}"
                  for x in _readable_links(lists["links"]) if x["kind"] not in REVERSE_LINK]
-    return Decision(id=did, number=int(did[4:]), title=str(front.get("title") or ""), status=status,
-                    decided_by=by, date=str(front.get("date") or ""), chosen=front.get("chosen"),
-                    brief=front.get("brief"), source=front.get("source"), supersedes=front.get("supersedes"),
-                    superseded_by=front.get("superseded-by"), links=lists["links"], governs=lists["governs"],
-                    guards=lists["guards"], revisit_when=lists["revisit-when"], waivers=lists["waivers"], body=body, path=path,
-                    problems=problems, warnings=warnings)
+    d = Decision(id=did, number=int(did[4:]), title=str(front.get("title") or ""), status=status,
+                 decided_by=by, date=str(front.get("date") or ""), chosen=front.get("chosen"),
+                 brief=front.get("brief"), source=front.get("source"), supersedes=front.get("supersedes"),
+                 superseded_by=front.get("superseded-by"), links=lists["links"], governs=lists["governs"],
+                 guards=lists["guards"], revisit_when=lists["revisit-when"], waivers=lists["waivers"], body=body, path=path,
+                 problems=problems, warnings=warnings)
+    if status == "agent_asserted":
+        d.inactive.append(f"{_UNCONFIRMED}: `verinoda decide accept {did}` confirms it")
+    return d
 
 
 def load_all(repo: Path, directory: str | None = None) -> list[Decision]:
@@ -916,13 +922,18 @@ def _context_md(brief: dict | None, answers: list[dict]) -> str:
 def record(store, repo: Path, *, chosen: str, rationale: str, title: str | None = None, brief_id: str | None = None,
            guards: list[str] = (), governs: list[str] = (), revisit_when: list[str] = (),
            supersedes: str | None = None, user_statement: str | None = None, graph=None,
-           allow_scripts: bool = True) -> dict:
+           allow_scripts: bool = True, confirmed: bool = True) -> dict:
     """Record the human's choice as a new decision (status accepted, decided-by human). ``allow_scripts=False``
-    (MCP) refuses a ``script`` guard."""
+    (MCP) refuses a ``script`` guard; ``confirmed=False`` (MCP) writes the record as ``agent_asserted``: an agent
+    asserted the human's words, and the record is not enforced until the human confirms it in a terminal
+    (``verinoda decide accept ADR-N``, D186). Such a record supersedes nothing."""
     repo = Path(repo).resolve()
     chosen, rationale = str(chosen or "").strip(), str(rationale or "").strip()
     if not chosen or not rationale:
         raise DecisionError("a decision needs what was chosen (--chosen) and why (--rationale), in the human's words")
+    if supersedes and not confirmed:
+        raise DecisionError("a record written over MCP is agent_asserted and supersedes nothing: the human records "
+                            "it in a terminal (`verinoda decide record --supersedes`) or confirms it first")
     brief = None
     answers: list[dict] = []
     if brief_id:
@@ -945,8 +956,8 @@ def record(store, repo: Path, *, chosen: str, rationale: str, title: str | None 
     did = f"ADR-{n:04d}"
     title = str(title or "").strip() or (f"Use {chosen}" if not brief else str(brief.get("question") or "")[:100]
                                           or f"Use {chosen}")
-    d = Decision(id=did, number=n, title=title, status="accepted", decided_by=HUMAN, date=_today(),
-                 chosen=chosen, brief=brief_id, supersedes=old.id if old else None)
+    d = Decision(id=did, number=n, title=title, status="accepted" if confirmed else "agent_asserted",
+                 decided_by=HUMAN, date=_today(), chosen=chosen, brief=brief_id, supersedes=old.id if old else None)
     for spec in guards:
         d.guards.append(_no_script(parse_guard(spec, repo, _next_id(d.guards, "g")), allow_scripts))
     for spec in revisit_when:
@@ -959,7 +970,8 @@ def record(store, repo: Path, *, chosen: str, rationale: str, title: str | None 
     for spec in governs:
         d.governs.append(parse_governs(repo, spec, _next_id(d.governs, "v"), graph))
     said = f"\n\nIn the user's words: \"{user_statement.strip()}\"" if user_statement and user_statement.strip() else ""
-    d.body = (f"# {did}: {title}\n\n## Decision\n\nChosen: **{chosen}** (decided by the human, {d.date})."
+    who = "decided by the human" if confirmed else "recorded over MCP by an agent, to be confirmed by the human"
+    d.body = (f"# {did}: {title}\n\n## Decision\n\nChosen: **{chosen}** ({who}, {d.date})."
               f"{' Supersedes ' + old.id + '.' if old else ''}\n\n{rationale}{said}\n\n## Context\n\n"
               f"{_context_md(brief, answers)}\n")
     d.path = decisions_dir(repo) / f"{did}-{_slug(title)}.md"
@@ -998,21 +1010,27 @@ def add_guards(store, repo: Path, did: str, specs: list[str], *, user_statement:
 
 
 def accept(store, repo: Path, did: str, guard_ids: list[str], *, user_statement: str | None = None,
-           allow_scripts: bool = True) -> dict:
+           allow_scripts: bool = True, confirm: bool = False) -> dict:
     """Activate proposed guards (``decide accept ADR-1 g1``). ``allow_scripts=False`` (MCP) refuses when one of
-    them is a ``script`` guard: a proposed one written into a record by hand is accepted in a terminal."""
+    them is a ``script`` guard: a proposed one written into a record by hand is accepted in a terminal. With
+    ``confirm`` (the CLI) an ``agent_asserted`` record becomes accepted, guard ids or not: the human has read what
+    the agent wrote in their name (D186); over MCP it stays agent_asserted."""
     repo = Path(repo).resolve()
     d = _require(repo, did)
+    confirming = confirm and d.status == "agent_asserted"
     by = {g["id"]: g for g in d.guards}
     missing = [g for g in guard_ids if g not in by]
-    if missing or not guard_ids:
+    if missing or (not guard_ids and not confirming):
         raise DecisionError(f"{d.id} has no guard {', '.join(missing) or '(none given)'}; its guards: "
                             f"{', '.join(by) or 'none'}")
     for gid in guard_ids:
         _no_script(by[gid], allow_scripts)
     for gid in guard_ids:
         by[gid]["status"] = "accepted"
-    return _save(store, repo, d, "accept", user_statement=user_statement)
+    if confirming:
+        d.status = "accepted"
+        d.inactive = [x for x in d.inactive if not x.startswith(_UNCONFIRMED)]
+    return _save(store, repo, d, "confirm" if confirming else "accept", user_statement=user_statement)
 
 
 def waive(store, repo: Path, did: str, guard_id: str, *, at: str, reason: str, until: str | None = None,

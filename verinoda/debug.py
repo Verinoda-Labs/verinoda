@@ -1367,14 +1367,9 @@ def _rev_list(repo: Path, good: str, bad: str) -> list[str]:
 
 
 def _is_ancestor(repo: Path, a: str, b: str) -> bool:
-    import subprocess
+    from verinoda import gitexec
 
-    try:
-        r = subprocess.run(["git", "-C", str(repo), *treestate._GIT_SAFE, "merge-base", "--is-ancestor", a, b],
-                           capture_output=True, timeout=60, stdin=subprocess.DEVNULL)
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return r.returncode == 0
+    return gitexec.run(repo, "merge-base", "--is-ancestor", a, b, timeout=60).returncode == 0
 
 
 def _run_at(store: Store, repo: Path, sess: dict, commit: str, why: str, overlay: list[str] | None) -> dict:

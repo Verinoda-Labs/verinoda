@@ -265,9 +265,10 @@ def test_memory_from_a_stale_claim_is_invalidated_not_deleted(proj):
         mem.learn("pricing.entry", "again", source_claim_id=claims["pricing"]["id"])
 
 
-def test_claims_citing_other_checkouts_do_not_go_stale_on_local_changes(proj, tmp_path):
+def test_claims_citing_other_checkouts_do_not_go_stale_on_local_changes(proj):
     repo, st, cl, claims = proj
-    ext = tmp_path / "ref"
+    # a pinned checkout lives under the repository's research folder: one of the roots evidence may cite (D186)
+    ext = repo / ".verinoda" / "research" / "ref"
     (ext / "orders").mkdir(parents=True)
     (ext / "orders" / "pricing.py").write_text("def compute_total(items):\n    return 0\n", encoding="utf-8")
     snap = st.latest_snapshot()

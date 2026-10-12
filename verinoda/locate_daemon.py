@@ -5,8 +5,9 @@ tens of milliseconds to about a second, which is what a prompt hook or the first
     verinoda locate --daemon start|stop|status --repo R [--json]
 
 * Loopback only (127.0.0.1, a port the system picks). Every request needs the header ``X-Verinoda-Token``: a random
-  token per daemon, kept with the port in ``.verinoda/locate-daemon.json`` (readable by the user alone) and compared in
-  constant time. Nothing connects anywhere except the commands here to the daemon they started on this machine.
+  token per daemon, kept with the port in a state file of the user's own directory (:func:`state_path`: one file per
+  repository by its real path, readable by the user alone, never inside the repository) and compared in constant
+  time. Nothing connects anywhere except the commands here to the daemon they started on this machine.
 * ``POST /locate`` ``{"text", "anchors", "max_files", "max_chars", "history"}`` and ``POST /coupled`` ``{"files",
   "max_files", "history"}`` answer what the command's ``--json`` prints, plus ``text``: the compact text a model reads.
   ``GET /status``; ``POST /shutdown`` (what ``stop`` uses, so a stop never signals a process id that may have been
@@ -21,6 +22,7 @@ tens of milliseconds to about a second, which is what a prompt hook or the first
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import http.client
 import json
@@ -36,9 +38,9 @@ from pathlib import Path
 from typing import Any
 
 from verinoda import locate
-from verinoda.paths import atlas_dir
+from verinoda.paths import atlas_dir, user_config_dir
 
-STATE_NAME = "locate-daemon.json"
+STATE_DIRNAME = "locate-daemon"
 LOG_NAME = "locate-daemon.log"
 HOST = "127.0.0.1"
 IDLE_TIMEOUT = 600.0
@@ -51,7 +53,10 @@ MAX_BODY = 1_000_000
 
 
 def state_path(repo: Path | str) -> Path:
-    return atlas_dir(Path(repo)) / STATE_NAME
+    """The daemon's port and token: in the user's own directory, one file per repository by its real path. Never
+    inside the repository: a repository cloned from anywhere could ship a file naming a port of its choosing (D186)."""
+    key = hashlib.sha1(os.path.normcase(os.path.realpath(str(repo))).encode("utf-8")).hexdigest()
+    return user_config_dir() / STATE_DIRNAME / f"{key}.json"
 
 
 def log_path(repo: Path | str) -> Path:

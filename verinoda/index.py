@@ -40,7 +40,8 @@ from pathlib import Path, PurePosixPath
 
 import networkx as nx
 
-from verinoda.paths import configure_index_env, ensure_atlas, graph_path, index_dir, index_vendored, receiver_calls_path
+from verinoda.paths import (configure_index_env, contained_path, ensure_atlas, escapes_lexically, graph_path,
+                            index_dir, index_vendored, receiver_calls_path)
 
 configure_index_env()
 
@@ -1067,6 +1068,10 @@ class Graph:
     def file(self, nid: str) -> str | None:
         return self.G.nodes[nid].get("source_file") or None
 
+    def abspath(self, rel: str) -> Path | None:
+        """The file ``rel`` of this graph on disk; None when it would leave the repository (D186)."""
+        return contained_path(self.root, rel)
+
     def is_symbol(self, nid: str) -> bool:
         d = self.G.nodes[nid]
         return d.get("file_type") == "code" and bool(d.get("source_file")) and not self.is_file_node(nid)
@@ -1185,7 +1190,9 @@ class Graph:
         start, f = self.line(nid), self.file(nid)
         if not start or not f:
             return None
-        p = self.root / f
+        p = self.abspath(f)
+        if p is None:
+            return None
         suffix = p.suffix.lower()
         end, how = None, None
         if f.lower().endswith(PROSE_SUFFIXES) and self.G.nodes[nid].get("file_type") == "document":
@@ -1238,7 +1245,8 @@ class Graph:
         f = self.file(nid)
         if not sp or not f:
             return None
-        lines = _file_lines(self.root / f)
+        p = self.abspath(f)
+        lines = _file_lines(p) if p is not None else None
         if lines is None:
             return None
         s, e = sp
@@ -1627,6 +1635,9 @@ def load(repo: Path, gp: Path | None = None, *, augment: bool = True) -> Graph:
     data = json.loads(gp.read_text(encoding="utf-8"))
     G = nx.MultiDiGraph()
     for n in data.get("nodes", []):
+        sf = n.get("source_file")
+        if isinstance(sf, str) and sf and escapes_lexically(sf):
+            continue  # a file outside the repository is no node of its graph (D186); the readers resolve the rest
         G.add_node(n["id"], **{k: v for k, v in n.items() if k != "id"})
     for e in data.get("links", data.get("edges", [])):
         u, v = e.get("_src", e["source"]), e.get("_tgt", e["target"])
@@ -2922,7 +2933,8 @@ def prune_missing_files(repo: Path, gp: Path | None = None) -> list[str]:
 def graph_source_files(repo: Path, gp: Path | None = None) -> set[str]:
     """The files graph.json has nodes from, read from the JSON alone: the ``source_file``
     values :func:`load` would give its nodes (a repeated id keeps the last value it was
-    given), with no graph built and no receiver pass."""
+    given; a file outside the repository is left out, as :func:`load` leaves its node out),
+    with no graph built and no receiver pass."""
     gp = Path(gp) if gp else graph_path(Path(repo).resolve())
     data = json.loads(gp.read_text(encoding="utf-8"))
     last: dict = {}
@@ -2932,7 +2944,7 @@ def graph_source_files(repo: Path, gp: Path | None = None) -> set[str]:
             last[nid] = n["source_file"]
         else:
             last.setdefault(nid, None)
-    return {sf for sf in last.values() if sf}
+    return {sf for sf in last.values() if sf and not (isinstance(sf, str) and escapes_lexically(sf))}
 
 
 def graphify_query_text(repo: Path, question: str, budget: int = 2000) -> str:

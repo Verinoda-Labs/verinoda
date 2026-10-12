@@ -2828,8 +2828,8 @@ def cmd_decide(args) -> int:
                                 user_statement=said)
         elif args.decide_cmd == "guard":
             res = dm.add_guards(st, repo, args.id, args.spec, user_statement=said)
-        elif args.decide_cmd == "accept":
-            res = dm.accept(st, repo, args.id, args.guard_ids, user_statement=said)
+        elif args.decide_cmd == "accept":  # a terminal: the human confirms what an agent asserted (D186)
+            res = dm.accept(st, repo, args.id, args.guard_ids, user_statement=said, confirm=True)
         elif args.decide_cmd == "supersede":
             res = dm.supersede(st, repo, args.id, args.by, user_statement=said)
         elif args.decide_cmd == "link":
@@ -5499,9 +5499,10 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("id", metavar="ADR-N")
     c.add_argument("spec", nargs="+", metavar="SPEC", help="guard spec(s), quoted, as for record --guard")
     c.add_argument("--said", help=said_help)
-    c = add("accept", cmd_decide, "activate proposed guards of a record (the user's call)", parent=dsub)
+    c = add("accept", cmd_decide, "activate proposed guards of a record, or confirm a record an agent wrote over "
+                                  "MCP in the user's name (agent_asserted; the user's call)", parent=dsub)
     c.add_argument("id", metavar="ADR-N")
-    c.add_argument("guard_ids", nargs="+", metavar="GUARD", help="g1 g2 ...")
+    c.add_argument("guard_ids", nargs="*", metavar="GUARD", help="g1 g2 ... (none: confirm the record)")
     c.add_argument("--said", help=said_help)
     c = add("waive", cmd_decide, "excuse one site from one guard (the user's call; it may expire)", parent=dsub)
     c.add_argument("id", metavar="ADR-N")

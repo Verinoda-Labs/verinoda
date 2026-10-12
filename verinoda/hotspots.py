@@ -37,7 +37,6 @@ ZERO_BLOB = "0" * 40
 _EXACT_DIFF_CELLS = 4_000_000   # a working-tree diff larger than this (lines x lines) uses difflib's autojunk
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _INDEX_RE = re.compile(r"^index ([0-9a-f]+)\.\.([0-9a-f]+)")
-_GIT = ("-c", "core.quotepath=off")
 # every unit of a Python function's cyclomatic complexity (verinoda/health.py) is one of these words in its text:
 # the function (def), a branch, loop, handler or case arm, a boolean operator, a comprehension's for / if; so
 # their count in a file (strings and comments too) bounds the file's complexity from above
@@ -87,7 +86,7 @@ def file_changes(repo, n_commits: int = DEFAULT_COMMITS) -> dict | None:
     ``{"changes": Counter, "last": {path: (sha, date)}, "commits", "oldest", "whole_history", "shallow"}``. A
     shallow clone's boundary commits are not counted (their diff is the whole tree)."""
     rel, spec = _scope(repo)
-    out = git(repo, *_GIT, "log", "--no-merges", "--no-renames", *rel, f"-n{n_commits}", "--format=@@%H%x1f%cI",
+    out = git(repo, "log", "--no-merges", "--no-renames", *rel, f"-n{n_commits}", "--format=@@%H%x1f%cI",
               "--name-only", *spec)
     if out is None:
         return None
@@ -189,7 +188,7 @@ def function_changes(repo, texts: dict[str, str], *, n_commits: int | None = REV
     if not rels:
         return {"files": {}, "metrics": metrics, "commits": 0, "unmapped": 0}
     owners = {r: _owners(metrics[r], texts[r].count("\n") + 1) for r in rels}
-    tree = git(repo, *_GIT, "ls-tree", "HEAD", "--", *rels)   # paths relative to the project's folder
+    tree = git(repo, "ls-tree", "HEAD", "--", *rels)   # paths relative to the project's folder
     if tree is None:
         return None
     maps: dict[tuple[str, str], array] = {}
@@ -207,7 +206,7 @@ def function_changes(repo, texts: dict[str, str], *, n_commits: int | None = REV
             "--no-textconv", *_scope(repo)[0], "--format=@@%H%x1f%P%x1f%cI"]
     args += [f"-n{n_commits}"] if n_commits else []
     args += [f"--since={since}"] if since else []
-    log = git(repo, *_GIT, *args, "--", *rels, timeout=120)
+    log = git(repo, *args, "--", *rels, timeout=120)
     if log is None:
         return None
     grafted = _grafted(repo)

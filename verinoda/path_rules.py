@@ -157,11 +157,10 @@ def _unquote(name: str) -> str:
 def _diff(repo: Path, base: str | None, staged: bool) -> tuple[dict[str, set[int]], str]:
     """Added lines per changed file (``{rel: {line, ...}}``) against ``base`` (default HEAD), and the base's sha."""
     from verinoda.snapshot import git
-    from verinoda.treestate import _GIT_SAFE
 
     sha = _commit(repo, base)
     # plumbing: `git diff` refreshes the index (writes .git/index) even with --no-optional-locks
-    out = git(repo, *_GIT_SAFE, "-c", "diff.interHunkContext=0", "diff-index", "-p", "-U0", "--no-color",
+    out = git(repo, "-c", "diff.interHunkContext=0", "diff-index", "-p", "-U0", "--no-color",
               "--no-ext-diff", "--no-textconv", "--no-renames", "--relative", "--src-prefix=a/", "--dst-prefix=b/",
               *(["--cached"] if staged else []), sha, timeout=120)
     if out is None:
@@ -194,7 +193,7 @@ def _diff(repo: Path, base: str | None, staged: bool) -> tuple[dict[str, set[int
                 line = int(m.group(2))
                 new_left = int(m.group(3) if m.group(3) is not None else 1)
     if not staged:      # untracked files the change adds: every line of them
-        for rel in (git(repo, *_GIT_SAFE, "ls-files", "-z", "--others", "--exclude-standard") or "").split("\0"):
+        for rel in (git(repo, "ls-files", "-z", "--others", "--exclude-standard") or "").split("\0"):
             if rel:
                 added[rel] = ALL
     return {k: v for k, v in added.items() if v is ALL or v}, sha
@@ -238,24 +237,16 @@ def _regex_hits(repo: Path, pattern: str, files: list[str], staged: bool,
 def _differs_from_index(repo: Path, files: list[str]) -> list[str] | None:
     """The ``files`` whose working copy is not the staged blob (by content, through git's filters), or None when
     git cannot tell. Read-only: ``git diff`` would rewrite the index's stat data."""
-    import subprocess
-
+    from verinoda import gitexec
     from verinoda.snapshot import git
-    from verinoda.treestate import _GIT_SAFE
 
     staged = {}
-    for rec in (git(repo, *_GIT_SAFE, "ls-files", "-s", "-z", "--", *[f":(literal){f}" for f in files]) or
-                "").split("\0"):
+    for rec in (git(repo, "ls-files", "-s", "-z", "--", *[f":(literal){f}" for f in files]) or "").split("\0"):
         meta, _, rel = rec.partition("\t")
         if rel and len(meta.split()) >= 2:
             staged[rel] = meta.split()[1]
     present = [f for f in files if (repo / f).is_file()]
-    try:
-        r = subprocess.run(["git", "-C", str(repo), *_GIT_SAFE, "hash-object", "--stdin-paths"],
-                           input="\n".join(present) + "\n", capture_output=True, text=True, encoding="utf-8",
-                           timeout=120)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
+    r = gitexec.run(repo, "hash-object", "--stdin-paths", input="\n".join(present) + "\n", timeout=120)
     if r.returncode != 0:
         return None
     now = dict(zip(present, r.stdout.split()))

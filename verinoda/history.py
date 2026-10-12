@@ -37,14 +37,14 @@ commit counts and the shared commits as evidence.
 from __future__ import annotations
 
 import re
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Callable
 
 from verinoda import evidence as evmod
+from verinoda import gitexec
 from verinoda.snapshot import git
-from verinoda.treestate import _GIT_SAFE, project_prefix
+from verinoda.treestate import project_prefix
 
 MAX_EVENTS = 200     # commits read for one text; more and the oldest (the first appearance) are cut
 MAX_COMMITS = 100    # commits a search or a comparison lists at most
@@ -60,7 +60,7 @@ _DIFF_SAFE = ("--no-ext-diff", "--no-textconv", "--no-color", "--no-renames")
 
 
 def _git(repo: Path, *args: str) -> str | None:
-    return git(repo, *_GIT_SAFE, *args, timeout=_GIT_TIMEOUT)
+    return git(repo, *args, timeout=_GIT_TIMEOUT)
 
 
 def _is_git(repo: Path) -> bool:
@@ -143,14 +143,12 @@ def _ere_lines(lines: list[str], pattern: str) -> set[int]:
     cannot read the pattern."""
     with tempfile.TemporaryDirectory(prefix="verinoda-history-") as d:
         (Path(d) / "lines.txt").write_bytes("".join(x + "\n" for x in lines).encode("utf-8"))
-        try:
-            r = subprocess.run(["git", "-C", d, *_GIT_SAFE, "grep", "--no-index", "-a", "-h", "-n", "-E", "-e",
-                                pattern, "--", "lines.txt"], capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", timeout=_GIT_TIMEOUT, stdin=subprocess.DEVNULL)
-        except subprocess.TimeoutExpired:
-            raise ValueError(f"text: git took over {_GIT_TIMEOUT} s to match the pattern") from None
-        except OSError as exc:
-            raise ValueError(f"git could not run: {exc}") from None
+        r = gitexec.run(d, "grep", "--no-index", "-a", "-h", "-n", "-E", "-e", pattern, "--", "lines.txt",
+                        timeout=_GIT_TIMEOUT)
+    if r.timed_out:
+        raise ValueError(f"text: git took over {_GIT_TIMEOUT} s to match the pattern")
+    if r.returncode in (126, 127):
+        raise ValueError(f"git could not run: {r.stderr}")
     if r.returncode not in (0, 1):  # 1: no line matched
         raise ValueError(f"text: not a regular expression git reads: {r.stderr.strip()[:200]}")
     return {int(n) - 1 for n, _, _ in (x.partition(":") for x in r.stdout.split("\n")) if n.isdigit()}

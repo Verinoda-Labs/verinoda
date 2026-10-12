@@ -59,7 +59,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 from collections import OrderedDict
@@ -3603,8 +3602,9 @@ def changed_lines(repo: Path, rev: str = "HEAD", others: list[str] | None = None
     it can never be read as an option (``--output=FILE`` would write a file). ``others``: filled with the
     changed and new code files in languages `check` does not read (:data:`OTHER_LANGUAGES`)."""
     def git(*args) -> str:
-        r = subprocess.run(["git", "-C", str(repo), "-c", "core.quotepath=off", *args], capture_output=True,
-                           text=True, encoding="utf-8", errors="replace", timeout=60)
+        from verinoda import gitexec
+
+        r = gitexec.run(repo, *args, timeout=60)
         if r.returncode != 0:
             raise ValueError(f"git {' '.join(args[:2])} failed: {(r.stderr or '').strip()[:200]}")
         return r.stdout
