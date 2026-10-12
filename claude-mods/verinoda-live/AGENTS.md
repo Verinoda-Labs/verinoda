@@ -48,7 +48,7 @@ Run from the repository root.
 
 ```
 claude plugin validate claude-mods/verinoda-live        # ends with "Validation passed"
-claude plugin test claude-mods/verinoda-live            # 84 pass, 0 fail in 5 files (125 in 6 before D186)
+claude plugin test claude-mods/verinoda-live            # 86 pass, 0 fail in 5 files (125 in 6 before D186)
 npx --yes -p typescript tsc -p claude-mods/verinoda-live --noEmit   # exit 0 and no output (without --noEmit it writes .js files beside the sources)
 ```
 
@@ -122,8 +122,13 @@ and never calls them itself.
    model must look up first is not called. `tool.describe` answers `{ description, isDeferred: false }` for the mod's own
    tools (the improvement list's, in `improve-pane.tsx`) and for the Verinoda server's three core tools
    (`MCP_CORE_TOOLS` in `register.tsx`, named as the model names them, `mcp__verinoda__<tool>`); add a new tool to the
-   matcher that fits. The hook pins only tools present at session start; a tool that appears after the first model call
-   stays deferred, because moving it into the tools array invalidates the cached prefix (about 16k tokens).
+   matcher that fits. The answers are cached for the session (a tool that appears later is not re-placed), because
+   moving a tool into the array invalidates the cached prefix (about 16k tokens). **The engine's reminder of the tools
+   behind ToolSearch (attachment `deferred_tools_delta`) is composed before those answers apply**: it named the three
+   pinned tools too and said a direct call would fail; the `prompt.attachment` hook takes their names out (a probe then
+   showed the model listing them only in front). The pin alone changes nothing about calls: with the tools in front and
+   a rule that had a way out, the D186 re-run got no Verinoda call in 39 of 39 headless sessions; the rule's wording
+   ("your first tool call is analyze", no way out) is what moved it (5 of 6 in probes).
 2. **A plugin tool's result must be a plain string** (`{ result: 'text' }`). Any other shape fails the engine's check.
 3. **`$.store` is one file per plugin, shared by every session that loads the mod and rewritten by each at its end.** A
    choice stored in one terminal once reached scripted sessions that never asked for it. A session with nobody at the
@@ -147,7 +152,10 @@ and never calls them itself.
    the model reads bare, as the person's own words (the transcript still names the plugin, and an `@file` mention in a
    plugin's prompt is not expanded). The improvement list's prompts are submitted so. The mod hooks `prompt.submit` no more
    (the auto-context and the gate went with D186), so nothing is attached to any prompt; the call rule is a `prompt.compose`
-   section instead, present while the request's tools name the Verinoda server's.
+   section instead, present while the request's tools name the Verinoda server's. **A `-p` prompt never reaches
+   `prompt.submit`** (three headless sessions with a hook attaching `context` there: the text was in no transcript), so in
+   a scripted session nothing a plugin does can ride the user's turn; the system prompt and the tool descriptions are
+   what reach the model.
 9. `/verinoda` belongs to the Verinoda agent skill, which takes the slash before a plugin command: the mod's commands are
    `verinoda-<word>`.
 10. Surfaces differ: `mobile` has no `Input` and no `Select`; narrow on `e.surface` and draw without them there. A tree that

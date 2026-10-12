@@ -82,6 +82,7 @@ function world(on: On, opts: {
   })
   on('tool.call', () => ({ result: 'ok' }) as never)
   on('prompt.submit', ($, e) => ({ text: e.text, context: e.context }))
+  on('prompt.attachment', ($, e) => ({ text: e.text }) as never)
   on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are an agent.', scope: 'shared' }] }) as never)
   on('turn.complete', () => ({ text: '' }) as never)
   const of = (cmd: string) => runs.filter(r => r.argv[1] === cmd)
@@ -111,8 +112,9 @@ describe('the MCP server tools in front, and the call rule', () => {
     }
   })
 
-  // listing alone did not make the model call the tool (one session: Grep, Read, Read, Bash); with the rule it called
-  // analyze first and confirmed the lead with git (§3 of the D186 spec)
+  // the tools in front and a rule that let the model skip the call ("a question one grep answers needs no call") got no
+  // call in 39 of 39 headless sessions of the D186 re-run (first tool Grep in 38); the rule names the first tool call
+  // and gives no way out, and the engine's reminder of deferred tools no longer contradicts the list (the next test)
   test('the call rule is a prompt section only when the Verinoda MCP server is connected', async ($, on) => {
     mock.clock(on)
     mock.store(on)
@@ -123,8 +125,11 @@ describe('the MCP server tools in front, and the call rule', () => {
     const rule = out.sections.find(s => s.id === RULE_SECTION)
     expect(rule?.scope).toBe('session')
     expect(rule?.text).toBe(CALL_RULE)
-    for (const words of ['mcp__verinoda__analyze', 'primary_source_verified', 'one grep', 'lead, not the answer']) expect(rule?.text).toContain(words)
-    expect(CALL_RULE.length).toBeLessThan(600) // about 400 chars: the rule is priced in the cost model
+    for (const words of ['first tool call', 'mcp__verinoda__analyze', 'Grep, Read and git come after it', 'not behind ToolSearch', 'primary_source_verified']) {
+      expect(rule?.text).toContain(words)
+    }
+    expect(rule?.text).not.toContain('needs no Verinoda call')
+    expect(CALL_RULE.length).toBeLessThan(700) // about 630 chars: the rule is priced in the cost model
 
     const without = await $.prompt.compose(compose(['Read', 'Grep', 'mcp__other__search']))
     expect(without.sections.map(s => s.id)).toEqual(['intro'])
@@ -138,6 +143,22 @@ describe('the MCP server tools in front, and the call rule', () => {
     world(on, { cwd: 'C:/work/other' })
     await $.session.start(START)
     expect((await $.prompt.compose(compose(['mcp__verinoda__analyze']))).sections.map(s => s.id)).toEqual(['intro', RULE_SECTION])
+  })
+
+  // the engine composes its reminder of the tools behind ToolSearch before the tool.describe answers apply (Claude Code
+  // 2.1.296, the debug log of one headless session): it names the three pinned tools too and says a direct call fails,
+  // which is false for them; asked, the model listed them as both in front and deferred
+  test("the engine's reminder of deferred tools no longer names the three pinned tools", async ($, on) => {
+    mock.clock(on)
+    mock.store(on)
+    world(on)
+    await $.session.start(START)
+    const reminder = 'Load these with ToolSearch before calling them:\nCronCreate\nmcp__verinoda__analyze\nmcp__verinoda__code_check\n' +
+      'mcp__verinoda__project_query\nmcp__verinoda__run_tool\nWebFetch'
+    const out = await $.prompt.attachment({ type: 'deferred_tools_delta', text: reminder, origin: { kind: 'engine' } } as never)
+    expect(out.text).toBe('Load these with ToolSearch before calling them:\nCronCreate\nmcp__verinoda__code_check\nWebFetch')
+    const other = await $.prompt.attachment({ type: 'todo_reminder', text: 'mcp__verinoda__analyze stays here', origin: { kind: 'engine' } } as never)
+    expect(other.text).toBe('mcp__verinoda__analyze stays here')
   })
 })
 

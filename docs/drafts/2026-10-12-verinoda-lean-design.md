@@ -93,13 +93,18 @@ can resolve.
   means no refresh (analyze on the study copy about 1 s instead of 5-6; the 108/120 and 90/100 refresh counts come
   from the local transcripts, not from a committed result).
 - The mod lists `mcp__verinoda__analyze`, `project_query` and `run_tool` in front of the model (`tool.describe`,
-  `isDeferred: false`). Verified in one headless `claude -p` session: with a one-paragraph call rule in the prompt
-  the model called analyze at its first tool call with no ToolSearch, confirmed the lead with `git show`, and
-  cited the commit that states the reason (546dc8b) where two sessions without the rule asserted the history gives
-  none; 4 turns instead of 5; $0.066 against $0.058 with today's 10,355-char analyze result. Listing alone did not
-  make the model call the tool (one session, no rule: Grep, Read, Read, Bash). The hook pins only tools present at
-  session start; a tool that appears after the first model call stays deferred, because moving it into the tools
-  array invalidates the cached prefix (about 16k tokens, about $0.065).
+  `isDeferred: false`; the debug log of a headless session shows the three moved before the first API request).
+  Listing alone did not make the model call them (one session, no rule: Grep, Read, Read, Bash), and neither did the
+  first call rule: one headless session with it called analyze first and cited 546dc8b, but the D186 re-run (39
+  headless sessions, Verinoda arm, that rule in the system prompt, the tools in front) saw no Verinoda call at all
+  (first tool Grep in 38, Bash in 1). Two causes were found: the rule's way out ("a question one grep or one file
+  read answers needs no Verinoda call"), and the engine's reminder of the tools behind ToolSearch, composed before
+  the `tool.describe` answers apply, which named the three pinned tools and said a direct call fails. Probes on six
+  re-run tasks, one session each: the rule without the way out, 3 of 6 calls; plus the reminder corrected, 4 of 6;
+  plus "your first tool call is analyze" in the rule and an analyze description that says so, 5 of 6 (the miss a
+  when-question the model answered with `git log -S`, rightly). The host caches the `tool.describe` answers for the
+  session (a tool that appears later is not re-placed), because moving a tool into the array invalidates the cached
+  prefix (about 16k tokens, about $0.065).
 - On the real fastapi copy analyze answers the why question with the gold commit alone (verdict audit at HEAD:
   wrong_met 1/39 `forge-maxheat-declared`, above_ceiling 0, controls kept 15/22, the same as before the branch; the
   four JS/Java callers controls have been met_with_inference since D31, DESIGN.md:62 still says 19/22).
@@ -220,14 +225,18 @@ on a file that is gone); rare, recorded as not done.
 The mod keeps exactly what has a measured basis or a security need:
 
 1. **Tools in front** (shipped, §3). The hook matches the server named `verinoda` in the user's `.mcp.json`.
-2. **The call rule.** A `prompt.compose` section of about 400 chars when the Verinoda MCP server is connected:
-   "For a why, when or what-does-it-affect question about this repository, call `mcp__verinoda__analyze` once
-   with the question first: it returns a verdict and leads with file:line and commits. Its output is a lead, not
-   the answer: confirm with one git or grep check of your own before stating 'no such change', 'first added in'
-   or why something changed. `statically_verified` and `primary_source_verified` claims are verified;
-   `strong_inference` and below are not. A question one grep or one file read answers needs no Verinoda call."
-   Listing alone did not make the model call the tool (§3). The rule asks for one own check: that lowers
-   displacement by about one call on history questions and is priced in §2's 1.1-1.2x.
+2. **The call rule.** A `prompt.compose` section of about 630 chars when the Verinoda MCP server is connected,
+   naming the first tool call: "Your first tool call on a question that asks why something is the way it is, when
+   or in which commit it changed, or what a change affects is `mcp__verinoda__analyze` with the question; Grep, Read
+   and git come after it. It is in your tool list, not behind ToolSearch. It answers from the git history and the
+   code graph with a verdict, claims and leads that carry file:line and commit hashes; `statically_verified` and
+   `primary_source_verified` claims are verified, `strong_inference` and below are not. Confirm its lead with one
+   git or grep check of your own before stating 'no such change', 'first added in' or why something changed." The
+   first wording ("call analyze once ... a question one grep or one file read answers needs no Verinoda call") got
+   no call in 39 of 39 re-run sessions (§3); the server's status rule and the analyze description say the same
+   thing as this section, and the mod takes the three pinned names out of the engine's reminder of deferred tools.
+   The rule asks for one own check: that lowers displacement by about one call on history questions and is priced
+   in §2's 1.1-1.2x.
 3. **Freshness.** `verinoda update --fast` at the end of a turn that edited indexed files, in the background, with a
    status line (a stale index cost 1.18-1.23x input on 305-950-file repositories; fresh brought it back). Runs
    only in a project the user has trusted (`verinoda trust --list`) or whose root is the session's cwd or an
