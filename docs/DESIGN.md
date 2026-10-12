@@ -59,7 +59,7 @@ own measurements, with their caveats. The benchmark harness results are in
 | D36 | Behaviour probe of changed functions | partial | Built 2026-09-25 (section 9): `verinoda probe FILE::NAME` / `--changed`, MCP `change_probe` (the design named it `behaviour_probe`): inputs from the syntax tree only (annotations, call-site literals and recipes, boundaries mined from comparisons, `len` checks, slices and imported constants of both versions and their callees, standard edges, then hypothesis or a fixed pseudo-random list), one corpus run at the base commit copy and in the working tree through `experiments.run` with a pytest plugin (no new allowlist entry), difference classes with minimal examples reproduced in a second pair of runs and recorded as run-scoped `experiment_verified` claims, properties, undeclared exceptions, nondeterminism, `--scaling`; a static side-effect gate (closure + module-level statements) and an audit hook in the run. No schema change (the design's `probes` table: runs are experiments, results are files under `runs/<probe id>/`). Hand fixtures (49, gold first, in-sample): 22/22 detected (20/20 of those the tests miss), 0 differences on 11 behaviour-preserving edits x 5 seeds (a 12th, labelled equivalent, really changes floats on Python 3.12: reported as `numeric_drift_only`), gate 9/9 refusals and 0/4 wrong ones, median 2.0 s per probe; automated mutants 25/25 killed; unchanged after a review round whose 16 findings were fixed or documented (threads and `multiprocessing` children blocked at run time, a taken module name, process exits, plugin errors, float drift, SQL strings in the gate, `--changed` no pass when a function was not compared), and after a second round of 8 (finalizers and exit handlers blocked at run time, the gate's SQL rule following helpers, defaults, attributes and loops again, float drift only between float literals, no pass when fewer than half of the inputs returned or raised, `asyncio.run` not network, an unparseable changed file, class-state writes, emitted tests for sets and long integers). Not built: `review --probe` (D35), the second minimisation round, the static concurrency signal; methods need a literal-argument constructor call. |
 | D37 | Exact names, one build at a time, freshness on every read (section 10) | implemented | Built 2026-09-26: `naming.resolve` for trace, impact and `node_inspect` (copies give way, ties listed), the copy rule in plan linking, the receiver pass bound to what a file can see, `buildlock` around scan/update, `freshness.check` on query/trace/map and the MCP read tools, analyze's refresh outside its budget (skipped with the stale files named when slow; MCP refreshes in the background). Tests from the evaluators' repros (`tests/test_exact_and_fresh.py`); the eight benchmark sets unchanged. Not done: per-file incremental update (the refresh is still a full rebuild). |
 | D38 | JVM callbacks and mod entry points | partial | Built 2026-09-26 (section 11): a Java / Kotlin method reference passed as an argument is a `registers` edge (never `calls`), stored in the receiver-call sidecar (version 3); `trace` follows it only when no call path exists, labelled `callback`; impact (map, UI, review dependents) follows it after the other edges, marked `registers (callback)`; a relation claim "A calls B" supported only by a method reference (source line, graph edge or a resolver answer) is graded `registers` (none); the map's entry points know fabric.mod.json, Fabric initializers, `@Mod`, `@EventBusSubscriber` / `@SubscribeEvent`, mixin handlers and registered callbacks, and its sinks JVM file writes, `NbtIo` and dirty flags. fastbench: 0 fact changes on all nine sets. Not built: `analyze` flow claims through callbacks, lambdas passed as callbacks, static initializer blocks, inherited targets. |
-| D39 | Honest verdicts | implemented | Built 2026-09-26 (section 12): `verinoda/verdict_gate.py` runs in `analyze` after the claims are made and only caps or refuses (definitions answer only locate questions; copies and reference trees never make `met`; unresolved call sites are named and cap callers; a commit line is not a reason; set differences are `not_supported`). Verdict audit (`verinoda benchmark verdict-audit`, 17 traps + 22 controls on public material, split before tuning, written by the rule author): wrong met dev 9/23 -> 0/23, held-out 8/16 -> 1/16; controls kept dev 13 -> 12, held-out 7 -> 7 (19 of 22 when D39 was built; **15 of 22** in the audit at HEAD on 2026-10-12, before and after the first two waves of D186, the same seven controls lost each time: the four JavaScript/Java callers controls have been `met_with_inference` since D31, and the table in section 133.3 shows 15/22 as well; section 158.3). No fastbench fact lost. Not done: reasons in comments, a computed set difference, synonyms. |
+| D39 | Honest verdicts | implemented | Built 2026-09-26 (section 12): `verinoda/verdict_gate.py` runs in `analyze` after the claims are made and only caps or refuses (definitions answer only locate questions; copies and reference trees never make `met`; unresolved call sites are named and cap callers; a commit line is not a reason; set differences are `not_supported`). Verdict audit (`verinoda benchmark verdict-audit`, 17 traps + 22 controls on public material, split before tuning, written by the rule author): wrong met dev 9/23 -> 0/23, held-out 8/16 -> 1/16; controls kept dev 13 -> 12, held-out 7 -> 7 (19 of 22 when D39 was built, in `benchmarks/results/verdict-audit-2026-09-26/after.json`; **15 of 22** in the audit at HEAD on 2026-10-12, before and after the first two waves of D186, the same seven controls lost each time, and 15 of 22 in the table of section 133.3; why the audit at HEAD keeps fewer is not investigated; section 158.3). No fastbench fact lost. Not done: reasons in comments, a computed set difference, synonyms. |
 | D40 | Query ranking: tests yield to the code they test, named files and modules, docstring phrases, narrower expansions | implemented | Built 2026-09-26 (section 13) in `search_index.rank` / `analyze_query`, no index change. Dev set (37 questions, written for the change: in-sample): gold file first 13 -> 28, MRR 0.535 -> 0.836, tests in the top 5 of questions not about tests 61/170 -> 26/170. Fastbench: no fact lost, 2 gained. Not done: common English words that are module names get the weak plain-word boost; a lowercase owner still accepts methods (`asyncio.run`). |
 | D41 | Documents and images next to the code: text views of PDF/Office files, Windows OCR | implemented | Built 2026-09-26 (section 14): `doctext.py`; pages, sheets, slides and headings become graph nodes (the markdown extractor over the view), search passages, lexicon words, evidence lines and anchors. Fastbench on fresh indexes: 0 differences over 9 sets. Not done: scanned PDFs (no text layer), audio/video, OCR outside Windows. |
 | D42 | A faster `update` with the same graph | partial | 2026-09-26 (section 15): Leiden in native code by default, compact graph.json writes, memoised path and stem work. Same graph, labels, lexicon and receiver edges as before on four corpora (a 4,690-file mod included). Not done: an update proportional to the change; the cross-file passes still run over the whole corpus. |
@@ -17800,17 +17800,29 @@ hold no cost table, so that analysis is not a committed result and cannot be re-
   million tokens (uncached input, cache write, cache read, output; the D185 run fits cache reads at $0.10): a reported figure, not
   an invoice. Verinoda's JSON tokenizes at about 0.4 tokens per character.
 
-The goal set for this work was to beat both Graphify and the tool-less agent on accuracy and on cost. The measurements allow a
-narrower claim, and D186 makes only that one:
+The goal set for this work was to beat both Graphify and the tool-less agent on accuracy and on cost. The measurements allow only
+a narrower target, and D186 sets only that one. It is a target, not a result:
 
-> Equal accuracy wherever it was measured; dollars per session inside the paired interval of tool-less Claude Code (modelled at
-> 1.1-1.2x at today's displacement, down from 1.62-1.66x); and correct history where git is blind (renames, moves,
-> path-restricted searches), made systematic.
+> The target, not yet measured: accuracy no worse than tool-less Claude Code's; dollars per session inside the paired interval of
+> tool-less Claude Code (modelled at 1.1-1.2x, down from 1.62-1.66x); and history handled correctly on the three cases checked on
+> the study clones (fastapi, a one-for-one change inside a moved file; guzzle, text born in another file; gin, text whose first
+> event under the path was only a modification).
 
-"Cheaper than plain Claude Code" is **not** claimed. A tool that replaces the agent's *search* can at best displace the search
-calls the plain agent makes (1.31 model calls per SWE-bench session, 0.89 per D185 session; session-local), and that is less than
-one Verinoda call costs with its result; parity would need `analyze` to displace a Read as well, which `show="lead"` (158.2) is
-the experiment for, with a stop rule. The cost model is arithmetic over the fitted prices, not a measurement:
+Where each part stands (the sources are in 158.3). *Accuracy*: D185 measured no difference in false facts (+0.011, 95 % interval
+-0.044 to +0.078), which is not equality; the strict citation check is lower for the Verinoda arm (0.793 against 0.803, no interval
+computed); the no-model benchmark did not move, but it ran on `c678d46`, before the lead view. The accuracy of the redesigned tool
+with a model is **not measured**. *Dollars*: modelled only; no session of the redesigned tool has been priced. *History*: one query
+on each of the three study clones, read-only runs, not a scored measure.
+
+The 1.1-1.2x, the displacement counts and the table below are **modelled** and not re-derived here: they are copied from section 2
+of `docs/drafts/2026-10-12-verinoda-lean-design.md`, which is session-local arithmetic over the transcripts of D184 and D185 and the
+fitted prices above (a committed draft, not a result).
+
+"Cheaper than plain Claude Code" is **not** claimed. By that model a tool that replaces the agent's *search* can at best displace
+the search calls the plain agent makes (1.31 per SWE-bench session, 0.89 per D185 session: the plain agent's own model calls that
+only searched; session-local), and that is less than one Verinoda call costs with its result; parity would need `analyze` to
+displace a Read as well, which `show="lead"` (158.2) is the experiment for, with a stop rule. The cost model is arithmetic over the
+fitted prices, not a measurement:
 
 | change (per session, SWE-bench prices; D185 is about half) | modelled |
 |---|---|
@@ -17822,9 +17834,9 @@ the experiment for, with a stop rule. The cost model is arithmetic over the fitt
 | the `analyze` call with a 2,500-character result | +$0.011 (4,000 characters: +$0.0145) |
 | one displaced own model call | -$0.0116 (D185: -$0.0074) |
 
-At today's displacement (0.74 model calls on SWE-bench, 1.70 on D185) the table gives plain +$0.009 to +$0.012 per session on
-SWE-bench (1.11-1.15x) and +$0.006 to +$0.011 on D185 (1.10-1.19x); parity on SWE-bench would need 1.49 displaced model calls with
-a 2,500-character result. The working is in `docs/drafts/2026-10-12-verinoda-lean-design.md` section 2, over the same transcripts.
+At today's displacement (0.74 displaced model calls on SWE-bench, 1.70 on D185) the table gives plain +$0.009 to +$0.012 per
+session on SWE-bench (1.11-1.15x) and +$0.006 to +$0.011 on D185 (1.10-1.19x); parity on SWE-bench would need 1.49 displaced
+model calls with a 2,500-character result. All of this is modelled.
 
 ### 158.2 Decisions
 
@@ -17862,7 +17874,7 @@ The plan (`docs/drafts/2026-10-12-verinoda-lean-plan.md`) ran in three waves on 
   call the model made and never injected: the one measured up-front injection (the mod's former `search` mode; see the mod's
   README) lost facts, 207 against 212. The aim is an `analyze` that displaces a Read. The stop rule was fixed in the design before any run: if
   the Verinoda arm's own model calls are not at least 1.5 below the plain arm's on the cost sample, the variant stays off and the
-  cost claim is the 1.1-1.2x of 158.1.
+  cost target stays the modelled 1.1-1.2x of 158.1.
 - **`history_search` returns one flat list.** Every commit once, as a row `sha[:10] date author subject[:90]`, newest first, up to
   the limit (default 30, at most 100). `quoted` carries the message bodies (clipped at 300 characters) of the first three rows,
   the last three and any row whose message states a reason. Symbol mode has no `claims` list any more (a claim per commit repeated
@@ -17990,7 +18002,8 @@ The plan (`docs/drafts/2026-10-12-verinoda-lean-plan.md`) ran in three waves on 
 
 Labels: **committed** (a results folder of this repository); **commit** (a figure in the message of the commit named, from a run
 on this machine, Windows 11 with Python 3.12.0, with no result file); **session-local** (transcript analysis or a scratch script,
-not a committed result); **modelled** (arithmetic over the fitted prices); **not measured**.
+not a committed result); **modelled** (arithmetic over the fitted prices; here always copied from section 2 of the draft design, never
+re-derived); **not measured**.
 
 - **The no-model headline did not move (committed).** `benchmarks/results/compare-2026-10-12-branch/`: the eight public sets,
   `--llm none`, `--repeat 1`, on the branch at `c678d46` (the D185-mechanism commits only, before the waves of this section)
@@ -18001,9 +18014,12 @@ not a committed result); **modelled** (arithmetic over the fitted prices); **not
 - **The verdict audit (run, output not committed).** `verinoda benchmark verdict-audit --split all` at HEAD before the redesign and
   again after waves 1 and 2: 39 cases, wrong met 1 (`forge-maxheat-declared`), above ceiling 0, controls kept **15 of 22**, the
   same seven controls lost each time. The figure is not new: the table in section 133.3 (`benchmarks/results/host-intent-2026-10-01/`)
-  has 15/22 in all three conditions. The 19 that the D39 row at the top of this document implied (dev 12 and held-out 7) dates from
-  before D31 lowered the four JavaScript/Java callers controls to `met_with_inference`; the row now says so. The plan commits a
-  before and after pair under `benchmarks/results/verdict-audit-2026-10-1x/`.
+  has 15/22 in all three conditions. The D39 row at the top of this document gave 19 of 22 (dev 12 of 13, held-out 7 of 9), the
+  figure of 2026-09-26 in `benchmarks/results/verdict-audit-2026-09-26/after.json`, where the controls lost were `pyloop-why-adr`,
+  `forge-maxheat-declared` and `verinoda-mcp-size-env`. Why the audit at HEAD keeps 15 where that file keeps 19 is **not
+  investigated**: the output of the HEAD runs was not committed, so the seven controls they lost are not listed here and no cause
+  is named. The row now carries both figures with their dates. The plan commits a before and after pair under
+  `benchmarks/results/verdict-audit-2026-10-1x/`.
 - **Where the gold file sits in the leads (session-local, offline).** The 100 SWE-bench `analyze` outputs of D184, re-ranked with
   the new lead order (one path extraction for both orders; the gold files from the study's `results.jsonl`): the gold file is at
   rank 1 in 31 of 100 in the order the model read, 60 of 100 under the new one; in the top three 46 -> 76; in the top eight
@@ -18042,7 +18058,7 @@ not a committed result); **modelled** (arithmetic over the fitted prices); **not
 - **The D185 citation check, strict (run over the D185 work folder, outside the repository; output not committed; commit 29d6dec).**
   Plain arm 905 confirmed / 216 wrong / 6 missing of 1,127 citations (0.803); Verinoda arm 1,047 / 254 / 20 of 1,321 (0.793); the
   lenient check of D185 gave 0.975 and 0.958. The strict figure is a lower bound as the lenient one is an upper bound (157.3); the
-  re-runs report both.
+  re-runs report both. The Verinoda arm is the lower in both checks; no interval was computed.
 - **Tests.** After wave 1, on the merged tree (the changed areas): 31 test files, 1,084 passed, 2 failed, the two skill-length
   cases that fail on a clean checkout (AGENTS.md); the skill rewrite of wave 2 fixed both (bodies of 58 and 59 lines). The mod:
   85 tests pass (`claude plugin test`), `tsc --noEmit` exits 0, `claude plugin validate` passed. `tests_upstream` after the
@@ -18058,7 +18074,8 @@ not a committed result); **modelled** (arithmetic over the fitted prices); **not
   Louvain's.
 - **Install size.** Without `graspologic-native` the default install drops about 107 MB of scipy that nothing imports: 293 MB
   (D183, 63 packages) -> about 185 MB, the second figure from a reviewer's `du`, not re-measured on a fresh install.
-- **Cost: modelled, not measured.** The 1.1-1.2x of 158.1 is arithmetic; no session of the redesigned tool has been priced.
+- **Cost: modelled, not measured.** The 1.1-1.2x of 158.1 is arithmetic, copied from the draft design's section 2 and not
+  re-derived; no session of the redesigned tool has been priced.
 
 <!-- TASK8: numbers from benchmarks/results/claims-rerun-2026-10-1x/ -->
 **Not run yet: the plan's verification runs.** The re-run of six D185 tasks (`fastapi__full-stack-fastapi-template-why-1`,
@@ -18069,20 +18086,21 @@ arm, Verinoda characters per session, cache-write tokens per arm) are the plan's
 audit once more after D186. Their numbers go here, each with its results folder. The success rule was fixed before any session:
 the interval of the paired difference excludes +$0.015 (the modelled 1.1-1.2x holds) and Verinoda's output is at most 4,500
 characters per session; `show="lead"` stays off unless the Verinoda arm's own model calls are at least 1.5 below the plain arm's.
-Until then every statement about dollars in this section is modelled.
+Until then every statement about dollars in this section is modelled, and none about the accuracy of the redesigned tool with a
+model is a measurement.
 
-**Not measured, listed once.** What a model does with the shorter instruction and skill text, and the text sizes on a real
-repository; whether the model's first Read follows the first lead; the effect of `show="lead"`; the 60 s time-out and the
-ancestry walk on a 50,000-commit repository; `status` latency with `--no-optional-locks` on a stale-stat tree; the cost of one
-`resolve()` per file read in `span` and `source`; `http.followRedirects=false` against a live host; the eight-set headline and the
+**Not measured, listed once.** The accuracy and the dollars of the redesigned tool with a model (the runs above); what a model
+does with the shorter instruction and skill text, and the text sizes on a real repository; whether the model's first Read follows
+the first lead; the effect of `show="lead"`; the 60 s time-out and the ancestry walk on a 50,000-commit repository; `status`
+latency with `--no-optional-locks` on a stale-stat tree; the cost of one `resolve()` per file read in `span` and `source`; `http.followRedirects=false` against a live host; the eight-set headline and the
 clustering time on large graphs with Louvain (every result so far ran with Leiden; 3.4 s against 1.0 s on this repository is
 D42's `pyproject.toml` comment, not a re-measurement); the install size on a fresh install; the mod's pane in a real terminal.
 
 ### 158.4 Not done
 
 - **The plan's verification runs** (158.3): the six D185 tasks re-run, the cost sample, and the eight sets and the verdict audit
-  after D186 as committed results. SWE-bench is not re-run (about $25 and 7 hours of Docker per repeat); ContextBench's `analyze`
-  arm is not re-run because the CLI's `render_text` did not change.
+  after D186 as committed results. SWE-bench is not re-run (the draft design's estimate, in its section 8, is about $25 and 7 hours
+  of Docker per repeat; not measured); ContextBench's `analyze` arm is not re-run because the CLI's `render_text` did not change.
 - **`show="lead"`** is built and off. A second 24-pair sample for it is run only if the first is affordable.
 - **Deliberately not built.** A project brain or session-start card: no study spans two sessions or a compaction, and the one
   measured up-front injection lost facts (207 against 212); it is recorded as a two-session study design (the backlog row "Two-session persistence study"), not as
@@ -18090,8 +18108,9 @@ D42's `pyproject.toml` comment, not a re-measurement); the install size on a fre
 - **A broader when-rule** (the backlog row "The when-rule's limits"). The first appearance of a code term is a lead for a when-question, never the answer,
   and is read oldest first only for "when was X added/introduced" where X is the term itself. Against the eight D185 when tasks
   the rule fires on one (axios, where the oldest is the gold); on four others the term's first appearance predates the asked-about
-  change by 7 to 16 years, which is why it is a lead and why a looser rule would manufacture the false-history class on a kind of
-  question that had zero false facts in D185. The gate's `history` rule is not extended to diffs.
+  change by 7 to 16 years (both counts are the design's, in section 4.3 of the draft, session-local and not re-derived here), which
+  is why it is a lead and why a looser rule would manufacture the false-history class on a kind of question that had zero false
+  facts in D185. The gate's `history` rule is not extended to diffs.
 - **Security items deferred.** An owner stamp for `.verinoda` (detecting an index that came with a clone or a copy; the cost of
   migrating copied indexes is open; the backlog row "Owner stamp for `.verinoda`") and read-only queries by default (the
   latency of rebuilding a stale index in memory is not measured; the row "Read-only queries by default"). The best-effort private-host check for reference fetches is not built: the connection of

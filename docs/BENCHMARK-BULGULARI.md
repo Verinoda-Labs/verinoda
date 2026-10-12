@@ -158,7 +158,8 @@ depoda sonuç klasörü olmayan çözümleme demektir.
 ### 5.1 Ne gönderildi (D186)
 
 - **`analyze` MCP cevabı bir soruşturma değil, ipucu:** hüküm (`answered` / `partly_answered` / `unanswered`), cevap iddiaları
-  tam, `dosya:satır` ile en çok sekiz ipucu, en çok altı bağlam satırı; 2.500 karakteri aşmaz (eskiden 10.400-11.200). Sebep:
+  tam, `dosya:satır` ile en çok sekiz ipucu, en çok altı bağlam satırı; 2.500 karakteri aşmaz (eskiden SWE-bench'te ortanca
+  10.495 karakter, fastapi sorusunda 10.355; yerel çözümleme). Sebep:
   D185'te Verinoda kolu oturumların 103/120'sinde yönlendirilen asgariyle (`analyze`, sonra cevap) bitti ve `analyze` 120/120
   çağrıda `answered` dedi (yerel çözümleme).
 - **`history_search` tek düz liste; git'in kör olduğu iki sınıf düzeltildi.** Taşınmış dosyada tek satırlık değişiklik
@@ -174,21 +175,27 @@ depoda sonuç klasörü olmayan çözümleme demektir.
 - **Paket:** tek git kapısı, yol kapsama, daemon durumunun depodan çıkması; yukarı akış Graphify komut satırı (`verinoda index`),
   LLM/PR/medya katmanı ve `graspologic-native` bağımlılığı (scipy dahil yaklaşık 107 MB) paketten çıktı.
 
-İddia edilen şudur: doğrulukta eşitlik; dolarda düz Claude Code'un eşleştirilmiş aralığı içinde (modellenen 1,1-1,2 kat;
-SWE-bench'te 1,62 ve D185'te 1,66 katından aşağı); git'in kör olduğu yerde doğru geçmiş. **"Düz Claude'dan ucuz" iddia
-edilmez:** arama çağrılarını yerine koyan bir araç en çok düz ajanın yaptığı arama çağrılarını kaldırabilir (SWE-bench'te oturum
-başına 1,31 model çağrısı; yerel çözümleme), bu da bir Verinoda çağrısının sonucuyla birlikte maliyetinden azdır.
+Hedef şudur ve **henüz ölçülmedi**: doğrulukta düz Claude Code'dan kötü olmamak (D185 ölçülen bir fark bulmadı, aralık -0,044
+ile +0,078; bu eşitlik demek değildir); dolarda düz Claude Code'un eşleştirilmiş aralığı içinde (modellenen 1,1-1,2 kat;
+SWE-bench'te 1,62 ve D185'te 1,66 katından aşağı); git'in kör olduğu, depo kopyalarında denenen üç durumda (fastapi, guzzle, gin)
+doğru geçmiş. 1,1-1,2 kat ile aşağıdaki arama çağrısı sayıları `docs/drafts/2026-10-12-verinoda-lean-design.md` bölüm 2'den
+alınmıştır: D184 ve D185 oturum kayıtları ile `total_cost_usd`'ye en iyi uyan fiyatlar üzerinde yerel aritmetik; burada yeniden
+türetilmedi, model olarak okunmalı. **"Düz Claude'dan ucuz" iddia edilmez:** arama çağrılarını yerine koyan bir araç en çok düz
+ajanın yaptığı arama çağrılarını kaldırabilir (SWE-bench'te oturum başına 1,31 arama çağrısı, D185'te 0,89; modelleme), bu da bir
+Verinoda çağrısının sonucuyla birlikte maliyetinden azdır.
 
 ### 5.2 Koşular şimdiye kadar ne gösterdi
 
-Hiçbiri bir maliyet ya da ajan davranışı ölçümü değil.
+Hiçbiri yeniden tasarlanan aracın maliyetinin ya da ajan davranışının puanlı bir ölçümü değil: tek oturumluk denemeler gözlemdir,
+katı atıf kontrolü D185'in (eski araçla verilmiş) cevaplarını puanlar.
 
 - **Modelsiz benchmark, sekiz küme (işlenmiş sonuç: `benchmarks/results/compare-2026-10-12-branch/`):** dalın c678d46
   sürümünde olgu kaybı da kazancı da yok (sorgu 284/319 → 284/319, analyze 285/319 → 285/319); `analyze` soru başına token'ı
   86 sorunun 14'ünde düştü (-9 ile -87), hiçbirinde artmadı. D186'nın tamamından sonraki koşu henüz yapılmadı.
 - **Hüküm denetimi (koşuldu, çıktısı commit'lenmedi):** 39 vaka, yanlış `met` 1 (`forge-maxheat-declared`), tavan üstü 0,
-  korunan kontrol 15/22; ilk iki dalga öncesinde ve sonrasında aynı yedi kontrol kayıp. `DESIGN.md` D39 satırının ima ettiği
-  19/22 eskimişti, düzeltildi.
+  korunan kontrol 15/22; ilk iki dalga öncesinde ve sonrasında aynı yedi kontrol kayıp. `DESIGN.md` D39 satırı 19/22 diyordu
+  (2026-09-26, `benchmarks/results/verdict-audit-2026-09-26/after.json`); HEAD'de 15/22 çıktı ve fark nedeni araştırılmadı. Satır
+  artık ikisini de tarihiyle söylüyor.
 - **SWE-bench `analyze` çıktılarının çevrimdışı yeniden sıralanması (yerel çözümleme):** altın dosya 1. sırada 31 → 60/100,
   ilk 3'te 46 → 76, ilk 8'de 71 → 86; çıktıda hiç olmayan 8 → ipuçlarında hiç olmayan 11 (kötüleşen tek sayı: sekiz ipucu sınırı).
 - **Uçtan uca, çalışma kopyalarında (commit iletilerindeki ölçümler):** fastapi görevinde `analyze` 10.355 → 1.987 karakter,
@@ -200,7 +207,7 @@ Hiçbiri bir maliyet ya da ajan davranışı ölçümü değil.
   `git show 546dc8b`, cevap 546dc8b'yi "güvenlik için" diye anıyor, 3-4 API çağrısı.
 - **D185 cevaplarında katı mekanik atıf kontrolü (yerel koşu, çıktısı commit'lenmedi):** düz 905 doğrulanan / 216 yanlış / 6 eksik
   (0,803), Verinoda 1.047 / 254 / 20 (0,793); D185'in gevşek kontrolü 0,975 ve 0,958 vermişti. Gevşek kontrol üst sınır, katı
-  kontrol alt sınırdır; iki kol birbirine yakın, aralık hesaplanmadı.
+  kontrol alt sınırdır; Verinoda kolu iki kontrolde de daha düşük, aralık hesaplanmadı.
 - **Testler:** birinci dalga sonrası birleşik ağaçta 31 test dosyası, 1.084 geçti, 2 başarısız (temiz çıkışta da başarısız olan
   iki beceri uzunluğu testi; ikinci dalgada düzeldi); mod: 85 test geçti; `tests_upstream` silmelerden sonra 38 başarısız (hepsi
   daha önce de başarısız olan türden), 3.645 geçti, 130 atlandı; Louvain kapısı (graspologic-native'siz tüm ürün takımı): 20
@@ -208,22 +215,23 @@ Hiçbiri bir maliyet ya da ajan davranışı ölçümü değil.
 
 ### 5.3 Ölçülmedi
 
-- **Dolar.** 1,1-1,2 kat modellenmiştir, ölçülmemiştir. Yeniden koşular henüz yapılmadı: D185'in altı görevi (Verinoda kolu,
-  üç tekrar) ve 24 çiftlik maliyet örneği (24 cevaplanabilir görev, iki kol). Başarı ölçütü önceden belirli: eşleştirilmiş farkın
-  aralığı +0,015 $'ı dışlamalı ve Verinoda çıktısı oturum başına en çok 4.500 karakter olmalı. Sayılar ve sonuç klasörü
-  `docs/DESIGN.md` 158.3'e yazılacak.
+- **Dolar ve doğruluk.** Yeniden tasarlanan aracın bir modelle doğruluğu ölçülmedi. 1,1-1,2 kat modellenmiştir (taslak tasarımın
+  bölüm 2'sindeki aritmetik, burada yeniden türetilmedi), ölçülmemiştir. Yeniden koşular henüz yapılmadı: D185'in altı görevi
+  (Verinoda kolu, üç tekrar) ve 24 çiftlik maliyet örneği (24 cevaplanabilir görev, iki kol). Başarı ölçütü önceden belirli:
+  eşleştirilmiş farkın aralığı +0,015 $'ı dışlamalı ve Verinoda çıktısı oturum başına en çok 4.500 karakter olmalı. Sayılar ve
+  sonuç klasörü `docs/DESIGN.md` 158.3'e yazılacak.
 - Modelin ilk Read'inin 1. ipucunu izleyip izlemediği; `show="lead"`'in etkisi (kapalı; Verinoda kolunun kendi model çağrıları
   düz kolunkinden en az 1,5 az değilse kapalı kalır); modelin kısalmış metinle ne yaptığı; metin boyutlarının gerçek bir depoda
   değeri (ölçümler örnek proje `orders_app` üzerinde).
 - 50.000 commit'lik bir depoda 60 sn'lik zaman aşımı; `--no-optional-locks` ile eskimiş bir ağaçta `status` gecikmesi.
 - Başlık sayıları ve kümeleme süresi Louvain ile (şimdiye kadarki her sonuç Leiden ile koşuldu); temiz bir kurulumda boyut.
-- SWE-bench yeniden koşulmadı (yaklaşık 25 $ ve tekrar başına 7 saat Docker); ContextBench `analyze` kolu, CLI'nin `render_text`'i
-  değişmediği için yeniden koşulmadı.
+- SWE-bench yeniden koşulmadı (taslak tasarımın bölüm 8'indeki tahmin yaklaşık 25 $ ve tekrar başına 7 saat Docker; ölçülmedi);
+  ContextBench `analyze` kolu, CLI'nin `render_text`'i değişmediği için yeniden koşulmadı.
 
 ### 5.4 Sıra
 
 Önce, yeni bir çalışma değil, D186 planının son adımı: §5.3'teki yeniden koşular ile D186 sonrası sekiz küme ve hüküm
-denetimi, sonuç klasörleriyle commit'lenerek. Dolar iddiası o zamana kadar bir modeldir.
+denetimi, sonuç klasörleriyle commit'lenerek. Dolar rakamı o zamana kadar bir modeldir ve yeniden tasarlanan aracın doğruluğu ölçülmemiştir.
 
 1. **Ajan tarafında kalan tek açık deney: test kanalı.** SWE-bench çalışmasında iki kolda da proje testleri çalışmıyordu;
    literatürün en yüksek getiri dediği kanal hiç ölçülmedi. Aynı 100 örnek, bağımlılıkları kurulu Docker ortamında, önce
