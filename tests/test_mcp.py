@@ -1539,6 +1539,32 @@ def test_cap_response_keeps_named_keys_first_and_cuts_them_last():
     assert tight["understood_as"] == big["understood_as"]
 
 
+def test_cap_response_keeps_both_ends_of_a_commit_list_and_names_the_dropped():
+    # a history result lists commits newest first; the oldest one (the first appearance) matters as much as the
+    # newest, so a cut keeps both ends and says which commits in between it dropped (D185: the cut dropped the gold
+    # commit at position 11 of 14 and the model asserted there was no such change)
+    sha = [f"{i:07x}" + "a" * 33 for i in range(14)]
+    commits = [{"commit": sha[i], "date": f"2026-01-{14 - i:02d}T10:00:00Z", "author": "a", "subject": "s" * 120,
+                "evidence": {"excerpt": "e" * 240}} for i in range(14)]
+    claims = [{"kind": "history", "status": "primary_source_verified", "text": "t" * 240,
+               "evidence": [{"commit_sha": sha[i], "meta": {"date": f"2026-01-{14 - i:02d}T10:00:00Z"}}]} for i in range(14)]
+    res = cap_response({"status": "found", "commits": commits, "claims": claims}, 4000)
+    assert res["truncated"] is True and _size(res) <= 4000
+    for key in ("commits", "claims"):
+        kept = res[key]
+        assert 1 < len(kept) < 14
+        first = kept[0].get("commit") or kept[0]["evidence"][0]["commit_sha"]
+        last = kept[-1].get("commit") or kept[-1]["evidence"][0]["commit_sha"]
+        assert first == sha[0] and last == sha[13], key  # the newest and the oldest survive
+        note = res["truncation"]["cut"][key]
+        assert note["kept"] == len(kept) and note["total"] == 14
+        left = {x.get("commit") or x["evidence"][0]["commit_sha"] for x in kept}
+        assert note["dropped"] == [f"{sha[i][:7]} 2026-01-{14 - i:02d}" for i in range(14) if sha[i] not in left]
+        assert 2 < len(note["dropped"]) < 13  # the middle, in git's order, each as "sha date"
+    plain = cap_response({"items": [{"id": i, "pad": "x" * 300} for i in range(50)]}, 4000)
+    assert plain["items"][0]["id"] == 0 and "dropped" not in plain["truncation"]["cut"]["items"]  # not a commit list
+
+
 def test_cap_response_cuts_a_nested_first_list_before_the_rest():
     big = {"claims": [{"id": f"clm_{i}", "text": "c" * 80} for i in range(10)],
            "plan_check": {"status": "ready", "links": [f"m{i} -> f.py:{i} (linked)" * 3 for i in range(60)]},

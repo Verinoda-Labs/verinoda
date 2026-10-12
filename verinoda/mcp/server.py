@@ -390,10 +390,14 @@ def cap_response(obj: dict, limit: int = MAX_RESPONSE_CHARS, *, first: tuple[str
     Then the largest list (or name->data map) anywhere in the tree is cut, or
     the longest string when it dominates. Cuts are proportional to the excess,
     so the result stays close to the limit. Lists under a key in ``keep_tail``
-    keep their last items (newest history) instead of the first. Top-level
-    keys in ``keep`` are placed first in the response and are cut only when
-    nothing else is left to cut. Nothing is re-ordered inside a value or
-    invented; ``truncation.cut`` says what was cut (kept/total). Top-level
+    keep their last items (newest history) instead of the first. A list of
+    commits (git's order, newest first) keeps both ends, the newest and the
+    oldest, drops the middle and names each dropped commit (``sha date``) in
+    the note: the first appearance of a text is evidence as much as its last
+    change, and a cut that silently drops it reads as "no such change" (D185).
+    Top-level keys in ``keep`` are placed first in the response and are cut
+    only when nothing else is left to cut. Nothing is re-ordered inside a value
+    or invented; ``truncation.cut`` says what was cut (kept/total). Top-level
     ``coverage`` (method and limits of a heuristic view) is never cut.
     """
     obj = _jsonable(obj)
@@ -415,22 +419,37 @@ def cap_response(obj: dict, limit: int = MAX_RESPONSE_CHARS, *, first: tuple[str
         # size of obj + ',"truncated":true,"truncation":<note>' minus the limit
         return _size(obj) + 32 + _size(note()) - limit
 
-    def record(path: tuple, total: int, kept: int) -> None:
+    commit_tags: dict[str, list[str]] = {}  # a commit list's tags in git's order, read before its first cut
+
+    def record(path: tuple, total: int, kept: int, dropped: list[str] | None = None) -> None:
         k = _path_str(path)
         prev = notes.get(k)
         notes[k] = {"kept": kept, "total": prev["total"] if prev else total}
+        if dropped is not None:
+            if len(dropped) > 25:
+                dropped = dropped[:25] + [f"+{len(dropped) - 25} more"]
+            notes[k]["dropped"] = dropped
 
     def cut_seq(path: tuple, node: list | dict, size: int, over: int) -> None:
         n = len(node)
         keep_n = int(n * (size - over) / size) if size > over else 1
         keep_n = max(1, min(n - 1, keep_n))
-        record(path, n, keep_n)
         if isinstance(node, dict):
+            record(path, n, keep_n)
             for k in list(node)[keep_n:]:
                 del node[k]
+        elif _commit_list(node):
+            keep_n = max(2, keep_n)
+            head = (keep_n + 1) // 2
+            tags = commit_tags.setdefault(_path_str(path), [_commit_tag(d) for d in node])
+            del node[head: n - (keep_n - head)]
+            left = {_commit_tag(d) for d in node}
+            record(path, n, keep_n, [t for t in tags if t not in left])
         elif bool(path) and path[-1] in keep_tail:
+            record(path, n, keep_n)
             del node[: n - keep_n]
         else:
+            record(path, n, keep_n)
             del node[keep_n:]
 
     for key in first:
@@ -464,6 +483,35 @@ def cap_response(obj: dict, limit: int = MAX_RESPONSE_CHARS, *, first: tuple[str
     if unmet:  # only protected/indivisible content is left; say so instead of cutting it
         obj["truncation"]["over_limit"] = True
     return obj
+
+
+def _commit_sha(item: Any) -> str | None:
+    """The commit an item of a history list stands for: a commit row (``commit``) or a history claim whose
+    first evidence names ``commit_sha``; None for anything else."""
+    if not isinstance(item, dict):
+        return None
+    sha = item.get("commit")
+    if isinstance(sha, str) and sha:
+        return sha
+    ev = item.get("evidence")
+    if item.get("kind") == "history" and isinstance(ev, list) and ev and isinstance(ev[0], dict):
+        sha = ev[0].get("commit_sha")
+        return sha if isinstance(sha, str) and sha else None
+    return None
+
+
+def _commit_list(node: list) -> bool:
+    return len(node) >= 2 and all(_commit_sha(x) for x in node)
+
+
+def _commit_tag(item: dict) -> str:
+    date = item.get("date")
+    if not isinstance(date, str):
+        ev = item.get("evidence")
+        meta = ev[0].get("meta") if isinstance(ev, list) and ev and isinstance(ev[0], dict) else None
+        date = (meta or {}).get("date") if isinstance(meta, dict) else None
+    sha = (_commit_sha(item) or "")[:7]
+    return f"{sha} {date[:10]}" if isinstance(date, str) and date else sha
 
 
 # -- graph helpers ----------------------------------------------------------------
