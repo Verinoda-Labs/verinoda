@@ -1,0 +1,105 @@
+[bench] copying corpus from C:\Users\ozcin\Desktop\verinoda-symbiosis to C:\Users\ozcin\AppData\Local\Temp\verinoda-bench-q53kjn9u\verinoda
+[bench] verinoda scan (cold)
+[bench] verinoda scan (warm)
+[bench] pass 1/1 u01 raw
+[bench] pass 1/1 u01 graphify_vendored
+[bench] pass 1/1 u01 verinoda_analyze
+[bench] pass 1/1 u01 verinoda_retrieve
+[bench] pass 1/1 u01 verinoda_retrieve_text
+[bench] pass 1/1 u02 raw
+[bench] pass 1/1 u02 graphify_vendored
+[bench] pass 1/1 u02 verinoda_analyze
+[bench] pass 1/1 u02 verinoda_retrieve
+[bench] pass 1/1 u02 verinoda_retrieve_text
+[bench] pass 1/1 u03 raw
+[bench] pass 1/1 u03 graphify_vendored
+[bench] pass 1/1 u03 verinoda_analyze
+[bench] pass 1/1 u03 verinoda_retrieve
+[bench] pass 1/1 u03 verinoda_retrieve_text
+[bench] pass 1/1 u04 raw
+[bench] pass 1/1 u04 graphify_vendored
+[bench] pass 1/1 u04 verinoda_analyze
+[bench] pass 1/1 u04 verinoda_retrieve
+[bench] pass 1/1 u04 verinoda_retrieve_text
+[bench] pass 1/1 u05 raw
+[bench] pass 1/1 u05 graphify_vendored
+[bench] pass 1/1 u05 verinoda_analyze
+[bench] pass 1/1 u05 verinoda_retrieve
+[bench] pass 1/1 u05 verinoda_retrieve_text
+[bench] pass 1/1 u06 raw
+[bench] pass 1/1 u06 graphify_vendored
+[bench] pass 1/1 u06 verinoda_analyze
+[bench] pass 1/1 u06 verinoda_retrieve
+[bench] pass 1/1 u06 verinoda_retrieve_text
+[bench] pass 1/1 u07 raw
+[bench] pass 1/1 u07 graphify_vendored
+[bench] pass 1/1 u07 verinoda_analyze
+[bench] pass 1/1 u07 verinoda_retrieve
+[bench] pass 1/1 u07 verinoda_retrieve_text
+[bench] pass 1/1 u08 raw
+[bench] pass 1/1 u08 graphify_vendored
+[bench] pass 1/1 u08 verinoda_analyze
+[bench] pass 1/1 u08 verinoda_retrieve
+[bench] pass 1/1 u08 verinoda_retrieve_text
+[bench] pass 1/1 u09 raw
+[bench] pass 1/1 u09 graphify_vendored
+[bench] pass 1/1 u09 verinoda_analyze
+[bench] pass 1/1 u09 verinoda_retrieve
+[bench] pass 1/1 u09 verinoda_retrieve_text
+[bench] pass 1/1 u10 raw
+[bench] pass 1/1 u10 graphify_vendored
+[bench] pass 1/1 u10 verinoda_analyze
+[bench] pass 1/1 u10 verinoda_retrieve
+[bench] pass 1/1 u10 verinoda_retrieve_text
+[bench] pass 1/1 u11 raw
+[bench] pass 1/1 u11 graphify_vendored
+[bench] pass 1/1 u11 verinoda_analyze
+[bench] pass 1/1 u11 verinoda_retrieve
+[bench] pass 1/1 u11 verinoda_retrieve_text
+[bench] pass 1/1 u12 raw
+[bench] pass 1/1 u12 graphify_vendored
+[bench] pass 1/1 u12 verinoda_analyze
+[bench] pass 1/1 u12 verinoda_retrieve
+[bench] pass 1/1 u12 verinoda_retrieve_text
+benchmark set verinoda_user_tr (12 questions)  status=ok
+gold facts re-verified against the corpus: 30 checked, 0 failure(s)
+Question set provenance: questions written by: u02 is a user's own question from a session (2026-09-24), as typed; the other 11 were written in the same style by the agent that built these features, on 2026-09-25; gold written by: the same agent, by reading the code at the pinned commit; in sample: True; caveat: not a log of real users' questions (Verinoda keeps none); written after the 2026-09-25 retrieval and analysis changes by their author, so treat results as in-sample.
+tokens: chars/4 estimate;  model: not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+graphify CLI: not run: --graphify-cmd not given
+
+index (one-off):
+  Verinoda scan: cold 10.69 s, warm 3.02 s; 3287 nodes / 8607 edges; 75 cache files
+
+| approach | facts found | via locator | pinpointed | shown | all-facts Qs | tokens mean | tokens max | facts/1k tok | shown/1k tok | pinpointed/1k tok | locators/Q | tool calls/Q | cold s (median) | warm s (median) | neg. matched | cited line lacks target |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| raw grep+read | 1/30 | 0 | 0 | 1 | 0/12 | 5979 | 5995 | 0.01 | 0.01 | 0.00 | 30.7 | 2 | 0.148 | - | n/a | n/a |
+| Graphify query (vendored, depth 3) | 5/30 | 5 | 5 | 0 | 1/12 | 814 | 1640 | 0.51 | 0.00 | 0.51 | 37.8 | 1 | 0.149 | - | 0/0 | 0/0 |
+| Verinoda analyze | 13/30 | 13 | 8 | 7 | 4/12 | 1730 | 2016 | 0.63 | 0.34 | 0.39 | 21.8 | 1 | 1.099 | - | 0/0 | 0/22 |
+| Verinoda retrieve (JSON) | 9/30 | 8 | 7 | 5 | 3/12 | 1428 | 1446 | 0.53 | 0.29 | 0.41 | 21.7 | 1 | 0.114 | - | 0/0 | 0/22 |
+| Verinoda retrieve (text) | 13/30 | 13 | 8 | 7 | 4/12 | 1433 | 1497 | 0.76 | 0.41 | 0.47 | 20.2 | 1 | 0.128 | - | 0/0 | 0/133 |
+
+facts found per question (found/total):
+| question | category | raw grep+read | Graphify query (vendored, depth 3) | Verinoda analyze | Verinoda retrieve (JSON) | Verinoda retrieve (text) |
+|---|---|---|---|---|---|---|
+| u01 Kopya klasörler nasıl bulunuyor? | how | 0/3 (5976 tok) | 0/3 (6 tok) | 0/3 (1645 tok) | 0/3 (1434 tok) | 0/3 (1494 tok) |
+| u02 kullanıcının doğrudan bu grafiği açmasının bir yolu yok mu | how | 0/3 (5960 tok) | 0/3 (6 tok) | 0/3 (1779 tok) | 0/3 (1442 tok) | 0/3 (1469 tok) |
+| u03 Sayfa indeks değişince kendini nasıl yeniliyor? | flow | 0/3 (5971 tok) | 0/3 (6 tok) | 3/3 (1764 tok) | 3/3 (1439 tok) | 3/3 (1431 tok) |
+| u04 Kendi notlarım nerede saklanıyor? | where | 0/2 (5995 tok) | 0/2 (6 tok) | 0/2 (1940 tok) | 0/2 (1398 tok) | 0/2 (1483 tok) |
+| u05 Etki analizi hangi bağlantıları sayıyor? | impact | 0/3 (5995 tok) | 0/3 (1640 tok) | 0/3 (1836 tok) | 0/3 (1432 tok) | 0/3 (1488 tok) |
+| u06 Dışa aktarılan dosyada makinenin yolları nasıl siliniyor? | how | 0/2 (5955 tok) | 0/2 (6 tok) | 0/2 (1673 tok) | 0/2 (1441 tok) | 0/2 (1480 tok) |
+| u07 graph.html neden artık yazılmıyor? | why | 0/2 (5993 tok) | 0/2 (1622 tok) | 2/2 (1479 tok) | 1/2 (1428 tok) | 2/2 (1345 tok) |
+| u08 analyze bir alt soruyu ne zaman karşılandı sayıyor? | behaviour | 0/2 (5988 tok) | 1/2 (1616 tok) | 0/2 (1596 tok) | 0/2 (1423 tok) | 0/2 (1336 tok) |
+| u09 update neden bu kadar uzun sürüyor? | why | 0/3 (5991 tok) | 1/3 (1602 tok) | 2/3 (1788 tok) | 1/3 (1404 tok) | 2/3 (1486 tok) |
+| u10 Arayüz sunucusu başka sitelerden gelen isteklere karşı nasıl korunuyor? | how | 1/3 (5949 tok) | 0/3 (6 tok) | 2/3 (1762 tok) | 0/3 (1446 tok) | 2/3 (1497 tok) |
+| u11 Portable id'ler ne işe yarıyor? | behaviour | 0/2 (5987 tok) | 2/2 (1628 tok) | 2/2 (2016 tok) | 2/2 (1417 tok) | 2/2 (1485 tok) |
+| u12 --watch dosya değişikliğini nasıl fark ediyor? | flow | 0/2 (5991 tok) | 1/2 (1624 tok) | 2/2 (1485 tok) | 2/2 (1436 tok) | 2/2 (1199 tok) |
+
+Verinoda claims: 57 (observed=1, primary_source_verified=1, statically_verified=40, strong_inference=10, unknown=1, weak_inference=4); verified share 0.74; weak/unknown 5 (unlabelled 5); negative facts stated as findings 0 (in 0 claim(s)); unknowns reported 8; relation claims labelled contradicted 0, of which the cited line does name the target 0 (via import alias 0)
+claim reuse: warm 0/0, cold 4/57 (claims whose id already existed in atlas.db before the run (same text + snapshot))
+
+not measured:
+  - model-in-the-loop answer accuracy, model tokens and model cost - not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+  - real upstream Graphify CLI baseline - not run: --graphify-cmd not given
+  - runtime correctness of answers (only presence of gold facts in the delivered context is scored)
+  - OS file-cache effects are not separated from process warm-up in cold vs warm timings
+  - memory use

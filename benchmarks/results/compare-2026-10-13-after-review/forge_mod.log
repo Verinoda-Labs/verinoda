@@ -1,0 +1,117 @@
+[bench] copying corpus from C:\Users\ozcin\Desktop\verinoda-symbiosis\examples\forge_mod to C:\Users\ozcin\AppData\Local\Temp\verinoda-bench-xc6c__p0\verinoda
+[bench] verinoda scan (cold)
+[bench] verinoda scan (warm)
+[bench] pass 1/1 q01 raw
+[bench] pass 1/1 q01 graphify_vendored
+[bench] pass 1/1 q01 verinoda_analyze
+[bench] pass 1/1 q01 verinoda_retrieve
+[bench] pass 1/1 q01 verinoda_retrieve_text
+[bench] pass 1/1 q02 raw
+[bench] pass 1/1 q02 graphify_vendored
+[bench] pass 1/1 q02 verinoda_analyze
+[bench] pass 1/1 q02 verinoda_retrieve
+[bench] pass 1/1 q02 verinoda_retrieve_text
+[bench] pass 1/1 q03 raw
+[bench] pass 1/1 q03 graphify_vendored
+[bench] pass 1/1 q03 verinoda_analyze
+[bench] pass 1/1 q03 verinoda_retrieve
+[bench] pass 1/1 q03 verinoda_retrieve_text
+[bench] pass 1/1 q04 raw
+[bench] pass 1/1 q04 graphify_vendored
+[bench] pass 1/1 q04 verinoda_analyze
+[bench] pass 1/1 q04 verinoda_retrieve
+[bench] pass 1/1 q04 verinoda_retrieve_text
+[bench] pass 1/1 q05 raw
+[bench] pass 1/1 q05 graphify_vendored
+[bench] pass 1/1 q05 verinoda_analyze
+[bench] pass 1/1 q05 verinoda_retrieve
+[bench] pass 1/1 q05 verinoda_retrieve_text
+[bench] pass 1/1 q06 raw
+[bench] pass 1/1 q06 graphify_vendored
+[bench] pass 1/1 q06 verinoda_analyze
+[bench] pass 1/1 q06 verinoda_retrieve
+[bench] pass 1/1 q06 verinoda_retrieve_text
+[bench] pass 1/1 q07 raw
+[bench] pass 1/1 q07 graphify_vendored
+[bench] pass 1/1 q07 verinoda_analyze
+[bench] pass 1/1 q07 verinoda_retrieve
+[bench] pass 1/1 q07 verinoda_retrieve_text
+[bench] pass 1/1 q08 raw
+[bench] pass 1/1 q08 graphify_vendored
+[bench] pass 1/1 q08 verinoda_analyze
+[bench] pass 1/1 q08 verinoda_retrieve
+[bench] pass 1/1 q08 verinoda_retrieve_text
+[bench] pass 1/1 q09 raw
+[bench] pass 1/1 q09 graphify_vendored
+[bench] pass 1/1 q09 verinoda_analyze
+[bench] pass 1/1 q09 verinoda_retrieve
+[bench] pass 1/1 q09 verinoda_retrieve_text
+[bench] pass 1/1 q10 raw
+[bench] pass 1/1 q10 graphify_vendored
+[bench] pass 1/1 q10 verinoda_analyze
+[bench] pass 1/1 q10 verinoda_retrieve
+[bench] pass 1/1 q10 verinoda_retrieve_text
+[bench] pass 1/1 q11 raw
+[bench] pass 1/1 q11 graphify_vendored
+[bench] pass 1/1 q11 verinoda_analyze
+[bench] pass 1/1 q11 verinoda_retrieve
+[bench] pass 1/1 q11 verinoda_retrieve_text
+[bench] pass 1/1 q12 raw
+[bench] pass 1/1 q12 graphify_vendored
+[bench] pass 1/1 q12 verinoda_analyze
+[bench] pass 1/1 q12 verinoda_retrieve
+[bench] pass 1/1 q12 verinoda_retrieve_text
+[bench] pass 1/1 q13 raw
+[bench] pass 1/1 q13 graphify_vendored
+[bench] pass 1/1 q13 verinoda_analyze
+[bench] pass 1/1 q13 verinoda_retrieve
+[bench] pass 1/1 q13 verinoda_retrieve_text
+[bench] pass 1/1 q14 raw
+[bench] pass 1/1 q14 graphify_vendored
+[bench] pass 1/1 q14 verinoda_analyze
+[bench] pass 1/1 q14 verinoda_retrieve
+[bench] pass 1/1 q14 verinoda_retrieve_text
+benchmark set forge_mod (14 questions)  status=ok
+gold facts re-verified against the corpus: 68 checked, 0 failure(s)
+Question set provenance: questions written by: an agent asked by the Verinoda maintainer to write examples/forge_mod and this set in one session; it never ran Verinoda on the example and saw no Verinoda output for it or for these questions; gold written by: same agent, by reading every file of examples/forge_mod; checked with metrics.validate_gold only; example written by: same agent, same session, before the questions; written fresh after examples/glow_mod had been used for tuning, with a different loader (NeoForge), language mix (Java + Kotlin) and data shape (worldgen, biome modifier, custom recipe type); in sample: False; caveat: held out for Verinoda's retrieval on these questions (no Verinoda run and no Verinoda output while writing the example or the set), but not independent of the design: the Minecraft support (resource ids, data-pack linking, Java calls, Turkish questions) was developed against other mods by the same project (a private mod and examples/glow_mod), and the author knew which kinds of features Verinoda supports when choosing what the example and the questions exercise.
+tokens: chars/4 estimate;  model: not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+graphify CLI: not run: --graphify-cmd not given
+
+index (one-off):
+  Verinoda scan: cold 1.26 s, warm 0.75 s; 248 nodes / 558 edges; 26 cache files
+
+| approach | facts found | via locator | pinpointed | shown | all-facts Qs | tokens mean | tokens max | facts/1k tok | shown/1k tok | pinpointed/1k tok | locators/Q | tool calls/Q | cold s (median) | warm s (median) | neg. matched | cited line lacks target |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| raw grep+read | 36/68 | 36 | 30 | 40 | 3/14 | 4471 | 6000 | 0.58 | 0.64 | 0.48 | 37.3 | 5.3 | 0.045 | - | n/a | n/a |
+| Graphify query (vendored, depth 3) | 14/68 | 14 | 14 | 0 | 0/14 | 1342 | 1660 | 0.74 | 0.00 | 0.74 | 29.9 | 1 | 0.017 | - | 0/19 | 0/12 |
+| Verinoda analyze | 67/68 | 67 | 62 | 52 | 13/14 | 2126 | 2576 | 2.25 | 1.75 | 2.08 | 28.4 | 1 | 0.447 | - | 0/19 | 0/11 |
+| Verinoda retrieve (JSON) | 47/68 | 47 | 47 | 43 | 5/14 | 1429 | 1444 | 2.35 | 2.15 | 2.35 | 17.1 | 1 | 0.028 | - | 0/19 | 0/1 |
+| Verinoda retrieve (text) | 67/68 | 67 | 62 | 51 | 13/14 | 1461 | 1496 | 3.28 | 2.49 | 3.03 | 25 | 1 | 0.041 | - | 0/19 | 1/59 |
+
+facts found per question (found/total):
+| question | category | raw grep+read | Graphify query (vendored, depth 3) | Verinoda analyze | Verinoda retrieve (JSON) | Verinoda retrieve (text) |
+|---|---|---|---|---|---|---|
+| q01 EmberForgeBlockEntity.stoke kimler tarafından çağrılıyor? | callers | 2/2 (5987 tok) | 1/2 (1599 tok) | 2/2 (1935 tok) | 2/2 (1438 tok) | 2/2 (1496 tok) |
+| q02 Who calls HeatMath.addHeat? | callers | 5/5 (3163 tok) | 4/5 (908 tok) | 5/5 (2110 tok) | 5/5 (1442 tok) | 5/5 (1467 tok) |
+| q03 emberforge:forging tarif tipi kodda nerede tanımlanıyor ve bu tarifleri hangi kod okuyup kullanıyor? | cross_layer | 4/6 (5435 tok) | 0/6 (1624 tok) | 6/6 (2009 tok) | 5/6 (1433 tok) | 6/6 (1486 tok) |
+| q04 Where is the #emberforge:forge_fuels tag defined, what does it contain, and which code checks it? | cross_layer | 2/5 (5987 tok) | 0/5 (1626 tok) | 5/5 (2149 tok) | 3/5 (1420 tok) | 5/5 (1471 tok) |
+| q05 Cüruf cevheri dünyada hangi biyomlarda ve nasıl oluşuyor? | cross_layer | 0/4 (384 tok) | 0/4 (6 tok) | 4/4 (1825 tok) | 1/4 (1413 tok) | 4/4 (1493 tok) |
+| q06 Where is max_heat declared, what is its default, and which code reads it? | config | 3/5 (5986 tok) | 1/5 (1620 tok) | 5/5 (2576 tok) | 5/5 (1434 tok) | 5/5 (1484 tok) |
+| q07 /emberforge reset komutunu kapatan ayar nerede tanımlanıyor ve nerede kontrol ediliyor? | config | 1/4 (2935 tok) | 0/4 (1629 tok) | 4/4 (2098 tok) | 4/4 (1426 tok) | 4/4 (1481 tok) |
+| q08 Which blockstate, block models and textures does the Ember Forge use when it is lit and when it is not? | resources | 1/6 (5989 tok) | 0/6 (1614 tok) | 6/6 (2347 tok) | 4/6 (1418 tok) | 6/6 (1480 tok) |
+| q09 Kor Ocağı'nın Türkçe ve İngilizce adı hangi anahtarla, hangi dosyalarda tanımlı ve blok kodda nerede kaydediliyor? | resources | 2/5 (1000 tok) | 0/5 (6 tok) | 4/5 (2509 tok) | 2/5 (1424 tok) | 4/5 (1487 tok) |
+| q10 How does pressing the Stoke button in the forge screen end up adding heat on the server? | flow | 4/6 (5990 tok) | 4/6 (1640 tok) | 6/6 (2196 tok) | 4/6 (1429 tok) | 6/6 (1486 tok) |
+| q11 Kor Ocağı'nın blok varlığı her tick'te ne yapıyor? | behaviour | 6/6 (5732 tok) | 1/6 (1632 tok) | 6/6 (1551 tok) | 1/6 (1421 tok) | 6/6 (1209 tok) |
+| q12 What does /emberforge reset do, from the command down to the data pack? | cross_layer | 3/6 (3989 tok) | 2/6 (1625 tok) | 6/6 (2004 tok) | 5/6 (1443 tok) | 6/6 (1464 tok) |
+| q13 emberforge:rewards/first_cinder fonksiyonu nereden çalıştırılıyor? | callers | 2/3 (4020 tok) | 0/3 (1605 tok) | 3/3 (2423 tok) | 3/3 (1426 tok) | 3/3 (1486 tok) |
+| q14 Where are the mod's block entity type, menu type and recipe serializer registered, and where are those registers attached to the mod event bus? | where | 1/5 (6000 tok) | 1/5 (1660 tok) | 5/5 (2031 tok) | 3/5 (1444 tok) | 5/5 (1466 tok) |
+
+Verinoda claims: 112 (primary_source_verified=1, statically_verified=73, strong_inference=20, weak_inference=18); verified share 0.66; weak/unknown 18 (unlabelled 18); negative facts stated as findings 0 (in 0 claim(s)); unknowns reported 7; relation claims labelled contradicted 0, of which the cited line does name the target 0 (via import alias 0)
+claim reuse: warm 0/0, cold 35/112 (claims whose id already existed in atlas.db before the run (same text + snapshot))
+
+not measured:
+  - model-in-the-loop answer accuracy, model tokens and model cost - not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+  - real upstream Graphify CLI baseline - not run: --graphify-cmd not given
+  - runtime correctness of answers (only presence of gold facts in the delivered context is scored)
+  - OS file-cache effects are not separated from process warm-up in cold vs warm timings
+  - memory use
