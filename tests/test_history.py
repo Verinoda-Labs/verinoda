@@ -589,6 +589,29 @@ def test_text_history_marks_a_created_file_and_searches_path_free_oldest_first(t
     assert "earlier_elsewhere" not in first and "path-free" in first["claims"][0]["text"]
 
 
+def test_commits_of_one_second_are_ordered_by_ancestry_not_by_date(tmp_path):
+    """A scripted import stamps a whole history with one second: the path-free oldest commit then ties with the
+    path-bound first event on date, and the graph says which came first (D186)."""
+    r = tmp_path / "tie"
+    r.mkdir()
+    _git(r, "init", "-q")
+    when = "2026-01-05T10:00:00+00:00"
+    born = _commit(r, {"old.py": "TIED_TOKEN = 1\n"}, "Add the token", date=when)
+    created = _commit(r, {"new.py": "TIED_TOKEN = 2\n"}, "Create new.py with the token", date=when)
+    _commit(r, {"app.py": "x = 1\n"}, "Add the app", date=when)
+    again = _commit(r, {"app.py": "x = 1\nTIED_TOKEN = 3\n"}, "Use the token in the app", date=when)
+    # the guzzle class on a tie: the claim is re-made from the path-free commit all the same
+    res = history.text_history(r, "TIED_TOKEN", path="new.py")
+    assert res["first_appearance"] == {"commit": born, "at": "old.py:1", "scope": "path-free"}
+    assert res["appeared"] == {"commit": created, "at": "new.py:1", "scope": "under new.py"}
+    assert born[:10] in res["claims"][0]["text"] and res["earlier_elsewhere"]["sha"] == born
+    # the gin class on a tie: the older commit is still the lead
+    res = history.text_history(r, "TIED_TOKEN", path="app.py")
+    assert res["appeared"]["commit"] == again and res["earlier_elsewhere"]["sha"] == born
+    assert any(u.startswith(f"the text existed earlier at another path: {born[:10]}")
+               for u in res["claims"][0]["uncertainties"])
+
+
 def test_regex_and_text_mode_follow_a_moved_file_when_one_path_is_given(tmp_path):
     r = tmp_path / "moved"
     r.mkdir()

@@ -549,6 +549,18 @@ def oldest_appearance(repo: Path, text: str, *, regex: bool = False) -> dict | N
     return out
 
 
+def _older(repo: Path, oldest: dict, first: dict) -> bool:
+    """Did the path-free ``oldest`` commit come before the path-bound ``first`` event? The graph says so when
+    it is an ancestor; the author dates decide for two commits on separate lines of history. A date alone is not
+    enough: a scripted import stamps a whole history with one second, and a rebase keeps author dates out of
+    order (D186). Both shas are git's own output."""
+    older, newer = oldest["sha"], first["commit"]
+    if _run_git(repo, "merge-base", "--is-ancestor", older, newer, timeout=GIT_SHORT_TIMEOUT).returncode == 0:
+        return True
+    then, here = _when(oldest["date"]), _when(first["date"])
+    return then is not None and here is not None and then < here
+
+
 def _past_the_path(repo: Path, res: dict, claim: dict, text: str, regex: bool, first: dict, f: dict) -> None:
     """The path-free oldest commit against the path-bound first event (D186). A text can be born in another
     file: when the first event under the path created the file (the guzzle class), the first appearance is the
@@ -577,8 +589,7 @@ def _past_the_path(repo: Path, res: dict, claim: dict, text: str, regex: bool, f
             res["first_appearance"] = {"commit": first["commit"], "at": f"{f['path']}:{f['added_at']}",
                                        "scope": "path-free"}
         return
-    then, here = _when(oldest["date"]), _when(first["date"])
-    if then is None or here is None or then >= here:
+    if not _older(repo, oldest, first):
         return
     res["earlier_elsewhere"] = {"sha": oldest["sha"], "date": oldest["date"], "subject": oldest["subject"]}
     lead = f"{oldest['sha'][:10]} {oldest['date'][:10]} {oldest['subject'][:90]}"
