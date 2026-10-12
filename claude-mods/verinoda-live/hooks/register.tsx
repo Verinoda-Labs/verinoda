@@ -30,18 +30,22 @@ const CHECKABLE = /\.(py|pyi|java|kt|kts)$/i
 const CHECK_TIMEOUT_MS = 60_000
 const CHECK_NOTE_MAX = 8
 
-// The call rule (D186 §4.6), a section of the system prompt while the Verinoda MCP server is connected. The tools listed
-// in front alone did not make the model call them (one headless session: Grep, Read, Read, Bash); with this paragraph it
-// called analyze first, confirmed the lead with `git show` and cited the commit that states the reason (546dc8b) where
-// two sessions without it asserted the history gives none. The one own check it asks for costs about one model call on
-// history questions and is priced in the design's cost model (1.1-1.2x of plain Claude Code, modelled).
+// The call rule (D186 §4.6), a section of the system prompt while the Verinoda MCP server is connected. The tools in
+// front alone did not make the model call them, and neither did a rule with a way out ("call analyze once ... a question
+// one grep answers needs no call"): in the D186 re-run the model called no Verinoda tool in 39 of 39 headless sessions
+// (first tool Grep in 38), the one session that rule was first tried on notwithstanding. This wording names the first
+// tool call and gives no way out; with the engine's reminder of deferred tools corrected (below) and the server's analyze
+// description saying the same, probes of six re-run tasks got the call in 5 of 6 (the miss a when-question the model
+// answered with `git log -S`, rightly); the earlier wording 0 of 39, this one without the two companions 3 of 6. The one
+// own check it asks for costs about one model call on history questions and is priced in the design's cost model.
 export const RULE_SECTION = 'verinoda-live:rule'
 export const CALL_RULE =
-  'For a why, when or what-does-it-affect question about this repository, call `mcp__verinoda__analyze` once with the ' +
-  'question first: it returns a verdict and leads with file:line and commits. Its output is a lead, not the answer: ' +
-  "confirm with one git or grep check of your own before stating 'no such change', 'first added in' or why something " +
-  'changed. `statically_verified` and `primary_source_verified` claims are verified; `strong_inference` and below are ' +
-  'not. A question one grep or one file read answers needs no Verinoda call.'
+  'Your first tool call on a question that asks why something is the way it is, when or in which commit it changed, or ' +
+  'what a change affects is `mcp__verinoda__analyze` with the question; Grep, Read and git come after it. It is in your ' +
+  'tool list, not behind ToolSearch. It answers from the git history and the code graph with a verdict, claims and leads ' +
+  'that carry file:line and commit hashes; `statically_verified` and `primary_source_verified` claims are verified, ' +
+  "`strong_inference` and below are not. Confirm its lead with one git or grep check of your own before stating 'no " +
+  "such change', 'first added in' or why something changed."
 
 const CHECKING: IndexState = { kind: 'checking', n: 0, waiting: false, since: null, at: null, error: '' }
 
@@ -619,6 +623,18 @@ export const register: Register = (on, options) => {
   // listed in front was called in 51 of 63), and the ToolSearch turn that loads them costs a model call (D186). In this
   // build a plugin's or a server's tool is deferred unless a hook says not. The descriptions stay the server's.
   on('tool.describe', { tool: [...MCP_CORE_TOOLS] }, ($, e) => ({ description: e.description, isDeferred: false }))
+
+  // The engine's reminder of the tools behind ToolSearch is composed before the tool.describe answers apply (Claude Code
+  // 2.1.296): it names the three pinned tools too and says a direct call fails, which is false for them; asked, the model
+  // listed them as both in front and deferred. Their names are taken out; the rest of the reminder stands.
+  on('prompt.attachment', { type: 'deferred_tools_delta' }, async ($, e, next) => {
+    const out = await next(e)
+    if (out.text === null) return out
+    const pinned = new Set<string>(MCP_CORE_TOOLS)
+    const lines = out.text.split('\n').filter(l => !pinned.has(l.trim()))
+      .map(l => l.replace(/\bmcp__verinoda__(analyze|project_query|run_tool)\b,?\s?/g, ''))
+    return { text: lines.join('\n') }
+  })
 
   // The call rule rides the system prompt while the server is connected; the improvement list's offer (D175) with it.
   on('prompt.compose', async ($, e, next) => {

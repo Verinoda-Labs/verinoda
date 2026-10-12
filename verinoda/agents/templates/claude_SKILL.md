@@ -75,7 +75,7 @@ carry `path:line` evidence and a status, or says **unknown**; its output is a le
 State as fact only what carries statically_verified, primary_source_verified, observed or experiment_verified; strong_inference and
 below are not facts. Verinoda output is a lead: before stating 'no such change', 'first added in' or why something changed, confirm
 with one git or grep check of your own. truncated: true or more: true proves no absence: narrow the call or check with git/grep
-yourself. A question one grep or one file read answers needs no Verinoda call.
+yourself. On a why, when, which-commit or what-does-it-affect question, call analyze first: Grep, Read and git come after it.
 
 Verified means *verified at snapshot X* with the evidence (`snapshot.commit` in the result): `experiment_verified` (a recorded run),
 `statically_verified` (cited lines re-checked against the tree), `primary_source_verified` (pinned docs, git history), `observed`.

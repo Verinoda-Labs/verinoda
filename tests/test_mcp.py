@@ -397,7 +397,8 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     # limits are raised on purpose, by 100 and 150; analyze's show argument (D186, the experiment the cost sample
     # measures) takes it to 4,721 (the records menu to 4,870): both raised by 200, to come down with the shorter
     # descriptions of the one status rule: run_tool's 845 -> 590 characters, the four listed tools' 1,053 -> 686 take
-    # it to 4,099 (the records menu to 4,248); both limits come down by 600
+    # it to 4,099 (the records menu to 4,248); both limits come down by 600; analyze's "start here" description (the
+    # call rule, D186: no call in 39 of 39 re-run sessions without it) adds 79, to 4,178
     assert len(wire) < 4200
     assert '"title"' not in wire and "outputSchema" not in wire
     text = instructions("core")
@@ -407,8 +408,9 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     assert "locate" not in text and "coupled" not in text
     assert "--profile full" in text and "question_plan_draft" not in text
     # 1,303 before the one status rule (D186): the rule is 470 characters and takes the place of one clause in the
-    # head and one in the tail
-    assert len(text) < len(instructions("full")) and len(text) < 1700
+    # head and one in the tail; its last sentence then names the first call on a history question (the earlier way out
+    # was taken in 39 of 39 re-run sessions): 517 characters, the instructions 1,734, the limit up by 100
+    assert len(text) < len(instructions("full")) and len(text) < 1800
     assert "decision_check" not in instructions("core", decisions=False)
     assert "decision_check" not in mcp_server.build_server(repo).verinoda_instructions
     rec = tmp_path / "with_records"
@@ -444,9 +446,11 @@ def test_instructions_carry_the_one_status_rule():
         assert text.count(rule) == 1, profile  # one rule, said once
         assert "means lists were cut" not in text and "never state weak_inference" not in text, profile
     core = mcp_server.instructions("core")
-    for needle in ("primary_source_verified", "truncated", "one grep"):
+    for needle in ("primary_source_verified", "truncated", "call analyze first"):
         assert needle in core, needle
-    assert len(core) < 1700
+    # the way out ("a question one grep answers needs no call") was taken 39 times in 39 headless sessions of the re-run
+    assert "needs no Verinoda call" not in core
+    assert len(core) < 1800
 
 
 def test_run_tool_description_is_under_600_chars(repo):

@@ -2347,14 +2347,17 @@ GATEWAY_CATALOG: dict[str, str] = {
 }
 
 # The one status rule (D186): what counts as a fact, that Verinoda's output is a lead to confirm with one check of the
-# agent's own, and that a cut list proves no absence. Measured basis: 7 of the 12 false facts on the answerable D185
-# tasks asserted an absence. It sits in the instructions' tail and is copied into the two skills (tests/test_agents.py
-# compares the copy). No braces: the instructions go through str.format.
+# agent's own, that a cut list proves no absence, and which call comes first on a history question. Measured basis: 7
+# of the 12 false facts on the answerable D185 tasks asserted an absence; the earlier last sentence, "a question one
+# grep or one file read answers needs no Verinoda call", was the way out the model took in 39 of 39 headless sessions
+# of the D186 re-run (no Verinoda call at all). It sits in the instructions' tail and is copied into the two skills
+# (tests/test_agents.py compares the copy). No braces: the instructions go through str.format.
 STATUS_RULE = ("State as fact only what carries statically_verified, primary_source_verified, observed or "
                "experiment_verified; strong_inference and below are not facts. Verinoda output is a lead: before "
                "stating 'no such change', 'first added in' or why something changed, confirm with one git or grep "
                "check of your own. truncated: true or more: true proves no absence: narrow the call or check with "
-               "git/grep yourself. A question one grep or one file read answers needs no Verinoda call.")
+               "git/grep yourself. On a why, when, which-commit or what-does-it-affect question, call analyze first: "
+               "Grep, Read and git come after it.")
 
 _INSTRUCTIONS_HEAD = """Verinoda: evidence-first answers about the repository {repo}.
 Questions: project_query (where is X; hits are leads) or analyze (claims with evidence: start the answer with its
@@ -2545,8 +2548,9 @@ DESCRIPTIONS: dict[str, str] = {
         "nowhere is not_found with did_you_mean, never replaced). Stored (plan_id). status: ready | "
         "needs_clarification (ask the user, record answers[] with clarification_id) | invalid (an error)."),
     "analyze": (
-        "A verdict, its answer claims and leads with file:line. Leads are what to read next, not claims. "
-        "needs_clarification is a normal result (ask the user). Re-indexes first if the tree changed."),
+        "Start here for a why, when, which-commit or what-does-it-affect question: a verdict, answer claims and leads "
+        "with file:line and commit hashes. Leads are what to read next, not claims; confirm one with your own git or "
+        "grep. needs_clarification is normal: ask the user."),
     "plan_audit": (
         "Re-judge an earlier analysis' sub-questions on the current claim statuses (refresh=true re-indexes "
         "first, so claims whose files changed are stale); 'changed' lists the verdicts that moved."),
