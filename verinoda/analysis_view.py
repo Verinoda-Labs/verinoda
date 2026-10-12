@@ -2,15 +2,25 @@
 
 :func:`analysis.analyze` returns the full record (plan check, per-sub-question plumbing, steps, usage,
 every claim with every field); ``verinoda analyze --json`` prints it. A model answering the user
-needs less, and every token of plumbing is a token not spent on evidence. Two views of the same
-result, built by one set of rules:
+needs less, and every token of plumbing is a token not spent on evidence. Three views of the same
+result:
 
 * :func:`render_text` - the default output of ``verinoda analyze``: the snapshot, how the question
   was understood, one block per sub-question (verdict, answer claims, unknowns), the other claims,
   and the passages ``verinoda query`` gives for the question, as plain text;
-* :func:`lean` - the MCP ``analyze`` response: the same content as compact JSON.
+* :func:`lead_view` - the MCP ``analyze`` response (docs/DESIGN.md D186): the verdict, the answer
+  claims whole, at most eight leads (``path:a-b  symbol  (why)``: what to read next, not claims), the
+  unknowns, at most six context claims as one line each and one line of coverage, under a budget of
+  2,500 characters that this builder keeps itself (context lines go first, then leads beyond the
+  answers' files, then an unknown's commit list from the middle; answer claims, clarifications and
+  errors never); passages, plan links, critique, steps and usage are not sent (``project_query``
+  gives the passages, ``claim_inspect`` the rest). ``show="lead"`` adds the first lead's numbered
+  source lines (at most 60) inside 4,500 characters;
+* :func:`lean` - the whole result as compact JSON (what the MCP response was before D186: every
+  claim, the plan check, the passages).
 
-Rules (nothing an answer rests on is dropped; the full record stays one ``--json`` away):
+Rules of the text and the lean view (nothing an answer rests on is dropped; the full record stays one
+``--json`` away):
 
 * claims keep id, status and text; confidence only where it differs from the status's cap
   (``claims.CONFIDENCE_CAP``), evidence only where it adds a locator the text does not carry
@@ -25,6 +35,7 @@ Rules (nothing an answer rests on is dropped; the full record stays one ``--json
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Callable
 
@@ -183,10 +194,9 @@ SUB_KEYS = ("id", "intent", "text", "status", "answer_claim_ids", "flags", "prop
 
 
 def lean(res: dict, *, shown_by: list[str] | None = None) -> dict:
-    """The MCP ``analyze`` response (see the module rules); ``unknowns`` carry their ``sub_question``.
+    """The whole result as compact JSON (see the module rules); ``unknowns`` carry their ``sub_question``.
 
-    ``shown_by``: the passage lines that leave claims out as printed (default: all of them;
-    :func:`lean_capped` passes the ones a response cap keeps)."""
+    ``shown_by``: the passage lines that leave claims out as printed (default: all of them)."""
     out: dict = {k: res[k] for k in ("analysis_id", "status", "understood_as") if res.get(k) is not None}
     snap = res.get("snapshot")
     if snap:
@@ -220,20 +230,295 @@ def lean(res: dict, *, shown_by: list[str] | None = None) -> dict:
     return out
 
 
-def lean_capped(res: dict, cap: Callable[[dict], dict]) -> dict:
-    """``cap(lean(res))``, where ``cap`` cuts a response to its size limit (MCP ``cap_response``: the
-    passages from the end, before any claim), with the claims left out as printed by the passages
-    counted only on the passage lines the cut keeps: a claim whose lines the cut removed comes back.
+# -- MCP: leads, not an investigation (D186) -----------------------------------------------------
 
-    The cut keeps a prefix of the passages; each round counts on the prefix the last one kept, until a
-    round keeps every line it counted on (at most one round per passage line, usually one or two)."""
-    lines = list(res.get("passages") or [])
-    while True:
-        out = cap(lean(res, shown_by=lines))
-        kept = len(out.get("passages") or [])
-        if kept >= len(lines):
-            return out
-        lines = lines[:kept]
+LEAD_BUDGET = 2500        # compact-JSON characters of the MCP analyze response (about 1,000 tokens)
+LEAD_LINES_BUDGET = 4500  # the same with show="lead": the first lead's source lines on top
+LEADS = 8                 # locations named as what to read next
+CONTEXT_LINES = 6         # context claims carried as one line each (claim_inspect gives the rest)
+LEAD_LINES = 60           # source lines show="lead" adds for the first lead
+QUOTED_COMMITS = 3        # an unknown's commit list keeps this many at each end when the budget cuts it
+_WHY_RANK = {"answer": 0, "claim": 1, "linked": 2, "passage": 3}
+# Paths a reader opens last for a how or why question: tests after the other noise (examples, docs, vendored
+# and generated code). The gold file of the SWE-bench analyze outputs was at rank 1 in 31 of 100 in the order
+# the model read, 60 of 100 with the answers' files first and these paths last (checked offline, D186).
+_NOISE_RX = re.compile(r"(^|/)(tests?|testing|examples?|galleries|docs?|benchmarks?|vendor|vendored|third_party|"
+                       r"site-packages|_build|build|dist|scripts?|tutorials?)(/|$)"
+                       r"|(^|/)(test_[^/]*|[^/]*_tests?\.py|conftest\.py)$")
+_TEST_RX = re.compile(r"(^|/)(tests?|testing)(/|$)|(^|/)(test_[^/]*|[^/]*_tests?\.py|conftest\.py)$")
+_NAME_RX = re.compile(r"`([^`\s]+)`")
+# a why or when claim: the lines in its text, the path in its evidence ("commit <sha> <path>")
+_HISTORY_RX = re.compile(r"^`([^`]+)` lines (\d+)-(\d+) were changed in ")
+_COMMIT_PATH_RX = re.compile(r"^commit [0-9a-f]{7,40} (\S+)$")
+_PASSAGE_RX = re.compile(r"^(?:## )?(\S+?):(\d+)-(\d+)(?: (.*))?$")
+_SYMBOL_RX = re.compile(r"^[\w.$]+$")
+_NOT_A_SYMBOL = {"def", "class", "async", "function", "fn", "func", "public", "private", "protected", "static",
+                 "final", "const", "let", "var", "export", "interface", "struct", "enum", "type", "abstract",
+                 "module", "package", "trait", "impl"}
+
+
+def _loc(text: str) -> dict | None:
+    """``path:a-b`` or ``path:a`` as a site; None for anything else."""
+    path, _, rng = text.rpartition(":")
+    a, _, b = rng.partition("-")
+    if not path or not a.isdigit() or (b and not b.isdigit()):
+        return None
+    return {"path": path, "start": int(a), "end": int(b or a)}
+
+
+def _bare(name: str | None) -> str:
+    """A symbol as a lead names it: ``place_order()`` -> ``place_order``, ``.save()`` -> ``save``."""
+    return str(name or "").strip().strip(".").removesuffix("()")
+
+
+def _symbol_of(rest: str | None) -> str:
+    """The symbol a passage header or item line names after its locator (``def save(self)`` -> ``save``)."""
+    for tok in (rest or "").split():
+        if tok in _NOT_A_SYMBOL:
+            continue
+        name = re.split(r"[(:=<\[{]", tok, 1)[0]
+        return name if _SYMBOL_RX.match(name) else ""
+    return ""
+
+
+def _claim_sites(c: dict, why: str) -> list[dict]:
+    """The locations a claim cites: the ``path:a-b`` locators of its text, then of its supporting evidence."""
+    text = c.get("text") or ""
+    m = _NAME_RX.search(text)
+    symbol = _bare(m.group(1)) if m else ""
+    out = [dict(loc, symbol=symbol, why=why) for loc in map(_loc, _LOC_RX.findall(text)) if loc]
+    hist = _HISTORY_RX.match(text)
+    for e in c.get("evidence") or []:
+        role, _, rest = e.partition(":")
+        kind, _, where = rest.partition(":")
+        if role != "supports":
+            continue
+        out += [dict(loc, symbol=symbol, why=why) for loc in map(_loc, _LOC_RX.findall(where)) if loc]
+        cm = _COMMIT_PATH_RX.match(where) if kind == "git_history" else None
+        if cm and hist:
+            out.append({"path": cm.group(1), "start": int(hist.group(2)), "end": int(hist.group(3)),
+                        "symbol": _bare(hist.group(1)), "why": why})
+        elif cm:
+            out.append({"path": cm.group(1), "start": None, "end": None, "symbol": symbol, "why": why})
+    return out
+
+
+def _sites(res: dict) -> list[dict]:
+    """Every location the result cites, in the order a reader should open them: the answer claims', the other
+    claims', the plan's linked mentions', the passages' (headers and item lines; a sub-window belongs to its
+    header)."""
+    claims = res.get("claims") or []
+    answering = answer_ids(res)
+    by_id = {c["id"]: c for c in claims}
+    out = [s for cid in answering if cid in by_id for s in _claim_sites(by_id[cid], "answer")]
+    out += [s for c in claims if c["id"] not in answering for s in _claim_sites(c, "claim")]
+    for lk in (res.get("plan_check") or {}).get("links") or []:
+        loc = _loc(lk.get("at") or "") if lk.get("status") in ("linked", "ambiguous") else None
+        if loc:
+            out.append(dict(loc, symbol=_bare(lk.get("label") or lk.get("text")), why="linked"))
+    for ln in res.get("passages") or []:
+        m = _PASSAGE_RX.match(ln)
+        if m:
+            out.append({"path": m.group(1), "start": int(m.group(2)), "end": int(m.group(3)),
+                        "symbol": _symbol_of(m.group(4)), "why": "passage"})
+    return out
+
+
+def _tier(path: str) -> int:
+    return 2 if _TEST_RX.search(path) else 1 if _NOISE_RX.search(path) else 0
+
+
+def _ranked(sites: list[dict]) -> list[dict]:
+    """One lead per file: the first site seen gives the file its place (its group, then source paths before
+    test, example, doc, generated and vendored paths, tests last of all) and the lines shown; ``spans`` keeps
+    every range the file's own group cites and ``other_spans`` the other groups' (``show="lead"`` reads the
+    narrowest of the first, else of the second)."""
+    leads: dict[str, dict] = {}
+    for i, s in enumerate(sites):
+        lead = leads.get(s["path"])
+        if lead is None:
+            lead = leads[s["path"]] = {**s, "spans": [], "other_spans": [],
+                                       "rank": (_tier(s["path"]), _WHY_RANK[s["why"]], i)}
+        if s["start"] is not None:
+            if lead["start"] is None:
+                lead["start"], lead["end"] = s["start"], s["end"]
+            lead["spans" if s["why"] == lead["why"] else "other_spans"].append((s["start"], s["end"]))
+        if not lead["symbol"] and s["symbol"]:
+            lead["symbol"] = s["symbol"]
+    return sorted(leads.values(), key=lambda x: x["rank"])
+
+
+def _lead_line(x: dict) -> str:
+    where = x["path"] if x["start"] is None else (f"{x['path']}:{x['start']}" if x["start"] == x["end"]
+                                                   else f"{x['path']}:{x['start']}-{x['end']}")
+    return where + (f"  {x['symbol']}" if x["symbol"] else "") + f"  ({x['why']})"
+
+
+def leads_for(res: dict, limit: int = LEADS) -> list[str]:
+    """At most ``limit`` leads, ``path:a-b  symbol  (answer|claim|linked|passage)``: the files of the answer
+    claims first, then the other claims', the plan's linked mentions', the passages'; test, example, doc,
+    generated and vendored paths after source paths (see :func:`_ranked`)."""
+    return [_lead_line(x) for x in _ranked(_sites(res))[:limit]]
+
+
+def _query_names(res: dict) -> str:
+    """What to give ``project_query`` for the passages: the words the plan linked, else the answers' names."""
+    names = [str(lk.get("text")) for lk in (res.get("plan_check") or {}).get("links") or []
+             if lk.get("status") in ("linked", "ambiguous") and lk.get("text")]
+    if not names:
+        by_id = {c["id"]: c for c in res.get("claims") or []}
+        names = [_bare(n) for cid in answer_ids(res) if cid in by_id for n in _NAME_RX.findall(by_id[cid]["text"])]
+    return " ".join(list(dict.fromkeys(n for n in names if n))[:3])
+
+
+def _refresh_line(res: dict) -> str:
+    ref = res.get("index_refresh") or {}
+    err = res.get("index_refresh_error") or ref.get("error")
+    if err:
+        return "index not refreshed: " + tn.clip(str(err), ECHO_CHARS)
+    if ref.get("ran"):
+        return f"re-indexed {ref.get('changed_count', 0)} changed file(s) first"
+    if ref.get("skipped"):
+        line = f"index predates {ref.get('stale_count', 0)} changed file(s), not refreshed: {ref['skipped']}"
+        return line + (f"; background update {ref['background_update']}" if ref.get("background_update") else "")
+    return "index current" if ref else ""
+
+
+def _coverage(res: dict, *, hidden: int, dropped: int, notes: list[str]) -> str:
+    """One line: what was searched and what the reader does not see (the snapshot, the index's state, the
+    context and leads the budget cut, and the way to the passages)."""
+    snap = res.get("snapshot") or {}
+    parts = []
+    if snap:
+        parts.append(f"snapshot {snap.get('id')} (commit {(snap.get('commit') or 'no-git')[:10]}"
+                     f"{', dirty' if snap.get('dirty') else ''})")
+    parts.append(_refresh_line(res))
+    if hidden:
+        parts.append(f"+{hidden} context claim(s) not shown (claim_inspect; `verinoda analyze --json` lists all)")
+    if dropped:
+        parts.append(f"{dropped} lead(s) left out for the budget")
+    parts += notes
+    names = _query_names(res)
+    parts.append(f"passages not included: `project_query {names}` returns them" if names
+                 else "passages not included: project_query with the question returns them")
+    return "; ".join(p for p in parts if p)
+
+
+def _fold_commits(unknowns: list[dict], originals: list[dict], k: int) -> bool:
+    """Shorten the commit lists the unknowns carry (the why handler's leads) to their newest and oldest ``k``
+    with one line naming the count between: the first appearance is evidence as much as the last change, and a
+    cut that drops it silently reads as "no such change" (D185). ``unknowns`` are copies of ``originals``, which
+    stay whole. True when a list changed."""
+    changed = False
+    for u, orig in zip(unknowns, originals):
+        for key, val in orig.items():
+            if isinstance(val, list) and len(u.get(key) or ()) > 2 * k + 1 and all(isinstance(x, str) for x in val):
+                between = (f"... {len(val) - 2 * k} more commit(s) between them: history_search with the symbol "
+                           "lists every one, both ends kept")
+                u[key] = [*val[:k], between, *val[-k:]]
+                changed = True
+    return changed
+
+
+def lead_view(res: dict, *, budget: int = LEAD_BUDGET, show: str | None = None,
+              read: Callable[[str, int, int], str | None] | None = None,
+              lead_budget: int = LEAD_LINES_BUDGET) -> dict:
+    """The MCP ``analyze`` response (see the module docstring): under ``budget`` compact-JSON characters, cut by
+    this builder alone, so the generic response cap never marks it ``truncated``. ``show="lead"`` adds
+    ``lead_lines`` (the first lead's narrowest cited span, at most ``LEAD_LINES`` lines, numbered) through
+    ``read(path, start, end)`` inside ``lead_budget``."""
+    if show not in (None, "lead"):
+        raise ValueError(f"show must be 'lead' or None, not {show!r}")
+    head: dict = {k: res[k] for k in ("status", "understood_as") if res.get(k) is not None}
+    snap = res.get("snapshot")
+    if snap:
+        head["snapshot"] = {"id": snap.get("id"), "commit": snap.get("commit"), **({"dirty": True} if snap.get("dirty")
+                                                                                   else {})}
+    if res.get("analysis_id"):
+        head["analysis_id"] = res["analysis_id"]   # the handle plan_audit takes
+    for k in ("errors", "clarifications", "plan_fallback", "intent_check"):  # a reader must see these: never cut
+        if res.get(k):
+            head[k] = res[k]
+    exhausted = (res.get("usage") or {}).get("exhausted")
+    if exhausted:
+        head["budget_exhausted"] = exhausted
+    if res.get("plan_source") == "host":
+        head["plan_id"] = res.get("plan_id")
+    claims = res.get("claims") or []
+    by_id = {c["id"]: c for c in claims}
+    answering = set(answer_ids(res))
+    head["subquestions"] = [{"id": s.get("id"), "intent": s.get("intent"), "status": s.get("status"),
+                             "answers": [lean_claim(by_id[cid]) for cid in s.get("answer_claim_ids") or []
+                                         if cid in by_id]} for s in res.get("subquestions") or []]
+    leads = _ranked(_sites(res))[:LEADS]
+    unknowns = [dict(u) for u in res.get("unknowns") or []]
+    facts = list(res.get("facts") or [])
+    # context the critique refuted on the way is not part of the answer (render_text leaves it out too)
+    context = [c for c in claims if c["id"] not in answering and not (answering and c.get("status") == "contradicted")]
+    shown = min(len(context), CONTEXT_LINES)
+    dropped = 0
+    notes: list[str] = []
+
+    def assemble() -> dict:
+        out = dict(head)
+        if leads:
+            out["leads"] = [_lead_line(x) for x in leads]
+        if unknowns:
+            out["unknowns"] = unknowns
+        if facts:
+            out["facts"] = facts
+        if shown:
+            out["context"] = [f"{c['id']} {c['status']} {tn.clip(c['text'], ECHO_CHARS)}" for c in context[:shown]]
+        out["coverage"] = _coverage(res, hidden=len(context) - shown, dropped=dropped, notes=notes)
+        return out
+
+    def fit() -> dict:
+        # context lines first, then leads beyond the answers' files, the facts beyond the first, an unknown's commit
+        # list from the middle (three at each end, then one); the answer claims, clarifications and errors never
+        # (above 12,000 the generic cap of the server still says what it cut)
+        nonlocal shown, dropped
+        while True:
+            out = assemble()
+            if _size(out) <= budget:
+                return out
+            if shown:
+                shown -= 1
+            elif (last := next((i for i in range(len(leads) - 1, -1, -1) if leads[i]["why"] != "answer"), None)) \
+                    is not None:
+                del leads[last]
+                dropped += 1
+            elif len(facts) > 1:
+                facts.pop()
+            elif not (_fold_commits(unknowns, res.get("unknowns") or [], QUOTED_COMMITS)
+                      or _fold_commits(unknowns, res.get("unknowns") or [], 1)):
+                return out
+
+    out = fit()
+    if show == "lead" and leads:
+        first = leads[0]
+        spans = sorted(first["spans"] or first["other_spans"], key=lambda ab: (ab[1] - ab[0], ab[0]))
+        body = None
+        if spans:
+            a, b = spans[0][0], min(spans[0][1], spans[0][0] + LEAD_LINES - 1)
+            body = read(first["path"], a, b) if read is not None else None
+        if body is None:
+            notes.append(f"lead lines: {_lead_line(first).split('  ')[0]} not read")
+            out = fit()
+        else:
+            from verinoda.retrieval import numbered_lines
+
+            lines = body.split("\n")
+            lead_lines = {"path": first["path"], "start": a, "end": a + len(lines) - 1, "text": numbered_lines(body, a)}
+            out["lead_lines"] = lead_lines
+            while _size(out) > lead_budget and len(lines) > 1:
+                lines.pop()
+                lead_lines.update(end=a + len(lines) - 1, text=numbered_lines("\n".join(lines), a))
+    return out
+
+
+def _size(obj) -> int:
+    """Compact-JSON characters, as the MCP response cap (``mcp.server._size``) measures them."""
+    return len(json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
 
 
 # -- CLI: plain text -----------------------------------------------------------------------------

@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import json
+import re
+
+import pytest
 
 from verinoda import analysis_view as av
+from verinoda.mcp.server import _size
 
 PASSAGES = [
     "expanded: databas->db",
@@ -117,30 +121,6 @@ def test_passages_cut_short_print_only_the_lines_they_keep():
     assert av.shown_by_passages(_result(passages=cut)) == {"c3"}  # save() 15-20 is no longer all printed
 
 
-def test_lean_capped_brings_back_the_claims_whose_lines_the_cut_removed():
-    from verinoda.mcp.server import cap_response
-
-    res = _result()
-    full = av.lean(res)
-    size = len(json.dumps(full, ensure_ascii=False, separators=(",", ":")))
-    for limit in range(size - 1200, size + 40, 40):
-        out = av.lean_capped(res, lambda d, n=limit: cap_response(d, n, first=("critique", "plan_check.links",
-                                                                             "passages")))
-        wire = len(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
-        assert wire <= limit or out.get("truncation", {}).get("over_limit"), limit
-        listed = {c["id"] for c in out["claims"]}
-        kept = out.get("passages") or []
-        assert kept == PASSAGES[:len(kept)]  # the cut keeps a prefix
-        hidden = av.shown_by_passages(_result(passages=kept))
-        cut_claims = "claims" in (out.get("truncation") or {}).get("cut", {})
-        for c in res["claims"]:
-            # every claim is listed, or printed by the passages kept, or counted as cut
-            assert c["id"] in listed or c["id"] in hidden or cut_claims, (limit, c["id"])
-        if not cut_claims:  # what the count says is printed is printed
-            assert out.get("claims_in_passages", 0) == len(hidden - listed), limit
-    assert av.lean_capped(res, lambda d: cap_response(d, 10 ** 6)) == full  # nothing to cut: the lean view
-
-
 def test_verified_context_claims_the_passages_print_are_left_out_and_counted():
     res = _result()
     assert av.shown_by_passages(res) == {"c3", "c4"}
@@ -233,3 +213,214 @@ def test_a_long_subquestion_is_not_repeated_by_its_heading_and_unknowns():
     assert text.count("log line 79") == 0 and text.count("log line 1 ") <= 1
     lean = av.lean(res)
     assert lean["subquestions"][0]["text"] == clipped and lean["plan_fallback"] == res["plan_fallback"]
+
+
+# -- MCP: leads, not an investigation (D186) --------------------------------------------------------
+
+_LEAD_RX = re.compile(r"^(\S+?)(?::(\d+)(?:-(\d+))?)?  (?:(\S+)  )?\((answer|claim|linked|passage)\)$")
+
+
+def _lead(line: str) -> tuple[str, str]:
+    """``(path, why)`` of one lead line ``path:a-b  symbol  (why)``."""
+    m = _LEAD_RX.match(line)
+    assert m, line
+    return m.group(1), m.group(5)
+
+
+def _two_questions() -> dict:
+    """Two sub-questions, nine claims, three of them answers (c1 and c2 answer q1, c7 answers q2)."""
+    res = _result()
+    res["claims"] += [
+        _claim("c7", "`get_repo()` calls `OrderRepository` (orders/api.py:12)"),
+        _claim("c8", "`fetch_order()` calls `.get()` (orders/service.py:26)", "strong_inference"),
+        _claim("c9", "`test_place_and_fetch_roundtrip()` calls `place_order()` (tests/test_service.py:9)"),
+    ]
+    res["subquestions"].append({"id": "q2", "intent": "callers", "text": "who builds the repository?",
+                                "claim_ids": ["c7", "c8", "c9"], "status": "met", "answer_claim_ids": ["c7"]})
+    return res
+
+
+def test_lead_view_keeps_the_answer_claims_whole_and_the_rest_as_lines():
+    res = _two_questions()
+    out = av.lead_view(res)
+    assert list(out)[:3] == ["status", "understood_as", "snapshot"] and out["analysis_id"] == "ana_1"
+    assert out["snapshot"] == {"id": "snp_1", "commit": "0123456789abcdef"}
+    by_id = {c["id"]: c for c in res["claims"]}
+    assert [s["id"] for s in out["subquestions"]] == ["q1", "q2"]
+    q1, q2 = out["subquestions"]
+    assert set(q1) == {"id", "intent", "status", "answers"} and q1["status"] == "met_with_inference"
+    assert q1["answers"] == [av.lean_claim(by_id["c1"]), av.lean_claim(by_id["c2"])]  # whole, as lean_claim keeps them
+    assert q2["answers"] == [av.lean_claim(by_id["c7"])]
+    assert q1["answers"][1]["evidence"] == ["source_code:orders/service.py:22", "qualifies:graph_edge:x -[calls]-> y"]
+    # the other claims: one line each, `id status text`, at most six, in the result's order
+    assert [ln.split(" ")[0] for ln in out["context"]] == ["c3", "c4", "c5", "c6", "c8", "c9"]
+    assert out["context"][0] == "c3 statically_verified `compute_total()` calls `apply_discount()` (orders/pricing.py:8)"
+    assert out["unknowns"] == res["unknowns"]
+    for gone in ("passages", "plan_check", "critique", "steps", "usage", "claims", "question", "intents",
+                 "claims_in_passages", "truncated", "truncation"):
+        assert gone not in out, gone
+    assert isinstance(out["coverage"], str) and "snp_1" in out["coverage"]
+    assert "project_query" in out["coverage"] and "order" in out["coverage"]  # the way to the passages
+
+
+def test_leads_order_answer_files_first_and_noise_paths_last():
+    res = _result()
+    res["claims"] = [
+        _claim("c1", "`save()` is defined at src/a.py:10-20"),                       # answer: a source file
+        _claim("c2", "`test_save()` calls `save()` (tests/test_a.py:5-6)"),         # answer: a test file
+        _claim("c3", "`load()` is defined at src/b.py:1-3"),                          # context
+    ]
+    res["subquestions"][0]["answer_claim_ids"] = ["c1", "c2"]
+    res["plan_check"]["links"] = [{"mention": "m1", "text": "saved", "status": "linked", "at": "docs/x.md:1-2",
+                                   "label": "x.md"},
+                                  {"mention": "m2", "text": "weak", "status": "weak", "at": "src/weak.py:1-2"}]
+    res["passages"] = ["## src/c.py:7-9 helper", "7 def helper():", "8     return 1", "9 ",
+                       "src/d.py:3-4 def other()", "tests/test_c.py:1-2 def test_c()"]
+    leads = av.leads_for(res)
+    paths = [_lead(ln)[0] for ln in leads]
+    assert leads[0] == "src/a.py:10-20  save  (answer)"
+    assert paths[:4] == ["src/a.py", "src/b.py", "src/c.py", "src/d.py"]  # answer, claim, then the passages
+    assert "src/weak.py" not in paths                                      # a weak link is no lead
+    assert paths.index("docs/x.md") > paths.index("src/d.py")              # doc paths after source paths ...
+    assert paths[-2:] == ["tests/test_a.py", "tests/test_c.py"]            # ... and test paths last
+    assert "docs/x.md:1-2  x.md  (linked)" in leads and "src/c.py:7-9  helper  (passage)" in leads
+    assert {_lead(ln)[1] for ln in leads} == {"answer", "claim", "linked", "passage"}
+    # one lead per file, at most eight
+    res["passages"] += [f"src/p{i}.py:1-2 def p{i}()" for i in range(12)]
+    many = av.leads_for(res)
+    assert len(many) == 8 and len({_lead(ln)[0] for ln in many}) == 8
+    assert len(av.leads_for(res, limit=3)) == 3 and av.leads_for(_result(claims=[], passages=[],
+                                                                          plan_check={"links": []})) == []
+
+
+def _wide() -> dict:
+    """Forty claims of 300 characters, each citing its own file; the first three answer the question."""
+    res = _result(critique=[], unknowns=[])
+    res["claims"] = [_claim(f"c{i}", f"`fn_{i}()` " + f"does thing {i} " * 30 + f"(src/m{i}.py:{i + 1}-{i + 4})")
+                     for i in range(40)]
+    res["subquestions"][0]["answer_claim_ids"] = ["c0", "c1", "c2"]
+    res["subquestions"][0]["claim_ids"] = [f"c{i}" for i in range(40)]
+    return res
+
+
+def test_lead_view_never_exceeds_its_budget_and_never_sets_truncated():
+    res = _wide()
+    full = av.lead_view(res, budget=10 ** 6)
+    assert len(full["context"]) == 6 and len(full["leads"]) == 8
+    out = av.lead_view(res)
+    assert _size(out) <= 2500 and "truncated" not in out and "truncation" not in out
+    assert out["subquestions"][0]["answers"] == full["subquestions"][0]["answers"]  # answer claims never cut
+    assert len(out.get("context") or []) < 6                                        # context lines go first ...
+    assert [_lead(ln)[0] for ln in out["leads"]][:3] == ["src/m0.py", "src/m1.py", "src/m2.py"]
+    tight = av.lead_view(res, budget=2000)
+    assert _size(tight) <= 2000 and "context" not in tight                          # ... then the other leads ...
+    assert [_lead(ln) for ln in tight["leads"]] == [("src/m0.py", "answer"), ("src/m1.py", "answer"),
+                                                    ("src/m2.py", "answer")]        # ... never the answers' files
+    assert tight["subquestions"][0]["answers"] == full["subquestions"][0]["answers"]
+    assert "context claim" in tight["coverage"]                                     # what was cut is counted
+
+
+def test_lead_view_keeps_clarifications_and_errors_whole():
+    clar = [{"id": f"c-{i}", "kind": "entity", "question_en": f"which {i}? " + "x" * 330,
+             "options": [{"value": "v1", "label": "the old one"}]} for i in range(4)]
+    res = _result(status="needs_clarification", subquestions=[], claims=[], clarifications=clar,
+                  passages=[f"src/p{i}.py:1-2 def p{i}()" for i in range(30)])
+    out = av.lead_view(res)
+    assert out["status"] == "needs_clarification" and out["clarifications"] == clar
+    assert _size(out) <= 2500 and "truncated" not in out
+    assert 0 < len(out["leads"]) < 8 and "left out" in out["coverage"]  # the budget took leads, not a clarification
+    bad = _result(status="invalid_plan", subquestions=[], claims=[], passages=[],
+                  errors=[{"at": "/language", "msg": "unknown language " + "y" * 300, "fix": "use tr or en"}] * 4)
+    out = av.lead_view(bad)
+    assert out["status"] == "invalid_plan" and out["errors"] == bad["errors"] and "truncated" not in out
+    fb = {"drafted_plan_id": "qpl_0", "why": "the plan drafted for the question failed its own checks", "errors": ["e"]}
+    out = av.lead_view(_result(plan_fallback=fb, plan_source="host", usage={"exhausted": "time budget 60.0s spent"}))
+    assert out["plan_fallback"] == fb and out["plan_id"] == "qpl_1" and out["budget_exhausted"] == "time budget 60.0s spent"
+
+
+def test_a_why_result_with_twenty_lead_commits_fits_and_keeps_both_ends():
+    """The why handler's unknown lists the commits that changed the lines without stating a reason (D186): under the
+    budget the list keeps its newest and oldest commits and says how many in between it left out."""
+    commits = [f"{i:07x}aaa {2026 - i // 12}-{12 - i % 12:02d}-01 " + f"subject of commit {i} " * 3 for i in range(20)]
+    unknown = {"question": "why does save commit twice?", "sub_question": "q1", "commits": commits,
+               "why": f"the reason was not found: {len(commits)} commit(s) changed these lines and none states a "
+                      "reason about it in its message; no decision record explains it",
+               "next_step": "open a commit with `git show <sha>`; `history_search` with the symbol lists every commit"}
+    res = _result(critique=[], unknowns=[unknown], passages=[])
+    res["claims"] = [
+        _claim("c1", "`save()` lines 15-20 were changed in 0000000aaa (2026-12-01): subject of commit 0",
+               "primary_source_verified", evidence=["supports:git_history:commit 0000000aaa orders/repository.py"]),
+        _claim("c2", "Decision record docs/adr/0001-sqlite-persistence.md (status: accepted) explains it: We persist "
+               "orders in SQLite through `OrderRepository` only. No other module", "primary_source_verified",
+               evidence=["supports:design_doc:docs/adr/0001-sqlite-persistence.md:3-7"]),
+        *[_claim(f"c{i}", f"`fn_{i}()` calls `save()` (orders/m{i}.py:{i})") for i in range(3, 13)],
+    ]
+    res["subquestions"][0].update(answer_claim_ids=["c1", "c2"], claim_ids=[c["id"] for c in res["claims"]])
+    out = av.lead_view(res)
+    assert _size(out) <= 2500 and "truncated" not in out
+    (u,) = out["unknowns"]
+    assert u["question"] == unknown["question"] and u["why"] == unknown["why"] and u["next_step"] == unknown["next_step"]
+    kept = u["commits"]
+    assert kept[:3] == commits[:3] and kept[-3:] == commits[-3:] and len(kept) == 7  # three at each end ...
+    assert "14 more" in kept[3] and "history_search" in kept[3]                     # ... and the count between
+    assert res["unknowns"][0]["commits"] == commits  # the result dict is not changed
+    # the list is cut only when the context lines and the other leads are already gone
+    assert "context" not in out and all(_lead(ln)[1] == "answer" for ln in out["leads"])
+    assert out["leads"][0] == "orders/repository.py:15-20  save  (answer)"  # the history claim's path and lines
+    assert av.lead_view(res, budget=10 ** 6)["unknowns"] == [unknown]
+    tighter = av.lead_view(res, budget=_size(out) - 100)  # both ends only, before anything that answers
+    kept = tighter["unknowns"][0]["commits"]
+    assert kept[0] == commits[0] and kept[-1] == commits[-1] and len(kept) == 3 and "18 more" in kept[1]
+    assert tighter["subquestions"] == out["subquestions"] and _size(tighter) <= _size(out) - 100
+
+
+def test_show_lead_adds_the_rank_one_lines_within_4500_chars():
+    res = _two_questions()
+    seen = []
+
+    def read(path: str, start: int, end: int) -> str | None:
+        seen.append((path, start, end))
+        return "\n".join("" if i % 7 == 3 else f"line {i} of {path}" for i in range(start, end + 1))  # 24, 31 ... blank
+
+    out = av.lead_view(res, show="lead", read=read)
+    first = _lead(out["leads"][0])[0]
+    assert first == "orders/service.py" and out["lead_lines"]["path"] == first
+    # the narrowest span the result cites in that file (c1 cites line 21, c2 line 22, the plan link 19-22)
+    assert (out["lead_lines"]["start"], out["lead_lines"]["end"]) == (21, 21) and seen == [("orders/service.py", 21, 21)]
+    assert out["lead_lines"]["text"] == "21 line 21 of orders/service.py"
+    assert list(out)[-1] == "lead_lines" and "lead_lines" not in av.lead_view(res, read=read)
+    # a long span: at most 60 lines, numbered, blank lines left out, and the whole response under its budget
+    res["claims"][0]["text"] = "`place_order()` is defined at orders/service.py:19-300"
+    res["claims"][0]["evidence"] = ["supports:source_code:orders/service.py:19-300"]
+    res["claims"][1]["text"] = "`place_order()` -> `.save()` reaches the database"
+    res["claims"][1]["evidence"] = []
+    res["plan_check"]["links"] = []
+    out = av.lead_view(res, show="lead", read=read)
+    ll = out["lead_lines"]
+    assert (ll["start"], ll["end"]) == (19, 78) and ll["text"].startswith("19 line 19 of") and "\n78 line 78" in ll["text"]
+    assert "\n24 " not in ll["text"] and "\n25 line 25" in ll["text"] and _size(out) <= 4500  # blank lines left out
+    tight = av.lead_view(res, show="lead", read=read, lead_budget=_size(out) - 200)
+    assert _size(tight) <= _size(out) - 200 and tight["lead_lines"]["end"] < 78 and tight["lead_lines"]["start"] == 19
+    # a file that cannot be read: no lines, and the coverage says so
+    gone = av.lead_view(res, show="lead", read=lambda p, a, b: None)
+    assert "lead_lines" not in gone and "orders/service.py" in gone["coverage"] and "not read" in gone["coverage"]
+    # an answer that cites a file without lines (a commit's path) reads the lines another claim cites in that file
+    res["claims"][0]["text"] = "`place_order()` was changed in 0000000aaa (2026-12-01): init"
+    res["claims"][0]["evidence"] = ["supports:git_history:commit 0000000aaa orders/service.py"]
+    out = av.lead_view(res, show="lead", read=read)
+    assert out["leads"][0] == "orders/service.py:26  place_order  (answer)"  # the first lines seen for the file
+    assert (out["lead_lines"]["start"], out["lead_lines"]["end"]) == (26, 26)   # c8's `.get()` call site
+    with pytest.raises(ValueError):
+        av.lead_view(res, show="passages")
+
+
+def test_lead_view_coverage_names_the_refresh_state():
+    skipped = {"skipped": "estimated 120.0 s", "stale_count": 3, "stale_files": ["a.py", "b.py", "c.py"],
+               "background_update": "started (pid 4242)"}
+    cov = av.lead_view(_result(index_refresh=skipped))["coverage"]
+    assert "3 changed file(s)" in cov and "estimated 120.0 s" in cov and "started (pid 4242)" in cov
+    assert "re-indexed 2" in av.lead_view(_result(index_refresh={"ran": True, "changed_count": 2}))["coverage"]
+    err = "index could not be refreshed (boom); the graph describes an older tree"
+    cov = av.lead_view(_result(index_refresh={"error": err}, index_refresh_error=err))["coverage"]
+    assert "boom" in cov
+    assert "index current" in av.lead_view(_result(index_refresh={"changed_count": 0}))["coverage"]
