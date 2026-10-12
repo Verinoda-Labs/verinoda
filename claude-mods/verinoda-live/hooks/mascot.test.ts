@@ -47,6 +47,7 @@ describe('frames', () => {
 function world(on: On) {
   on('session.start', () => ({ cwd: ROOT }))
   on('session.cwd', () => ({ value: ROOT }))
+  mock.env(on, { PATH: 'C:\\Users\\dev\\.local\\bin' }) // without one outside the project the mod runs nothing (D186 §4.6)
   on('fs.stat', () => ({ value: { isFile: false, isDirectory: true, size: 0, mtimeMs: 0 } }) as never)
   on('command.register', ($, e) => ({ value: { command: e.name } }) as never)
   on('ui.status', () => ({ value: undefined }))

@@ -26,8 +26,10 @@ own. The mod runs none of them (D186 §4.6):
 - `verinoda` is resolved once at session start by walking `PATH` (with `PATHEXT` on Windows) and taking the first
   program found in a folder that is not inside the project, so an activated project `.venv` first on `PATH` is skipped;
   a `cli` setting that points into the project, or to a network share, is refused the same way. Without one outside
-  the project the bare name is run. The mod needs no python of its own: the graph's state comes from
-  `verinoda graph-state --json`.
+  the project nothing runs at all, not even `trust --list`: the status line says `verinoda not found on PATH outside
+  the project · set cli`, the pane says it in Turkish, and `/verinoda-update` answers the same (a bare name handed to
+  the child would be resolved through the same `PATH`, to the project's own program). The mod needs no python of its
+  own: the graph's state comes from `verinoda graph-state --json`.
 - Every run has the user's home folder as its working directory (a drive root without one), never the repository,
   because Windows searches a child's working directory before `PATH` and whether `$.process.run` does is unverified;
   `--repo` names the project.
@@ -36,7 +38,8 @@ own. The mod runs none of them (D186 §4.6):
   in an ancestor they never opened is shown as `güvenilmiyor` and runs nothing.
 
 `hooks/features.test.ts` puts a fake `verinoda.exe` in the project root and in its `.venv`, names both first on `PATH`,
-and checks that every process the mod runs is the one outside the project, from the home folder.
+and checks that every process the mod runs is the one outside the project, from the home folder; with no other on
+`PATH` it checks that nothing runs, not even the trust list, and that the pane names the `cli` setting.
 
 ## What was measured, and what went (D186)
 

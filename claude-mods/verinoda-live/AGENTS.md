@@ -48,7 +48,7 @@ Run from the repository root.
 
 ```
 claude plugin validate claude-mods/verinoda-live        # ends with "Validation passed"
-claude plugin test claude-mods/verinoda-live            # 83 pass, 0 fail in 5 files (125 in 6 before D186)
+claude plugin test claude-mods/verinoda-live            # 84 pass, 0 fail in 5 files (125 in 6 before D186)
 npx --yes -p typescript tsc -p claude-mods/verinoda-live --noEmit   # exit 0 and no output (without --noEmit it writes .js files beside the sources)
 ```
 
@@ -112,6 +112,9 @@ and never calls them itself.
   outside the root (`resolveTools`), every process goes through `runCli` with the user's home as its working directory and
   `--repo` naming the project, and `update`, `graph-state` and `check` run only when `live.isAllowed` (the root is the
   session's folder, named in the settings, or on `verinoda trust --list`). A new process the mod runs keeps all three.
+  When `PATH` names no program outside the root, `cfg.cli` is empty and nothing runs (`nocli`: `runCli` rejects,
+  `live.isAllowed` is false, the trust list is not read); never fall back to a bare name, which the child resolves
+  through the same `PATH`. A test world that expects a run names a `PATH` outside the project (`mock.env`).
 
 ## Facts about the host that cost time to find
 

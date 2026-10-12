@@ -4,7 +4,7 @@ import type { On } from 'claude-code'
 const ROOT = 'C:/work/verinoda'
 const EDIT = { tool: 'Edit', file_path: 'C:\\work\\verinoda\\src\\a.py', old_string: 'a', new_string: 'b' } as const
 
-// The world beneath the plugin: a repo with an index, a CLI that records its runs, and a graph whose
+// The world beneath the plugin: a repo with an index, a CLI on PATH outside it that records its runs, and a graph whose
 // state answers the mod's polls from `graph` in order (the last one repeats); 'fails': the probe exits 1.
 type GraphState = { locked: boolean; behind: number }
 type Run = { argv: string[]; cwd: string | undefined }
@@ -15,6 +15,7 @@ function world(on: On, graph: GraphState[] | 'fails' = [{ locked: false, behind:
   on('session.start', () => ({ cwd: ROOT }))
   on('session.cwd', () => ({ value: ROOT }))
   mock.store(on)
+  mock.env(on, { PATH: 'C:\\Users\\dev\\.local\\bin' }) // without one outside the project the mod runs nothing (D186 §4.6)
   on('fs.stat', () => ({ value: { isFile: false, isDirectory: true, size: 0, mtimeMs: 0 } }) as never)
   on('command.register', () => ({ value: {} }) as never)
   on('ui.status', ($, e) => {
@@ -85,8 +86,9 @@ describe('verinoda-live', () => {
 
     await clock.advance(1_000)
     expect(polls.length).toBe(3)
-    // the graph's state comes from the CLI itself (no python of the mod's), never run inside the repository
-    expect(polls[0]?.argv).toEqual(['verinoda', 'graph-state', '--repo', ROOT, '--json'])
+    // the graph's state comes from the CLI itself (no python of the mod's), the one PATH names outside the repository,
+    // never run inside it
+    expect(polls[0]?.argv).toEqual(['C:/Users/dev/.local/bin/verinoda.exe', 'graph-state', '--repo', ROOT, '--json'])
     expect(polls[0]?.cwd).toBeDefined()
     expect(polls[0]?.cwd?.toLowerCase().startsWith(ROOT.toLowerCase())).toBe(false)
     expect(statuses.at(-1)).toBe('Verinoda: fresh ✓')

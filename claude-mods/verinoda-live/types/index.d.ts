@@ -13,6 +13,7 @@ export type IndexKind =
   | 'failed' // the last update failed; its files are kept
   | 'unknown' // the graph state could not be read
   | 'noindex' // no .verinoda in the project
+  | 'nocli' // no verinoda on PATH outside the project (and no `cli` setting naming one): nothing runs (D186)
   | 'untrusted' // the .verinoda found is in an ancestor the person did not open or trust: nothing runs (D186)
 
 export type IndexState = {
@@ -21,7 +22,7 @@ export type IndexState = {
   waiting: boolean // pending while a graph build runs: they go in when it ends
   since: number | null // ms: when the graph build started (graph)
   at: number | null // ms: when the index was last seen fresh in this session
-  error: string // failed: the first line of the CLI's error; untrusted: the folder with the index
+  error: string // failed: the first line of the CLI's error; untrusted: the folder with the index; nocli: the name looked for
 }
 
 export type Notice = { text: string; tone: 'ok' | 'warn' | 'err' }

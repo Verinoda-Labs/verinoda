@@ -142,7 +142,7 @@ describe('the MCP server tools in front, and the call rule', () => {
 describe('nothing is run from the repository', () => {
   // Windows searches a child's working directory before PATH, and whether $.process.run does is unverified (D186 §4.6):
   // Verinoda is resolved from PATH to an absolute path outside the project once, and every run has the user's home as
-  // its working directory, the project named with --repo.
+  // its working directory, the project named with --repo. Without one outside the project nothing runs at all.
   test('a verinoda.exe at the root or in its .venv is not used, even when PATH names them first', async ($, on) => {
     const clock = mock.clock(on)
     mock.store(on)
@@ -175,17 +175,40 @@ describe('nothing is run from the repository', () => {
     for (const r of runs) expect(r.argv[0]).toBe(CLI)
   })
 
-  test('without Verinoda on PATH outside the project the bare name is run, still from the home folder', async ($, on) => {
+  // PATH names verinoda only inside the project (an activated .venv, none installed outside it): the child inherits
+  // that PATH, so the bare name would be the .venv's program, home cwd or not. Nothing runs; the pane says what to set.
+  test('without Verinoda on PATH outside the project nothing is run, and the pane names the cli setting', async ($, on) => {
     const clock = mock.clock(on)
     mock.store(on)
-    const { runs } = world(on, { path: 'C:\\work\\verinoda\\.venv\\Scripts', existing: [`${ROOT}/.venv/Scripts/verinoda.exe`] })
+    const { runs, statuses } = world(on, { path: 'C:\\work\\verinoda\\.venv\\Scripts', existing: [`${ROOT}/.venv/Scripts/verinoda.exe`] })
     await $.session.start(START)
     await clock.settle()
-    expect(runs.length).toBeGreaterThan(0)
-    for (const r of runs) {
-      expect(r.argv[0]).toBe('verinoda')
-      expect(r.cwd).toBe(HOME)
-    }
+    await $.tool.call(edit(`${ROOT}/a.py`))
+    await $.turn.complete(TURN)
+    await clock.settle()
+    expect(runs).toEqual([])
+    expect(statuses.at(-1)).toBe('Verinoda: verinoda not found on PATH outside the project · set `cli`')
+    const res = await $.command.run(run('verinoda-update'))
+    expect(res).toEqual(expect.objectContaining({ text: expect.stringContaining('set `cli`') }))
+    expect(runs).toEqual([])
+    const pane = await mount($)
+    expect(await pane.find({ text: /verinoda bulunamadı/ })).toBeDefined()
+    expect(await pane.find({ key: 'check-on' })).toBeUndefined() // nothing runs: a setting that would do nothing is not drawn
+  })
+
+  test('without Verinoda outside the project not even the trust list is read, and a cli name not found is named', { options: { cli: 'vn' } }, async ($, on) => {
+    const clock = mock.clock(on)
+    mock.store(on)
+    // the session is below the root, where the trust list would otherwise be asked; `vn` exists only in the project's .venv
+    const { runs, statuses } = world(on, { cwd: `${ROOT}/pkg`, path: 'C:\\work\\verinoda\\.venv\\Scripts;C:\\Users\\dev\\.local\\bin',
+      existing: [`${ROOT}/.venv/Scripts/vn.exe`], trusted: [{ path: 'C:\\work\\verinoda' }] })
+    await $.session.start(START)
+    await clock.settle()
+    expect(runs).toEqual([])
+    expect(statuses.at(-1)).toBe('Verinoda: vn not found on PATH outside the project · set `cli`')
+    const pane = await mount($)
+    expect(await pane.find({ text: /vn yok/ })).toBeDefined()
+    expect(await pane.find({ text: /güvenilmiyor/ })).toBeUndefined() // trust is unknown without the CLI, not refused
   })
 })
 

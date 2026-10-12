@@ -56,16 +56,19 @@ const improve = atom({ plugin: 'verinoda-live', key: 'improve' } as const, initi
 
 // Where Verinoda runs from, settled at session start (D186 §4.6: nothing the mod runs comes from the opened repository).
 // `cli` is the program: the setting's path when it lies outside the project, else what PATH names outside the project,
-// else the bare name. `cwd` is the working directory of every run: the user's home (a drive root without one), never
-// the repository, because Windows searches a child's working directory before PATH and whether $.process.run does is
-// unverified; `--repo` names the project. The settings' `python` went with the python probe (`verinoda graph-state`).
-const cfg = { cli: 'verinoda', cwd: '', check: false, motion: true }
+// else nothing (''), and then nothing runs: the child inherits this PATH, so a bare name handed to it would be the
+// project's own program when that is the only one (an activated .venv with no install outside). `cwd` is the working
+// directory of every run: the user's home (a drive root without one), never the repository, because Windows searches a
+// child's working directory before PATH and whether $.process.run does is unverified; `--repo` names the project. The
+// settings' `python` went with the python probe (`verinoda graph-state`).
+const cfg = { cli: '', cwd: '', check: false, motion: true }
 
 // Module state: a reload starts it over, which only forgets edits not yet indexed.
 const live = {
   root: undefined as string | undefined,
   cwd: '',
-  isAllowed: false, // the root is the session's folder, the one the settings name, or trusted with `verinoda trust`
+  missingCli: '', // the name PATH had no program for outside the project; '' once one is found (or the settings name one)
+  isAllowed: false, // a program was found, and the root is the session's folder, the settings' one, or trusted with `verinoda trust`
   pending: new Set<string>(),
   isChecking: true, // the session-start look at the graph has not answered yet
   isRunning: false,
@@ -151,6 +154,10 @@ export function indexState(): { state: IndexState; line: string } {
   const at = (kind: IndexKind, n: number, line: string, extra: Partial<IndexState> = {}) =>
     ({ state: { ...base, kind, n, ...extra }, line })
   if (live.root === undefined) return at('noindex', 0, `no .verinoda index at or above ${live.cwd}`)
+  // before the trust gate: without the CLI the trust list cannot be read, so trust is unknown, not refused
+  if (live.missingCli !== '') {
+    return at('nocli', 0, `${live.missingCli} not found on PATH outside the project · set \`cli\``, { error: live.missingCli })
+  }
   if (!live.isAllowed) return at('untrusted', 0, `index at ${live.root} not trusted · verinoda trust ${live.root}`, { error: live.root })
   if (live.isRunning) return at('updating', live.runningCount, `updating (${plural(live.runningCount)})…`)
   if (live.failed !== null) {
@@ -189,7 +196,10 @@ async function loadSettings($: EngineInterface, isInteractive: boolean): Promise
 }
 
 // Every run of the CLI: the resolved program, the user's home as the working directory, the project named with --repo.
+// Without a program nothing is run (the gates on `live.isAllowed` never ask; every caller takes the rejection as a run
+// that failed): a bare name must never reach $.process.run, whose child would resolve it through this process's PATH.
 function runCli($: EngineInterface, args: string[], timeoutMs?: number) {
+  if (cfg.cli === '') return Promise.reject(new Error('verinoda not found on PATH outside the project; set `cli`'))
   return $.process.run([cfg.cli, ...args], { cwd: cfg.cwd, ...(timeoutMs === undefined ? {} : { timeoutMs }) })
 }
 
@@ -357,9 +367,11 @@ async function fromPath($: EngineInterface, name: string, root: string): Promise
 
 // The program and the working directory of every run (D186 §4.6: the mod never runs anything from the opened
 // repository, not even a `.venv` it ships). A `cli` setting is taken when it is a bare name (looked up on PATH like the
-// default) or a path outside the root; a path inside the root, or on a network share, is refused like a found one.
+// default) or a path outside the root; a path inside the root, or on a network share, is refused like a found one. A
+// name PATH has no program for outside the root leaves no program at all (`nocli`): the OS would find the one inside.
 async function resolveTools($: EngineInterface, root: string, options: Record<string, unknown>): Promise<void> {
   cfg.cwd = await homeFolder($, root)
+  live.missingCli = ''
   const given = typeof options.cli === 'string' ? slashes(options.cli.trim()) : ''
   const isPath = /[/\\]/.test(given)
   if (given !== '' && isPath && !isInside(given, root) && !given.startsWith('//')) {
@@ -367,7 +379,8 @@ async function resolveTools($: EngineInterface, root: string, options: Record<st
     return
   }
   const name = given !== '' && !isPath ? given : 'verinoda'
-  cfg.cli = (await fromPath($, name, root)) ?? name
+  cfg.cli = (await fromPath($, name, root)) ?? ''
+  if (cfg.cli === '') live.missingCli = name
 }
 
 // Is the root a project the person trusted (`verinoda trust`)? The list is read through the CLI (its file lives in the
@@ -391,7 +404,7 @@ async function isTrusted($: EngineInterface, root: string): Promise<boolean> {
 
 // What a re-index came to: `text` is the command's answer (English, as before); `code` lets the pane say it.
 type Outcome = {
-  code: 'noindex' | 'untrusted' | 'running' | 'graph-fresh' | 'fresh' | 'waiting' | 'updated' | 'failed'
+  code: 'noindex' | 'nocli' | 'untrusted' | 'running' | 'graph-fresh' | 'fresh' | 'waiting' | 'updated' | 'failed'
   n: number
   text: string
 }
@@ -399,6 +412,10 @@ type Outcome = {
 async function reindex($: EngineInterface): Promise<Outcome> {
   const { root, pending } = live
   if (root === undefined) return { code: 'noindex', n: 0, text: `no .verinoda index at or above ${live.cwd}` }
+  if (live.missingCli !== '') {
+    return { code: 'nocli', n: 0, text: `${live.missingCli} was not found on PATH outside the project, and a program inside it ` +
+      '(its .venv, say) is never run: set `cli` in the plugin settings to one outside, or install verinoda on PATH' }
+  }
   if (!live.isAllowed) {
     return { code: 'untrusted', n: 0, text: `the index at ${root} is in a folder above the session's that is not trusted: ` +
       `run \`verinoda trust ${root}\` or start Claude Code in it` }
@@ -450,6 +467,7 @@ async function reindex($: EngineInterface): Promise<Outcome> {
 
 const NOTICE_TEXT: Record<Outcome['code'], (n: number) => Notice> = {
   noindex: () => ({ text: 'Bu projede index yok', tone: 'err' }),
+  nocli: () => ({ text: 'verinoda bulunamadı · `cli` ayarı', tone: 'err' }),
   untrusted: () => ({ text: 'Klasöre güvenilmiyor · verinoda trust', tone: 'err' }),
   running: n => ({ text: `Zaten güncelleniyor (${n} dosya)`, tone: 'ok' }),
   'graph-fresh': () => ({ text: 'Metin güncel · graph hâlâ kuruluyor', tone: 'ok' }),
@@ -518,6 +536,9 @@ export function describeIndex(s: IndexState): { head: string; tone: Tone; detail
     case 'failed': return { head: `✗ Güncelleme başarısız · ${s.n} dosya bekletiliyor`, tone: 'err', details: [s.error], action: 'retry' }
     case 'unknown': return { head: '? Graph durumu okunamadı', tone: 'idle', details: [], action: 'recheck' }
     case 'noindex': return { head: "? Bu projede Verinoda index'i yok", tone: 'idle', details: ['Proje klasöründe çalıştır:', 'verinoda init, sonra verinoda update'], action: null }
+    case 'nocli':
+      return { head: '▲ verinoda bulunamadı · `cli` ayarı', tone: 'warn',
+        details: [`PATH'te projenin dışında ${s.error} yok`, "projenin kendi .venv'indeki asla çalıştırılmaz", '/config ile `cli` ayarına dışarıdaki yolunu yaz'], action: null }
     case 'untrusted':
       return { head: "▲ Üstteki klasörün index'ine güvenilmiyor", tone: 'warn',
         details: [s.error, `izin için: verinoda trust ${s.error}`, "ya da Claude Code'u o klasörde başlat"], action: null }
@@ -542,6 +563,7 @@ const MOOD: Record<Tone, Mood> = { ok: 'idle', idle: 'idle', busy: 'busy', warn:
 export function mascotCaption(s: IndexState): { text: string; tone: Tone } {
   if (s.kind === 'failed') return { text: 'Bir şey ters gitti', tone: 'err' }
   if (s.kind === 'untrusted') return { text: 'İzin bekliyor', tone: 'warn' }
+  if (s.kind === 'nocli') return { text: 'Ayar bekliyor', tone: 'warn' }
   if (s.kind === 'pending' || s.kind === 'behind' || s.kind === 'slow') return { text: 'Güncelleme bekliyor', tone: 'warn' }
   if (s.kind === 'updating' || s.kind === 'graph' || s.kind === 'checking') return { text: 'Kodu okuyorum…', tone: 'busy' }
   if (s.kind === 'noindex') return { text: 'Index yok', tone: 'idle' }
@@ -567,8 +589,9 @@ export const register: Register = (on, options) => {
       await resolveTools($, live.root, options)
       // the index is used where the person chose it: the folder they opened, the one their settings name, or one they
       // trusted with `verinoda trust`; a .verinoda in an ancestor they never opened is not, so a hostile repository's
-      // index can make the mod run nothing (D186 §4.6)
-      live.isAllowed = named !== '' || norm(live.root) === norm(live.cwd) || (await isTrusted($, live.root))
+      // index can make the mod run nothing (D186 §4.6). Without a program outside the project not even the trust list
+      // is read.
+      live.isAllowed = live.missingCli === '' && (named !== '' || norm(live.root) === norm(live.cwd) || (await isTrusted($, live.root)))
     }
     await loadSettings($, e.isInteractive !== false)
     // the improvement list (D175): its command is always there, its tools only for a person and when a list is in play or offered
@@ -679,8 +702,8 @@ export const register: Register = (on, options) => {
     if (action !== null) used += 1
     if (said !== null) used += 1
 
-    // nothing runs in these two states, so a setting would do nothing and is not drawn
-    if (s.kind === 'noindex' || s.kind === 'untrusted') return <Box flexDirection="column">{indexBlock}</Box>
+    // nothing runs in these three states, so a setting would do nothing and is not drawn
+    if (s.kind === 'noindex' || s.kind === 'nocli' || s.kind === 'untrusted') return <Box flexDirection="column">{indexBlock}</Box>
 
     // 2 · the check after edits: a two-option control; k always flips it; the last check under it
     const lastLine = checkLine(lastChk)

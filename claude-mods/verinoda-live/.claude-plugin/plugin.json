@@ -13,7 +13,7 @@
     "cli": {
       "type": "string",
       "title": "Verinoda CLI",
-      "description": "Path to the verinoda program, or its name on PATH. Empty: verinoda on PATH. A program inside the project (its .venv, say) is never run.",
+      "description": "Path to the verinoda program, or its name on PATH. Empty: verinoda on PATH outside the project. A program inside the project (its .venv, say) is never run; when PATH has none outside it, nothing runs until this names one.",
       "default": ""
     },
     "check": {
