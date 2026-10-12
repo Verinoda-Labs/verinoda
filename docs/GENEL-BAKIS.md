@@ -741,8 +741,8 @@ nedeniyle) ve sürümlerini verir.
 | Yanlış cümlenin doğrulanması | kelime örtüşmesi doğruluyordu | Kelime örtüşmesi doğrulamaz; yazılı iddianın her rolü (çağıran/çağrılan yönü, ayarın bağlandığı ad) denetlenir; kesin ıska oluşturulurken kapsamıyla çürütülür; kod gibi yazılmış ama depoda olmayan ad benzeriyle değiştirilmez (`not_found`, `did_you_mean`). Python dışında yapılandırma ve ilişki iddiaları ile akışların çağrı adımları en çok `strong_inference` olur: bağlama denetimi yalnız Python için var (2026-09-26) | Çalışıyor (D31) |
 | Adın doğru sembole bağlanması ve taze indeks | benzer ad ya da ilk eşleşme seçilebiliyordu; eşzamanlı iki güncelleme çakışıyordu | `trace`, etki ve `node_inspect` tek bir kesin çözümleyici kullanır: kopya ve referans ağacı projenin koduna, test/örnek/fikstür kodu ürünün koduna yol verir; kalan eşitlik listelenir, biri seçilmez; benzer ad asla yerine konmaz. Bir projede aynı anda tek indeks kurulumu çalışır. Okuma komutları indeksten sonra değişen dosyaları söyler; `analyze` yenilemeyi bütçesine saymaz, büyük projede yavaşsa önceki indeksten yanıtlar ve bunu söyler | Çalışıyor (D37) |
 | Karşılaştırmalı benchmark | kendi yayınladığı doğruluk, maliyet ve token rakamları (Verinoda'ya aktarılmaz) | ham arama vs Graphify vs Verinoda; eskime ve karşıt kontrol ölçüm düzenekleri | Çalışıyor (model döngüde değil) |
-| Belge ve görsel metni | LLM alt ajanıyla | PDF, Word, Excel ve PowerPoint metni modelsiz okunur: sayfa, sayfa başlığı ve Word başlığı grafik düğümü, arama pasajı ve yeniden denetlenebilir kanıt olur; Windows'ta ekran görüntüsü ve diyagramlardaki yazı Windows'un kendi OCR'ıyla okunur (model yok, indirme yok). Taranmış PDF, ses ve video okunmaz. LLM ile çıkarım yine `verinoda index -- extract` geçişiyle, desteklenmeden erişilebilir | Çalışıyor (2026-09-26) |
-| Claude Code ve Codex dışındaki ~20 ajan platformu | var | engellendi: `verinoda index -- install` vb. gerçek bir Graphify kurulumunu bozmasın diye reddedilir | daraltıldı |
+| Belge ve görsel metni | LLM alt ajanıyla | PDF, Word, Excel ve PowerPoint metni modelsiz okunur: sayfa, sayfa başlığı ve Word başlığı grafik düğümü, arama pasajı ve yeniden denetlenebilir kanıt olur; Windows'ta ekran görüntüsü ve diyagramlardaki yazı Windows'un kendi OCR'ıyla okunur (model yok, indirme yok). Taranmış PDF, ses ve video okunmaz. Graphify'ın LLM ile çıkarımı ve ona erişen `verinoda index -- extract` geçişi D186'da (2026-10-12) paketten çıkarıldı: hiçbir komut ve hiçbir araç artık ona ulaşmıyor | Çalışıyor (2026-09-26) |
+| Claude Code ve Codex dışındaki ~20 ajan platformu | var | Graphify'ın kendi kurulumcuları, git kancaları ve onlara erişen `verinoda index --` geçişi D186'da (2026-10-12) paketten çıkarıldı (önceden geçişte reddediliyorlardı); Verinoda'nın kendi kurulumcusu `verinoda install --agent` Claude Code ve Codex'in yanında Cursor, Gemini CLI, Copilot, Kiro, Continue ve Aider'i kurar (D140) | daraltıldı |
 
 ---
 
@@ -1124,11 +1124,14 @@ bir kopyasını tutan bir Verinoda kopyasında plan eşleştirmesi 15 mention'ı
 **Daraltılan kapsam**
 
 - Graphify'ın LLM'li belge/görsel çıkarımı Verinoda'nın kendi komutlarında
-  yoktur; `verinoda index -- extract` geçişiyle desteklenmeden erişilebilir.
-- Diğer ajan platformlarının kurulumu, git kancaları ve `~/.graphify`'a
-  yazan komutlar (`clone`, `provider`, `global`) geçişte **engellenir**, çünkü
-  makinedeki gerçek bir Graphify kurulumunu bozabilir ya da ev dizinine
-  yazar.
+  yoktur. Eskiden `verinoda index -- extract` geçişiyle desteklenmeden
+  erişilebilirdi; geçiş ve çıkarımın arkasındaki LLM katmanı (sağlayıcı arka
+  uçları, PR görünümleri, YouTube dökümü, Google Workspace kısayolları) D186'da
+  (2026-10-12) paketten çıkarıldı.
+- Diğer ajan platformlarının Graphify kurulumları, git kancaları ve
+  `~/.graphify`'a yazan komutlar (`clone`, `provider`, `global`) eskiden
+  geçişte **engelleniyordu**, çünkü makinedeki gerçek bir Graphify kurulumunu
+  bozabilir ya da ev dizinine yazar; geçişle birlikte hepsi D186'da çıkarıldı.
 
 **Ad sorunu**
 
