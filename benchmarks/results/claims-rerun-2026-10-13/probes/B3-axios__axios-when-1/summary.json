@@ -1,0 +1,17 @@
+{
+ "name": "B3-axios__axios-when-1",
+ "task": "axios__axios-when-1",
+ "plugin_dir": "C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/mods/B3",
+ "rc": 0,
+ "secs": 12.9,
+ "turns": 3,
+ "cost": 0.1276555,
+ "analyze_calls": 0,
+ "verinoda_calls": 0,
+ "tools": [
+  "Bash",
+  "Bash"
+ ],
+ "session_id": "4b3adbab-5497-4296-a21a-6cc60b2356e2",
+ "answer_head": "- `UnprocessableContent: 422` is at `lib/helpers/HttpStatusCode.js:53`. The old `UnprocessableEntity: 422` stays at line 52, and line 50 marks it `@deprecated Use UnprocessableContent instead.`\n- Commit `39955a6`, \"feat(HttpStatusCode): add RFC 9110 aliases for 413 and 422 (#11082)\", dated 2026-08-0"
+}

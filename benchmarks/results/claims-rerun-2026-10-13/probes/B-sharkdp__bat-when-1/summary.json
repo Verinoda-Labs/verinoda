@@ -1,0 +1,17 @@
+{
+ "name": "B-sharkdp__bat-when-1",
+ "task": "sharkdp__bat-when-1",
+ "plugin_dir": "C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/mods/B",
+ "rc": 0,
+ "secs": 11.3,
+ "turns": 3,
+ "cost": 0.0438331,
+ "analyze_calls": 0,
+ "verinoda_calls": 0,
+ "tools": [
+  "Bash",
+  "Bash"
+ ],
+ "session_id": "1136ff71-ed8e-4e60-88b6-d2dea722ed15",
+ "answer_head": "- bat has a `vendored-libgit2` Cargo feature, defined as `vendored-libgit2 = [\"git2/vendored-libgit2\"]` at `Cargo.toml:35`. It forwards to git2's vendored (build from source) option. That mapping is my reading of the feature name and the `git2/vendored-libgit2` target. I did not check git2's own man"
+}

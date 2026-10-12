@@ -1,0 +1,35 @@
+{
+ "made_at": "2026-10-13 01:53:32",
+ "original_results_sha256": "5acbf20b083bc2ee9521f5c97b9e31e84ad32f98baa4de3f62cf574d4a82be99",
+ "original_rows": 63,
+ "verinoda_rows": 39,
+ "verinoda_sha256": "88cef98cc7450f6304823c3ed0aa4a6de8a565f1aa33d0a691f766836cfb4b0b",
+ "plain_rows": 24,
+ "plain_sha256": "ddd37019ba2139f8141bc208a8f204fd70217cbb17c6d2dee2875583b8c4dd17",
+ "rerun_six_rows": 18,
+ "verinoda_repeat1_rows": 27,
+ "verinoda_cost_usd": 2.45,
+ "plain_cost_usd": 1.381,
+ "moved": {
+  "judge.jsonl": {
+   "sha256": "53fbefb60821504f265d6de7e2df9386a0c8b4a4c41e8f42dfdf214321dbca9b",
+   "bytes": 102212,
+   "rows": 27
+  },
+  "mechanical.jsonl": {
+   "sha256": "eec39577b5c1487cf6db38f85794fce5beb269d0c19832c4b90ab6d2704f426d",
+   "bytes": 90953,
+   "rows": 63
+  }
+ },
+ "copied_logs": {
+  "step1-rerun.log": 2331,
+  "step2-cost-sample.log": 5417,
+  "step3-score.log": 1648
+ },
+ "judge_rows_by_arm": {
+  "verinoda_guided": 21,
+  "none": 6
+ },
+ "judge_failed": 0
+}

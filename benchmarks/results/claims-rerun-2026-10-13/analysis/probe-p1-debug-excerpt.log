@@ -1,0 +1,16 @@
+# Excerpt of the Claude Code 2.1.296 debug log of probe p1 (analysis/probe_deferral.py p1 --max-turns 2): one Verinoda-arm session built by the harness, the fastapi why-1 prompt.
+# Lines selected with: grep -n -E 'hooks module verinoda-live@inline loaded|Successfully connected|engine\] turn 1 start|tool.describe mcp__verinoda|answered tool.describe|Dynamic tool loading|API REQUEST|no pluginConfigs' debug.log
+# The full log (34 KB) is not copied: it carries local paths and the account's connector listing. n: original line number.
+57:2026-10-12T22:13:47.643Z [DEBUG] plugin verinoda-live: no pluginConfigs["verinoda-live" or "verinoda-live@inline"].options in user, --settings or managed settings (project settings are not read); every option is its default
+95:2026-10-12T22:13:47.829Z [DEBUG] plugin cc-plugin-agents-md: no pluginConfigs["agents-md@builtin" or "cc-plugin-agents-md@builtin"].options in user, --settings or managed settings (project settings are not read); every option is its default
+99:2026-10-12T22:13:47.903Z [DEBUG] hooks module verinoda-live@inline loaded (worker, environment 1, tier user); events: tool.describe,command.run,tool.call,turn.start,session.end,ui.render,session.start,prompt.compose,turn.complete
+190:2026-10-12T22:13:48.598Z [DEBUG] MCP server "verinoda": Successfully connected (transport: stdio) in 893ms
+214:2026-10-12T22:13:48.672Z [DEBUG] [engine] turn 1 start
+218:2026-10-12T22:13:48.684Z [DEBUG] verinoda-live (user) answered tool.describe without next() in 0.4ms; nothing beneath it ran for this dispatch
+220:2026-10-12T22:13:48.684Z [DEBUG] tool.describe mcp__verinoda__analyze: a hook set isDeferred true -> false
+222:2026-10-12T22:13:48.684Z [DEBUG] tool.describe mcp__verinoda__project_query: a hook set isDeferred true -> false
+224:2026-10-12T22:13:48.685Z [DEBUG] tool.describe mcp__verinoda__run_tool: a hook set isDeferred true -> false
+225:2026-10-12T22:13:48.688Z [DEBUG] Dynamic tool loading: 0/19 deferred tools included
+233:2026-10-12T22:13:48.695Z [DEBUG] [API REQUEST] /v1/messages x-client-request-id=87339048-ba65-4808-8148-5a249fcff77a source=sdk
+247:2026-10-12T22:13:50.915Z [DEBUG] Dynamic tool loading: 0/19 deferred tools included
+254:2026-10-12T22:13:50.919Z [DEBUG] [API REQUEST] /v1/messages x-client-request-id=2b25695d-542c-4552-a5d5-88198cdb5393 source=sdk

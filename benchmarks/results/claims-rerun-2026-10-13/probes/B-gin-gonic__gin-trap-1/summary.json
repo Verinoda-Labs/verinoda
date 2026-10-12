@@ -1,0 +1,20 @@
+{
+ "name": "B-gin-gonic__gin-trap-1",
+ "task": "gin-gonic__gin-trap-1",
+ "plugin_dir": "C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/mods/B",
+ "rc": 0,
+ "secs": 22.0,
+ "turns": 6,
+ "cost": 0.07096390000000001,
+ "analyze_calls": 1,
+ "verinoda_calls": 1,
+ "tools": [
+  "mcp__verinoda__analyze",
+  "Grep",
+  "Read",
+  "Bash",
+  "Bash"
+ ],
+ "session_id": "89078bf7-eba8-4cfa-9e7c-3f7a84bed955",
+ "answer_head": "- **The repository doesn't state the reason.** I found no comment, commit message or doc that explains why the value is half of `MaxInt8`. The only comment on the constant is \"abortIndex represents a typical value used in abort functions\" (`context.go:56`). The commit that introduced `AbortIndex = m"
+}

@@ -1,0 +1,19 @@
+{
+ "name": "P-guzzle__guzzle-trap-1",
+ "task": "guzzle__guzzle-trap-1",
+ "plugin_dir": "C:/Users/ozcin/Desktop/verinoda-symbiosis/.claude/worktrees/callrule/claude-mods/verinoda-live",
+ "rc": 0,
+ "secs": 20.1,
+ "turns": 5,
+ "cost": 0.1347901,
+ "analyze_calls": 1,
+ "verinoda_calls": 1,
+ "tools": [
+  "mcp__verinoda__analyze",
+  "Grep",
+  "Bash",
+  "Bash"
+ ],
+ "session_id": "1c0ad7f9-2922-4173-a1fe-cdeeac0ceb79",
+ "answer_head": "The repository does not state why these markers were chosen, so the reason is unknown.\n\n- **What the template is:** `MessageFormatter::DEBUG` is `\">>>>>>>>\\n{request}\\n<<<<<<<<\\n{response}\\n--------\\n{error}\"` (`src/MessageFormatter.php:50`). `>>>>>>>>` comes before the request, `<<<<<<<<` before th"
+}

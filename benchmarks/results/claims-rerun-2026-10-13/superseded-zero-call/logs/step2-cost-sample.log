@@ -1,0 +1,58 @@
+clone Graphify-Labs/graphify
+clone axios/axios
+clone expressjs/express
+clone fastapi/full-stack-fastapi-template
+clone fastapi/sqlmodel
+clone gin-gonic/gin
+clone google/gson
+clone guzzle/guzzle
+clone junegunn/fzf
+clone sharkdp/bat
+45 sessions to run (18 done)
+01:16:58 fastapi__full-stack-fastapi-template-when-1:none:r1 answer=1518 chars verinoda_calls=0 turns=4 $0.046905999999999996 15.5 s
+01:17:02 fastapi__full-stack-fastapi-template-when-1:verinoda_guided:r1 answer=1023 chars verinoda_calls=0 turns=4 $0.049332900000000006 11.2 s
+01:17:03 fastapi__sqlmodel-affects-1:none:r1 answer=3097 chars verinoda_calls=0 turns=5 $0.0586681 19.5 s
+01:17:11 fastapi__sqlmodel-affects-1:verinoda_guided:r1 answer=1826 chars verinoda_calls=0 turns=4 $0.0507707 13.4 s
+01:17:15 fastapi__full-stack-fastapi-template-why-1:none:r1 answer=1911 chars verinoda_calls=0 turns=4 $0.0507092 16.8 s
+01:17:19 gin-gonic__gin-affects-1:none:r1 answer=2873 chars verinoda_calls=0 turns=3 $0.0539206 15.8 s
+01:17:23 gin-gonic__gin-affects-1:verinoda_guided:r1 answer=2302 chars verinoda_calls=0 turns=5 $0.0619083 15.4 s
+01:17:31 guzzle__guzzle-affects-2:none:r1 answer=2719 chars verinoda_calls=0 turns=4 $0.08992250000000002 15.8 s
+01:17:38 gin-gonic__gin-why-1:none:r1 answer=2105 chars verinoda_calls=0 turns=7 $0.0721677 18.5 s
+01:17:47 gin-gonic__gin-why-1:verinoda_guided:r1 answer=2130 chars verinoda_calls=0 turns=6 $0.072547 18.0 s
+01:17:49 junegunn__fzf-affects-1:none:r1 answer=2445 chars verinoda_calls=0 turns=6 $0.060847 17.1 s
+01:17:50 guzzle__guzzle-affects-2:verinoda_guided:r1 answer=3204 chars verinoda_calls=0 turns=12 $0.11324979999999998 27.1 s
+01:17:53 fastapi__sqlmodel-why-1:none:r1 answer=1503 chars verinoda_calls=0 turns=5 $0.0566247 14.4 s
+01:18:01 junegunn__fzf-why-1:none:r1 answer=1760 chars verinoda_calls=0 turns=3 $0.0482063 11.6 s
+01:18:08 Graphify-Labs__graphify-why-1:none:r1 answer=1437 chars verinoda_calls=0 turns=4 $0.055529800000000004 14.6 s
+01:18:12 junegunn__fzf-affects-1:verinoda_guided:r1 answer=2630 chars verinoda_calls=0 turns=6 $0.06607769999999999 18.1 s
+01:18:17 sharkdp__bat-affects-1:none:r1 answer=2414 chars verinoda_calls=0 turns=5 $0.0560953 14.3 s
+01:18:18 fastapi__sqlmodel-why-1:verinoda_guided:r1 answer=1086 chars verinoda_calls=0 turns=4 $0.0533225 12.8 s
+01:18:24 expressjs__express-why-1:none:r1 answer=1984 chars verinoda_calls=0 turns=4 $0.0507403 15.7 s
+01:18:32 fastapi__full-stack-fastapi-template-affects-1:none:r1 answer=3066 chars verinoda_calls=0 turns=4 $0.061090900000000004 15.3 s
+01:18:43 junegunn__fzf-when-1:none:r1 answer=1229 chars verinoda_calls=0 turns=5 $0.05125249999999999 18.2 s
+01:18:51 Graphify-Labs__graphify-affects-1:none:r1 answer=2930 chars verinoda_calls=0 turns=5 $0.0625243 17.9 s
+01:18:53 sharkdp__bat-affects-1:verinoda_guided:r1 answer=1628 chars verinoda_calls=0 turns=3 $0.0527503 12.9 s
+01:18:59 sharkdp__bat-why-1:none:r1 answer=1956 chars verinoda_calls=0 turns=5 $0.054335999999999995 15.0 s
+01:19:04 expressjs__express-affects-1:none:r1 answer=1914 chars verinoda_calls=0 turns=4 $0.0476388 13.0 s
+01:19:11 expressjs__express-why-1:verinoda_guided:r1 answer=1892 chars verinoda_calls=0 turns=3 $0.0478103 12.6 s
+01:19:13 fastapi__sqlmodel-when-1:none:r1 answer=1244 chars verinoda_calls=0 turns=4 $0.0468656 13.4 s
+01:19:15 Graphify-Labs__graphify-why-1:verinoda_guided:r1 answer=1481 chars verinoda_calls=0 turns=4 $0.0616227 12.5 s
+01:19:21 expressjs__express-when-1:none:r1 answer=1245 chars verinoda_calls=0 turns=5 $0.0531169 16.8 s
+01:19:30 google__gson-affects-2:none:r1 answer=3068 chars verinoda_calls=0 turns=4 $0.0588636 16.5 s
+01:19:34 google__gson-affects-3:none:r1 answer=1941 chars verinoda_calls=0 turns=4 $0.056034 12.6 s
+01:19:35 fastapi__full-stack-fastapi-template-affects-1:verinoda_guided:r1 answer=3048 chars verinoda_calls=0 turns=5 $0.0673607 16.7 s
+01:19:43 junegunn__fzf-when-1:verinoda_guided:r1 answer=1100 chars verinoda_calls=0 turns=6 $0.0628312 19.7 s
+01:19:43 axios__axios-affects-1:none:r1 answer=1566 chars verinoda_calls=0 turns=4 $0.0650814 12.4 s
+01:19:55 guzzle__guzzle-affects-1:none:r1 answer=2557 chars verinoda_calls=0 turns=5 $0.06720880000000001 20.7 s
+01:19:58 axios__axios-when-1:none:r1 answer=1369 chars verinoda_calls=0 turns=3 $0.05691 12.9 s
+01:20:19 sharkdp__bat-why-1:verinoda_guided:r1 answer=1393 chars verinoda_calls=0 turns=5 $0.0549767 14.6 s
+01:20:39 expressjs__express-affects-1:verinoda_guided:r1 answer=2234 chars verinoda_calls=0 turns=4 $0.0538304 14.0 s
+01:20:39 Graphify-Labs__graphify-affects-1:verinoda_guided:r1 answer=2898 chars verinoda_calls=0 turns=4 $0.062104400000000004 15.9 s
+01:20:59 expressjs__express-when-1:verinoda_guided:r1 answer=990 chars verinoda_calls=0 turns=4 $0.050786700000000004 14.3 s
+01:21:06 fastapi__sqlmodel-when-1:verinoda_guided:r1 answer=1059 chars verinoda_calls=0 turns=4 $0.0496562 11.9 s
+01:21:27 google__gson-affects-2:verinoda_guided:r1 answer=2469 chars verinoda_calls=0 turns=4 $0.0619126 14.4 s
+01:21:36 google__gson-affects-3:verinoda_guided:r1 answer=3153 chars verinoda_calls=0 turns=3 $0.06314929999999999 16.9 s
+01:21:53 axios__axios-affects-1:verinoda_guided:r1 answer=1503 chars verinoda_calls=0 turns=4 $0.0699994 13.5 s
+01:22:06 guzzle__guzzle-affects-1:verinoda_guided:r1 answer=2338 chars verinoda_calls=0 turns=5 $0.0797324 18.1 s
+all done
+exit=0

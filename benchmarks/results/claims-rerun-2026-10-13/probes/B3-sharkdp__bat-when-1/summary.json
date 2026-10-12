@@ -1,0 +1,18 @@
+{
+ "name": "B3-sharkdp__bat-when-1",
+ "task": "sharkdp__bat-when-1",
+ "plugin_dir": "C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/mods/B3",
+ "rc": 0,
+ "secs": 14.8,
+ "turns": 4,
+ "cost": 0.11736860000000002,
+ "analyze_calls": 1,
+ "verinoda_calls": 1,
+ "tools": [
+  "mcp__verinoda__analyze",
+  "Grep",
+  "Bash"
+ ],
+ "session_id": "a4eedae3-e93b-4fc2-9689-6b448b98346b",
+ "answer_head": "- bat got the `vendored-libgit2` Cargo feature on 2025-10-08, in commit `1838e25d`, \"feat(cargo): add vendored-libgit2 feature (#3426)\". `git log -S\"vendored-libgit2\" -- Cargo.toml` returns only this commit, so it is the first to add the string.\n- The feature is declared at `Cargo.toml:35` as `vendo"
+}

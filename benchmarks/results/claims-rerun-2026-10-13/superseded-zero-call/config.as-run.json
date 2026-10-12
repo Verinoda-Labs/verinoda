@@ -1,0 +1,26 @@
+{
+  "work": "C:/vbench-claims-rerun",
+  "model": "claude-sonnet-5-5",
+  "plugin_dir": "C:/Users/ozcin/Desktop/verinoda-symbiosis/claude-mods/verinoda-live",
+  "mod_options": {},
+  "guide_text": "",
+  "verinoda_bin": [
+    "C:/Users/ozcin/Desktop/verinoda-symbiosis/.venv/Scripts"
+  ],
+  "drop_path": [
+    "C:/Users/ozcin/.local/bin"
+  ],
+  "arms": [
+    "none",
+    "verinoda_guided"
+  ],
+  "arm_workers": {
+    "none": 2,
+    "verinoda_guided": 2
+  },
+  "timeout_s": 1200,
+  "max_turns": 40,
+  "repeats": 3,
+  "judge_timeout_s": 300,
+  "note": "D186 re-run (plan Task 8). The Verinoda arm's prompt carries the stance only: the mod's prompt.compose section (Task 1) gives the one status rule when the server is connected. Clones copied from C:/vbench-claims/clones on 2026-10-12."
+}

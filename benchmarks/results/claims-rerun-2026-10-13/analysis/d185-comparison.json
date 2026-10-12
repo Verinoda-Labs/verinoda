@@ -1,0 +1,2157 @@
+{
+ "D185": [
+  {
+   "run": "D185",
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "arm": "none",
+   "repeat": 1,
+   "kind": "why",
+   "pilot": true,
+   "cites_gold_commit": [],
+   "incorrect_claims": 2,
+   "incorrect_fact_claims": 2,
+   "false_fact": 1,
+   "trap_verdict": null,
+   "cost_usd": 0.0450293,
+   "num_turns": 3,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "arm": "none",
+   "repeat": 2,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [],
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": null,
+   "cost_usd": 0.05136260000000001,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "arm": "none",
+   "repeat": 3,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [
+    "546dc8bdcb362e8a0465a82f47753c9d57898882"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.058443600000000005,
+   "num_turns": 5,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "why",
+   "pilot": true,
+   "cites_gold_commit": [],
+   "incorrect_claims": 2,
+   "incorrect_fact_claims": 2,
+   "false_fact": 1,
+   "trap_verdict": null,
+   "cost_usd": 0.09918819999999999,
+   "num_turns": 5,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [],
+   "incorrect_claims": 2,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": null,
+   "cost_usd": 0.1056876,
+   "num_turns": 5,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [],
+   "incorrect_claims": 3,
+   "incorrect_fact_claims": 2,
+   "false_fact": 1,
+   "trap_verdict": null,
+   "cost_usd": 0.1015405,
+   "num_turns": 5,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "junegunn__fzf-why-1",
+   "arm": "none",
+   "repeat": 1,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0670265,
+   "num_turns": 5,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "junegunn__fzf-why-1",
+   "arm": "none",
+   "repeat": 2,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0543105,
+   "num_turns": 3,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "junegunn__fzf-why-1",
+   "arm": "none",
+   "repeat": 3,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.059040800000000004,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "junegunn__fzf-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.08853610000000002,
+   "num_turns": 6,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "junegunn__fzf-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [],
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": null,
+   "cost_usd": 0.0807287,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "junegunn__fzf-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [],
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": null,
+   "cost_usd": 0.08663110000000002,
+   "num_turns": 5,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "none",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0555742,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "none",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0557784,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "none",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.055389100000000004,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.08790200000000001,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.089102,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.08806,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "none",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0597501,
+   "num_turns": 5,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "none",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.049973699999999996,
+   "num_turns": 3,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "none",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0518857,
+   "num_turns": 3,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0814966,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0830486,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0766166,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "axios__axios-when-1",
+   "arm": "none",
+   "repeat": 1,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "39955a6ebed53217a524a3c8c7e5568fc0faa4bd"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.059483999999999995,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "axios__axios-when-1",
+   "arm": "none",
+   "repeat": 2,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "39955a6ebed53217a524a3c8c7e5568fc0faa4bd"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.060225,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "axios__axios-when-1",
+   "arm": "none",
+   "repeat": 3,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "39955a6ebed53217a524a3c8c7e5568fc0faa4bd"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.06149759999999999,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "axios__axios-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "39955a6ebed53217a524a3c8c7e5568fc0faa4bd"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0987564,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "axios__axios-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "39955a6ebed53217a524a3c8c7e5568fc0faa4bd"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0974024,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "axios__axios-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "39955a6ebed53217a524a3c8c7e5568fc0faa4bd"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.09769639999999999,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "sharkdp__bat-when-1",
+   "arm": "none",
+   "repeat": 1,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1838e25d",
+    "1838e25d"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0431902,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "sharkdp__bat-when-1",
+   "arm": "none",
+   "repeat": 2,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1838e25d",
+    "1838e25d"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.042262100000000004,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "sharkdp__bat-when-1",
+   "arm": "none",
+   "repeat": 3,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1838e25d",
+    "1838e25d"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0418762,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "sharkdp__bat-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1838e25d",
+    "1838e25d"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0709466,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "sharkdp__bat-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1838e25d",
+    "1838e25d"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0706386,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185",
+   "id": "sharkdp__bat-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1838e25d",
+    "1838e25d"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0697546,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  }
+ ],
+ "D185_traps_opaque": [
+  {
+   "run": "D185-traps-opaque",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "none",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.051255800000000004,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "none",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.055210800000000004,
+   "num_turns": 5,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "none",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.053979000000000006,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.09518290000000001,
+   "num_turns": 5,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0964937,
+   "num_turns": 5,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.10003590000000001,
+   "num_turns": 6,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "none",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0515251,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "none",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0590833,
+   "num_turns": 5,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "none",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0594225,
+   "num_turns": 4,
+   "verinoda_calls": 0,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.08491299999999999,
+   "num_turns": 5,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0803896,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  },
+  {
+   "run": "D185-traps-opaque",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0825176,
+   "num_turns": 4,
+   "verinoda_calls": 2,
+   "is_error": false
+  }
+ ],
+ "rerun": [
+  {
+   "run": "rerun",
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [
+    "546dc8bdcb362e8a0465a82f47753c9d57898882"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.051817300000000004,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [
+    "546dc8bdcb362e8a0465a82f47753c9d57898882"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.053167400000000004,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [
+    "546dc8bdcb362e8a0465a82f47753c9d57898882"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0523281,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "junegunn__fzf-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0606404,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "junegunn__fzf-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0639963,
+   "num_turns": 5,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "junegunn__fzf-why-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "why",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+    "1578b7c3c33622ee2307e2173321a66eec5a7aa9"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.07231430000000001,
+   "num_turns": 6,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 2,
+   "incorrect_fact_claims": 2,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0736307,
+   "num_turns": 7,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.058640099999999994,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "guzzle__guzzle-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 1,
+   "incorrect_fact_claims": 1,
+   "false_fact": 1,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0608548,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0655269,
+   "num_turns": 5,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.0659959,
+   "num_turns": 5,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "gin-gonic__gin-trap-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "trap",
+   "pilot": false,
+   "cites_gold_commit": null,
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": "unknown_said",
+   "cost_usd": 0.05834930000000001,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "axios__axios-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "39955a6ebed53217a524a3c8c7e5568fc0faa4bd"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.06879450000000001,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "axios__axios-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "39955a6ebed53217a524a3c8c7e5568fc0faa4bd"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0677005,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "axios__axios-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "39955a6ebed53217a524a3c8c7e5568fc0faa4bd"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.069066,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "sharkdp__bat-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 1,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1838e25d",
+    "1838e25d"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0440103,
+   "num_turns": 3,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "sharkdp__bat-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 2,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1838e25d",
+    "1838e25d"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.0482364,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  },
+  {
+   "run": "rerun",
+   "id": "sharkdp__bat-when-1",
+   "arm": "verinoda_guided",
+   "repeat": 3,
+   "kind": "when",
+   "pilot": false,
+   "cites_gold_commit": [
+    "1838e25d",
+    "1838e25d"
+   ],
+   "incorrect_claims": 0,
+   "incorrect_fact_claims": 0,
+   "false_fact": 0,
+   "trap_verdict": null,
+   "cost_usd": 0.048547,
+   "num_turns": 4,
+   "verinoda_calls": 1,
+   "is_error": false
+  }
+ ],
+ "table": [
+  {
+   "id": "fastapi__full-stack-fastapi-template-why-1",
+   "kind": "why",
+   "d185_plain": {
+    "sessions": 3,
+    "false_fact": 2,
+    "judged": 3,
+    "cites_gold_commit": 1,
+    "trap_verdicts": null,
+    "verinoda_calls": 0,
+    "mean_cost_usd": 0.051611833333333336,
+    "mean_turns": 4.0
+   },
+   "d185_verinoda": {
+    "sessions": 3,
+    "false_fact": 3,
+    "judged": 3,
+    "cites_gold_commit": 0,
+    "trap_verdicts": null,
+    "verinoda_calls": 6,
+    "mean_cost_usd": 0.10213876666666666,
+    "mean_turns": 5.0
+   },
+   "rerun_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": 3,
+    "trap_verdicts": null,
+    "verinoda_calls": 3,
+    "mean_cost_usd": 0.0524376,
+    "mean_turns": 4.0
+   }
+  },
+  {
+   "id": "junegunn__fzf-why-1",
+   "kind": "why",
+   "d185_plain": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": 1,
+    "trap_verdicts": null,
+    "verinoda_calls": 0,
+    "mean_cost_usd": 0.06012593333333333,
+    "mean_turns": 4.0
+   },
+   "d185_verinoda": {
+    "sessions": 3,
+    "false_fact": 2,
+    "judged": 3,
+    "cites_gold_commit": 1,
+    "trap_verdicts": null,
+    "verinoda_calls": 4,
+    "mean_cost_usd": 0.08529863333333336,
+    "mean_turns": 5.0
+   },
+   "rerun_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": 3,
+    "trap_verdicts": null,
+    "verinoda_calls": 3,
+    "mean_cost_usd": 0.06565033333333334,
+    "mean_turns": 5.0
+   }
+  },
+  {
+   "id": "guzzle__guzzle-trap-1",
+   "kind": "trap",
+   "d185_plain": {
+    "sessions": 3,
+    "false_fact": 3,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 0,
+    "mean_cost_usd": 0.055580566666666664,
+    "mean_turns": 4.0
+   },
+   "d185_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 6,
+    "mean_cost_usd": 0.08835466666666668,
+    "mean_turns": 4.0
+   },
+   "rerun_verinoda": {
+    "sessions": 3,
+    "false_fact": 3,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 3,
+    "mean_cost_usd": 0.0643752,
+    "mean_turns": 5.0
+   },
+   "d185_opaque_plain": {
+    "sessions": 3,
+    "false_fact": 3,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 0,
+    "mean_cost_usd": 0.053481866666666676,
+    "mean_turns": 4.333333333333333
+   },
+   "d185_opaque_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 6,
+    "mean_cost_usd": 0.09723750000000002,
+    "mean_turns": 5.333333333333333
+   }
+  },
+  {
+   "id": "gin-gonic__gin-trap-1",
+   "kind": "trap",
+   "d185_plain": {
+    "sessions": 3,
+    "false_fact": 1,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 0,
+    "mean_cost_usd": 0.05386983333333333,
+    "mean_turns": 3.6666666666666665
+   },
+   "d185_verinoda": {
+    "sessions": 3,
+    "false_fact": 2,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 6,
+    "mean_cost_usd": 0.08038726666666667,
+    "mean_turns": 4.0
+   },
+   "rerun_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 3,
+    "mean_cost_usd": 0.06329069999999999,
+    "mean_turns": 4.666666666666667
+   },
+   "d185_opaque_plain": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 0,
+    "mean_cost_usd": 0.05667696666666666,
+    "mean_turns": 4.333333333333333
+   },
+   "d185_opaque_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": null,
+    "trap_verdicts": [
+     "unknown_said",
+     "unknown_said",
+     "unknown_said"
+    ],
+    "verinoda_calls": 6,
+    "mean_cost_usd": 0.08260673333333333,
+    "mean_turns": 4.333333333333333
+   }
+  },
+  {
+   "id": "axios__axios-when-1",
+   "kind": "when",
+   "d185_plain": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": 3,
+    "trap_verdicts": null,
+    "verinoda_calls": 0,
+    "mean_cost_usd": 0.060402199999999996,
+    "mean_turns": 4.0
+   },
+   "d185_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": 3,
+    "trap_verdicts": null,
+    "verinoda_calls": 6,
+    "mean_cost_usd": 0.09795173333333333,
+    "mean_turns": 4.0
+   },
+   "rerun_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": 3,
+    "trap_verdicts": null,
+    "verinoda_calls": 3,
+    "mean_cost_usd": 0.06852033333333334,
+    "mean_turns": 4.0
+   }
+  },
+  {
+   "id": "sharkdp__bat-when-1",
+   "kind": "when",
+   "d185_plain": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": 3,
+    "trap_verdicts": null,
+    "verinoda_calls": 0,
+    "mean_cost_usd": 0.04244283333333334,
+    "mean_turns": 4.0
+   },
+   "d185_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": 3,
+    "trap_verdicts": null,
+    "verinoda_calls": 6,
+    "mean_cost_usd": 0.0704466,
+    "mean_turns": 4.0
+   },
+   "rerun_verinoda": {
+    "sessions": 3,
+    "false_fact": 0,
+    "judged": 3,
+    "cites_gold_commit": 3,
+    "trap_verdicts": null,
+    "verinoda_calls": 3,
+    "mean_cost_usd": 0.04693123333333333,
+    "mean_turns": 3.6666666666666665
+   }
+  }
+ ],
+ "d185_cost_on_the_24_sample_tasks": {
+  "none": {
+   "all_repeats": {
+    "sessions": 72,
+    "mean_cost_usd": 0.05747577916666667,
+    "median_cost_usd": 0.05611225,
+    "median_turns": 4.0,
+    "median_seconds": 14.4,
+    "median_answer_chars": 1962.0
+   },
+   "repeat_1": {
+    "sessions": 24,
+    "mean_cost_usd": 0.058152570833333334,
+    "median_cost_usd": 0.0562394,
+    "median_turns": 5.0,
+    "median_seconds": 14.3,
+    "median_answer_chars": 1887.0
+   }
+  },
+  "verinoda_guided": {
+   "all_repeats": {
+    "sessions": 72,
+    "mean_cost_usd": 0.09504358194444446,
+    "median_cost_usd": 0.0948588,
+    "median_turns": 5.0,
+    "median_seconds": 23.049999999999997,
+    "median_answer_chars": 2236.5
+   },
+   "repeat_1": {
+    "sessions": 24,
+    "mean_cost_usd": 0.09526295416666668,
+    "median_cost_usd": 0.0945457,
+    "median_turns": 5.5,
+    "median_seconds": 23.15,
+    "median_answer_chars": 2228.5
+   }
+  }
+ },
+ "d185_transcript_stats_on_the_24_sample_tasks": {
+  "sessions": 144,
+  "missing_transcripts": 0,
+  "usage_matches_result_json": 144,
+  "all_repeats": {
+   "none": {
+    "cost_usd": {
+     "n": 72,
+     "mean": 0.05747577916666667,
+     "median": 0.05611225,
+     "min": 0.0403008,
+     "max": 0.10664320000000001
+    },
+    "model_calls": {
+     "n": 72,
+     "mean": 3.5277777777777777,
+     "median": 3.0,
+     "min": 2,
+     "max": 6
+    },
+    "own_tool_model_calls": {
+     "n": 72,
+     "mean": 2.5277777777777777,
+     "median": 2.0,
+     "min": 1,
+     "max": 5
+    },
+    "n_tool_calls": {
+     "n": 72,
+     "mean": 3.4722222222222223,
+     "median": 3.0,
+     "min": 2,
+     "max": 6
+    },
+    "num_turns": {
+     "n": 72,
+     "mean": 4.472222222222222,
+     "median": 4.0,
+     "min": 3,
+     "max": 7
+    },
+    "cache_write_tokens": {
+     "n": 72,
+     "mean": 9330.069444444445,
+     "median": 8657.5,
+     "min": 6751,
+     "max": 18228
+    },
+    "cache_read_tokens": {
+     "n": 72,
+     "mean": 77084.73611111111,
+     "median": 70025.0,
+     "min": 39071,
+     "max": 135768
+    },
+    "uncached_input_tokens": {
+     "n": 72,
+     "mean": 7.055555555555555,
+     "median": 6.0,
+     "min": 4,
+     "max": 12
+    },
+    "output_tokens": {
+     "n": 72,
+     "mean": 1243.2916666666667,
+     "median": 1164.0,
+     "min": 709,
+     "max": 2469
+    },
+    "verinoda_result_chars": {
+     "n": 72,
+     "mean": 0.0,
+     "median": 0.0,
+     "min": 0,
+     "max": 0
+    },
+    "n_verinoda_calls": {
+     "n": 72,
+     "mean": 0.0,
+     "median": 0.0,
+     "min": 0,
+     "max": 0
+    },
+    "first_call_cache_write_tokens": {
+     "n": 72,
+     "mean": 6745.291666666667,
+     "median": 6237.0,
+     "min": 6202,
+     "max": 10028
+    },
+    "own_result_chars": {
+     "n": 72,
+     "mean": 4621.402777777777,
+     "median": 3516.5,
+     "min": 317,
+     "max": 21443
+    },
+    "answer_chars": {
+     "n": 72,
+     "mean": 1980.638888888889,
+     "median": 1962.0,
+     "min": 848,
+     "max": 4004
+    },
+    "seconds": {
+     "n": 72,
+     "mean": 14.872222222222222,
+     "median": 14.4,
+     "min": 9.7,
+     "max": 23.2
+    },
+    "sessions": 72,
+    "sessions_with_a_verinoda_call": 0
+   },
+   "verinoda_guided": {
+    "cost_usd": {
+     "n": 72,
+     "mean": 0.09504358194444446,
+     "median": 0.0948588,
+     "min": 0.0742205,
+     "max": 0.11884739999999999
+    },
+    "model_calls": {
+     "n": 72,
+     "mean": 4.111111111111111,
+     "median": 4.0,
+     "min": 3,
+     "max": 6
+    },
+    "own_tool_model_calls": {
+     "n": 72,
+     "mean": 1.2083333333333333,
+     "median": 1.0,
+     "min": 0,
+     "max": 4
+    },
+    "n_tool_calls": {
+     "n": 72,
+     "mean": 4.402777777777778,
+     "median": 4.0,
+     "min": 2,
+     "max": 8
+    },
+    "num_turns": {
+     "n": 72,
+     "mean": 5.402777777777778,
+     "median": 5.0,
+     "min": 3,
+     "max": 9
+    },
+    "cache_write_tokens": {
+     "n": 72,
+     "mean": 17513.444444444445,
+     "median": 17607.0,
+     "min": 13827,
+     "max": 21621
+    },
+    "cache_read_tokens": {
+     "n": 72,
+     "mean": 103162.76388888889,
+     "median": 98388.0,
+     "min": 65530,
+     "max": 163215
+    },
+    "uncached_input_tokens": {
+     "n": 72,
+     "mean": 8.222222222222221,
+     "median": 8.0,
+     "min": 6,
+     "max": 12
+    },
+    "output_tokens": {
+     "n": 72,
+     "mean": 1465.7083333333333,
+     "median": 1404.0,
+     "min": 916,
+     "max": 2298
+    },
+    "verinoda_result_chars": {
+     "n": 72,
+     "mean": 16281.791666666666,
+     "median": 16477.0,
+     "min": 10416,
+     "max": 23517
+    },
+    "n_verinoda_calls": {
+     "n": 72,
+     "mean": 1.9444444444444444,
+     "median": 2.0,
+     "min": 1,
+     "max": 4
+    },
+    "first_call_cache_write_tokens": {
+     "n": 72,
+     "mean": 8054.958333333333,
+     "median": 7549.5,
+     "min": 7503,
+     "max": 11333
+    },
+    "own_result_chars": {
+     "n": 72,
+     "mean": 1698.361111111111,
+     "median": 1317.5,
+     "min": 0,
+     "max": 6455
+    },
+    "answer_chars": {
+     "n": 72,
+     "mean": 2387.625,
+     "median": 2236.5,
+     "min": 1267,
+     "max": 3889
+    },
+    "seconds": {
+     "n": 72,
+     "mean": 22.927777777777777,
+     "median": 23.049999999999997,
+     "min": 17.1,
+     "max": 31.2
+    },
+    "sessions": 72,
+    "sessions_with_a_verinoda_call": 72
+   }
+  },
+  "repeat_1": {
+   "none": {
+    "cost_usd": {
+     "n": 24,
+     "mean": 0.058152570833333334,
+     "median": 0.0562394,
+     "min": 0.041441,
+     "max": 0.10239659999999999
+    },
+    "model_calls": {
+     "n": 24,
+     "mean": 3.5833333333333335,
+     "median": 3.0,
+     "min": 3,
+     "max": 6
+    },
+    "own_tool_model_calls": {
+     "n": 24,
+     "mean": 2.5833333333333335,
+     "median": 2.0,
+     "min": 2,
+     "max": 5
+    },
+    "n_tool_calls": {
+     "n": 24,
+     "mean": 3.625,
+     "median": 4.0,
+     "min": 2,
+     "max": 6
+    },
+    "num_turns": {
+     "n": 24,
+     "mean": 4.625,
+     "median": 5.0,
+     "min": 3,
+     "max": 7
+    },
+    "cache_write_tokens": {
+     "n": 24,
+     "mean": 9428.583333333334,
+     "median": 8904.5,
+     "min": 6773,
+     "max": 17932
+    },
+    "cache_read_tokens": {
+     "n": 24,
+     "mean": 78343.20833333333,
+     "median": 66753.5,
+     "min": 61970,
+     "max": 135768
+    },
+    "uncached_input_tokens": {
+     "n": 24,
+     "mean": 7.166666666666667,
+     "median": 6.0,
+     "min": 6,
+     "max": 12
+    },
+    "output_tokens": {
+     "n": 24,
+     "mean": 1258.9583333333333,
+     "median": 1244.0,
+     "min": 761,
+     "max": 2020
+    },
+    "verinoda_result_chars": {
+     "n": 24,
+     "mean": 0.0,
+     "median": 0.0,
+     "min": 0,
+     "max": 0
+    },
+    "n_verinoda_calls": {
+     "n": 24,
+     "mean": 0.0,
+     "median": 0.0,
+     "min": 0,
+     "max": 0
+    },
+    "first_call_cache_write_tokens": {
+     "n": 24,
+     "mean": 6745.291666666667,
+     "median": 6237.0,
+     "min": 6202,
+     "max": 10028
+    },
+    "own_result_chars": {
+     "n": 24,
+     "mean": 4796.666666666667,
+     "median": 3802.0,
+     "min": 317,
+     "max": 20397
+    },
+    "answer_chars": {
+     "n": 24,
+     "mean": 1969.4583333333333,
+     "median": 1887.0,
+     "min": 1032,
+     "max": 3028
+    },
+    "seconds": {
+     "n": 24,
+     "mean": 15.091666666666667,
+     "median": 14.3,
+     "min": 10.7,
+     "max": 21.3
+    },
+    "sessions": 24,
+    "sessions_with_a_verinoda_call": 0
+   },
+   "verinoda_guided": {
+    "cost_usd": {
+     "n": 24,
+     "mean": 0.09526295416666668,
+     "median": 0.0945457,
+     "min": 0.0784804,
+     "max": 0.11515439999999999
+    },
+    "model_calls": {
+     "n": 24,
+     "mean": 4.125,
+     "median": 4.0,
+     "min": 3,
+     "max": 5
+    },
+    "own_tool_model_calls": {
+     "n": 24,
+     "mean": 1.25,
+     "median": 1.0,
+     "min": 0,
+     "max": 3
+    },
+    "n_tool_calls": {
+     "n": 24,
+     "mean": 4.416666666666667,
+     "median": 4.5,
+     "min": 3,
+     "max": 6
+    },
+    "num_turns": {
+     "n": 24,
+     "mean": 5.416666666666667,
+     "median": 5.5,
+     "min": 4,
+     "max": 7
+    },
+    "cache_write_tokens": {
+     "n": 24,
+     "mean": 17545.791666666668,
+     "median": 17768.0,
+     "min": 14300,
+     "max": 21121
+    },
+    "cache_read_tokens": {
+     "n": 24,
+     "mean": 103574.54166666667,
+     "median": 98727.5,
+     "min": 65530,
+     "max": 146518
+    },
+    "uncached_input_tokens": {
+     "n": 24,
+     "mean": 8.25,
+     "median": 8.0,
+     "min": 6,
+     "max": 10
+    },
+    "output_tokens": {
+     "n": 24,
+     "mean": 1470.5833333333333,
+     "median": 1470.5,
+     "min": 916,
+     "max": 2190
+    },
+    "verinoda_result_chars": {
+     "n": 24,
+     "mean": 16178.666666666666,
+     "median": 16145.5,
+     "min": 10537,
+     "max": 23078
+    },
+    "n_verinoda_calls": {
+     "n": 24,
+     "mean": 1.875,
+     "median": 2.0,
+     "min": 1,
+     "max": 3
+    },
+    "first_call_cache_write_tokens": {
+     "n": 24,
+     "mean": 8054.958333333333,
+     "median": 7549.5,
+     "min": 7503,
+     "max": 11333
+    },
+    "own_result_chars": {
+     "n": 24,
+     "mean": 1849.5416666666667,
+     "median": 1613.0,
+     "min": 0,
+     "max": 6455
+    },
+    "answer_chars": {
+     "n": 24,
+     "mean": 2373.9166666666665,
+     "median": 2228.5,
+     "min": 1437,
+     "max": 3678
+    },
+    "seconds": {
+     "n": 24,
+     "mean": 23.145833333333332,
+     "median": 23.15,
+     "min": 17.3,
+     "max": 30.0
+    },
+    "sessions": 24,
+    "sessions_with_a_verinoda_call": 24
+   }
+  },
+  "paired_repeat_1": {
+   "n_pairs": 24,
+   "seed": 20261013,
+   "resamples": 10000,
+   "cost_usd": {
+    "plain_mean": 0.058152570833333334,
+    "verinoda_mean": 0.09526295416666668,
+    "mean_difference": 0.03711038333333334,
+    "ci95": [
+     0.03287347083333334,
+     0.041079020833333334
+    ],
+    "pairs_where_verinoda_is_higher": 24,
+    "pairs_equal": 0,
+    "n": 24
+   },
+   "model_calls": {
+    "plain_mean": 3.5833333333333335,
+    "verinoda_mean": 4.125,
+    "mean_difference": 0.5416666666666666,
+    "ci95": [
+     0.25,
+     0.8333333333333334
+    ],
+    "pairs_where_verinoda_is_higher": 13,
+    "pairs_equal": 9,
+    "n": 24
+   },
+   "own_tool_model_calls": {
+    "plain_mean": 2.5833333333333335,
+    "verinoda_mean": 1.25,
+    "mean_difference": -1.3333333333333333,
+    "ci95": [
+     -1.625,
+     -1.0416666666666667
+    ],
+    "pairs_where_verinoda_is_higher": 0,
+    "pairs_equal": 3,
+    "n": 24
+   },
+   "n_tool_calls": {
+    "plain_mean": 3.625,
+    "verinoda_mean": 4.416666666666667,
+    "mean_difference": 0.7916666666666666,
+    "ci95": [
+     0.375,
+     1.2083333333333333
+    ],
+    "pairs_where_verinoda_is_higher": 14,
+    "pairs_equal": 7,
+    "n": 24
+   },
+   "num_turns": {
+    "plain_mean": 4.625,
+    "verinoda_mean": 5.416666666666667,
+    "mean_difference": 0.7916666666666666,
+    "ci95": [
+     0.375,
+     1.2083333333333333
+    ],
+    "pairs_where_verinoda_is_higher": 14,
+    "pairs_equal": 7,
+    "n": 24
+   },
+   "cache_write_tokens": {
+    "plain_mean": 9428.583333333334,
+    "verinoda_mean": 17545.791666666668,
+    "mean_difference": 8117.208333333333,
+    "ci95": [
+     7242.416666666667,
+     8915.5
+    ],
+    "pairs_where_verinoda_is_higher": 24,
+    "pairs_equal": 0,
+    "n": 24
+   },
+   "cache_read_tokens": {
+    "plain_mean": 78343.20833333333,
+    "verinoda_mean": 103574.54166666667,
+    "mean_difference": 25231.333333333332,
+    "ci95": [
+     16636.708333333332,
+     34384.875
+    ],
+    "pairs_where_verinoda_is_higher": 21,
+    "pairs_equal": 0,
+    "n": 24
+   },
+   "uncached_input_tokens": {
+    "plain_mean": 7.166666666666667,
+    "verinoda_mean": 8.25,
+    "mean_difference": 1.0833333333333333,
+    "ci95": [
+     0.5,
+     1.6666666666666667
+    ],
+    "pairs_where_verinoda_is_higher": 13,
+    "pairs_equal": 9,
+    "n": 24
+   },
+   "output_tokens": {
+    "plain_mean": 1258.9583333333333,
+    "verinoda_mean": 1470.5833333333333,
+    "mean_difference": 211.625,
+    "ci95": [
+     132.375,
+     293.3333333333333
+    ],
+    "pairs_where_verinoda_is_higher": 21,
+    "pairs_equal": 0,
+    "n": 24
+   },
+   "verinoda_result_chars": {
+    "plain_mean": 0.0,
+    "verinoda_mean": 16178.666666666666,
+    "mean_difference": 16178.666666666666,
+    "ci95": [
+     14875.875,
+     17496.75
+    ],
+    "pairs_where_verinoda_is_higher": 24,
+    "pairs_equal": 0,
+    "n": 24
+   },
+   "n_verinoda_calls": {
+    "plain_mean": 0.0,
+    "verinoda_mean": 1.875,
+    "mean_difference": 1.875,
+    "ci95": [
+     1.7083333333333333,
+     2.0416666666666665
+    ],
+    "pairs_where_verinoda_is_higher": 24,
+    "pairs_equal": 0,
+    "n": 24
+   },
+   "first_call_cache_write_tokens": {
+    "plain_mean": 6745.291666666667,
+    "verinoda_mean": 8054.958333333333,
+    "mean_difference": 1309.6666666666667,
+    "ci95": [
+     1304.3333333333333,
+     1315.3333333333333
+    ],
+    "pairs_where_verinoda_is_higher": 24,
+    "pairs_equal": 0,
+    "n": 24
+   },
+   "own_result_chars": {
+    "plain_mean": 4796.666666666667,
+    "verinoda_mean": 1849.5416666666667,
+    "mean_difference": -2947.125,
+    "ci95": [
+     -4556.125,
+     -1729.2916666666667
+    ],
+    "pairs_where_verinoda_is_higher": 2,
+    "pairs_equal": 0,
+    "n": 24
+   },
+   "answer_chars": {
+    "plain_mean": 1969.4583333333333,
+    "verinoda_mean": 2373.9166666666665,
+    "mean_difference": 404.4583333333333,
+    "ci95": [
+     253.25,
+     545.7916666666666
+    ],
+    "pairs_where_verinoda_is_higher": 20,
+    "pairs_equal": 0,
+    "n": 24
+   },
+   "seconds": {
+    "plain_mean": 15.091666666666667,
+    "verinoda_mean": 23.145833333333332,
+    "mean_difference": 8.054166666666665,
+    "ci95": [
+     6.8,
+     9.295833333333333
+    ],
+    "pairs_where_verinoda_is_higher": 24,
+    "pairs_equal": 0,
+    "n": 24
+   }
+  }
+ }
+}

@@ -1,0 +1,6 @@
+Do not call any tool in this reply. This is a check of your setup, not a question about the repository at {copy}.
+
+Reply with exactly three numbered items and nothing else.
+1. The exact names of every tool in your function list (the tools you can call right now without loading anything) whose name contains "verinoda"; write "none" if there is none.
+2. The exact names of the tools that contain "verinoda" and that your context lists as deferred (to be loaded with ToolSearch before use); write "none" if there is none.
+3. Quote verbatim every sentence of your system prompt or of a system reminder that mentions Verinoda or `mcp__verinoda__analyze`; write "none" if there is none.

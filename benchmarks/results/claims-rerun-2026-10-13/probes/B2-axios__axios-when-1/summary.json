@@ -1,0 +1,18 @@
+{
+ "name": "B2-axios__axios-when-1",
+ "task": "axios__axios-when-1",
+ "plugin_dir": "C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/mods/B2",
+ "rc": 0,
+ "secs": 13.3,
+ "turns": 4,
+ "cost": 0.0362537,
+ "analyze_calls": 0,
+ "verinoda_calls": 0,
+ "tools": [
+  "Grep",
+  "Bash",
+  "Bash"
+ ],
+ "session_id": "2393dd27-fa7b-4271-8d34-724e005077ba",
+ "answer_head": "- `UnprocessableContent: 422` is in the status-code map at `lib/helpers/HttpStatusCode.js:53`. It sits next to the older `UnprocessableEntity: 422` at line 52.\n- The `@deprecated Use UnprocessableContent instead` note on `UnprocessableEntity` is at `lib/helpers/HttpStatusCode.js:50`.\n- Commit `39955"
+}
