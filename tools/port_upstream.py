@@ -11,9 +11,10 @@ The upstream commit is recorded in `verinoda/project_index/UPSTREAM_COMMIT`.
 
 The upstream surface no Verinoda command reaches is not shipped (D186): after
 the copy, the modules and data files in `DELETED` leave again, and so does every
-upstream test that imports one of them or runs the upstream CLI (the names are
-printed; a test file that mixes such tests with others is deleted whole here and
-trimmed by hand afterwards, docs/UPSTREAM.md lists which).
+upstream test that imports one of them, runs the upstream CLI or uses a name the
+kept modules lost with them (the names are printed; a test file that mixes such
+tests with others is deleted whole here and trimmed by hand afterwards,
+docs/UPSTREAM.md lists which).
 """
 
 from __future__ import annotations
@@ -45,8 +46,12 @@ _DELETED_NAMES = "|".join(map(re.escape, DELETED_MODULES))
 _TEST_OF_DELETED = re.compile(
     rf"verinoda\.project_index\.({_DELETED_NAMES}|exporters\.graphdb)\b"
     rf"|from verinoda\.project_index import [^\n]*\b({_DELETED_NAMES})\b"
-    r"|\bpush_to_(falkordb|neo4j)\b"  # export.py no longer re-exports the graph-database pushers
-    r'|"-m",\s*"verinoda\.project_index"|-m verinoda\.project_index\b|project_index/skill|tools\.skillgen',
+    # the names the kept modules lost with them, used by tests that import nothing deleted: export.py's
+    # re-export of the graph-database pushers, detect.py's Google Workspace conversion and its
+    # `google_workspace=` parameter, the `dedup_llm_backend=` of dedup.py and build.py
+    r"|\bpush_to_(falkordb|neo4j)\b|google_workspace|\bdedup_llm_backend\b"
+    # the upstream CLI, the skill bodies and their generator (as a module path or as path parts)
+    r'|"-m",\s*"verinoda\.project_index"|-m verinoda\.project_index\b|project_index/skill|\bskillgen\b',
 )
 # tests of the removed surface that import none of it: upstream's own ARCHITECTURE.md table (kept verbatim
 # under docs/upstream/) names symbols of the deleted modules

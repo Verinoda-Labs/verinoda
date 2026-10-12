@@ -22,6 +22,7 @@ with pip from the index): run it with ``pytest tests/test_packaging.py -m slow``
 from __future__ import annotations
 
 import configparser
+import importlib.util
 import json
 import os
 import re
@@ -128,6 +129,27 @@ REMOVED_EXTRAS = {"kimi", "ollama", "bedrock", "anthropic", "gemini", "openai", 
 REMOVED_MODULES = ("verinoda/project_index/cli.py", "verinoda/project_index/__main__.py",
                    "verinoda/project_index/install.py", "verinoda/project_index/llm.py",
                    "verinoda/project_index/prs.py", "verinoda/project_index/exporters/graphdb.py")
+# The forms an upstream test of that surface takes, as the port script sees them after its path rewrite
+# (a line each, from the files as they stood before D186): an import of a deleted module, a run of the
+# upstream CLI, and a name the kept modules lost, used without importing anything deleted.
+REMOVED_SURFACE_LINES = (
+    "from verinoda.project_index import llm",  # test_backend_env_isolation.py
+    "from verinoda.project_index.llm import _backend_pkg_hint",  # test_backend_extras.py
+    '        [PYTHON, "-m", "verinoda.project_index", "--help"], stdout=subprocess.PIPE',  # test_cli_broken_pipe.py
+    "    from verinoda.project_index.export import push_to_falkordb",  # test_falkordb_integration.py
+    '    monkeypatch.setattr("verinoda.project_index.detect.convert_google_workspace_file", fake_convert)',
+    "    result = detect(tmp_path, google_workspace=True)",  # test_detect.py, with the line above
+    "    result_nodes, _ = deduplicate_entities(nodes, edges, communities={}, dedup_llm_backend=None)",
+    ('    roots = [REPO_ROOT / "verinoda" / "project_index" / "skills", '
+     'REPO_ROOT / "tools" / "skillgen" / "fragments"]'),  # test_extraction_spec_ids.py
+)
+KEPT_LINES = (
+    "from verinoda.project_index.detect import classify_file, count_words, detect, detect_incremental",
+    "from verinoda.project_index import detect as detect_mod",
+    "from verinoda.project_index.export import to_json, to_cypher, to_graphml, to_html, to_canvas",
+    "    result_nodes, _ = deduplicate_entities(nodes, edges, communities={})",
+    "    result = detect(tmp_path)",
+)
 
 
 def test_the_default_install_has_no_upstream_cli_llm_or_scipy():
@@ -154,6 +176,31 @@ def test_the_index_build_path_imports_after_the_deletions():
             + ", verinoda.index, verinoda.benchmark.runner")
     r = _run([sys.executable, "-c", code], cwd=ROOT, env=_clean_env())
     assert r.returncode == 0, r.stderr[-2000:]
+
+
+def test_the_port_script_deletes_the_upstream_tests_of_the_removed_surface():
+    """A re-sync (tools/port_upstream.py) copies upstream's tests whole and deletes those of the removed
+    surface by a text rule (D186). The rule must see every form such a test takes, not only an import of
+    a deleted module (a file that mixes them with tests of kept code is deleted whole and trimmed by hand
+    again), and it must fire on none of the files the port keeps as upstream wrote them."""
+    spec = importlib.util.spec_from_file_location("port_upstream", ROOT / "tools" / "port_upstream.py")
+    port = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(port)
+    rule = port._TEST_OF_DELETED
+    assert not [line for line in REMOVED_SURFACE_LINES if not rule.search(line)]
+    assert not [line for line in KEPT_LINES if rule.search(line)]
+    # the files trimmed or rewritten by hand carry a header that names the deleted modules; a re-sync
+    # replaces them with upstream's version before the rule runs (checked against that version by hand,
+    # docs/UPSTREAM.md: it is deleted whole)
+    kept_whole, wrongly_deleted = 0, []
+    for p in sorted((ROOT / "tests_upstream").glob("test_*.py")):
+        text = p.read_text(encoding="utf-8")
+        if "Verinoda patch (D186)" in text:
+            continue
+        kept_whole += 1
+        if rule.search(text):
+            wrongly_deleted.append(p.name)
+    assert kept_whole > 100 and not wrongly_deleted, (kept_whole, wrongly_deleted)
 
 
 # -- wheel build --------------------------------------------------------------------

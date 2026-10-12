@@ -29,10 +29,19 @@ enters this repository. It:
 5. writes the upstream commit SHA to `verinoda/project_index/UPSTREAM_COMMIT`;
 6. deletes the upstream surface Verinoda does not ship (`DELETED` in the
    script; the inventory is under [Removed in D186](#removed-in-d186)) and
-   every upstream test that imports one of those modules or runs the upstream
-   CLI. A test file that mixes such tests with tests of kept code is deleted
-   whole by the script and trimmed by hand instead (the trimmed files are
-   listed under [Modified](#modified)): re-apply the trims after a re-sync.
+   every upstream test that imports one of those modules, runs the upstream
+   CLI or uses a name the kept modules lost with them (`push_to_neo4j`,
+   `convert_google_workspace_file` and `google_workspace=`, `dedup_llm_backend=`,
+   the skill bodies and `skillgen`): `_TEST_OF_DELETED` in the script, and
+   `DELETED_TESTS` for a test of that surface that names none of it. A test
+   file that mixes such tests with tests of kept code is deleted whole by the
+   script and trimmed by hand instead (the trimmed files are listed under
+   [Modified](#modified)): re-apply the trims after a re-sync. Checked on
+   2026-10-12 against the files as they stood before D186 (`git show`; no
+   upstream checkout here, so the script itself was not re-run): the rule
+   deletes all 94 files that left and all 23 trimmed or rewritten by hand, and
+   none of the 173 kept whole. `tests/test_packaging.py` pins the forms it
+   must see and that it fires on no kept file.
 
 Files under `verinoda/project_index/` are hand-edited only for the local
 changes listed under [Modified](#modified), each marked `Local change (Verinoda)`
@@ -225,7 +234,7 @@ it were kept and the files trimmed (listed under [Modified](#modified)).
 | `tests_upstream/conftest.py` | appended port-adjustment block (above) |
 | `project_index/__init__.py` (D186, marked "Verinoda patch") | no lazy `to_wiki` entry: `wiki.py` left with the upstream CLI surface |
 | `detect.py` (import block, `classify_file`, `detect()`, `detect_incremental()`), `export.py` (import block), `dedup.py` (`deduplicate_entities`), `build.py` (`build`, `build_merge`), `serve.py` (header; the server cut from the end of the file), `ingest.py` (header, `ingest`), `reflect.py` (`OUTCOMES`), `watch.py` (`_rebuild_code`'s product line) (D186, each marked "Verinoda patch") | the edits the removal of the LLM, PR and media layer forced, as listed under [Removed in D186](#removed-in-d186). `verinoda/incremental.py` pins the digests of `build.py` and `export.py` (`PINNED`: the incremental update reproduces their builder); the pin follows every edit of the two, after the fuzz of `tests/test_incremental.py` is re-run |
-| `tests_upstream/test_detect.py`, `test_dedup.py`, `test_file_slice.py`, `test_partial_cache.py`, `test_hyperedge_member_shapes.py`, `test_semantic_cache_out_root.py` (D186, each marked "Verinoda patch"); `tests_upstream/test_backend_extras.py` (rewritten, marked) | the tests of the LLM layer, of `dedup_llm_backend` and of the Google Workspace conversion were cut out; `test_backend_extras.py` keeps the two extras invariants (`[all]` is the union, the version-gated dependencies are packaged) and lost the `[anthropic]`, PostgreSQL and `_backend_pkg_hint` cases |
+| `tests_upstream/test_detect.py`, `test_dedup.py`, `test_file_slice.py`, `test_partial_cache.py`, `test_hyperedge_member_shapes.py`, `test_semantic_cache_out_root.py` (D186, each marked "Verinoda patch"); `tests_upstream/test_backend_extras.py` (rewritten, marked) | the tests of the LLM layer, of `dedup_llm_backend` and of the Google Workspace conversion were cut out; `test_backend_extras.py` keeps the two extras invariants (`[all]` is the union, the version-gated dependencies are packaged) and lost the `[anthropic]`, PostgreSQL and `_backend_pkg_hint` cases. A re-sync deletes these seven files whole too (the script's rule): re-apply the trims and the rewrite |
 | `tests_upstream/test_cjs_module_extension.py`, `test_duplicate_annotation_edges.py`, `test_export_path_length.py`, `test_god_nodes_exclude_hubs.py`, `test_indirect_call_nested_closure_shadow.py`, `test_indirect_dispatch.py`, `test_indirect_dispatch_assign_return.py`, `test_indirect_dispatch_getattr.py`, `test_js_dynamic_import_affected.py`, `test_js_dynamic_imports.py`, `test_no_dedup_flag.py`, `test_query_induced_edges.py`, `test_reflect.py`, `test_scala_self_type.py`, `test_terraform_modules.py`, `test_unverified_semantic_shrink.py` (D186, each marked "Verinoda patch") | the tests of the removed upstream CLI, `affected`, `diagnostics` and `wiki` were cut out of files that also test kept code (an `affected` query over an extracted graph, a CLI run next to a `watch._rebuild_code` run, ...); the tests kept are upstream's. A re-sync deletes these files whole (the script's rule): re-apply the trims |
 | `extractors/csharp.py` `_resolve_csharp_type_references` (local change, D65) | a dangling type reference finds the first placeholder of its label through a dict built once, not a scan of all nodes per reference; the same graph, the pass 4.2 s -> 0.05 s on a 591-file C# repository |
 | `extractors/engine.py` call binding, `extractors/go.py`, `extractors/rust.py` (local change, D65) | a member call binds to a same-file definition only through the method's own receiver (`self`/`cls`, `this`, `$this`, Ruby `self`/`self.class`, the Go receiver, Rust `self`/`Self::`/`Type::`, also with a turbofish) or a receiver whose type the file states (Go: a parameter, a local or package variable of `&T{}` / `T{}` / a constructor `NewT()`, a struct field, a method promoted from an embedded struct; PHP: a typed parameter, `$x = new T()`, a typed or promoted property, `$this->p = new T()`); an untyped PHP receiver binds only to the one same-named method of another class of the file; Python `super().m()` binds to an in-file base's `m` in C3 order (past `object`) or not at all; `self.m()` prefers the own class; bare Go/Rust calls never bind to a method. `cache._AST_CACHE_SCHEMA` is 7 |
