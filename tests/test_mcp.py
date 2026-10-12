@@ -1015,6 +1015,33 @@ def test_show_lead_adds_the_first_leads_source_lines(repo, tools):
     assert "lead_lines" not in plain and plain["leads"] == res["leads"]  # the same leads, by default without lines
 
 
+def test_lead_lines_are_read_under_the_repository_only(repo, tools):
+    # show="lead" reads a path the result cites; the path comes from the index, which a repository can ship, so it goes
+    # through paths.contained_path: a drive-relative name (`C:foo.py` joins to C:foo.py on Windows), `..` and a link
+    # out of the tree are refused (the Task 2 review of D186)
+    assert tools._lead_lines("C:foo.py", 1, 2) is None
+    assert tools._lead_lines("../" + repo.name + "/orders/service.py", 1, 2) is None
+    assert tools._lead_lines(r"\\server\share\x.py", 1, 2) is None
+    assert tools._lead_lines("orders/service.py", 1, 2)  # a file of the repository reads
+    # a link inside the repository that points outside it: the old lexical guard let it through
+    outside = repo.parent / "outside"
+    outside.mkdir(exist_ok=True)
+    (outside / "x.py").write_text("secret = 1\n", encoding="utf-8")
+    link = repo / "link"
+    if not link.exists():
+        if sys.platform == "win32":
+            subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(outside)], check=True, capture_output=True)
+        else:
+            link.symlink_to(outside, target_is_directory=True)
+    try:
+        assert tools._lead_lines("link/x.py", 1, 1) is None
+    finally:
+        if sys.platform == "win32":
+            subprocess.run(["cmd", "/c", "rmdir", str(link)], check=False, capture_output=True)
+        else:
+            link.unlink()
+
+
 def test_plan_audit_equals_core(repo, tools, analysis):
     from verinoda import analysis as core_analysis
 

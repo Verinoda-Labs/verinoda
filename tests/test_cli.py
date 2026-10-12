@@ -114,13 +114,22 @@ def test_doctor_json_never_prints_secret_values(repo):
     assert "search_index: generation" in r.stdout and "lexicon:" in r.stdout and "research.network = cache" in r.stdout
 
 
-def test_graph_state_reports_lock_and_files_behind(repo, capsys, tmp_path):
+def test_graph_state_reports_lock_and_files_behind(repo, capsys, tmp_path, monkeypatch):
     """The editor mod's status line reads the index lock and the files behind from this one command (D186)."""
     import threading
 
-    from verinoda import buildlock
+    from verinoda import buildlock, freshness
 
+    seen: dict = {}
+    real_check = freshness.check
+
+    def spy(repo_, **kw):
+        seen.update(kw)
+        return real_check(repo_, **kw)
+
+    monkeypatch.setattr(freshness, "check", spy)
     out = run_cli(capsys, "graph-state", "--repo", str(repo), "--json")
+    assert seen.get("record") is False  # polled every second during a build: a look, never a write into .verinoda
     d = json.loads(out)
     assert d["locked"] is False and d["behind"] == 0 and d["state"] == "fresh"
     assert run_cli(capsys, "graph-state", "--repo", str(repo)).strip() == "graph: fresh"

@@ -77,6 +77,7 @@ const live = {
   graphSince: null as number | null,
   graphFiles: 0,
   stalledBehind: 0, // files the graph is behind on with no build coming; /verinoda-update takes them in
+  noGraph: false, // a .verinoda folder without a graph (`verinoda init` without `update`): nothing to be fresh
   isSlow: false,
   isUnknown: false,
   failed: null as { n: number; error: string } | null,
@@ -160,6 +161,7 @@ export function indexState(): { state: IndexState; line: string } {
   }
   if (!live.isAllowed) return at('untrusted', 0, `index at ${live.root} not trusted · verinoda trust ${live.root}`, { error: live.root })
   if (live.isRunning) return at('updating', live.runningCount, `updating (${plural(live.runningCount)})…`)
+  if (live.noGraph) return at('noindex', 0, `index folder at ${live.root} has no graph · verinoda update`, { error: live.root })
   if (live.failed !== null) {
     return at('failed', live.failed.n, `update failed · ${plural(live.failed.n)} kept for /verinoda-update`, { error: live.failed.error })
   }
@@ -230,7 +232,7 @@ async function checkEdit($: EngineInterface, root: string, file: string): Promis
   return note
 }
 
-type GraphState = { locked: boolean; behind: number }
+type GraphState = { locked: boolean; behind: number; state?: string }
 
 // `update --fast` takes the text in at once and rebuilds the graph in a background `verinoda update`. The graph has
 // caught up when no build holds the lock and no file changed since the latest snapshot (the background build records
@@ -242,7 +244,8 @@ async function graphState($: EngineInterface, root: string): Promise<GraphState 
     const { exitCode, stdout } = await runCli($, ['graph-state', '--repo', root, '--json'])
     if (exitCode !== 0) return undefined
     const d = JSON.parse(stdout) as Partial<GraphState>
-    return typeof d.locked === 'boolean' && typeof d.behind === 'number' ? { locked: d.locked, behind: d.behind } : undefined
+    if (typeof d.locked !== 'boolean' || typeof d.behind !== 'number') return undefined
+    return { locked: d.locked, behind: d.behind, ...(typeof d.state === 'string' ? { state: d.state } : {}) }
   } catch {
     return undefined
   }
@@ -258,7 +261,9 @@ async function checkGraph($: EngineInterface): Promise<void> {
   publish($)
   const state = await graphState($, root)
   live.isChecking = false
+  live.noGraph = state?.state === 'no_index'
   if (state === undefined) live.isUnknown = true
+  else if (live.noGraph) { /* an index folder with no graph yet: said as such, never as fresh */ }
   else if (state.locked) background(watchGraph($, root, state.behind))
   else if (state.behind > 0) live.stalledBehind = state.behind
   else live.freshAt = await $.clock.now()
@@ -424,7 +429,7 @@ async function reindex($: EngineInterface): Promise<Outcome> {
   if (pending.size === 0 && live.isGraphBehind) {
     return { code: 'graph-fresh', n: 0, text: 'text index fresh; the graph is still being rebuilt' }
   }
-  if (pending.size === 0 && live.stalledBehind === 0 && live.failed === null) return { code: 'fresh', n: 0, text: 'index already fresh' }
+  if (pending.size === 0 && live.stalledBehind === 0 && live.failed === null && !live.noGraph) return { code: 'fresh', n: 0, text: 'index already fresh' }
   if (live.isGraphBehind) {
     // the background build holds the lock; `update` would wait for it, so the files wait instead
     publish($)
@@ -438,6 +443,7 @@ async function reindex($: EngineInterface): Promise<Outcome> {
   live.runningCount = count
   pending.clear()
   live.stalledBehind = 0
+  live.noGraph = false // the update builds the graph; a failure is said by `failed`
   live.failed = null
   live.isSlow = false
   live.isUnknown = false

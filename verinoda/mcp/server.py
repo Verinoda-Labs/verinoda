@@ -1526,13 +1526,13 @@ class AtlasTools:
         return self._run("analyze", go, need="graph", keep=ANALYZE_KEEP)
 
     def _lead_lines(self, rel: str, start: int, end: int) -> str | None:
-        """Source lines for analyze's ``show="lead"``: a path the result cites, read under the repository only."""
-        p = Path(rel)
-        if p.is_absolute() or ".." in p.parts:
-            return None
+        """Source lines for analyze's ``show="lead"``: a path the result cites, read under the repository only
+        (:func:`verinoda.paths.contained_path`: a drive-relative ``C:foo.py`` or a link out of the tree is refused)."""
         from verinoda.evidence import read_lines
+        from verinoda.paths import contained_path
 
-        return read_lines(self.repo / p, start, end)
+        p = contained_path(self.repo, rel)
+        return read_lines(p, start, end) if p is not None else None
 
     def plan_audit(self, analysis_id: str, refresh: bool = True) -> dict:
         def go():

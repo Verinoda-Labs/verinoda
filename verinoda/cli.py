@@ -459,7 +459,7 @@ def cmd_graph_state(args) -> int:
 
     repo = _repo(args)
     locked = buildlock.is_locked(repo)
-    fresh = freshness.check(repo)
+    fresh = freshness.check(repo, record=False)   # the mod polls this every second during a build: a look, not a write
     behind = fresh.get("count", 0) if fresh.get("checked") else 0
     state = "building" if locked else "no_index" if not fresh.get("checked") else "behind" if behind else "fresh"
 

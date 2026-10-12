@@ -27,7 +27,8 @@ type Run = { argv: string[]; cwd: string | undefined }
 // names, spelled as Windows spells it), the trust list `verinoda trust --list` answers, and a record of every run.
 function world(on: On, opts: {
   cwd?: string; existing?: string[]; path?: string; trusted?: Trusted[] | 'fails'; update?: { exitCode: number }
-  graph?: { locked: boolean; behind: number }[]; checks?: { exitCode: number; stdout: string }[]
+  graph?: { locked: boolean; behind: number; state?: string }[]; checks?: { exitCode: number; stdout: string }[]
+  start?: { locked: boolean; behind: number; state?: string } // what the session-start look at the graph finds
 } = {}) {
   const runs: Run[] = []
   const registered: string[] = []
@@ -65,8 +66,9 @@ function world(on: On, opts: {
     }
     if (cmd === 'graph-state') {
       if (!isStartChecked) {
-        isStartChecked = true // the session-start look at the graph finds it fresh; `graph` answers the watcher
-        return { value: { exitCode: 0, stdout: '{"locked": false, "behind": 0, "state": "fresh"}', stderr: '' } } as never
+        isStartChecked = true // the session-start look at the graph finds it fresh (or `start`); `graph` answers the watcher
+        const first = opts.start ?? { locked: false, behind: 0, state: 'fresh' }
+        return { value: { exitCode: 0, stdout: JSON.stringify(first), stderr: '' } } as never
       }
       const g = opts.graph ?? [{ locked: false, behind: 0 }]
       return { value: { exitCode: 0, stdout: JSON.stringify(g[Math.min(graphCalls++, g.length - 1)]), stderr: '' } } as never
@@ -388,6 +390,20 @@ describe('the project', () => {
 })
 
 describe('re-index robustness', () => {
+  test('an index folder without a graph is said as such, never as fresh, and /verinoda-update builds it', async ($, on) => {
+    // `verinoda init` without `update`: graph-state answers no_index with nothing behind; the line used to say fresh
+    const clock = mock.clock(on)
+    mock.store(on)
+    const { of, statuses } = world(on, { start: { locked: false, behind: 0, state: 'no_index' } })
+    await $.session.start(START)
+    await clock.settle()
+    expect(statuses.at(-1)).toBe(`Verinoda: index folder at ${ROOT} has no graph · verinoda update`)
+    const res = await $.command.run(run('verinoda-update'))
+    expect(res).not.toEqual(expect.objectContaining({ text: expect.stringContaining('already fresh') }))
+    expect(of('update').length).toBe(1)
+    expect(statuses.at(-1)).not.toContain('no graph')
+  })
+
   test('a failed update keeps the files, and /verinoda-update tries again', async ($, on) => {
     mock.clock(on)
     mock.store(on)
