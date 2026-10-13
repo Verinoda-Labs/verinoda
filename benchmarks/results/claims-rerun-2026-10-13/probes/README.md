@@ -16,6 +16,11 @@ lists them all.
 | C | the first rule unchanged, plus a `prompt.submit` hook attaching one sentence of context to the user's turn | 1 of 3; the attached text was in no transcript: `prompt.submit` does not fire for a `-p` prompt, so C equals the first rule |
 | P | the committed configuration (320c0b0 / 380e6a0): B3's rule, B2's hook, the server's description and status rule changed in `verinoda/mcp/server.py` instead of the mod | 6 of 6 |
 
+One difference from a harness session: the probe's copies were named by the task id (`probe/copies/<task id>/`), and the
+copy's path is the first line of the prompt, so every trap session could read "trap-1" there; the harness names its copies
+by a hash for that reason (D185's review). Whether that changed a call decision was not measured; the committed
+`probe_rule.py` uses the hashed name.
+
 Costs in `summary.json` are not comparable between variants: a variant's first sessions write a new system-prompt
 prefix to the prompt cache and six concurrent sessions each paid for it (B3 and P: $0.12-0.14 a session; B2, whose
 prefix B had cached minutes before: $0.03-0.05). The re-run's 24 pairs are the cost measurement; these are not.

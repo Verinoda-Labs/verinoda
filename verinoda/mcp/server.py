@@ -72,8 +72,14 @@ from verinoda.paths import configure_index_env
 
 configure_index_env()  # before anything imports verinoda.project_index
 
-from verinoda.paths import (ATLAS_DIRNAME, atlas_dir, contained_path, evidence_root_allowed,  # noqa: E402
-                            graph_path, receiver_calls_path)
+from verinoda.paths import (  # noqa: E402
+    ATLAS_DIRNAME,
+    atlas_dir,
+    contained_path,
+    evidence_root_allowed,
+    graph_path,
+    receiver_calls_path,
+)
 
 TOOL_NAMES: tuple[str, ...] = (
     "project_query",

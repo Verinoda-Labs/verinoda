@@ -191,8 +191,9 @@ tek oturumluk denemeler gözlemdir, katı atıf kontrolü D185'in (eski araçla 
 
 - **Modelsiz benchmark, sekiz küme (işlenmiş sonuç: `benchmarks/results/compare-2026-10-12-branch/`):** dalın c678d46
   sürümünde olgu kaybı da kazancı da yok (sorgu 284/319 → 284/319, analyze 285/319 → 285/319); `analyze` soru başına token'ı
-  86 sorunun 14'ünde düştü (-9 ile -87), hiçbirinde artmadı. D186'nın tamamından sonraki koşu henüz yapılmadı.
-- **Hüküm denetimi (koşuldu, çıktısı commit'lenmedi):** 39 vaka, yanlış `met` 1 (`forge-maxheat-declared`), tavan üstü 0,
+  86 sorunun 14'ünde düştü (-9 ile -87), hiçbirinde artmadı. D186'nın tamamından sonraki koşu (`compare-2026-10-13-after-d186/`)
+  ve son incelemenin düzeltmelerinden sonraki koşu (`compare-2026-10-13-after-review/`) da olgu kaybı ve kazancı göstermedi.
+- **Hüküm denetimi (`benchmarks/results/verdict-audit-2026-10-13/`, dört JSON):** 39 vaka, yanlış `met` 1 (`forge-maxheat-declared`), tavan üstü 0,
   korunan kontrol 15/22; ilk iki dalga öncesinde ve sonrasında aynı yedi kontrol kayıp. `DESIGN.md` D39 satırı 19/22 diyordu
   (2026-09-26, `benchmarks/results/verdict-audit-2026-09-26/after.json`); HEAD'de 15/22 çıktı ve fark nedeni araştırılmadı. Satır
   artık ikisini de tarihiyle söylüyor.
@@ -238,7 +239,8 @@ tek oturumluk denemeler gözlemdir, katı atıf kontrolü D185'in (eski araçla 
 ### 5.3 Ölçülmedi
 
 - **Doğruluk eşitliği.** Yeniden tasarlanan aracın bir modelle doğruluğunun düz Claude'a eşit ya da farklı olduğu bu koşudan
-  çıkmaz: 30 görev, çoğu tek tekrar, düz kolda 2 yanlış olgulu cevap. Tek bir değişikliğin etkisi de ölçülmedi: iki yapılandırma
+  çıkmaz: 27 ayrı görev (maliyet örneğinin 24'ü ve altılının 3'ü daha; 21'i tek, 6'sı üç tekrar), düz kolda 2 yanlış olgulu
+  cevap. Tek bir değişikliğin etkisi de ölçülmedi: iki yapılandırma
   birlikte farklıdır (GUIDE'sız istem, çağrı kuralı, yalın `analyze`, 575b2a5 kodu). Dolar 24 çiftte ölçüldü (yukarıda); 1,1-1,2
   katlık model tuttu.
 - Modelin ilk Read'inin 1. ipucunu izleyip izlemediği; `show="lead"`'in etkisi (kapalı; Verinoda kolunun kendi model çağrıları

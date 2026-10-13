@@ -10,9 +10,10 @@ produces the Graphify comparison was run again on the fixed tree (commit 575b2a5
 Result: **no fact lost, no fact gained**, per question, on all eight sets against `compare-2026-10-13-after-d186/`:
 `verinoda_retrieve_text` 284/319 -> 284/319, `verinoda_analyze` 285/319 -> 285/319. Tokens per question (chars/4):
 identical on every set for both approaches, except `verinoda_analyze` on orders_app_tr, 1,471 -> 1,475 (the mean over
-its questions; the fix pass changed the wording of a why-unknown). The comparison script is the session's
-`compare_sets.py` (fact ids per question and `score.tokens`, approach by approach); its output is the three lines
-above.
+its questions; the fix pass changed the wording of a why-unknown). The comparison script is
+`benchmarks/agent_compare/compare_sets.py` (fact ids per question and `score.tokens`, approach by approach); its output
+is the three lines above. It does not read `score.sha256`, which differs on every `verinoda_analyze` row between the two
+folders while `chars` differs on one: the hash covers text the comparison does not (not examined).
 
 Files: `<set>.json` (schema 3 result per set), `<set>.log`, `run_all.sh` (the commands; `<OUT>` was this folder's
 scratch copy), `run_all.log` (start and end lines with the wall time per set: 8-52 s).

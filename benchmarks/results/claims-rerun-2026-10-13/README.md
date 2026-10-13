@@ -283,7 +283,7 @@ length and form as well. The hand check of 40 judged claims (`hand_check.md`, no
 
 - The effect of any single change (the rule's wording, the corrected reminder, the `analyze` description, the lean result, the
   GUIDE's removal). Only the two configurations are compared, once.
-- Accuracy parity or a difference: 30 tasks, one repeat for 21 of them, 2 false-fact answers in the plain arm.
+- Accuracy parity or a difference: 27 distinct tasks (24 of the cost sample and 3 more among the six), one repeat for 21 of them, 2 false-fact answers in the plain arm.
 - The `show="lead"` variant of 4.1b (no call used it) and any second 24-pair sample.
 - Whether the first-tool rate (37 of 39) holds on other repositories, other question kinds or another model; the two misses were
   both what-does-it-affect questions.

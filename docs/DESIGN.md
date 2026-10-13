@@ -18017,15 +18017,17 @@ re-derived); **not measured**.
   question's found-fact set identical (no fact lost, none gained); `analyze` tokens per question lower on 14 of the 86 questions
   (-9 to -87), higher on none. Python 3.12.0 against the baseline's 3.13.14, Leiden clustering (graspologic-native installed),
   timings not compared. The same sets after all of D186 are among the runs below that have not been made.
-- **The verdict audit (run, output not committed).** `verinoda benchmark verdict-audit --split all` at HEAD before the redesign and
+- **The verdict audit (`benchmarks/results/verdict-audit-2026-10-13/`: before, after each wave and after the final review).** `verinoda benchmark verdict-audit --split all` at HEAD before the redesign and
   again after waves 1 and 2: 39 cases, wrong met 1 (`forge-maxheat-declared`), above ceiling 0, controls kept **15 of 22**, the
   same seven controls lost each time. The figure is not new: the table in section 133.3 (`benchmarks/results/host-intent-2026-10-01/`)
   has 15/22 in all three conditions. The D39 row at the top of this document gave 19 of 22 (dev 12 of 13, held-out 7 of 9), the
   figure of 2026-09-26 in `benchmarks/results/verdict-audit-2026-09-26/after.json`, where the controls lost were `pyloop-why-adr`,
   `forge-maxheat-declared` and `verinoda-mcp-size-env`. Why the audit at HEAD keeps 15 where that file keeps 19 is **not
-  investigated**: the output of the HEAD runs was not committed, so the seven controls they lost are not listed here and no cause
-  is named. The row now carries both figures with their dates. The plan commits a before and after pair under
-  `benchmarks/results/verdict-audit-2026-10-1x/`.
+  investigated**: no cause is named; the seven controls lost at HEAD (`pyloop-why-adr`, `webui-renderlist-callers`,
+  `glow-config-load-callers`, `forge-addheat-callers`, `mixmod-coolall-callers`, `forge-maxheat-declared`,
+  `verinoda-mcp-size-env`) are the same before and after D186 and are listed in the README of
+  `benchmarks/results/verdict-audit-2026-10-13/`, which holds the before, after-wave and after-review JSONs. The row now
+  carries both figures with their dates.
 - **Where the gold file sits in the leads (session-local, offline).** The 100 SWE-bench `analyze` outputs of D184, re-ranked with
   the new lead order (one path extraction for both orders; the gold files from the study's `results.jsonl`): the gold file is at
   rank 1 in 31 of 100 in the order the model read, 60 of 100 under the new one; in the top three 46 -> 76; in the top eight
@@ -18125,8 +18127,9 @@ re-derived); **not measured**.
   post-rename name (backlog row 22.9). Over all 63 sessions the judge found an incorrect fact in 2 of 24 plain and 3 of 39 Verinoda
   answers (the three guzzle ones); the study's primary measure shows no claim (-0.083, -0.208 to 0), and its blinding failed again
   (69.8% of arms guessed). Citations: lenient plain 98.5%, Verinoda 99.0%; strict plain 78.8%, Verinoda 82.6% (D185's strict
-  figures above: 0.803 and 0.793; the strict "wrong" verdicts were not hand-checked). With 30 tasks, one repeat for most, and
-  2 false-fact answers in the plain arm, accuracy parity or a difference is not measurable from this run.
+  figures above: 0.803 and 0.793; the strict "wrong" verdicts were not hand-checked). With 27 distinct tasks (the 24 of the
+  cost sample and 3 more among the six; 21 with one repeat, 6 with three) and 2 false-fact answers in the plain arm, accuracy
+  parity or a difference is not measurable from this run.
 
 **Not measured, listed once.** Accuracy parity or a difference with a model (the run above is too small, and it measures two
 configurations, not one change); what a model does with the shorter skill text; whether the model's first Read follows
@@ -18206,8 +18209,10 @@ during iteration" in 0.2-0.3% of calls under churn, in whichever tool was iterat
 Minor and left as recorded in the ledger: a `cli` setting spelled with its Windows extension is not found on PATH; `more: true`
 in text and compare modes carries no next call; the `quoted` bodies are cut independently of the rows; a when-question that fell
 back to the newest commits carries no marker of it; a sub-question judged `met_with_inference` keeps that status when the
-critique later lowers its only claim to `weak_inference`; `scip_reader`'s docstring names a deleted module; the import block of
-`mcp/server.py` carries a ruff I001 that predates the branch. One finding was refuted: the mod's rule and the server's status
+critique later lowers its only claim to `weak_inference`; `scip_reader`'s docstring names a deleted module; the local import block
+of `map_view` in `mcp/server.py` carries a ruff I001 that predates the branch (the module-level one that D186's Task 5 added was
+formatted away in the handover commit; the per-file lint rule compares counts, and the count had stayed equal only because an
+unused import went away at the same time). One finding was refuted: the mod's rule and the server's status
 rule name different sets of verified statuses by design (the rule names the two a history answer carries).
 `tests/test_paths.py` (new): lexical rejection before the file system is asked, a plain relative file, a symlinked root outside
 the repository, the work-tree top of a subfolder project, no evidence root joined outside the helper, a root on a share refused
