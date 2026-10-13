@@ -251,7 +251,9 @@ and not adjusted. With 24 tasks and 2 false-fact answers in the plain arm none o
 | strict (`claims_mech_strict.py`): confirmed / wrong | 204 / 55 (78.8 %) | 246 / 52 (82.6 %) | 97 / 11 (89.8 %) |
 
 No citation was `missing` or `not_repo` in either check. The D185 lenient shares were 97.5 % (plain) and 95.8 % (Verinoda); the
-strict check was not run on the D185 answers, so its figures have no earlier counterpart. The lenient check is the upper bound the
+strict check over the D185 answers (run in the D185 work folder on 2026-10-12, output not committed; `docs/DESIGN.md` 158.3) gave
+905 / 216 / 6 of 1,127 for plain (80.3 %) and 1,047 / 254 / 20 of 1,321 for Verinoda (79.3 %): both arms are higher here on
+fewer citations, and no interval was computed for either run. The lenient check is the upper bound the
 D185 README describes; the strict one reads only the cited lines and whole words, and its `wrong` verdicts were not hand-checked
 here, so they are not a count of false citations.
 
