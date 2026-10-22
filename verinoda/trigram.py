@@ -178,9 +178,11 @@ _TABLES = ("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);"
 
 
 def _open(db: Path) -> sqlite3.Connection:
+    from verinoda.store import wal
+
     conn = sqlite3.connect(str(db), timeout=120, isolation_level=None)
     try:
-        conn.execute("PRAGMA journal_mode=WAL")
+        wal(conn, 120)   # searches opening a new index together (the MCP server and a hook, threads of one)
         conn.execute("PRAGMA synchronous=NORMAL")
         row = None
         try:

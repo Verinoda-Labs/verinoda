@@ -384,8 +384,13 @@ def db_path_for(g) -> Path:
 
 
 def _connect(db: Path | str, *, timeout: float = 30.0) -> sqlite3.Connection:
+    from verinoda.store import wal
+
     conn = sqlite3.connect(str(db), timeout=timeout)
-    conn.execute("PRAGMA journal_mode = WAL" if str(db) != ":memory:" else "PRAGMA journal_mode = MEMORY")
+    if str(db) != ":memory:":
+        wal(conn, timeout)   # readers and a build opening a new index together
+    else:
+        conn.execute("PRAGMA journal_mode = MEMORY")
     conn.execute("PRAGMA synchronous = NORMAL")
     return conn
 

@@ -562,3 +562,31 @@ def test_a_word_and_its_inflections_are_one_token(family):
     """A question saying "query" meets code saying "queries" (they were quer / query before), and
     "clustered" meets "cluster" (clust; the inflected form kept its -er before)."""
     assert len({search_index.word_stem(w) for w in family}) == 1
+
+
+def test_connections_that_open_a_new_search_index_at_once_all_get_it(tmp_path):
+    # the switch to WAL takes an exclusive lock, and SQLite answers "database is locked" at once, without the busy
+    # timeout, to connections that each hold a shared lock and want it: 7 rounds in 10 of 8 threads failed
+    import threading
+
+    from verinoda import search_index as si
+
+    errors: list[Exception] = []
+    for r in range(10):
+        db = tmp_path / f"r{r}" / "search.db"
+        db.parent.mkdir()
+        gate = threading.Barrier(8)
+
+        def go(db=db, gate=gate):
+            gate.wait()
+            try:
+                si._connect(db).close()
+            except Exception as exc:  # noqa: BLE001 - the test reports any failure
+                errors.append(exc)
+
+        ts = [threading.Thread(target=go) for _ in range(8)]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+    assert errors == [], errors[:1]
