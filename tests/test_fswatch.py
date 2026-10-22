@@ -3,6 +3,7 @@ fallback to polling, and ``mcp serve --watch``."""
 
 from __future__ import annotations
 
+import os
 import struct
 import sys
 import threading
@@ -414,10 +415,15 @@ def test_windows_source_closes_its_handle_and_never_hangs(tmp_path):
     from ctypes import wintypes
 
     k = ctypes.WinDLL("kernel32", use_last_error=True)
-    k.GetHandleInformation.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+    k.GetFinalPathNameByHandleW.argtypes = [wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD]
+    root = os.path.normcase(str(tmp_path.resolve()))
 
     def is_open(h):
-        return bool(k.GetHandleInformation(h, ctypes.byref(wintypes.DWORD())))
+        # open on the watched folder: Windows hands a closed handle's number to the next handle opened, here the
+        # churn thread's file, so the number alone being valid failed this test now and then (whole-suite runs)
+        buf = ctypes.create_unicode_buffer(1024)
+        n = k.GetFinalPathNameByHandleW(h, buf, 1024, 0)
+        return 0 < n < 1024 and os.path.normcase(buf.value.removeprefix("\\\\?\\")) == root
 
     stop = threading.Event()
 
@@ -432,6 +438,7 @@ def test_windows_source_closes_its_handle_and_never_hangs(tmp_path):
     try:
         for _ in range(15):
             src = fswatch.WinSource(tmp_path)
+            assert is_open(src._h)
             time.sleep(0.02)
             t0 = time.monotonic()
             src.close()
