@@ -53,7 +53,9 @@ were read from, the set of project files, or Verinoda changes.
 from __future__ import annotations
 
 import ast
+import bisect
 import builtins
+import contextlib
 import functools
 import hashlib
 import json
@@ -62,6 +64,7 @@ import re
 import sys
 import time
 from collections import OrderedDict
+from contextvars import ContextVar
 from dataclasses import dataclass, field, replace as dc_replace
 from pathlib import Path
 
@@ -202,6 +205,25 @@ class FileCtx:
         self._script = None
         self.deps: set[Path] = set()
         self.facts = cf.module_facts_from_tree(abs_path, tree)
+        # what single_local and _escapes found for a (function, name): every site of a local asked again, and each
+        # answer is a walk of the whole function (build_parser's ~800 `sp.add_argument` walked its 1,400 lines)
+        self._locals: dict[tuple, tuple] = {}
+        self._escaped: dict[tuple, str | None] = {}
+        self._bound: dict[int, dict[str, list[ast.Name]]] = {}
+
+    def bound_names(self, scope: ast.AST) -> dict[str, list[ast.Name]]:
+        """The Name nodes that ``scope``'s own body stores or deletes, by name (nested functions, lambdas and
+        classes not entered), found in one walk per scope instead of one per site that asks."""
+        hit = self._bound.get(id(scope))
+        if hit is None:
+            body = scope.body if isinstance(scope.body, list) else [scope.body]
+            hit = {}
+            for st in body:
+                for x in cf._walk_no_scopes(st):
+                    if isinstance(x, ast.Name) and isinstance(x.ctx, (ast.Store, ast.Del)):
+                        hit.setdefault(x.id, []).append(x)
+            self._bound[id(scope)] = hit
+        return hit
 
     def script(self):
         if self._script is None:
@@ -239,6 +261,16 @@ class FileCtx:
                                                for g in cur.generators):
                 return None, f"`{n}` is a comprehension variable"
             cur = self.parents.get(id(cur))
+        key = (id(fn), n, mode, escapes)
+        hit = self._locals.get(key)
+        if hit is None:
+            hit = self._locals[key] = self._single_local(fn, n, mode, escapes)
+        return hit
+
+    def _single_local(self, fn: ast.FunctionDef | ast.AsyncFunctionDef, n: str, mode: str,
+                      escapes: bool) -> tuple[ast.Assign | None, str]:
+        """:meth:`single_local` for a name that is no comprehension variable at its site: the same for every site
+        of ``n`` in ``fn``."""
         a = fn.args
         if n in {p.arg for p in [*a.posonlyargs, *a.args, *a.kwonlyargs]} or \
                 (a.vararg and a.vararg.arg == n) or (a.kwarg and a.kwarg.arg == n):
@@ -281,6 +313,12 @@ class FileCtx:
         return st, ""  # type: ignore[return-value]
 
     def _escapes(self, fn: ast.AST, n: str, mode: str) -> str | None:
+        key = (id(fn), n, mode)
+        if key not in self._escaped:
+            self._escaped[key] = self._escapes_in(fn, n, mode)
+        return self._escaped[key]
+
+    def _escapes_in(self, fn: ast.AST, n: str, mode: str) -> str | None:
         for x in ast.walk(fn):
             if not (isinstance(x, ast.Name) and x.id == n and isinstance(x.ctx, ast.Load)):
                 continue
@@ -325,6 +363,60 @@ class FileCtx:
                 continue
             return f"`{n}` is handed to other code (line {getattr(p, 'lineno', '?')})"
         return None
+
+
+# -- jedi's name lookup ---------------------------------------------------------------------------------
+
+# jedi's Script.goto(line, column) finds the name at a position with parso's get_name_of_position, a walk of the
+# module's whole tree: a check of verinoda/cli.py (6,300 lines) made 8,600 of them, 197 million calls, half its 174 s.
+# Inside name_lookups() a parso Module answers from a list of its names sorted by position instead, with parso's
+# answer (the first name in document order with start <= position <= end). The list lives for the block: a file's
+# text does not change within one check, while a later parse may reuse and edit the same tree (parso's diff parser).
+_NAME_INDEXES: ContextVar[dict | None] = ContextVar("verinoda_name_indexes", default=None)
+_PARSO_NAME_OF_POSITION = None
+
+
+def _name_of_position(module, position):
+    indexes = _NAME_INDEXES.get()
+    if indexes is None:
+        return _PARSO_NAME_OF_POSITION(module, position)
+    hit = indexes.get(id(module))
+    if hit is None or hit[0] is not module:
+        names, leaf = [], module.get_first_leaf()
+        while leaf is not None:
+            if leaf.type == "name":
+                names.append(leaf)
+            leaf = leaf.get_next_leaf()
+        hit = indexes[id(module)] = (module, [x.start_pos for x in names], names)
+    _, starts, names = hit
+    i = bisect.bisect_right(starts, position) - 1
+    for j in (i - 1, i):   # a name ending where the next starts comes first, as in parso's walk
+        if j >= 0 and names[j].start_pos <= position <= names[j].end_pos:
+            return names[j]
+    return None
+
+
+@contextlib.contextmanager
+def name_lookups():
+    """Within the block (or the function it decorates), jedi finds names by position from a sorted list per module
+    (see above); outside it, parso's own walk. Without jedi (and parso) installed it does nothing."""
+    global _PARSO_NAME_OF_POSITION
+    if _NAME_INDEXES.get() is not None:
+        yield
+        return
+    try:
+        from parso.python import tree as ptree
+    except ImportError:
+        yield
+        return
+    if _PARSO_NAME_OF_POSITION is None:
+        _PARSO_NAME_OF_POSITION = ptree.Module.get_name_of_position
+        ptree.Module.get_name_of_position = _name_of_position
+    token = _NAME_INDEXES.set({})
+    try:
+        yield
+    finally:
+        _NAME_INDEXES.reset(token)
 
 
 # -- the checker -------------------------------------------------------------------------------------
@@ -1537,8 +1629,7 @@ class Checker:
         body = getattr(scope, "body", None)
         if not isinstance(body, list):
             return None
-        binds = [x for st in body for x in cf._walk_no_scopes(st) if isinstance(x, ast.Name) and x.id == name.id
-                 and isinstance(x.ctx, (ast.Store, ast.Del))]
+        binds = fx.bound_names(scope).get(name.id, [])
         if len(binds) != 1:
             return None
         st = fx.parents.get(id(binds[0]))
@@ -1596,9 +1687,7 @@ class Checker:
             a = fn.args
             params = [*a.posonlyargs, *a.args, *a.kwonlyargs, *[x for x in (a.vararg, a.kwarg) if x]]
             param = next((p for p in params if p.arg == name.id), None)
-            body = fn.body if isinstance(fn.body, list) else [fn.body]
-            stored = any(isinstance(x, ast.Name) and x.id == name.id and isinstance(x.ctx, ast.Store)
-                         for st in body for x in cf._walk_no_scopes(st))
+            stored = any(isinstance(x.ctx, ast.Store) for x in fx.bound_names(fn).get(name.id, ()))
             if param is not None:
                 if param.annotation is not None or stored or param is a.vararg or param is a.kwarg:
                     return False   # *args / **kwargs: a tuple / a dict by syntax, not from call sites
@@ -3836,6 +3925,7 @@ def _targets(repo: Path, paths: list[str] | None, diff: str | None
     return out, f"changed lines against {rev} (sites on unchanged lines are not checked)", notes, others, skipped
 
 
+@name_lookups()
 def check(repo: Path, paths: list[str] | None = None, *, diff: str | None = None, snippet: str | None = None,
           as_path: str | None = None, env: str | None = "auto", include_exists: bool = False,
           use_cache: bool = True, budget_s: float | None = None, trust_env: bool = True,

@@ -1835,3 +1835,55 @@ def test_a_venv_made_from_another_venv_is_followed_to_its_base(tmp_path):
     # a chain that loops back is not followed forever
     (outer / "pyvenv.cfg").write_text(f"home = {inner}\n", encoding="utf-8")
     assert cenv.base_interpreter(inner) is None or not cenv.base_interpreter(inner).is_relative_to(outer)
+
+
+def test_a_name_looked_up_by_position_is_the_one_parso_finds(tmp_path):
+    # within a check, Module.get_name_of_position answers from a sorted list of the module's names: the answer must
+    # be parso's own at every position (the first name in document order with start <= position <= end)
+    import parso
+    from parso.python.tree import PythonMixin
+
+    src = (Path(codecheck.__file__).parent / "gitexec.py").read_text(encoding="utf-8")
+    src += "\nx=a.b;y=f(a)[b].c\nlambda q:q\nclass K(A,B):pass\nprint(f'{a}{b}')\n"
+    module = parso.parse(src)
+    lines = src.splitlines()
+    with codecheck.name_lookups():
+        for line in range(1, len(lines) + 2):
+            for col in range(len(lines[line - 1]) + 2 if line <= len(lines) else 1):
+                assert module.get_name_of_position((line, col)) is PythonMixin.get_name_of_position(module, (line, col))
+
+
+def test_a_check_finds_names_by_position_without_walking_the_module_each_time(tmp_path, monkeypatch):
+    # jedi's goto(line, column) found the name with parso's get_name_of_position, a walk of the whole module per
+    # call: a check of verinoda/cli.py (6,300 lines) made 8,600 lookups, 197 million calls, half its 174 s
+    from parso.python.tree import PythonMixin
+
+    _write(tmp_path, "m.py", "import json\n\n\ndef f():\n" + "".join(f"    json.dumps({i})\n" for i in range(40)))
+    walks: list[str] = []
+    real = PythonMixin.get_name_of_position
+    monkeypatch.setattr(PythonMixin, "get_name_of_position",
+                        lambda self, pos: walks.append(type(self).__name__) or real(self, pos))
+    res = codecheck.check(tmp_path, ["m.py"], env="none", use_cache=False)
+    assert res["status"] == "checked" and "Module" not in walks, walks[:5]
+
+
+def test_a_local_name_is_looked_up_in_its_function_once(tmp_path, monkeypatch):
+    # single_local walked the whole function three times for every site of the local: build_parser's ~800
+    # `sp.add_argument(...)` walked its 1,400 lines each time (28 million nodes in one check of cli.py)
+    from verinoda import codecheck_facts as cf
+
+    body = "".join(f"    p.add_argument('--x{i}')\n" for i in range(60))
+    _write(tmp_path, "m.py", f"import argparse\n\n\ndef f():\n    p = argparse.ArgumentParser()\n{body}    return p\n")
+    walked: list[int] = []
+    real = cf._walk_no_scopes
+    monkeypatch.setattr(cf, "_walk_no_scopes", lambda node: walked.append(1) or real(node))
+    res = codecheck.check(tmp_path, ["m.py"], env="none", use_cache=False, include_exists=True)
+    assert res["status"] == "checked"
+    assert len(walked) < 200, len(walked)   # one walk of f's 62 statements, not one per site
+    # an unannotated parameter's sites and a local's one value (_untyped_param, _only_value): the same, once
+    body = "".join(f"    o.attr_{i}()\n    q.attr_{i}()\n" for i in range(60))
+    _write(tmp_path, "n.py", f"def g(o):\n    q = o.make()\n{body}")
+    walked.clear()
+    res = codecheck.check(tmp_path, ["n.py"], env="none", use_cache=False, include_exists=True)
+    assert res["status"] == "checked"
+    assert len(walked) < 400, len(walked)   # g's 121 statements walked a few times, not once per site
