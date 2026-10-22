@@ -1294,8 +1294,10 @@ def test_json_is_compact_off_a_terminal_and_indented_on_one(monkeypatch):
 
 
 def _loaded(code: str, modules: tuple[str, ...]) -> list[str]:
-    """Which of ``modules`` a fresh interpreter has loaded after running ``code`` (this checkout's package)."""
-    probe = f"{code}\nimport sys\nprint(sorted(m for m in {modules!r} if m in sys.modules))"
+    """Which of ``modules`` running ``code`` loads in a fresh interpreter (this checkout's package); one the
+    interpreter had loaded before (a site hook, another .pth) does not count."""
+    probe = (f"import sys\nbefore = set(sys.modules)\n{code}\n"
+             f"print(sorted(m for m in {modules!r} if m in sys.modules and m not in before))")
     got = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, env=_env(), cwd=ROOT,
                          check=False)
     assert got.returncode == 0, got.stderr

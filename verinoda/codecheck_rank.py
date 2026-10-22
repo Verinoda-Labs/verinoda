@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import ast
 import builtins
+import contextlib
 import hashlib
 import json
 import os
@@ -310,12 +311,14 @@ def _keep_project_words(path: Path, files: list[Path]) -> None:
         hit = _FILE_WORDS.get(f)
         if hit is not None and hit[0] is not None and hit[0][0] == f:   # never an override's snippet
             lines.append(json.dumps(list(hit[0])) + "\t" + " ".join(sorted(hit[1])))
+    tmp = path.with_suffix(f".{os.getpid()}.tmp")
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(f".{os.getpid()}.tmp")
         tmp.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
         os.replace(tmp, path)
-    except OSError:
+    except OSError:   # another process holds the kept file (Windows): this one's words stay in memory only
+        with contextlib.suppress(OSError):
+            tmp.unlink()
         return
     _FILE_READ.difference_update(names)
 

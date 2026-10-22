@@ -553,6 +553,11 @@ def test_the_project_words_are_kept_in_the_user_cache_and_only_a_changed_file_is
     assert kept is not None and kept.is_file() and repo not in kept.parents
     assert check() == []                                  # from the user cache
     _write(repo, "m1.py", "def word_pw_1():\n    return 1\n")
+    # another process holds the kept file (Windows refuses the replace): the 5 MB temporary file is not left behind
+    with monkeypatch.context() as m:
+        m.setattr(codecheck_rank.os, "replace", lambda a, b: (_ for _ in ()).throw(PermissionError(13, "in use")))
+        assert check() == ["m1.py"]
+    assert not list(kept.parent.glob("*.tmp"))
     assert check() == ["m1.py"]                           # only the file that changed
 
 
