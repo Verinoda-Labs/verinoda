@@ -28,7 +28,6 @@ import os
 import re
 import subprocess
 import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
 
@@ -165,7 +164,10 @@ def _local_directory(source: str) -> bool:
         u = urllib.parse.urlsplit(s)
         if u.scheme.lower() != "file" or u.netloc not in ("", "localhost"):
             return False
-        s = urllib.request.url2pathname(u.path)
+        # imported here: urllib.request loads http.client and email (about 40 ms of every CLI call)
+        from urllib.request import url2pathname
+
+        s = url2pathname(u.path)
         # a share hidden in the URL's path (`file:////server/share`, `file://localhost//server/share`): the same
         # connection, so the same refusal, before any look
         if s.startswith(("\\\\", "//")) or PureWindowsPath(s).drive.startswith(("\\\\", "//")):

@@ -1291,3 +1291,35 @@ def test_json_is_compact_off_a_terminal_and_indented_on_one(monkeypatch):
     monkeypatch.setattr(sys.stdout, "isatty", lambda: True, raising=False)
     assert cli._dump(obj) == '{\n  "a": [\n    1,\n    2\n  ],\n  "b": "ç"\n}'
     assert cli._dump(obj, pretty=False) == '{"a":[1,2],"b":"ç"}'
+
+
+def _loaded(code: str, modules: tuple[str, ...]) -> list[str]:
+    """Which of ``modules`` a fresh interpreter has loaded after running ``code`` (this checkout's package)."""
+    probe = f"{code}\nimport sys\nprint(sorted(m for m in {modules!r} if m in sys.modules))"
+    got = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, env=_env(), cwd=ROOT,
+                         check=False)
+    assert got.returncode == 0, got.stderr
+    return json.loads(got.stdout.strip().replace("'", '"'))
+
+
+def test_a_cli_call_reads_the_distribution_metadata_only_for_the_version():
+    # `import verinoda` looked its version up in the distribution metadata on every call: importlib.metadata
+    # is about 65 ms of the 300 a `graph-state` took, and the editor mod and the agent hooks call the CLI often
+    assert _loaded("import verinoda.cli", ("importlib.metadata",)) == []
+    code = "import importlib.metadata as m, verinoda\nprint(verinoda.__version__ == m.version('verinoda'))"
+    got = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=_env(), cwd=ROOT,
+                         check=False)
+    assert got.returncode == 0 and got.stdout.split() == ["True"], got.stderr
+
+
+def test_the_status_lines_command_loads_only_what_it_uses():
+    # `graph-state` is polled every second during a build. The claim engine (about 45 ms, for the list of
+    # `claim add` statuses), the question-plan module (about 50 ms, for the list of intents) and urllib.request
+    # (about 40 ms, for a file:// URL only) are loaded by the commands that use them
+    heavy = ("verinoda.claims", "verinoda.question_plan", "urllib.request")
+    assert _loaded("import verinoda.cli as c\nc.build_parser()\nfrom verinoda import buildlock, freshness", heavy) == []
+    from verinoda import claims, cli, question_plan
+
+    assert cli.CLAIM_ADD_STATUSES == (*claims.ORDER, "contradicted")
+    assert cli.INTENTS == question_plan.INTENTS
+

@@ -28,15 +28,20 @@ import re
 import sys
 from pathlib import Path
 
-from verinoda.claims import ORDER as _CLAIM_ORDER
 from verinoda.paths import configure_index_env, find_repo_root
 
 configure_index_env()
 
 # Statuses a user may request with `claim add --status` (still downgraded when the
 # evidence does not allow them). `stale` is not requestable: only update/scan set it
-# from a snapshot diff.
-CLAIM_ADD_STATUSES = (*_CLAIM_ORDER, "contradicted")
+# from a snapshot diff. Written out, not taken from claims.ORDER: importing the claim engine for one list cost every
+# CLI call about 45 ms (tests/test_cli.py keeps the two equal).
+CLAIM_ADD_STATUSES = ("experiment_verified", "statically_verified", "primary_source_verified", "observed",
+                      "strong_inference", "weak_inference", "unknown", "contradicted")
+# The intents `analyze --intent` takes: question_plan.INTENTS written out, since importing the question-plan module
+# to build the parser cost every CLI call about 50 ms (tests/test_cli.py keeps the two equal).
+INTENTS = ("locate", "define", "flow", "callers", "dataflow", "config", "tests", "why", "history", "impact",
+           "behaviour", "compare_reference", "performance", "architecture", "usage", "decide")
 # Claim kinds a user may give to `claim add`: each has a mechanical grader in
 # verinoda.entail (`--symbol` feeds its spec), so the claim is graded by the kind's
 # predicate instead of by term coverage (which never verifies written text).
@@ -4817,8 +4822,6 @@ class _VersionAction(argparse.Action):
 
 
 def build_parser() -> argparse.ArgumentParser:
-    from verinoda.question_plan import INTENTS
-
     p = argparse.ArgumentParser(
         prog="verinoda",
         description="Evidence-first codebase analysis (derived from Graphify; not an official Graphify release).",
