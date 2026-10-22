@@ -39,8 +39,10 @@ entry points call :func:`configure_index_env` before importing it.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+from contextvars import ContextVar
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ATLAS_DIRNAME = ".verinoda"
@@ -395,6 +397,24 @@ def ignored_settings_note(repo: Path) -> str | None:
 
 _RESOLVED: dict[str, Path] = {}
 _TOPS: dict[str, Path | None] = {}
+# the answers of contained_path inside one_look(); None outside a block
+_LOOKED: ContextVar[dict | None] = ContextVar("verinoda_contained", default=None)
+
+
+@contextlib.contextmanager
+def one_look():
+    """Within the block (or the function it decorates), :func:`contained_path` resolves each (root, rel) once: one
+    analysis asked about the same 128 files 1,429 times, each a resolve (0.33 s on Windows). The memo ends with
+    the block, so a link made later is seen by the next call; inside it the window is the one a check followed by a
+    read already has. A nested block uses the outer one's memo."""
+    if _LOOKED.get() is not None:
+        yield
+        return
+    token = _LOOKED.set({})
+    try:
+        yield
+    finally:
+        _LOOKED.reset(token)
 
 
 def escapes_lexically(rel: str) -> bool:
@@ -428,11 +448,17 @@ def contained_path(root: Path, rel: str) -> Path | None:
     index, the store or a config goes through here, which makes a ``root / f`` elsewhere safe by construction."""
     if escapes_lexically(str(rel)):
         return None
-    p = Path(root) / rel
+    memo = _LOOKED.get()
+    key = (str(root), str(rel))
+    if memo is not None and key in memo:
+        return memo[key]
+    p: Path | None = Path(root) / rel
     try:
         p.resolve().relative_to(_resolved(root))
     except (OSError, RuntimeError, ValueError):
-        return None
+        p = None
+    if memo is not None:
+        memo[key] = p
     return p
 
 

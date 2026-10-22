@@ -57,6 +57,35 @@ def test_contained_path_accepts_a_plain_relative_file(tmp_path):
     assert paths.contained_path(tmp_path, "a..b/.c.d") == tmp_path / "a..b" / ".c.d"
 
 
+def test_one_look_resolves_each_path_once_within_the_block_and_forgets_it_after(tmp_path, monkeypatch):
+    # one analysis asked contained_path about the same 128 files 1,429 times, each a resolve (0.33 s on Windows)
+    repo = tmp_path / "repo"
+    (repo / "pkg").mkdir(parents=True)
+    (repo / "pkg" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    outside = tmp_path / "outside"
+    (outside / "a.py").mkdir(parents=True)
+    resolved: list[str] = []
+    real = Path.resolve
+    monkeypatch.setattr(Path, "resolve", lambda self, *a, **k: resolved.append(self.name) or real(self, *a, **k))
+    with paths.one_look():
+        assert [paths.contained_path(repo, "pkg/a.py") for _ in range(3)] == [repo / "pkg" / "a.py"] * 3
+        assert paths.contained_path(repo, "link/a.py") == repo / "link" / "a.py"   # no link yet: inside
+        with paths.one_look():                                                    # nested: the same memo
+            assert paths.contained_path(repo, "pkg/a.py") == repo / "pkg" / "a.py"
+    assert resolved.count("a.py") == 2
+    resolved.clear()
+    paths.contained_path(repo, "pkg/a.py")
+    paths.contained_path(repo, "pkg/a.py")
+    assert resolved.count("a.py") == 2                                           # outside a block: every call
+    if _link(repo / "link", outside):
+        with paths.one_look():                                                    # a link made after a block
+            assert paths.contained_path(repo, "link/a.py") is None
+    assert not paths._LOOKED.get()   # nothing is left behind
+    from verinoda import analysis
+
+    assert hasattr(analysis.analyze, "__wrapped__")   # every analysis is one look
+
+
 def test_a_symlinked_root_outside_the_repo_is_not_allowed(tmp_path):
     repo = tmp_path / "repo"
     (repo / ".verinoda" / "research").mkdir(parents=True)

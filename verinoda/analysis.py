@@ -66,7 +66,7 @@ from verinoda import question_plan as qp
 from verinoda import textnorm as tn
 from verinoda.analysis_view import ECHO_CHARS
 from verinoda.claims import ORDER, VERIFIED, ClaimRuleError, Claims
-from verinoda.paths import load_config
+from verinoda.paths import load_config, one_look
 from verinoda.snapshot import current_state, git
 from verinoda.store import Store, new_id, now
 
@@ -3265,6 +3265,7 @@ def graph_path_exists(repo: Path) -> bool:
     return graph_path(repo).exists()
 
 
+@one_look()  # each (root, path) is resolved once per analysis
 def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budget | None = None,
             run_tests: bool = False, challenge: bool = True, max_claims: int = 12, graph=None,
             observe: bool = False, refresh: str = "auto", intent: str | None = None) -> dict:
