@@ -3112,10 +3112,23 @@ REFRESH_BUSY_WAIT_SMALL = 10.0  # and waits this long for another build of it (a
 REFRESH_MODES = ("auto", "inline", "skip")
 
 
+def _outdated_extraction(repo: Path) -> dict | None:
+    """``{"was", "now"}`` when another extraction than this install's built the graph (an upgrade), else None.
+    `verinoda update` rebuilds such a graph once even when no file changed; analyze does the same, or its answers
+    cite what the old extractor made of every unchanged file."""
+    from verinoda import buildlock
+
+    if not graph_path_exists(repo):
+        return None
+    was, now = buildlock.recorded_extraction(repo), buildlock.extraction_stamp(repo)
+    return None if was == now else {"was": was, "now": now}
+
+
 def _refresh_estimate(repo: Path, store: Store, snap: dict, state: dict,
-                      g=None) -> tuple[float | None, list[str], bool]:
+                      g=None, outdated: bool = False) -> tuple[float | None, list[str], bool]:
     """``(expected seconds, changed files, graph rebuild needed)`` of refreshing the index now
-    (``g``: the loaded graph, which spares reading graph.json)."""
+    (``g``: the loaded graph, which spares reading graph.json; ``outdated``: the graph is rebuilt whatever
+    changed, :func:`_outdated_extraction`)."""
     from verinoda import buildlock, selffiles, workflow
     from verinoda.snapshot import changed_files
 
@@ -3143,7 +3156,7 @@ def _refresh_estimate(repo: Path, store: Store, snap: dict, state: dict,
     if g is not None:
         in_graph = {f for _n, d in g.G.nodes(data=True) if (f := d.get("source_file"))}
     try:
-        graph = workflow._graph_affected(repo, diff, in_graph)
+        graph = outdated or workflow._graph_affected(repo, diff, in_graph)
     except Exception:  # noqa: BLE001 - unknown: assume the expensive path
         graph = True
     if not graph:
@@ -3170,23 +3183,23 @@ def slow_refresh(repo: Path, snap: dict, est: float | None, changed: list[str], 
 
 
 def _refresh_index(store: Store, repo: Path, snap: dict | None, state: dict, mode: str, budget: Budget,
-                   step, unknown, extra_unc: list[str], g=None) -> dict:
+                   step, unknown, extra_unc: list[str], g=None, outdated: dict | None = None) -> dict:
     """Step 0 of :func:`analyze`: refresh the index, or say why the answer uses the previous one.
 
     Returns what happened (``ran``, ``seconds``, ``skipped``, ``stale_files``...) plus ``_snapshot``,
     the snapshot the analysis stands on. The time a refresh takes is given back to the budget.
-    ``g``: the graph already loaded (the MCP server's), if any."""
+    ``g``: the graph already loaded (the MCP server's), if any. ``outdated``: :func:`_outdated_extraction`."""
     from verinoda import buildlock, workflow
 
     if mode not in REFRESH_MODES:
         raise ValueError(f"refresh must be one of {', '.join(REFRESH_MODES)}, not {mode!r}")
-    info: dict = {"ran": False}
+    info: dict = {"ran": False, **({"extraction": outdated} if outdated else {})}
     skip_why = None
     changed: list[str] = []
     if snap is not None and graph_path_exists(repo):
-        est, changed, rebuild = _refresh_estimate(repo, store, snap, state, g)
+        est, changed, rebuild = _refresh_estimate(repo, store, snap, state, g, outdated=bool(outdated))
         info["changed_count"] = len(changed)
-        if not changed:  # nothing the index reads has changed: the snapshot stands, no update is run
+        if not changed and not outdated:  # nothing the index reads has changed: the snapshot stands, no update
             step("refresh_index", "working tree unchanged for the index; not refreshed")
             return {**info, "_snapshot": snap}
         if mode == "skip":
@@ -3226,17 +3239,21 @@ def _refresh_index(store: Store, repo: Path, snap: dict | None, state: dict, mod
             return {**info, "_snapshot": prev}
         else:
             info["ran"] = True
-            step("refresh_index", f"working tree changed; re-indexed ({res.get('changed_count')} files, "
+            why = "working tree changed" if changed or not outdated else "an older extraction built the graph"
+            step("refresh_index", f"{why}; re-indexed ({res.get('changed_count')} files, "
                                   f"{took:.1f} s, not charged to the budget), "
                                   f"{len(res.get('stale') or [])} claim(s) marked stale")
             return {**info, "changed_count": res.get("changed_count"), "_snapshot": res["snapshot"]}
     # answered from the previous index: said once, and on every claim that cites a changed file
     files = info.get("stale_files") or []
     more = info.get("stale_count", 0) - len(files[:5])
+    if files:
+        predates = (f"the index predates {info.get('stale_count', 0)} changed file(s) ("
+                    + ", ".join(files[:5]) + (f", +{more}" if more > 0 else "") + ")")
+    else:
+        predates = f"an older extraction built the index ({(outdated or {}).get('was')})"
     unknown({"question": "does the index describe the current working tree?",
-             "why": f"the index predates {info.get('stale_count', 0)} changed file(s) ("
-                    + ", ".join(files[:5]) + (f", +{more}" if more > 0 else "")
-                    + f"); not refreshed: {skip_why}; this answer uses the previous index",
+             "why": f"{predates}; not refreshed: {skip_why}; this answer uses the previous index",
              "next_step": info["next_step"]})
     step("refresh_index", f"skipped: {skip_why}; answering from snapshot {(snap or {}).get('id')}")
     return {**info, "_snapshot": snap}
@@ -3295,8 +3312,10 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
     extra_unc: list[str] = []
     refresh_info: dict | None = None
     stale_all: set[str] = set()
-    if snap is None or snap["tree_hash"] != state["tree_hash"]:
-        refresh_info = _refresh_index(store, repo, snap, state, refresh, budget, step, unknown, extra_unc, g=graph)
+    outdated = _outdated_extraction(repo) if snap is not None else None
+    if snap is None or snap["tree_hash"] != state["tree_hash"] or outdated:
+        refresh_info = _refresh_index(store, repo, snap, state, refresh, budget, step, unknown, extra_unc, g=graph,
+                                      outdated=outdated)
         snap = refresh_info.pop("_snapshot")
         stale_all = set(refresh_info.pop("_stale_all", None) or ())
     if snap is None:  # nothing indexed to stand on
@@ -3304,7 +3323,9 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
                   "snapshot": None, "claims": [], "unknowns": unknowns, "critique": [], "steps": steps}
         result["usage"] = budget.usage()
         return result
-    g = graph if graph is not None else index.load(repo)
+    # a graph handed in describes the index before a refresh this call ran (the MCP server hands its kept graph
+    # over when the tree is unchanged, which a rebuild for an older extraction does not need)
+    g = graph if graph is not None and not (refresh_info or {}).get("ran") else index.load(repo)
     commit = snap["commit_sha"]
     lex = _lexicon(repo, g, store, snap, step)
 

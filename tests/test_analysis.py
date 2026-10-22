@@ -426,6 +426,46 @@ def test_analysis_refreshes_a_changed_tree_before_citing(tmp_path):
         st.close()
 
 
+def test_analysis_rebuilds_a_graph_an_older_extraction_built_even_when_no_file_changed(tmp_path, monkeypatch):
+    # `verinoda update` and index_update rebuild a graph whose recorded extraction stamp is not this install's (an
+    # upgrade); analyze looked only at the tree hash, so after an upgrade it cited what the old extractor made of
+    # every unchanged file until something else ran an update (the D186 final review)
+    from verinoda import buildlock, index
+    from verinoda.paths import index_dir
+
+    repo = _copy_example(tmp_path / "orders_app")
+    workflow.init(repo)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        stats = index_dir(repo) / buildlock.STATS_NAME
+        data = json.loads(stats.read_text(encoding="utf-8"))
+        data["extraction"] = "s0-older"
+        stats.write_text(json.dumps(data), encoding="utf-8")
+        # a project whose rebuild is slow: answered from the old graph, which the answer says
+        with monkeypatch.context() as m:
+            m.setattr(analysis, "REFRESH_SMALL_PROJECT", 0)
+            m.setattr(buildlock, "last_build_seconds", lambda repo: 999.0)
+            res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        ir = res["index_refresh"]
+        assert ir["ran"] is False and "999" in ir["skipped"] and ir["extraction"]["was"] == "s0-older", ir
+        why = next(u["why"] for u in res["unknowns"] if "does the index describe" in (u.get("question") or ""))
+        assert "an older extraction built the index (s0-older)" in why and "not refreshed" in why
+        # the MCP server hands its kept graph over when the tree is unchanged: after the rebuild it is not used (an
+        # empty one stands in for the old graph here; the answer must come from the graph the rebuild wrote)
+        kept = index.load(repo)
+        kept.G = kept.G.__class__()
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False, graph=kept)
+        ir = res["index_refresh"]
+        assert ir["ran"] is True and ir["changed_count"] == 0, ir
+        assert any(c["text"].startswith("`compute_total()` is defined at") for c in res["claims"]), res["claims"]
+        assert buildlock.recorded_extraction(repo) == buildlock.extraction_stamp(repo)
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        assert res.get("index_refresh") is None  # rebuilt once: the next call stands on it
+    finally:
+        st.close()
+
+
 def test_entry_point_that_writes_directly_is_a_one_node_path(tmp_path):
     """An entry point that is itself the sink must not crash the flow step."""
     repo = tmp_path / "mini"
