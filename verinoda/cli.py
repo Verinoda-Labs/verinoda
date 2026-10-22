@@ -1738,6 +1738,9 @@ def cmd_datapack(args) -> int:
     if args.with_paths and args.what not in (None, "packs"):
         raise SystemExit("error: --with applies to the summary and `datapack packs`, not to a tag, score or "
                          "function lookup")
+    if args.what not in (None, "packs") and not args.name:
+        raise SystemExit(f"error: `datapack {args.what}` needs a name: the tag, objective, team, boss bar or "
+                         "function id (ns:path); `datapack` alone summarises them all")
     res = datapack.lookup(_repo(args), args.what, args.name, with_paths=args.with_paths)
     _emit(args, res, lambda r: print(datapack.render(r)))
     return 0 if res["status"] == "found" else 2
