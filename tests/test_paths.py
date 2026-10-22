@@ -86,6 +86,30 @@ def test_one_look_resolves_each_path_once_within_the_block_and_forgets_it_after(
     assert hasattr(analysis.analyze, "__wrapped__")   # every analysis is one look
 
 
+def test_the_project_code_an_analysis_runs_makes_it_look_again(tmp_path, monkeypatch):
+    # analyze may run the project's tests (an experiment in a copy; with process isolation they run with the user's
+    # privileges and can write outside it): a path found inside before the run may lead out after it
+    from verinoda import experiments
+    from verinoda.store import open_store
+
+    repo = tmp_path / "repo"
+    (repo / "pkg").mkdir(parents=True)
+    (repo / "pkg" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_x.py").write_text("def test_x():\n    pass\n", encoding="utf-8")
+    _git(repo, "init", "-q")
+    st = open_store(repo)
+    try:
+        with paths.one_look():
+            assert paths.contained_path(repo, "pkg/a.py") is not None
+            assert paths._LOOKED.get()
+            res = experiments.run(st, repo, ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider",
+                                             "tests/test_x.py"], hypothesis="it runs")
+            assert res["outcome"] == "pass" and not paths._LOOKED.get()
+    finally:
+        st.close()
+
+
 def test_a_symlinked_root_outside_the_repo_is_not_allowed(tmp_path):
     repo = tmp_path / "repo"
     (repo / ".verinoda" / "research").mkdir(parents=True)

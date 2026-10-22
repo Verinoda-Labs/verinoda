@@ -757,6 +757,8 @@ class Store:
                 self.conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_written_by', ?)",
                                   (server_version(),))
             self.conn.commit()
+        except SchemaTooNew:
+            raise   # _schema_version rolled back and closed the connection
         except BaseException:
             if self.conn.in_transaction:
                 self.conn.rollback()

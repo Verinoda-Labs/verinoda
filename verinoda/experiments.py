@@ -106,7 +106,14 @@ from pathlib import Path, PurePosixPath
 
 from verinoda import evidence as evmod
 from verinoda import treestate
-from verinoda.paths import ignored_settings_note, is_trusted, load_config, runs_dir, user_config_path
+from verinoda.paths import (
+    forget_looks,
+    ignored_settings_note,
+    is_trusted,
+    load_config,
+    runs_dir,
+    user_config_path,
+)
 from verinoda.snapshot import list_files
 from verinoda.store import Store, new_id, now
 
@@ -1533,6 +1540,9 @@ def run(
                 so, se = b"", b"[verinoda] output unavailable: a descendant process kept the pipes open after kill"
     finally:
         stopped_now = tree_procs.stop()   # whatever the command left running (also closes the job)
+        # the project's code ran, outside the copy too under process isolation: a path the current analysis found
+        # inside the repository may have become a link out of it, so its answers are asked again
+        forget_looks()
     duration = time.monotonic() - t0
     if not timed_out and stopped_now:
         left_running = stopped_now if not left_running else left_running + max(0, stopped_now)

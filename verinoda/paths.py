@@ -417,6 +417,14 @@ def one_look():
         _LOOKED.reset(token)
 
 
+def forget_looks() -> None:
+    """Empty the memo of the one_look() block this runs in (nothing outside one): code of the project ran (a test,
+    an experiment) and may have turned a folder of the repository into a link that leads out."""
+    memo = _LOOKED.get()
+    if memo:
+        memo.clear()
+
+
 def escapes_lexically(rel: str) -> bool:
     """Does ``rel`` name something outside any root, judged before the file system is asked? Windows rules apply
     on every OS (a drive, a UNC prefix, a ``\\\\?\\`` device path, an ``x:stream`` suffix): an index or a store

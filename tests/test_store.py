@@ -388,3 +388,20 @@ def test_migrations_in_one_transaction_make_the_schema_executescript_made():
     new = Store(":memory:")
     assert schema(new.conn) == schema(old) and len(schema(old)) > 40
     assert sum(1 for s in storemod._MIGRATIONS.values() for _ in storemod._statements(s)) > 100
+
+
+def test_a_newer_schema_found_under_the_migration_lock_is_said_as_such(tmp_path, monkeypatch):
+    # another process upgraded the file between the first look and the lock: the error names the newer schema (it
+    # was a ProgrammingError on the closed connection)
+    db = tmp_path / "atlas.db"
+    Store(str(db)).close()
+    raw = sqlite3.connect(str(db))
+    raw.execute("UPDATE meta SET value = ? WHERE key = 'schema_version'", (str(SCHEMA_VERSION + 1),))
+    raw.commit()
+    raw.close()
+    real = Store._schema_version
+    calls = []
+    monkeypatch.setattr(Store, "_schema_version", lambda self: 0 if not calls.append(1) and len(calls) == 1
+                        else real(self))
+    with pytest.raises(storemod.SchemaTooNew):
+        Store(str(db))
