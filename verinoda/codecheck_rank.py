@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import ast
 import builtins
+import hashlib
 import json
 import os
 import re
@@ -97,6 +98,8 @@ class EnvNames:
 
 _ENV: dict[str, EnvNames] = {}
 _FILE_WORDS: dict[str, tuple] = {}   # path -> (stat key, words) of the project's files
+_FILE_READ: set[str] = set()         # paths of _FILE_WORDS read from their file since the user cache was written
+_KEPT_LOADED: set[str] = set()       # user-cache files of project words already read into _FILE_WORDS
 _RUNTIME: set[str] = set()
 
 
@@ -262,7 +265,59 @@ def _project_file_words(p: Path) -> frozenset:
     if len(_FILE_WORDS) > 20000:
         _FILE_WORDS.clear()
     _FILE_WORDS[str(p)] = (key, words)
+    _FILE_READ.add(str(p))
     return words
+
+
+def project_words_path(repo: Path) -> Path | None:
+    """Where the words of ``repo``'s Python files are kept between calls: the user's cache, keyed by the
+    repository's path. Each `verinoda check` (the editor mod runs one after every edit) is a new process, and
+    reading every file of the project again was most of a check (1,200 files, about 1.8 s of 4.6 s here)."""
+    d = user_cache_dir()
+    if d is None:
+        return None
+    h = hashlib.sha1(os.path.normcase(str(Path(repo).resolve())).encode("utf-8")).hexdigest()[:16]
+    return d / "names" / f"project-{h}.txt"
+
+
+def _load_project_words(path: Path) -> None:
+    """Read a kept file into _FILE_WORDS (once per process): one JSON header line, then per file the JSON of its
+    stat key, a tab and its words. An entry counts only while its file's stat key is unchanged."""
+    if str(path) in _KEPT_LOADED:
+        return
+    _KEPT_LOADED.add(str(path))
+    try:
+        with open(path, encoding="utf-8", newline="\n") as fh:
+            head = json.loads(fh.readline())
+            if not isinstance(head, dict) or head.get("version") != INDEX_VERSION:
+                return
+            for line in fh:
+                meta, _, words = line.rstrip("\n").partition("\t")
+                f, mtime, size = json.loads(meta)
+                if isinstance(f, str) and f not in _FILE_WORDS:
+                    _FILE_WORDS[f] = ((f, mtime, size), frozenset(words.split()))
+    except (OSError, ValueError, TypeError):
+        return
+
+
+def _keep_project_words(path: Path, files: list[Path]) -> None:
+    """Write the words of ``files`` to ``path`` when one of them was read from its file in this process."""
+    names = [str(p) for p in files]
+    if not _FILE_READ.intersection(names):
+        return
+    lines = [json.dumps({"version": INDEX_VERSION})]
+    for f in names:
+        hit = _FILE_WORDS.get(f)
+        if hit is not None and hit[0] is not None and hit[0][0] == f:   # never an override's snippet
+            lines.append(json.dumps(list(hit[0])) + "\t" + " ".join(sorted(hit[1])))
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(f".{os.getpid()}.tmp")
+        tmp.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+        os.replace(tmp, path)
+    except OSError:
+        return
+    _FILE_READ.difference_update(names)
 
 
 def defined_names(tree: ast.AST) -> set[str]:
@@ -359,6 +414,9 @@ class NameIndex:
         self.runtime = _runtime_names()
         self.checked = {os.path.normcase(str(c.path)) for c in checked}
         files, self.truncated = py_files(repo, [repo])
+        kept = project_words_path(repo)
+        if kept is not None:
+            _load_project_words(kept)
         words: set[str] = set()
         own: set[str] = set()
         own_kw: set[str] = set()
@@ -366,6 +424,8 @@ class NameIndex:
         for p in files:
             if os.path.normcase(str(p)) not in self.checked:
                 words |= _project_file_words(p)
+        if kept is not None:
+            _keep_project_words(kept, files)
         for c in checked:
             if c.tree is None:   # not parsed: its words count, so nothing is flagged because of it
                 words |= _words(c.text.encode("utf-8", "replace")) if c.text is not None else \

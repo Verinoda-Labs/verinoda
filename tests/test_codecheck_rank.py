@@ -526,6 +526,36 @@ def test_the_environment_index_is_kept_in_the_user_cache_and_resumed_where_its_b
         codecheck_rank._ENV.update(saved)
 
 
+def test_the_project_words_are_kept_in_the_user_cache_and_only_a_changed_file_is_read_again(tmp_path, monkeypatch):
+    # each `verinoda check` (the editor mod runs one after every edit) is a new process, and its name index read every
+    # Python file of the project again: 1,200 files, about 1.8 s of a 4.6 s check of one file in this repository
+    from verinoda import codecheck_facts
+
+    repo = tmp_path / "proj"
+    for i in range(5):
+        _write(repo, f"m{i}.py", f"def word_pw_{i}():\n    pass\n")
+    _write(repo, "a.py", "def f(x):\n    return x.word_pw_3\n")
+    reads: list[str] = []
+    real = codecheck_facts.read_text
+    monkeypatch.setattr(codecheck_facts, "read_text",
+                        lambda p: reads.append(Path(p).name) or real(p))
+
+    def check() -> list[str]:
+        for name, empty in (("_FILE_WORDS", {}), ("_FILE_READ", set()), ("_KEPT_LOADED", set())):
+            monkeypatch.setattr(codecheck_rank, name, empty, raising=False)   # a new process: nothing in memory
+        reads.clear()
+        res = codecheck.check(repo, ["a.py"], env="none", use_cache=False, include_exists=True)
+        assert _one(res, "word_pw_3")["rank"] == "low"   # defined in another file of the project
+        return sorted(r for r in reads if r.startswith("m"))
+
+    assert check() == [f"m{i}.py" for i in range(5)]
+    kept = codecheck_rank.project_words_path(repo)
+    assert kept is not None and kept.is_file() and repo not in kept.parents
+    assert check() == []                                  # from the user cache
+    _write(repo, "m1.py", "def word_pw_1():\n    return 1\n")
+    assert check() == ["m1.py"]                           # only the file that changed
+
+
 def test_a_check_whose_name_index_stopped_says_which_budget_and_that_it_continues(tmp_path, monkeypatch):
     # M6: the note names the budget that stopped this index, and the project gets no .verinoda/ for it
     _write(tmp_path, "a.py", "def f(job):\n    return job.frobnicate_zqx()\n")
