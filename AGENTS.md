@@ -7,7 +7,7 @@ runs beside the agent in a session.
 ## Where things are
 
 - `docs/ARCHITECTURE.md`: how the package is laid out. `docs/DESIGN.md`: one numbered section per shipped decision
-  (`D1` ... `D186`), each with why, what was decided, what was measured and what was not done.
+  (`D1` ... `D187`), each with why, what was decided, what was measured and what was not done.
 - `docs/BACKLOG.md`: what is to do. `verinoda backlog 13.9` prints one item. Sections 22 and 23 are what the last redesign
   (D186, 2026-10-12; its final review and re-run 2026-10-13) left.
 - `docs/CALISMA-NOTLARI.md` (Turkish): how D186 was worked (test first, lint equality, worktrees, the final review, which
@@ -26,17 +26,16 @@ runs beside the agent in a session.
   a broad fix once rewrote 88 result files.
 - Python tests: `.venv/Scripts/python.exe -m pytest tests/test_<area>.py -q` for what you changed (`pytest tests` is the whole
   suite, about 35 minutes). No `.venv` in a fresh clone: `uv venv .venv -p 3.12` then
-  `uv pip install --python .venv -e ".[mcp,precise]" pytest hypothesis ruff`. Six tests failed on a clean checkout before
-  your change (Windows 11, Python 3.12, 2026-10-10) and are not yours: `tests/test_agents.py::test_skill_templates_are_complete`
-  for `claude` and for `codex` (a template body is 243 and 242 lines long where the test allows fewer than 240),
-  `tests/test_consolidate.py::test_the_later_verification_is_kept`, `tests/test_grep_ast.py::test_bounds_are_said`,
-  `tests/test_query_language.py::test_budgets_cut_the_answer_and_say_so` and
-  `tests/test_tq_measured.py::test_an_edit_to_a_module_naming_imports_hides_measured`; `tests/test_asof.py::test_recorded_time`
-  fails now and then in a whole-suite run and passes alone. Seen since D186 (2026-10-13), each on this tree, not on a clean
-  checkout: the two skill-length cases pass; `tests/test_consolidate.py::test_the_later_verification_is_kept` and
-  `tests/test_history.py::test_a_name_resolves_through_the_index_and_is_never_replaced` pass alone (the second failed in one
-  whole-suite run); `tests/test_trigram.py::test_two_searches_at_once_do_not_fail` and the handle test of `tests/test_fswatch.py`
-  fail now and then in a whole-suite run. The whole suite was not re-run on a clean checkout after D186 (backlog 23.5).
+  `uv pip install --python .venv -e ".[mcp,precise]" pytest hypothesis ruff`. No test is known to fail (Windows 11, Python 3.12,
+  2026-10-22, D187): the whole suite gave 5388 passed and 0 failed, and in a second run 1 failed, the handle test of
+  `tests/test_fswatch.py`, whose cause was the test's and was fixed (20 of 20 runs alone since). The clean checkout before D187
+  (fa9d556) had 4 failures, each fixed in D187 (`docs/DESIGN.md` 159). Two tests seen to fail once each in earlier whole-suite
+  runs did not fail in the four of 2026-10-22: `tests/test_asof.py::test_recorded_time` and
+  `tests/test_history.py::test_a_name_resolves_through_the_index_and_is_never_replaced`.
+  `tests/test_tq_measured.py::test_an_edit_to_a_module_naming_imports_hides_measured` fails whenever you change an engine file
+  of `tq` (the modules `tq.py` and `index.py` import, at any depth): run `verinoda benchmark tq-audit` (about 70 s) and commit
+  `verinoda/data/tq_calibration.json` with its dated report folder. `pytest tests_upstream` has 37 known failures, the same on
+  the clean checkout (mostly the Terraform grammar this venv lacks; `docs/UPSTREAM.md`).
   Check on a clean checkout (a `git worktree` of `HEAD`, run from its folder so it imports its own code) before you blame
   your change for any other failure.
 - When a backlog item ships: add a section to `docs/DESIGN.md` under the next `D` number (why, decisions, measured, not done,

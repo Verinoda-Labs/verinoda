@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Since D186 the script deletes the upstream surface Verinoda removed, and the upstream tests of it, after the copy (`DELETED` in the script; `docs/UPSTREAM.md`, "Removed in D186"); the test files trimmed by hand must be trimmed again. Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D186)
+## Upgrading from 0.4.0 (D137-D187)
 
 ### D137: Trigram regex index
 
@@ -652,6 +652,32 @@ section 158. No schema change (`atlas.db` stays at v10) and no migration to run.
 - **Maintainers.** `tools/port_upstream.py` deletes the removed upstream surface and the tests of it after a sync, and
   `tools/skillgen/` is retired; the CI `upstream` job runs what remains of `tests_upstream/` (3,813 tests collected against
   5,786 before; `docs/UPSTREAM.md` has the inventory). The Python floor stays 3.10.
+
+### D187: The 2026-10-22 cleanup
+
+Faster and sturdier, with nothing to run by hand; the reasons and the measurements are in `docs/DESIGN.md` section 159. No new
+command, no MCP tool change, no new dependency; `atlas.db` stays at schema v10.
+
+- **Speed.** A CLI call starts in about half the time (`import verinoda.cli` 149 -> 60 ms on Windows: the version, the claim
+  engine and the question-plan module are loaded only when used). `verinoda check` keeps the words of the project's Python files
+  in the user cache (`names/project-<hash>.txt` in `$VERINODA_CACHE_DIR`, else `%LOCALAPPDATA%\verinoda\Cache`,
+  `~/Library/Caches/verinoda` or `~/.cache/verinoda`; derived and safe to delete), so a check after an edit reads only the files
+  that changed; the check of a large file no longer grows with
+  its sites times its length (`verinoda/cli.py`: 156.8 -> 57.1 s, the same verdicts).
+- **`analyze` after an upgrade.** Like `verinoda update`, `analyze` now rebuilds a graph that an older extraction built even when
+  no file changed. On a large project, where the rebuild would be slow, the answer comes from the old graph and an unknown says
+  so, naming `verinoda update`. `index_refresh` may carry `extraction: {"was", "now"}`.
+- **Several processes at once.** Two processes opening a new `atlas.db` together (`verinoda setup` and the MCP server, a hook and
+  a command) no longer fail with "duplicate column name" or "database is locked"; the same for `search.db` and `trigram.db`. A
+  schema migration now runs in one transaction: one that fails leaves the file as it was. A database a newer Verinoda migrated
+  meanwhile is refused with the usual "newer than this Verinoda" message.
+- **Windows.** `grep-ast`'s per-file bound and `verinoda q --timeout` now stop a search or a query on time (they never passed for
+  short runs). `consolidate --merge` keeps the later of two verifications made in the same second.
+- **Smaller fixes.** `verinoda datapack function` (or `tag`, `score`, `team`, `bossbar`) without a name says that a name is needed
+  (it looked up "None"). `verinoda tq` shows its `measured: k/n held-out` again (the calibration table was measured again for
+  the changed engine; the cells are the same).
+- **Maintainers.** `tests/test_tq_measured.py` fails whenever an engine file of `tq` changes until `verinoda benchmark tq-audit`
+  is run and its table and dated report folder are committed. `pytest tests` has no known failure on Windows any more (AGENTS.md).
 
 ## Upgrading from 0.3.2 (D60-D136)
 
