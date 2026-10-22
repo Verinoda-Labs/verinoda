@@ -18231,6 +18231,142 @@ neither `update` nor `graph-state`; the trust list is read once per session and 
 trusted; the check after edits is off by default and, on, adds one line only when a name is absent; the settings no longer know
 `auto`, `assist` or `guard`; a folder with no graph is never "fresh".
 
+## 159. The 2026-10-22 cleanup: start-up, the check of a large file, databases opened together, bounds on Windows (D187, 2026-10-22)
+
+### 159.1 Why
+
+The user asked (in Turkish) to remove what is unnecessary, raise the optimisation, delete what weakens the project and make it
+ready to use. Asked about the scope, they kept the Minecraft/JVM tools, kept the other feature families as long as they are
+useful, left the docs as they were during the work (this section, the UPGRADING note, the backlog rows and AGENTS.md's test list
+were asked for afterwards) and had the branch merged into main locally. So the work measured where time goes on the paths a
+session runs (the CLI calls of the editor mod and the hooks, `check` after an edit, `analyze`), looked for code nothing reaches,
+and took every test that failed on a clean checkout as a defect to explain: on fa9d556, this machine (Windows 11, Python 3.12),
+`pytest tests` gave 5372 passed and 4 failed. Branch `cleanup-2026-10-22`, 16 commits, merged with `--no-ff` (the merge also
+brought the D185 and D186 branches into main).
+
+### 159.2 Decisions
+
+- **Start-up loads what a command uses.** `import verinoda` looks its version up only when it is asked for (a module
+  `__getattr__`: `importlib.metadata` alone was about 65 ms of every call). The CLI writes out the statuses `claim add` takes and
+  the intents of `analyze --intent` instead of importing the claim engine and the question-plan module to build its parser (a
+  test keeps the two lists equal to `claims.ORDER` and `question_plan.INTENTS`); `gitexec` imports `urllib.request` (http.client
+  and email) only where a `file://` URL needs it.
+- **`check` keeps the project's words in the user cache.** `codecheck_rank.NameIndex` ranks the names it cannot resolve against
+  every word of the project's other Python files; each `verinoda check` is a new process, so every check read the whole project
+  again. The words are kept like the environment's name index: in the user cache (`project_words_path`, one file per repository,
+  never in the repository, so a cloned project cannot supply them), an entry used only while its file's stat key is unchanged,
+  the file written only when something was read, no temporary file left behind when the replace fails.
+- **The check of a large file is no longer quadratic.** jedi's `Script.goto(line, column)` finds the name with parso's
+  `get_name_of_position`, a walk of the whole module per call. Inside `codecheck.name_lookups()` (it decorates `check`) a parso
+  Module answers from a list of its names sorted by position, with parso's own answer (the first name in document order whose
+  start <= position <= end); the list lives for the check, since a later parse may reuse and edit the same tree, and outside a
+  check, or without parso, parso's walk answers as before. `single_local`, `_escapes`, `_only_value` and `_untyped_param` walked
+  the whole enclosing function for every site of a name: a file's check now keeps their answers per (function, name), and the
+  names a scope binds come from one walk per scope (`FileCtx.bound_names`).
+- **One analysis resolves each path once.** `contained_path` (D186's containment) resolves the joined path on every call;
+  `paths.one_look()` keeps its answers for one call of `analyze` (a nested block shares the memo, nothing changes outside one).
+  `experiments.run` empties the memo (`paths.forget_looks()`) once a child's process tree has stopped: under process isolation
+  the project's code runs with the user's privileges and may turn a folder into a link that leads out.
+- **`analyze` rebuilds a graph an older extraction built.** `verinoda update` and `index_update` rebuild once when the recorded
+  extraction stamp is not this install's (an upgrade); `analyze` looked only at the tree hash. It compares the stamps now
+  (`_outdated_extraction`) and takes the rebuild through the rule a changed tree takes (inline on a small project or a fast build,
+  else answered from the previous index with an unknown that says an older extraction built it); `index_refresh` carries
+  `{"was", "now"}`. A graph handed in (the MCP server's kept graph) is not used once this call has refreshed the index.
+- **Bounds are timed with `perf_counter`.** `grep_ast`'s per-file and total bounds and the graph query language's `--timeout`
+  took `time.monotonic()`, which steps by about 15.6 ms on Windows under Python 3.12: a file or a query that ended within one step
+  never saw its bound pass.
+- **`consolidate` breaks a same-second tie by the snapshot's order.** Snapshot times are kept to the second; the claim id decided
+  which of two duplicates verified in one second was kept. `_verified_stamp` returns (time, rowid), as `latest_snapshot` orders.
+- **Databases opened together.** `store.wal()` switches a connection's database to WAL only when it is not yet, and retries a
+  lock for the connection's timeout: the switch takes an exclusive lock, and SQLite answers "database is locked" at once, without
+  the busy timeout, to connections that each hold a shared lock and want it; `atlas.db`, `search.db` and `trigram.db` use it.
+  `Store._migrate` reads the schema version, and when a migration is due takes the write lock (`BEGIN IMMEDIATE`), reads it again
+  and runs every step in that one transaction, split into whole statements with `sqlite3.complete_statement` (a trigger's
+  `BEGIN ... END` stays one statement); `executescript` committed first and two processes both migrated. A failed migration now
+  leaves the file as it was, and a newer schema found under the lock is reported as `SchemaTooNew`.
+- **`datapack <kind>` without a name** stops with an argument error instead of looking the name `None` up.
+- **Twelve functions nothing names were deleted** (77 lines): `probe._growth`, `codecheck_ts.ts_files`,
+  `codecheck_kotlin.kotlin_files`, `selffiles._manifest_files`, `research._slugify` and `_h6`, `retrieval.label_signal`,
+  `index._py_def_ends` and `_ts_def_ends`, `references.registries.github_pull`, `references.classify._docs_python_or_url`,
+  `analysis.turkish_intents`. Found by a function-level reference graph of the package with every CLI command and MCP tool as an
+  entry point, each candidate checked by a word search over the package, the tests, `tools/`, the benchmark harness and the mod.
+- **tq's calibration table was measured again** (`verinoda benchmark tq-audit`) after the engine files changed; its cells are
+  the 2026-10-02 table's.
+- **The fswatch handle test checks the folder the handle is open on** (`GetFinalPathNameByHandleW`), not that its number is
+  valid: Windows gives a closed handle's number to the next handle opened, here the test's own file churn.
+
+### 159.3 Measured
+
+On this machine (Windows 11, Python 3.12, jedi 0.20.0, parso 0.8.7), idle, the base commit's code (a worktree of fa9d556) and the
+branch's run back to back on the same inputs; wall time, the best of 5 (3 for `check` of the small file and `analyze`, 1 for the
+large check):
+
+| | fa9d556 | D187 |
+|---|---|---|
+| `python -c pass` (the floor) | 0.055 s | 0.055 s |
+| `python -c "import verinoda.cli"` | 0.149 s | 0.060 s |
+| `verinoda --help` | 0.194 s | 0.092 s |
+| `verinoda graph-state --json` (the mod's status line) | 0.209 s | 0.127 s |
+| `check verinoda/gitexec.py --no-cache` (145 sites) | 3.32 s | 2.50 s |
+| `analyze` "How does Session.exec run a select statement?" on fastapi/sqlmodel (CLI, graph load included) | 1.70 s | 1.39 s |
+| `check verinoda/cli.py --no-cache` (6,244 sites) | 156.8 s | 57.1 s |
+
+- The large check's two JSON results are equal in every field but `elapsed_s` and `jedi.seconds` (2,982 sites exist, 3,262
+  unknown). In it, the nodes `_walk_no_scopes` yields went 28.2 -> 1.3 million, and parso's walk of a Module for a name
+  10,188 -> 0 times.
+- One analysis of the flow question resolved 1,429 paths, 128 of them distinct, before the memo.
+- Opening a new database from 8 threads at once, 10 rounds, before: `atlas.db` failed in 10 rounds ("duplicate column name:
+  plan_id"), `search.db` in 7 and `trigram.db` in 3 ("database is locked"); after: none (the trigram test runs 20 rounds).
+- An `atlas.db` the installed 0.4.0 tool wrote (schema v9) opened by fa9d556's code and by D187's: the same `sqlite_master` (33
+  tables), the same row count in every table, `schema_version` 10 in both; only `schema_written_by` names the build. The new
+  migration path makes the same schema from v0 as `executescript` did (a test).
+- `pytest tests`: fa9d556 5372 passed, 4 failed; at d9e8402 5388 passed, 0 failed; at 921465f 5389 passed, 1 failed (the fswatch
+  handle test, fixed in the test since: 20 of 20 runs alone). `pytest tests_upstream`: 37 failed, 3,646 passed, 130 skipped
+  (3,813 collected), the same 37 on fa9d556. `pytest tests/test_packaging.py -m slow` passed. Every CLI command run once on the
+  example projects (`orders_app`, `glow_mod`, `forge_mod`; 124 runs): no traceback, no time-out.
+- tq-audit: 357 held-out cases, 347 right, 3 wrong (2 at a verified status), 7 unknown; 22 cells, 3 shown, as on 2026-10-02.
+- Not measured: any agent session (the cost or accuracy of a session with Verinoda is D186's figure, not re-run); the MCP
+  server's analyze on repositories other than the one above; Linux and macOS (every timing here is this machine's); install size
+  (the dependencies did not change). The whole suite's wall time (44 min on fa9d556, 36-39 min after) is not a comparison: the
+  first run shared the machine.
+
+### 159.4 Not done
+
+- **The vendored Graphify tree's unreached code** (about 5,800 lines by a static count under `verinoda/project_index`:
+  `build_merge`, `dedup.py`,
+  the semantic cache, `ingest.py`, `file_slice.py`, `querylog.py`, `_minhash.py` and others) stays: it is never imported, so it
+  costs nothing at run time, and removing it means hand patches to thirteen upstream test files and to the re-sync recipe of
+  `docs/UPSTREAM.md`. Helpers only tests call stay too: they are the tests' way into logic the product runs under other names.
+- **The feature families** (the lab tools, references and research, the web UI, the exports) stay: the user's call, with the
+  Minecraft/JVM tools.
+- Backlog 23.3 (a): a sub-question whose only live claim is `weak_inference` is `met_with_inference` by `judge`'s own rule, so
+  re-judging after the critique would not change it; a change is a decision about the rule, not a fix. 23.4: the mod's setting
+  minors, and `graph-state` reporting an unreadable `atlas.db` as `no_index`, need a state the mod knows.
+- `paths.escapes_lexically` still refuses every `:` (23.6): an index made on Linux must not name an NTFS stream on Windows.
+- The MCP server's start-up (about 1.1 s in process) is the `mcp` SDK's import (pydantic models); the CLI still builds every
+  subcommand's parser (27 ms; a parser built per command was considered and not built).
+- `docs/OZELLIKLER-RAPORU.md` has no lines for this section, and `docs/UPSTREAM.md` still says 38 upstream failures after D186
+  (37 on 2026-10-22).
+
+### 159.5 Tests
+
+`tests/test_cli.py`: `import verinoda.cli` reads no distribution metadata and the version still equals it; building the parser and
+the imports of `graph-state` load neither the claim engine, the question-plan module nor `urllib.request`, and the written-out
+lists equal the modules'. `tests/test_codecheck_rank.py`: a second process reads no unchanged project file, a third reads only the
+edited one, a failed replace leaves no temporary file. `tests/test_codecheck.py`: the position index gives parso's answer at every
+position of `verinoda/gitexec.py` and a few edge lines; a check never walks a Module for a name; a local's 60 sites and a
+parameter's 60 sites walk their function a few times (3,739 and 14,822 walks before). `tests/test_paths.py`: `one_look` resolves
+each path once in the block and forgets it after (a junction made after a block is refused in the next); `experiments.run` empties
+the memo. `tests/test_analysis.py`: an older extraction's graph is rebuilt with no file changed, answered from the old graph with
+the unknown when the rebuild would be slow, and the answer comes from the rebuilt graph, not the one handed in.
+`tests/test_consolidate.py`: two snapshots in one second, the later verification kept. `tests/test_store.py`: 8 threads open a new
+`atlas.db` at once without an error; the transaction migrations make `executescript`'s schema; a newer schema found under the lock
+is `SchemaTooNew`. `tests/test_search_index.py` and `tests/test_trigram_robust.py`: 8 connections open a new index at once.
+`tests/test_datapack.py`: a kind without a name is an argument error. `tests/test_fswatch.py`: the handle test checks the folder.
+The tests AGENTS.md listed as failing on a clean checkout pass: `test_grep_ast.py::test_bounds_are_said`,
+`test_query_language.py::test_budgets_cut_the_answer_and_say_so`, `test_consolidate.py::test_the_later_verification_is_kept`,
+`test_tq_measured.py::test_an_edit_to_a_module_naming_imports_hides_measured` (after each tq-audit rerun).
+
 ## Sources
 
 - **Retrieval:**
