@@ -1,0 +1,205 @@
+{
+ "moved_at": "2026-10-13 01:58:43",
+ "files": 39,
+ "usage_left_in_place": 0,
+ "lines_per_file": [
+  2
+ ],
+ "manifest": {
+  "Graphify-Labs__graphify-affects-1-verinoda_guided-r1.jsonl": {
+   "bytes": 360,
+   "sha256": "53d1726667a53c9a48aea9921c7bc2da07e307f5eeda94466a3bee3e0757d568",
+   "lines": 2
+  },
+  "Graphify-Labs__graphify-why-1-verinoda_guided-r1.jsonl": {
+   "bytes": 360,
+   "sha256": "9598e4df96302396be71e4a292e9afba095f74554b31771b87fa2173587c08b0",
+   "lines": 2
+  },
+  "axios__axios-affects-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "5223eca5d793ec1dacb8f913266295235800e2b2abec15bd1b24f6717e56590a",
+   "lines": 2
+  },
+  "axios__axios-when-1-verinoda_guided-r1.jsonl": {
+   "bytes": 360,
+   "sha256": "e9e6944635c7e77a2256ce702c49e69d632d68db1b8a3826921fbcfcad823db3",
+   "lines": 2
+  },
+  "axios__axios-when-1-verinoda_guided-r2.jsonl": {
+   "bytes": 361,
+   "sha256": "c6fe0495777fbe4c998f2bd45951016a25ffe8f5c93a5fe36d0367e3a17a5bae",
+   "lines": 2
+  },
+  "axios__axios-when-1-verinoda_guided-r3.jsonl": {
+   "bytes": 356,
+   "sha256": "40b3bbb24a06cf9c6fbbbd160d4274f9bc089254b5b823260b3b55cdae9bad31",
+   "lines": 2
+  },
+  "expressjs__express-affects-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "fd60d5254d2f9f87f36cd6d126406f8f59abcab303323610fc366acf4b223ab7",
+   "lines": 2
+  },
+  "expressjs__express-when-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "0e27dd033ae33986577a010da2cb92671c43f1e737bec5737e44f3caffe5fdd0",
+   "lines": 2
+  },
+  "expressjs__express-why-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "2643dbfe2884233c76a5287f9c1ede66de1824a99e9883de9101509930989f98",
+   "lines": 2
+  },
+  "fastapi__full-stack-fastapi-template-affects-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "670ace9116b1a78bec14e853f300b307a06d60ff0c9058f6eb004172cc5fc393",
+   "lines": 2
+  },
+  "fastapi__full-stack-fastapi-template-when-1-verinoda_guided-r1.jsonl": {
+   "bytes": 360,
+   "sha256": "827f57b1696a6749730d6f71ebcdfdfd7060c5768ce9a757f15272f2d246ac6e",
+   "lines": 2
+  },
+  "fastapi__full-stack-fastapi-template-why-1-verinoda_guided-r1.jsonl": {
+   "bytes": 359,
+   "sha256": "6553a507a62d2b3d6d2535fde789254bd29f6e4899a25eeeabc3487ea6997097",
+   "lines": 2
+  },
+  "fastapi__full-stack-fastapi-template-why-1-verinoda_guided-r2.jsonl": {
+   "bytes": 361,
+   "sha256": "abb433354da9ffd30bf6e41c88ce117fcd688ae5d45ecd11c504afca887d2eb3",
+   "lines": 2
+  },
+  "fastapi__full-stack-fastapi-template-why-1-verinoda_guided-r3.jsonl": {
+   "bytes": 359,
+   "sha256": "d84838d2de92d1561438d7c4271cf17b2dfe309e1cb687d1424648d2ed8c9ddd",
+   "lines": 2
+  },
+  "fastapi__sqlmodel-affects-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "2d8ed731c0344db17b457f4e54b79c1db483a4d8f8997bbdbbb7bfdaddc615f2",
+   "lines": 2
+  },
+  "fastapi__sqlmodel-when-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "7422639ef494d0813d49f708dad7770b4646dfd8e77f758af0bfdf4679281895",
+   "lines": 2
+  },
+  "fastapi__sqlmodel-why-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "82b6a190c8159ca7206617af167ea5e9703b84b0f58f9b51c5e9127475484781",
+   "lines": 2
+  },
+  "gin-gonic__gin-affects-1-verinoda_guided-r1.jsonl": {
+   "bytes": 359,
+   "sha256": "bedaf9f9711b62189ba5bfcd26b55df98867a81a2c8d4e4d35fb74f94978d4b3",
+   "lines": 2
+  },
+  "gin-gonic__gin-trap-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "eae1be90b8f80eb537dca07e623da185df2e1dcc528c061504ff4a524f82c488",
+   "lines": 2
+  },
+  "gin-gonic__gin-trap-1-verinoda_guided-r2.jsonl": {
+   "bytes": 358,
+   "sha256": "38d1d3ddf0f2dd83aad99a48a9d0f817d4c421d8b61023a6295a29b712e2f604",
+   "lines": 2
+  },
+  "gin-gonic__gin-trap-1-verinoda_guided-r3.jsonl": {
+   "bytes": 361,
+   "sha256": "6a968d9aef849781ebe8711efb9ad4f0e64ab91f7e37d9e122cbef64baff6a0d",
+   "lines": 2
+  },
+  "gin-gonic__gin-why-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "070b1fd5ed88fadb5795d834c09e5e966f2a5c889d0f28baa343417e5a990295",
+   "lines": 2
+  },
+  "google__gson-affects-2-verinoda_guided-r1.jsonl": {
+   "bytes": 359,
+   "sha256": "139a615d9492c2302e36c8e5b863f19da6df0458dfc2980720e17be4faba6b02",
+   "lines": 2
+  },
+  "google__gson-affects-3-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "c80b98f1d4b98c110c8238a21d64aabda10107abb6169980b71af5c40e97a23c",
+   "lines": 2
+  },
+  "guzzle__guzzle-affects-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "76dd7278314bad5222ec3641eb928a6d59d6369d215f6a1be0e8704cefae3add",
+   "lines": 2
+  },
+  "guzzle__guzzle-affects-2-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "abcc579ceec70e86c87d0ec3f8c9323e232c63ad5468686f7151173e319761dd",
+   "lines": 2
+  },
+  "guzzle__guzzle-trap-1-verinoda_guided-r1.jsonl": {
+   "bytes": 358,
+   "sha256": "b44ea645496ee4ebe9a7476147e40fb427abbd7fb58759a19c2c6d0ace9128f7",
+   "lines": 2
+  },
+  "guzzle__guzzle-trap-1-verinoda_guided-r2.jsonl": {
+   "bytes": 360,
+   "sha256": "ef0d28d626fb6e143321a987df0d2ab9d3295d2b5e99d0e210cb25707e85707e",
+   "lines": 2
+  },
+  "guzzle__guzzle-trap-1-verinoda_guided-r3.jsonl": {
+   "bytes": 359,
+   "sha256": "c5e2cbae33acb3355f64a3100d0a929de19e9cb500b7d40c21cfa1462e3b8458",
+   "lines": 2
+  },
+  "junegunn__fzf-affects-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "39e02a81fc2f3d15ee90f7839bb690ca13849c9a6618a916f2db9a7d6495caf1",
+   "lines": 2
+  },
+  "junegunn__fzf-when-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "635cd68174c237c03182eb0858ae40e1fc4de2b0888ae2303b4d4ca874ab2ec7",
+   "lines": 2
+  },
+  "junegunn__fzf-why-1-verinoda_guided-r1.jsonl": {
+   "bytes": 360,
+   "sha256": "023dc815d22b85bac8419504ff98ca6de350eb842f2ccaac7583936019cb8155",
+   "lines": 2
+  },
+  "junegunn__fzf-why-1-verinoda_guided-r2.jsonl": {
+   "bytes": 361,
+   "sha256": "8747b93be8a5dd10a53a425e53f43889fdff25fa39f5bbd6a2a307d46caed843",
+   "lines": 2
+  },
+  "junegunn__fzf-why-1-verinoda_guided-r3.jsonl": {
+   "bytes": 360,
+   "sha256": "a28906654f812e3d59a63c9a73b8e5fa8f857fbbdc7a16e081757969dd412075",
+   "lines": 2
+  },
+  "sharkdp__bat-affects-1-verinoda_guided-r1.jsonl": {
+   "bytes": 360,
+   "sha256": "09220b95c06c10217c4060b43f8e97efca25dcaa7fabfba75557a2b5e7eb34a0",
+   "lines": 2
+  },
+  "sharkdp__bat-when-1-verinoda_guided-r1.jsonl": {
+   "bytes": 361,
+   "sha256": "4f827c6a3dcfcae504b92ad9485c09d52bdf360d180976c9ddf3ab726ae28095",
+   "lines": 2
+  },
+  "sharkdp__bat-when-1-verinoda_guided-r2.jsonl": {
+   "bytes": 361,
+   "sha256": "29e94d951b350bca397a051bdb491a88bd1b435f0353d6e021358d37beb2ea19",
+   "lines": 2
+  },
+  "sharkdp__bat-when-1-verinoda_guided-r3.jsonl": {
+   "bytes": 361,
+   "sha256": "46e8d6b1f74c1bfde2af2e02d8af5aa78ab360f8ff010a68a6d9dcacb3daf6af",
+   "lines": 2
+  },
+  "sharkdp__bat-why-1-verinoda_guided-r1.jsonl": {
+   "bytes": 359,
+   "sha256": "58d9bbbf80c4ffe8e0f02e5cf90144bab48e4a83c2ee89524772505af966cf7f",
+   "lines": 2
+  }
+ }
+}

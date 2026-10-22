@@ -34,8 +34,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from verinoda.project_index.ingest import OUTCOMES
 from verinoda.project_index.paths import GRAPHIFY_OUT_NAME
+
+# Verinoda patch (D186): the outcome vocabulary lives here, not in ingest.py, which lost its web fetchers
+# and keeps only `save_query_result` of what the memory loop needs (docs/UPSTREAM.md).
+OUTCOMES = ("useful", "dead_end", "corrected")
 
 _UNCATEGORIZED = "Uncategorized"
 

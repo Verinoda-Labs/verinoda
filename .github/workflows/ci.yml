@@ -1,6 +1,7 @@
 # Cross-platform CI (Windows / Linux / macOS) on every push to main and every pull request
-# (GitHub-hosted runners are free for a public repository). The ported upstream suite runs only
-# by hand: it carries 50 failures that fail on unmodified upstream too (docs/UPSTREAM.md).
+# (GitHub-hosted runners are free for a public repository). The ported upstream suite (what is left of
+# it after D186's deletions) runs only by hand: its failures on a machine are the ones unmodified
+# upstream has there (docs/UPSTREAM.md).
 name: ci
 
 on:

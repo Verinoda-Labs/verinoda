@@ -7,10 +7,12 @@ diagnose_extraction first counts it under ``exact_duplicate_edges`` and the
 run ends with an unexplained GRAPH HEALTH WARNING. Duplicates now collapse at
 extraction; anything differing in any field still survives.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 
 import collections
 
-from verinoda.project_index.diagnostics import diagnose_extraction
 from verinoda.project_index.extract import extract
 
 
@@ -56,20 +58,6 @@ def test_csharp_repeated_parameter_annotation_emits_one_edge(tmp_path, monkeypat
     r = extract([tmp_path / "Svc.cs"], cache_root=tmp_path)
     dupes = {k: v for k, v in _edge_counts(r).items() if v > 1}
     assert dupes == {}, f"exact duplicate edges emitted: {dupes}"
-
-
-def test_diagnose_reports_zero_exact_duplicates(tmp_path, monkeypatch):
-    """The health warning the issue hit is gone at the source."""
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "sample.py").write_text(
-        "from pathlib import Path\n\n\n"
-        "def two_params(a: Path, b: Path) -> None:\n"
-        "    print(a, b)\n",
-        encoding="utf-8",
-    )
-    r = extract([tmp_path / "sample.py"], cache_root=tmp_path)
-    summary = diagnose_extraction(r)
-    assert summary["exact_duplicate_edges"] == 0
 
 
 def test_differing_locations_and_contexts_survive(tmp_path, monkeypatch):

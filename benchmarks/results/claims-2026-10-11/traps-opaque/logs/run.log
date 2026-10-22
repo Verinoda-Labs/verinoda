@@ -1,0 +1,73 @@
+clone Graphify-Labs/graphify
+clone axios/axios
+clone expressjs/express
+clone fastapi/full-stack-fastapi-template
+clone fastapi/sqlmodel
+clone gin-gonic/gin
+clone google/gson
+clone guzzle/guzzle
+clone junegunn/fzf
+clone sharkdp/bat
+60 sessions to run (0 done)
+23:53:56 guzzle__guzzle-trap-1:none:r1 answer=1070 chars verinoda_calls=0 turns=4 $0.051255800000000004 13.5 s
+23:53:58 guzzle__guzzle-trap-1:none:r2 answer=1258 chars verinoda_calls=0 turns=5 $0.055210800000000004 14.8 s
+23:54:10 guzzle__guzzle-trap-1:none:r3 answer=1427 chars verinoda_calls=0 turns=4 $0.053979000000000006 13.2 s
+23:54:11 gin-gonic__gin-trap-1:none:r1 answer=1431 chars verinoda_calls=0 turns=4 $0.0515251 12.6 s
+23:54:19 guzzle__guzzle-trap-1:verinoda_guided:r1 answer=1561 chars verinoda_calls=2 turns=5 $0.09518290000000001 23.3 s
+23:54:19 guzzle__guzzle-trap-1:verinoda_guided:r2 answer=1833 chars verinoda_calls=2 turns=5 $0.0964937 23.5 s
+23:54:27 gin-gonic__gin-trap-1:none:r2 answer=1974 chars verinoda_calls=0 turns=5 $0.0590833 16.4 s
+23:54:27 gin-gonic__gin-trap-1:none:r3 answer=2140 chars verinoda_calls=0 turns=4 $0.0594225 16.2 s
+23:54:44 junegunn__fzf-trap-1:none:r1 answer=1697 chars verinoda_calls=0 turns=6 $0.0592183 16.9 s
+23:54:46 gin-gonic__gin-trap-1:verinoda_guided:r1 answer=2098 chars verinoda_calls=2 turns=5 $0.08491299999999999 20.8 s
+23:54:47 junegunn__fzf-trap-1:none:r2 answer=2393 chars verinoda_calls=0 turns=7 $0.0728669 20.1 s
+23:54:52 guzzle__guzzle-trap-1:verinoda_guided:r3 answer=2057 chars verinoda_calls=2 turns=6 $0.10003590000000001 22.7 s
+23:55:02 junegunn__fzf-trap-1:none:r3 answer=2024 chars verinoda_calls=0 turns=5 $0.057779699999999996 18.1 s
+23:55:05 expressjs__express-trap-1:none:r1 answer=1474 chars verinoda_calls=0 turns=6 $0.0608326 16.9 s
+23:55:07 gin-gonic__gin-trap-1:verinoda_guided:r2 answer=2032 chars verinoda_calls=2 turns=4 $0.0803896 16.9 s
+23:55:16 gin-gonic__gin-trap-1:verinoda_guided:r3 answer=2525 chars verinoda_calls=2 turns=4 $0.0825176 18.5 s
+23:55:20 expressjs__express-trap-1:none:r2 answer=2073 chars verinoda_calls=0 turns=6 $0.0669303 18.0 s
+23:55:22 expressjs__express-trap-1:none:r3 answer=1540 chars verinoda_calls=0 turns=6 $0.0639352 16.8 s
+23:55:36 junegunn__fzf-trap-1:verinoda_guided:r1 answer=1623 chars verinoda_calls=2 turns=6 $0.09189209999999999 22.9 s
+23:55:41 sharkdp__bat-trap-1:none:r1 answer=1489 chars verinoda_calls=0 turns=5 $0.061046500000000004 19.4 s
+23:55:43 sharkdp__bat-trap-1:none:r2 answer=1442 chars verinoda_calls=0 turns=4 $0.054047200000000004 20.0 s
+23:55:44 junegunn__fzf-trap-1:verinoda_guided:r2 answer=2172 chars verinoda_calls=2 turns=5 $0.0854715 22.3 s
+23:55:57 sharkdp__bat-trap-1:none:r3 answer=1660 chars verinoda_calls=0 turns=4 $0.0562714 15.5 s
+23:56:04 junegunn__fzf-trap-1:verinoda_guided:r3 answer=1942 chars verinoda_calls=2 turns=5 $0.0810176 21.1 s
+23:56:06 Graphify-Labs__graphify-trap-1:none:r1 answer=2269 chars verinoda_calls=0 turns=8 $0.08234730000000001 23.0 s
+23:56:10 expressjs__express-trap-1:verinoda_guided:r1 answer=1576 chars verinoda_calls=2 turns=6 $0.0907648 20.2 s
+23:56:15 Graphify-Labs__graphify-trap-1:none:r2 answer=1790 chars verinoda_calls=0 turns=6 $0.063443 17.2 s
+23:56:23 Graphify-Labs__graphify-trap-1:none:r3 answer=2143 chars verinoda_calls=0 turns=5 $0.058068100000000004 16.1 s
+23:56:29 expressjs__express-trap-1:verinoda_guided:r2 answer=1754 chars verinoda_calls=2 turns=6 $0.09350929999999999 21.0 s
+23:56:34 axios__axios-trap-1:none:r1 answer=2292 chars verinoda_calls=0 turns=6 $0.08073 18.4 s
+23:56:37 expressjs__express-trap-1:verinoda_guided:r3 answer=1613 chars verinoda_calls=2 turns=8 $0.0882849 22.5 s
+23:56:40 axios__axios-trap-1:none:r2 answer=2130 chars verinoda_calls=0 turns=5 $0.0790541 16.6 s
+23:56:56 axios__axios-trap-1:none:r3 answer=2316 chars verinoda_calls=0 turns=6 $0.0852946 22.3 s
+23:56:58 google__gson-trap-1:none:r1 answer=1995 chars verinoda_calls=0 turns=4 $0.0546167 17.2 s
+23:57:12 google__gson-trap-1:none:r2 answer=1990 chars verinoda_calls=0 turns=4 $0.0521242 15.8 s
+23:57:15 sharkdp__bat-trap-1:verinoda_guided:r1 answer=2048 chars verinoda_calls=2 turns=6 $0.11476059999999999 27.4 s
+23:57:15 google__gson-trap-1:none:r3 answer=2014 chars verinoda_calls=0 turns=4 $0.0551873 16.3 s
+23:57:17 sharkdp__bat-trap-1:verinoda_guided:r2 answer=1691 chars verinoda_calls=2 turns=5 $0.1034726 23.6 s
+23:57:27 fastapi__sqlmodel-trap-1:none:r1 answer=1477 chars verinoda_calls=0 turns=4 $0.054051600000000005 13.6 s
+23:57:32 fastapi__sqlmodel-trap-1:none:r2 answer=1473 chars verinoda_calls=0 turns=4 $0.054187599999999995 17.2 s
+23:57:43 fastapi__sqlmodel-trap-1:none:r3 answer=1306 chars verinoda_calls=0 turns=4 $0.0535429 15.8 s
+23:57:48 fastapi__full-stack-fastapi-template-trap-1:none:r1 answer=1421 chars verinoda_calls=0 turns=4 $0.046271700000000006 14.8 s
+23:57:56 fastapi__full-stack-fastapi-template-trap-1:none:r2 answer=1128 chars verinoda_calls=0 turns=5 $0.048191000000000005 12.8 s
+23:57:59 sharkdp__bat-trap-1:verinoda_guided:r3 answer=1796 chars verinoda_calls=2 turns=5 $0.1046125 25.2 s
+23:57:59 fastapi__full-stack-fastapi-template-trap-1:none:r3 answer=1055 chars verinoda_calls=0 turns=3 $0.041575 10.9 s
+23:58:20 Graphify-Labs__graphify-trap-1:verinoda_guided:r1 answer=1875 chars verinoda_calls=2 turns=5 $0.0847703 20.0 s
+23:59:07 Graphify-Labs__graphify-trap-1:verinoda_guided:r2 answer=2243 chars verinoda_calls=2 turns=6 $0.1003313 26.0 s
+23:59:23 Graphify-Labs__graphify-trap-1:verinoda_guided:r3 answer=2487 chars verinoda_calls=2 turns=5 $0.08887479999999999 21.1 s
+23:59:46 axios__axios-trap-1:verinoda_guided:r1 answer=2638 chars verinoda_calls=2 turns=5 $0.1088013 26.2 s
+23:59:58 axios__axios-trap-1:verinoda_guided:r2 answer=2522 chars verinoda_calls=2 turns=5 $0.10832040000000001 24.2 s
+00:00:18 axios__axios-trap-1:verinoda_guided:r3 answer=1738 chars verinoda_calls=2 turns=4 $0.0980242 21.7 s
+00:00:38 google__gson-trap-1:verinoda_guided:r1 answer=1897 chars verinoda_calls=2 turns=6 $0.09412910000000001 27.3 s
+00:00:57 google__gson-trap-1:verinoda_guided:r2 answer=2261 chars verinoda_calls=2 turns=6 $0.0941483 27.7 s
+00:01:16 google__gson-trap-1:verinoda_guided:r3 answer=1852 chars verinoda_calls=2 turns=6 $0.0939756 25.9 s
+00:01:37 fastapi__sqlmodel-trap-1:verinoda_guided:r1 answer=1999 chars verinoda_calls=2 turns=8 $0.1012192 26.1 s
+00:01:51 fastapi__sqlmodel-trap-1:verinoda_guided:r2 answer=1870 chars verinoda_calls=2 turns=6 $0.09160949999999998 23.0 s
+00:02:12 fastapi__sqlmodel-trap-1:verinoda_guided:r3 answer=1942 chars verinoda_calls=2 turns=6 $0.0914301 22.4 s
+00:02:13 fastapi__full-stack-fastapi-template-trap-1:verinoda_guided:r1 answer=1465 chars verinoda_calls=2 turns=4 $0.07937559999999999 15.3 s
+00:02:35 fastapi__full-stack-fastapi-template-trap-1:verinoda_guided:r2 answer=1573 chars verinoda_calls=2 turns=4 $0.0828036 16.6 s
+00:02:37 fastapi__full-stack-fastapi-template-trap-1:verinoda_guided:r3 answer=1586 chars verinoda_calls=2 turns=4 $0.0824956 17.2 s
+all done
+exit=0

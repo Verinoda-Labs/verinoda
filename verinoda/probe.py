@@ -945,15 +945,6 @@ def _project_classes(project: _Project) -> dict[str, set[str]]:
     return classes
 
 
-def _growth(times: list) -> list[float]:
-    """Growth ratios between consecutive sizes (None where a size was not measured)."""
-    out = []
-    for a, b in zip(times, times[1:]):
-        if a and b and a > 0:
-            out.append(b / a)
-    return out
-
-
 def _scaling_verdict(base_sc: dict | None, head_sc: dict | None) -> dict:
     res: dict = {"sizes": list(SCALING_SIZES)}
     for side, sc in (("base", base_sc), ("head", head_sc)):

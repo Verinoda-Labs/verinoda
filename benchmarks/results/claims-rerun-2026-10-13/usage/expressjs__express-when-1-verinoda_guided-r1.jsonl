@@ -1,0 +1,3 @@
+{"ts":1791848218.24,"surface":"cli","name":"graph-state","args_chars":87,"result_chars":44,"result_tokens_est":11,"args_tokens_est":22,"seconds":0.0555,"pid":36316,"stderr_chars":0}
+{"ts":1791848222.563,"surface":"mcp","name":"analyze","args_chars":183,"result_chars":2460,"result_tokens_est":615,"args_tokens_est":46,"seconds":1.6146,"pid":32796}
+{"ts":1791848231.173,"surface":"cli","name":"mcp","args_chars":29,"result_chars":223,"result_tokens_est":56,"args_tokens_est":8,"seconds":13.382,"pid":32796,"stderr_chars":223}

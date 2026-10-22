@@ -78,9 +78,11 @@ def test_version_and_help(tmp_path):
     r = ra("--help", cwd=tmp_path)
     assert r.returncode == 0
     for cmd in ("doctor", "init", "scan", "update", "map", "query", "trace", "analyze", "claim", "verify",
-                "challenge", "experiment", "memory", "index", "plan", "resolve", "resolve-call", "observe",
+                "challenge", "experiment", "memory", "plan", "resolve", "resolve-call", "observe",
                 "research", "benchmark"):
         assert cmd in r.stdout
+    # the upstream pass-through left with the upstream CLI (D186); `scan` still says "index a repository"
+    assert not re.search(r"^ {4}index\b", r.stdout, re.MULTILINE)
     assert ra(cwd=tmp_path).returncode == 0  # no command -> help, exit 0
     assert ra("no-such-command", cwd=tmp_path).returncode == 2
 
@@ -110,6 +112,57 @@ def test_doctor_json_never_prints_secret_values(repo):
     r = ra("doctor", "--repo", str(repo), cwd=repo)
     assert FAKE_SECRET not in r.stdout + r.stderr and "ANTHROPIC_API_KEY=set" in r.stdout
     assert "search_index: generation" in r.stdout and "lexicon:" in r.stdout and "research.network = cache" in r.stdout
+
+
+def test_graph_state_reports_lock_and_files_behind(repo, capsys, tmp_path, monkeypatch):
+    """The editor mod's status line reads the index lock and the files behind from this one command (D186)."""
+    import threading
+
+    from verinoda import buildlock, freshness
+
+    seen: dict = {}
+    real_check = freshness.check
+
+    def spy(repo_, **kw):
+        seen.update(kw)
+        return real_check(repo_, **kw)
+
+    monkeypatch.setattr(freshness, "check", spy)
+    out = run_cli(capsys, "graph-state", "--repo", str(repo), "--json")
+    assert seen.get("record") is False  # polled every second during a build: a look, never a write into .verinoda
+    d = json.loads(out)
+    assert d["locked"] is False and d["behind"] == 0 and d["state"] == "fresh"
+    assert run_cli(capsys, "graph-state", "--repo", str(repo)).strip() == "graph: fresh"
+    new = repo / "orders" / "new.py"
+    new.write_text("x = 1\n", encoding="utf-8")
+    try:
+        d = json.loads(run_cli(capsys, "graph-state", "--repo", str(repo), "--json"))
+        assert d["behind"] == 1 and d["state"] == "behind"
+        assert run_cli(capsys, "graph-state", "--repo", str(repo)).strip() == "graph: behind 1 file"
+    finally:
+        new.unlink()
+    # a build in another thread holds the lock: `building`, whatever the files say
+    held, release = threading.Event(), threading.Event()
+
+    def hold():
+        with buildlock.build_lock(repo, wait=0, purpose="test"):
+            held.set()
+            release.wait(10)
+
+    t = threading.Thread(target=hold)
+    t.start()
+    assert held.wait(10)
+    try:
+        d = json.loads(run_cli(capsys, "graph-state", "--repo", str(repo), "--json"))
+        assert d["locked"] is True and d["state"] == "building"
+    finally:
+        release.set()
+        t.join(10)
+    d = json.loads(run_cli(capsys, "graph-state", "--repo", str(repo), "--json"))
+    assert d == {"locked": False, "behind": 0, "state": "fresh"}
+    # a folder that was never indexed is not called fresh
+    d = json.loads(run_cli(capsys, "graph-state", "--repo", str(tmp_path), "--json"))
+    assert d["state"] == "no_index" and d["locked"] is False and d["behind"] == 0
 
 
 def test_update_is_noop_on_unchanged_tree(repo):
@@ -384,82 +437,6 @@ def test_update_after_edit_marks_claim_stale_via_cli(repo, tmp_path_factory):
     assert v["before"]["status"] == "stale" and v["after"]["status"] == "statically_verified"
 
 
-def test_index_passthrough_to_upstream(repo):
-    r = ra("index", "--", "--help", cwd=repo)
-    assert r.returncode == 0 and "Usage:" in r.stdout
-    assert "path" in r.stdout and "explain" in r.stdout  # upstream subcommands are reachable
-
-
-# -- `verinoda index`: upstream installers are blocked ------------------------------------
-
-def _fake_upstream(monkeypatch) -> list:
-    """Replace the upstream CLI entry with a recorder, so nothing can reach the real installers."""
-    import types
-
-    calls: list = []
-    fake = types.ModuleType("verinoda.project_index.__main__")
-    fake.main = lambda: calls.append(list(sys.argv))
-    monkeypatch.setitem(sys.modules, "verinoda.project_index.__main__", fake)
-    monkeypatch.setattr(sys, "argv", ["pytest"])
-    return calls
-
-
-def _blocked() -> list[str]:
-    from verinoda import cli
-
-    return sorted(cli._blocked_index_commands())
-
-
-@pytest.mark.parametrize("name", _blocked())
-def test_index_blocks_upstream_installers(name, monkeypatch, capsys):
-    from verinoda import cli
-
-    calls = _fake_upstream(monkeypatch)
-    for argv in (["index", "--", name], ["index", "--", name, "install", "--project"], ["index", name, "--help"]):
-        assert cli.main(argv) == 2, argv
-        err = capsys.readouterr().err
-        assert f"`verinoda index {name}` is blocked" in err and "verinoda install" in err
-    assert calls == [] and sys.argv == ["pytest"]
-
-
-def test_index_blocklist_matches_upstream_dispatch():
-    from verinoda import cli
-    from verinoda.project_index.install import _CLI_INSTALL_COMMANDS
-
-    # The static list alone covers upstream's install dispatch (every platform alias),
-    # plus the git hook and merge-driver writers from upstream cli.py.
-    assert set(_CLI_INSTALL_COMMANDS) <= cli.UPSTREAM_BLOCKED
-    assert {"install", "uninstall", "hook", "merge-driver", "skills", "claude", "codex"} <= cli.UPSTREAM_BLOCKED
-    src = (ROOT / "verinoda" / "project_index" / "cli.py").read_text(encoding="utf-8")
-    assert 'elif cmd == "hook":' in src and 'elif cmd == "merge-driver":' in src
-    # Read-only / graph commands stay reachable.
-    assert not {"query", "path", "explain", "extract", "update", "export", "hook-check", "hook-guard",
-                "god-nodes", "tree", "--help"} & set(_blocked())
-
-
-def test_index_passes_other_commands_through(monkeypatch):
-    from verinoda import cli
-
-    calls = _fake_upstream(monkeypatch)
-    assert cli.main(["index", "--", "explain", "place_order", "--graph", "g.json"]) == 0
-    assert cli.main(["index", "path", "a", "b"]) == 0
-    assert calls == [["verinoda index", "explain", "place_order", "--graph", "g.json"],
-                     ["verinoda index", "path", "a", "b"]]
-
-
-def test_index_install_blocked_end_to_end(tmp_path):
-    home, work = tmp_path / "home", tmp_path / "work"
-    home.mkdir()
-    work.mkdir()
-    env = _env(HOME=str(home), USERPROFILE=str(home), APPDATA=str(home / "AppData"),
-               XDG_CONFIG_HOME=str(home / ".config"))
-    for args in (("index", "--", "install"), ("index", "--", "claude", "install"), ("index", "--", "hook", "install"),
-                 ("index", "--", "uninstall", "--purge")):
-        r = ra(*args, cwd=work, env=env)
-        assert r.returncode == 2 and "verinoda install" in r.stderr and "Traceback" not in r.stderr, args
-    assert list(home.iterdir()) == [] and list(work.iterdir()) == []
-
-
 # -- exit codes and error handling ----------------------------------------------------
 
 def test_feedback_resolve_rejected_exits_3(repo):
@@ -560,7 +537,7 @@ def test_update_rendering_and_error_exit(monkeypatch, capsys, tmp_path):
 
 
 def test_research_git_never_reads_stdin(monkeypatch):
-    from verinoda import research
+    from verinoda import gitexec, research
 
     seen: dict = {}
 
@@ -568,7 +545,7 @@ def test_research_git_never_reads_stdin(monkeypatch):
         seen.update(kw, cmd=cmd)
         return subprocess.CompletedProcess(cmd, 0, "git version x", "")
 
-    monkeypatch.setattr(research.subprocess, "run", fake_run)
+    monkeypatch.setattr(gitexec.subprocess, "run", fake_run)  # research._git runs git through the funnel (D186)
     assert research._git(None, "--version") == (0, "git version x", "")
     assert seen["stdin"] is subprocess.DEVNULL and seen["env"]["GIT_TERMINAL_PROMPT"] == "0"
 
@@ -761,7 +738,8 @@ def test_analyze_passes_observe_and_maps_statuses_to_exit_codes(repo, capsys, mo
                 "snapshot": None, "claims": [], "unknowns": [], "critique": []}
 
     monkeypatch.setattr(analysis, "analyze", fake)
-    for status, rc in (("answered", 0), ("invalid_plan", 2), ("needs_clarification", 3)):
+    for status, rc in (("answered", 0), ("partly_answered", 0), ("unanswered", 0), ("invalid_plan", 2),
+                       ("needs_clarification", 3)):
         current["status"] = status
         run_cli(capsys, "analyze", "how is the discount applied?", "--observe", "--repo", str(repo), "--json", rc=rc)
     assert seen["observe"] is True and seen["plan"] is None and seen["run_tests"] is False
@@ -1226,35 +1204,6 @@ def test_scan_precise_and_scip(tmp_path):
     assert list(empty.iterdir()) == []
 
 
-# -- `verinoda index`: nothing under ~/.graphify -------------------------------------------------------
-
-@pytest.mark.parametrize("argv", [["clone", "https://github.com/a/b"], ["provider", "list"],
-                                  ["global", "add", "g.json"], ["extract", ".", "--global"],
-                                  ["update", ".", "--global=tag"]])
-def test_index_blocks_commands_that_write_under_home(argv, monkeypatch, capsys):
-    from verinoda import cli
-
-    calls = _fake_upstream(monkeypatch)
-    for full in (["index", "--", *argv], ["index", *argv]):
-        assert cli.main(full) == 2, full
-        err = capsys.readouterr().err
-        assert "is blocked" in err and "~/.graphify" in err and "verinoda research" in err
-    assert calls == [] and sys.argv == ["pytest"]
-    assert not set(argv) & set(cli._blocked_index_commands())  # its own reason, not the installer one
-
-
-def test_index_home_writers_blocked_end_to_end(tmp_path):
-    home, work = tmp_path / "home", tmp_path / "work"
-    home.mkdir()
-    work.mkdir()
-    env = _env(HOME=str(home), USERPROFILE=str(home), APPDATA=str(home / "AppData"))
-    for args in (("index", "--", "clone", "https://github.com/a/b"), ("index", "--", "provider", "list"),
-                 ("index", "--", "global", "list")):
-        r = ra(*args, cwd=work, env=env)
-        assert r.returncode == 2 and "~/.graphify" in r.stderr and "Traceback" not in r.stderr, args
-    assert list(home.iterdir()) == [] and list(work.iterdir()) == []
-
-
 # -- benchmark harnesses ------------------------------------------------------------------------------
 
 def test_benchmark_staleness_subcommands(tmp_path, capsys, monkeypatch):
@@ -1342,3 +1291,37 @@ def test_json_is_compact_off_a_terminal_and_indented_on_one(monkeypatch):
     monkeypatch.setattr(sys.stdout, "isatty", lambda: True, raising=False)
     assert cli._dump(obj) == '{\n  "a": [\n    1,\n    2\n  ],\n  "b": "ç"\n}'
     assert cli._dump(obj, pretty=False) == '{"a":[1,2],"b":"ç"}'
+
+
+def _loaded(code: str, modules: tuple[str, ...]) -> list[str]:
+    """Which of ``modules`` running ``code`` loads in a fresh interpreter (this checkout's package); one the
+    interpreter had loaded before (a site hook, another .pth) does not count."""
+    probe = (f"import sys\nbefore = set(sys.modules)\n{code}\n"
+             f"print(sorted(m for m in {modules!r} if m in sys.modules and m not in before))")
+    got = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, env=_env(), cwd=ROOT,
+                         check=False)
+    assert got.returncode == 0, got.stderr
+    return json.loads(got.stdout.strip().replace("'", '"'))
+
+
+def test_a_cli_call_reads_the_distribution_metadata_only_for_the_version():
+    # `import verinoda` looked its version up in the distribution metadata on every call: importlib.metadata
+    # is about 65 ms of the 300 a `graph-state` took, and the editor mod and the agent hooks call the CLI often
+    assert _loaded("import verinoda.cli", ("importlib.metadata",)) == []
+    code = "import importlib.metadata as m, verinoda\nprint(verinoda.__version__ == m.version('verinoda'))"
+    got = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=_env(), cwd=ROOT,
+                         check=False)
+    assert got.returncode == 0 and got.stdout.split() == ["True"], got.stderr
+
+
+def test_the_status_lines_command_loads_only_what_it_uses():
+    # `graph-state` is polled every second during a build. The claim engine (about 45 ms, for the list of
+    # `claim add` statuses), the question-plan module (about 50 ms, for the list of intents) and urllib.request
+    # (about 40 ms, for a file:// URL only) are loaded by the commands that use them
+    heavy = ("verinoda.claims", "verinoda.question_plan", "urllib.request")
+    assert _loaded("import verinoda.cli as c\nc.build_parser()\nfrom verinoda import buildlock, freshness", heavy) == []
+    from verinoda import claims, cli, question_plan
+
+    assert cli.CLAIM_ADD_STATUSES == (*claims.ORDER, "contradicted")
+    assert cli.INTENTS == question_plan.INTENTS
+

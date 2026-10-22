@@ -277,7 +277,6 @@ const propose = (items: unknown[], subject = 'src/a.ts') => call(PROPOSE, propos
 const report = (outcomes: unknown[], extra?: unknown[]) => call(REPORT, { outcomes, extra_changes: extra })
 const text = async (r: unknown) => String(((await r) as { result?: unknown; text?: unknown }).result ?? ((await r) as { text?: unknown }).text)
 const flat = (n: unknown): string => (typeof n === 'string' ? n : ((n as { children?: unknown[] }).children ?? []).map(flat).join(''))
-const ask = (t: string, origin: Record<string, unknown> = { kind: 'composer' }) => ({ text: t, wait: false, origin }) as never
 const COMPOSE = { model: 'm', promptModel: 'm', surfaces: ['terminal'], tools: [], outputStyle: null, traits: [] } as never
 
 type Pane = { find: (q: Record<string, unknown>) => Promise<{ props: Record<string, unknown> } | undefined>; drawn: (q?: Record<string, unknown>) => Promise<unknown>; unmount: () => Promise<void> }
@@ -354,7 +353,8 @@ describe('improve: the command and the tools', () => {
     }
   })
 
-  test("the mod's own prompts pass its hook untouched: no auto-context, no task for the gate", { options: { auto: 'nudge', assist: 'strict' } }, async ($, on) => {
+  // the auto-context and the gate went with D186; what stays is that the mod's prompts carry no context and deny no search
+  test("the mod's own prompts go out untouched: no context attached, no search denied after them", async ($, on) => {
     const w = await begin($, on)
     await run($, 'where is the parser slow?')
     expect(w.submitted[0]?.context ?? []).toEqual([])
@@ -376,9 +376,6 @@ describe('improve: the command and the tools', () => {
     expect(w.submitted[2]?.text.startsWith('Report the outcome of the items I sent')).toBe(true)
     expect(w.submitted[2]?.context ?? []).toEqual([])
     expect(((await $.tool.call({ tool: 'Grep', pattern: 'parse' } as never)) as { deny?: unknown }).deny).toBeUndefined()
-    const typed = 'Where should this be fixed? The scheduler is preempted twice in a row on SMP and the second preemption is lost.'
-    const person = await $.prompt.submit(ask(typed)) as { context?: readonly string[] }
-    expect((person.context ?? []).length).toBeGreaterThan(0) // the same hook does attach context for the person's own prompt
   })
 
   test('improve_propose draws the three groups in order, nothing selected, and says Shown when the pane is placed', async ($, on) => {

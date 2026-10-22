@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -25,6 +26,38 @@ from pathlib import Path
 from typing import Any, Iterator
 
 SCHEMA_VERSION = 10
+
+
+def wal(conn: sqlite3.Connection, timeout: float) -> None:
+    """Switch ``conn``'s database to WAL unless it is already. The switch takes an exclusive lock, and SQLite answers
+    "database is locked" at once, without the busy timeout, to connections that each hold a shared lock and want
+    it: processes or threads opening a new database together (setup and the MCP server, a hook and a search) met
+    it. Retried here for up to ``timeout`` seconds."""
+    deadline, delay = time.perf_counter() + timeout, 0.005
+    while True:
+        try:
+            if str(conn.execute("PRAGMA journal_mode").fetchone()[0]).lower() != "wal":
+                conn.execute("PRAGMA journal_mode = WAL")
+            return
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc) or time.perf_counter() > deadline:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 2, 0.2)
+
+
+def _statements(script: str) -> Iterator[str]:
+    """The statements of a migration script, each whole (the ';' inside a trigger's BEGIN ... END does not end it),
+    so a migration can run inside one transaction: executescript commits whatever is open first."""
+    buf = ""
+    for part in script.split(";"):
+        buf += part + ";"
+        if sqlite3.complete_statement(buf):
+            if buf.strip(" \t\r\n;"):
+                yield buf
+            buf = ""
+    if buf.strip(" \t\r\n;"):
+        yield buf
 
 
 class SchemaTooNew(RuntimeError):
@@ -687,29 +720,49 @@ class Store:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
         if self.path != ":memory:":
-            self.conn.execute("PRAGMA journal_mode = WAL")
+            wal(self.conn, 30)
         self._migrate()
 
     # -- lifecycle --------------------------------------------------------
-    def _migrate(self) -> None:
-        self.conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    def _schema_version(self) -> int:
         row = self.conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
         current = int(row[0]) if row else 0
         if current > SCHEMA_VERSION:
             by = self.conn.execute("SELECT value FROM meta WHERE key='schema_written_by'").fetchone()
+            if self.conn.in_transaction:
+                self.conn.rollback()
             self.conn.close()
             raise SchemaTooNew(current, by[0] if by else None)
-        for v in range(current + 1, SCHEMA_VERSION + 1):
-            self.conn.executescript(_MIGRATIONS[v])
-            self.conn.execute(
-                "INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)", (str(v),)
-            )
-        if current < SCHEMA_VERSION:  # which build wrote this schema: named when an older one refuses it
-            from verinoda.buildinfo import server_version
+        return current
 
-            self.conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_written_by', ?)",
-                              (server_version(),))
-        self.conn.commit()
+    def _migrate(self) -> None:
+        self.conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        if self._schema_version() == SCHEMA_VERSION:
+            return
+        # another process may be migrating the same file (setup and the MCP server on a new project, two commands
+        # after an upgrade): the version is read again under the write lock, and every step runs in that one
+        # transaction, so a second process waits and finds the work done instead of running it again
+        self.conn.execute("BEGIN IMMEDIATE")
+        try:
+            current = self._schema_version()
+            for v in range(current + 1, SCHEMA_VERSION + 1):
+                for stmt in _statements(_MIGRATIONS[v]):
+                    self.conn.execute(stmt)
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)", (str(v),)
+                )
+            if current < SCHEMA_VERSION:  # which build wrote this schema: named when an older one refuses it
+                from verinoda.buildinfo import server_version
+
+                self.conn.execute("INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_written_by', ?)",
+                                  (server_version(),))
+            self.conn.commit()
+        except SchemaTooNew:
+            raise   # _schema_version rolled back and closed the connection
+        except BaseException:
+            if self.conn.in_transaction:
+                self.conn.rollback()
+            raise
 
     def _check_schema(self) -> None:
         """A read-only store cannot migrate: a schema of another version is refused, never read as this one."""

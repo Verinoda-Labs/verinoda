@@ -6,13 +6,14 @@ percentile value returned identical output and utility hubs stayed at the
 top regardless of the setting. The same threshold computation cluster()
 uses now applies to the ranking, and the CLI/MCP surfaces expose it.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 from __future__ import annotations
 
 import inspect
-import json
 
 import networkx as nx
-import pytest
 
 from verinoda.project_index.analyze import god_nodes
 
@@ -78,36 +79,4 @@ def test_the_analyzer_signature_stays_backward_compatible():
 # CLI surface
 # ---------------------------------------------------------------------------
 
-def test_the_cli_command_takes_the_flag(tmp_path, monkeypatch, capsys):
-    import verinoda.project_index.__main__ as mainmod
-    from verinoda.project_index.export import to_json
-    G = _graph()
-    gp = tmp_path / "graph.json"
-    to_json(G, {0: list(G.nodes)}, str(gp))
-    monkeypatch.setattr(mainmod, "_check_skill_version", lambda *_a, **_k: None)
 
-    def run(*extra):
-        monkeypatch.setattr(mainmod.sys, "argv",
-                            ["graphify", "god-nodes", "--graph", str(gp), "--json", *extra])
-        try:
-            mainmod.main()
-        except SystemExit as exc:
-            assert exc.code in (None, 0)
-        return json.loads(capsys.readouterr().out)
-
-    assert run()[0]["label"] == "Registry"
-    filtered = run("--exclude-hubs", "90")
-    assert filtered and all(g["label"] != "Registry" for g in filtered)
-    filtered2 = run("--exclude-hubs=90")
-    assert filtered2 and all(g["label"] != "Registry" for g in filtered2)
-
-
-def test_a_bad_flag_value_is_a_usage_error(tmp_path, monkeypatch, capsys):
-    import verinoda.project_index.__main__ as mainmod
-    monkeypatch.setattr(mainmod, "_check_skill_version", lambda *_a, **_k: None)
-    monkeypatch.setattr(mainmod.sys, "argv",
-                        ["graphify", "god-nodes", "--exclude-hubs", "lots"])
-    with pytest.raises(SystemExit) as info:
-        mainmod.main()
-    assert info.value.code == 1
-    assert "--exclude-hubs" in capsys.readouterr().err

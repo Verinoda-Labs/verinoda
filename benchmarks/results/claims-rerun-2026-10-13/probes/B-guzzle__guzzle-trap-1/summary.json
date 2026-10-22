@@ -1,0 +1,19 @@
+{
+ "name": "B-guzzle__guzzle-trap-1",
+ "task": "guzzle__guzzle-trap-1",
+ "plugin_dir": "C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/mods/B",
+ "rc": 0,
+ "secs": 24.0,
+ "turns": 5,
+ "cost": 0.06768160000000001,
+ "analyze_calls": 1,
+ "verinoda_calls": 1,
+ "tools": [
+  "mcp__verinoda__analyze",
+  "Grep",
+  "Bash",
+  "Bash"
+ ],
+ "session_id": "2c58855c-e59a-4b42-a94c-88c485a056e9",
+ "answer_head": "- **What the markers are:** the `DEBUG` constant is `\">>>>>>>>\\n{request}\\n<<<<<<<<\\n{response}\\n--------\\n{error}\"` (`src/MessageFormatter.php:50`). The `>` row comes before `{request}`, the `<` row before `{response}`, and the dash row before `{error}`.\n- **Documented purpose:** `docs/middleware.m"
+}

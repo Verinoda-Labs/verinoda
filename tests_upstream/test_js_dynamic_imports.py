@@ -11,14 +11,15 @@ descending the boundary into nested named declarations — deduped so an
 AST-captured dynamic import (already a ``deferred`` ``imports_from`` edge) is
 not restated as a second ``dynamic_import`` edge.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-import networkx as nx
 
-from verinoda.project_index.affected import DEFAULT_AFFECTED_RELATIONS, affected_nodes
 from verinoda.project_index.extract import _file_node_id, extract
 
 
@@ -93,52 +94,6 @@ def test_module_scope_dynamic_import_edges(tmp_path: Path):
     assert any(e["relation"] == "dynamic_import" for e in edges)
 
 
-def test_ast_captured_dynamic_import_still_gets_a_file_level_edge(tmp_path: Path):
-    """One import() inside a function, two granularities — #2584.
-
-    This test used to assert `len(edges) == 1`, on the reasoning that the rescue would be
-    restating what the AST pass had already said. The two edges are not the same statement:
-    the AST pass anchors on `caller_nid`, which is the enclosing FUNCTION when the import()
-    is written inside one, while the rescue anchors on the FILE. Only the second is a fact
-    `affected` can walk, since it traverses file to file.
-
-    Suppressing it cost real recall: on a ~700-file TS repo `affected --depth 3` returned 39
-    of 49 truly affected files, precision 1.00, and more depth did not help — a dead end, not
-    a depth limit. The reverse walk reached the enclosing function and stopped there, because
-    the only edge pointing at it is `contains`, deliberately not in
-    DEFAULT_AFFECTED_RELATIONS.
-
-    The dedupe is still right, just keyed wrong: it now matches on (source file, target)
-    rather than target alone, so the genuinely redundant case — a module-scope import(),
-    where `caller_nid` IS the file node — still collapses to one edge. That case is pinned
-    by `test_module_scope_dynamic_import_is_still_one_fact` below.
-    """
-    _write(tmp_path / "src/dep.ts", "export const dep = 1\n")
-    importer = _write(
-        tmp_path / "src/page.ts",
-        "export async function load() {\n"
-        "    const { dep } = await import('./dep')\n"
-        "    return dep\n"
-        "}\n",
-    )
-
-    result = extract([tmp_path / "src/dep.ts", importer], root=tmp_path)
-
-    edges = _edges_to(result, "src/dep.ts")
-    page = _file_node_id(Path("src/page.ts"))
-
-    # The precise fact: which function defers the load. `explain` reads this one.
-    symbol_level = [e for e in edges if e["source"] != page]
-    assert symbol_level, f"lost the call-site edge — got {edges}"
-    assert symbol_level[0]["relation"] == "imports_from"
-    assert symbol_level[0].get("deferred") is True
-
-    # The traversable fact: this file depends on that module. `affected` reads this one.
-    file_level = [e for e in edges if e["source"] == page]
-    assert file_level, f"no file-level edge — `affected` cannot traverse this: {edges}"
-    assert file_level[0]["relation"] == "dynamic_import"
-
-
 def test_module_scope_dynamic_import_is_still_one_fact(tmp_path: Path):
     """At module scope `caller_nid` IS the file node, so the rescue is genuinely redundant.
 
@@ -154,33 +109,6 @@ def test_module_scope_dynamic_import_is_still_one_fact(tmp_path: Path):
     result = extract([tmp_path / "src/dep.ts", importer], root=tmp_path)
 
     assert len(_edges_to(result, "src/dep.ts")) == 1
-
-
-def test_static_import_alongside_dynamic_is_untouched(tmp_path: Path):
-    """The rescue pass must not disturb the AST pass it runs beside."""
-    _write(tmp_path / "src/a.ts", "export const a = 1\n")
-    _write(tmp_path / "src/b.ts", "export const b = 2\n")
-    importer = _write(
-        tmp_path / "src/main.ts",
-        "import { a } from './a'\n"
-        "export const later = async () => a + (await import('./b')).b\n",
-    )
-
-    result = extract(
-        [tmp_path / "src/a.ts", tmp_path / "src/b.ts", importer], root=tmp_path
-    )
-
-    a_edges = _edges_to(result, "src/a.ts", "imports_from")
-    assert a_edges and not any(e.get("deferred") for e in a_edges)
-
-    # The point of this test is the STATIC edge above: the rescue must leave it alone, and
-    # in particular must not mark it deferred. The dynamic side is asserted only for the
-    # property that concerns this test — every edge to b.ts is flagged as deferred one way
-    # or another, so no arrow into b.ts can be mistaken for a static dependency. Its COUNT
-    # is #2584's subject, pinned in test_ast_captured_dynamic_import_still_gets_a_file_level_edge.
-    b_edges = _edges_to(result, "src/b.ts")
-    assert b_edges
-    assert all(e.get("deferred") or e["relation"] == "dynamic_import" for e in b_edges)
 
 
 def test_tsconfig_aliased_dynamic_import_edges(tmp_path: Path):
@@ -262,16 +190,3 @@ def test_nested_named_function_calls_resolve(tmp_path: Path):
     assert ("outer", "inner") in contains, f"contains found: {contains}"
 
 
-def test_dynamic_import_is_traversed_by_affected():
-    """Emitting the edge is only half the fix: while `dynamic_import` was
-    absent from DEFAULT_AFFECTED_RELATIONS, every dynamic edge stayed invisible
-    to blast-radius traversal — including the ones the Svelte/Astro/Vue rescue
-    passes had been emitting all along."""
-    assert "dynamic_import" in DEFAULT_AFFECTED_RELATIONS
-
-    g = nx.DiGraph()
-    g.add_node("importer", label="importer.ts")
-    g.add_node("dep", label="dep.ts")
-    g.add_edge("importer", "dep", relation="dynamic_import")
-    hits = affected_nodes(g, "dep", depth=1)
-    assert any(h.node_id == "importer" for h in hits)

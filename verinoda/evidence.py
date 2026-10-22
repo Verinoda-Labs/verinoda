@@ -36,6 +36,7 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
+from verinoda.paths import contained_path, evidence_root_allowed
 from verinoda.store import Store
 
 SOURCE_RANK: dict[str, int] = {
@@ -213,7 +214,13 @@ def check_source(repo: Path, ev: dict) -> SourceCheck:
         return SourceCheck(False, "not a file/line evidence", status="gone")
     meta = ev.get("meta") or {}
     root = Path(meta.get("root") or repo)
-    p = root / ev["path"]
+    # a recorded root is read only when it is one of the roots evidence may cite, and a path only inside it (D186)
+    if meta.get("root") and not evidence_root_allowed(Path(repo), root):
+        return SourceCheck(False, "evidence root is outside the repository and its reference checkouts",
+                           status="gone")
+    p = contained_path(root, str(ev["path"]))
+    if p is None:
+        return SourceCheck(False, f"path leaves its root: {ev['path']}", status="gone")
     if not p.is_file():
         return SourceCheck(False, f"file no longer exists: {ev['path']}", status="gone")
     start, end = int(ev["line_start"]), int(ev["line_end"] or ev["line_start"])

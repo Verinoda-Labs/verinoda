@@ -1,0 +1,87 @@
+[bench] copying corpus from C:\Users\ozcin\Desktop\RepoAtlas\upstream-graphify to C:\Users\ozcin\AppData\Local\Temp\verinoda-bench-qm5x5n49\verinoda
+[bench] verinoda scan (cold)
+[bench] verinoda scan (warm)
+[bench] pass 1/1 g01 raw
+[bench] pass 1/1 g01 graphify_vendored
+[bench] pass 1/1 g01 verinoda_analyze
+[bench] pass 1/1 g01 verinoda_retrieve
+[bench] pass 1/1 g01 verinoda_retrieve_text
+[bench] pass 1/1 g02 raw
+[bench] pass 1/1 g02 graphify_vendored
+[bench] pass 1/1 g02 verinoda_analyze
+[bench] pass 1/1 g02 verinoda_retrieve
+[bench] pass 1/1 g02 verinoda_retrieve_text
+[bench] pass 1/1 g03 raw
+[bench] pass 1/1 g03 graphify_vendored
+[bench] pass 1/1 g03 verinoda_analyze
+[bench] pass 1/1 g03 verinoda_retrieve
+[bench] pass 1/1 g03 verinoda_retrieve_text
+[bench] pass 1/1 g04 raw
+[bench] pass 1/1 g04 graphify_vendored
+[bench] pass 1/1 g04 verinoda_analyze
+[bench] pass 1/1 g04 verinoda_retrieve
+[bench] pass 1/1 g04 verinoda_retrieve_text
+[bench] pass 1/1 g05 raw
+[bench] pass 1/1 g05 graphify_vendored
+[bench] pass 1/1 g05 verinoda_analyze
+[bench] pass 1/1 g05 verinoda_retrieve
+[bench] pass 1/1 g05 verinoda_retrieve_text
+[bench] pass 1/1 g06 raw
+[bench] pass 1/1 g06 graphify_vendored
+[bench] pass 1/1 g06 verinoda_analyze
+[bench] pass 1/1 g06 verinoda_retrieve
+[bench] pass 1/1 g06 verinoda_retrieve_text
+[bench] pass 1/1 g07 raw
+[bench] pass 1/1 g07 graphify_vendored
+[bench] pass 1/1 g07 verinoda_analyze
+[bench] pass 1/1 g07 verinoda_retrieve
+[bench] pass 1/1 g07 verinoda_retrieve_text
+[bench] pass 1/1 g08 raw
+[bench] pass 1/1 g08 graphify_vendored
+[bench] pass 1/1 g08 verinoda_analyze
+[bench] pass 1/1 g08 verinoda_retrieve
+[bench] pass 1/1 g08 verinoda_retrieve_text
+[bench] pass 1/1 g09 raw
+[bench] pass 1/1 g09 graphify_vendored
+[bench] pass 1/1 g09 verinoda_analyze
+[bench] pass 1/1 g09 verinoda_retrieve
+[bench] pass 1/1 g09 verinoda_retrieve_text
+benchmark set graphify_core (9 questions)  status=ok
+gold facts re-verified against the corpus: 37 checked, 0 failure(s)
+Question set provenance: questions written by: benchmark harness author (an agent, round 1), before any approach was run on the set; gold written by: same author, by reading the upstream source at 20a20d30; in sample: True; caveat: the round-3 retrieval design was made after seeing Verinoda's misses on this set (docs/DESIGN.md 3.1), so Verinoda results on it are in-sample; questions and gold have not changed since 05890a1.
+tokens: chars/4 estimate;  model: not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+graphify CLI: not run: --graphify-cmd not given
+
+index (one-off):
+  Verinoda scan: cold 13.46 s, warm 4.26 s; 4092 nodes / 8596 edges; 227 cache files
+
+| approach | facts found | via locator | pinpointed | shown | all-facts Qs | tokens mean | tokens max | facts/1k tok | shown/1k tok | pinpointed/1k tok | locators/Q | tool calls/Q | cold s (median) | warm s (median) | neg. matched | cited line lacks target |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| raw grep+read | 4/37 | 4 | 4 | 5 | 1/9 | 5989 | 5997 | 0.07 | 0.09 | 0.07 | 41 | 2 | 0.322 | - | n/a | n/a |
+| Graphify query (vendored, depth 3) | 7/37 | 7 | 7 | 2 | 1/9 | 1670 | 1693 | 0.47 | 0.13 | 0.47 | 60.6 | 1 | 0.274 | - | 0/7 | 0/0 |
+| Verinoda analyze | 36/37 | 36 | 22 | 26 | 8/9 | 2021 | 2271 | 1.98 | 1.43 | 1.21 | 34.6 | 1 | 2.095 | - | 0/7 | 0/45 |
+| Verinoda retrieve (JSON) | 27/37 | 17 | 16 | 16 | 3/9 | 1434 | 1441 | 2.09 | 1.24 | 1.24 | 23.3 | 1 | 0.164 | - | 0/7 | 0/1 |
+| Verinoda retrieve (text) | 36/37 | 35 | 22 | 26 | 8/9 | 1473 | 1492 | 2.72 | 1.96 | 1.66 | 27.4 | 1 | 0.177 | - | 0/7 | 0/161 |
+
+facts found per question (found/total):
+| question | category | raw grep+read | Graphify query (vendored, depth 3) | Verinoda analyze | Verinoda retrieve (JSON) | Verinoda retrieve (text) |
+|---|---|---|---|---|---|---|
+| g01 Where is graphify query output cut to fit the token budget? | where | 0/4 (5990 tok) | 0/4 (1668 tok) | 4/4 (1817 tok) | 3/4 (1430 tok) | 4/4 (1490 tok) |
+| g02 Which functions does the graphify query command call to turn a question into graph context? | flow | 0/6 (5982 tok) | 0/6 (1692 tok) | 6/6 (2114 tok) | 6/6 (1439 tok) | 6/6 (1476 tok) |
+| g03 Which environment variables control graphify's query log? | config | 0/4 (5996 tok) | 0/4 (1670 tok) | 4/4 (2271 tok) | 4/4 (1434 tok) | 4/4 (1479 tok) |
+| g04 Where does graphify store its AST extraction cache and how is a cache entry keyed? | where | 0/4 (5992 tok) | 4/4 (1634 tok) | 3/4 (2053 tok) | 3/4 (1424 tok) | 3/4 (1436 tok) |
+| g05 Which environment variable raises the maximum graph.json size, and what is the default limit? | config | 0/3 (5988 tok) | 1/3 (1693 tok) | 3/3 (2218 tok) | 2/3 (1441 tok) | 3/3 (1486 tok) |
+| g06 Why does graphify drop stopwords from query terms? | why | 3/3 (5997 tok) | 1/3 (1670 tok) | 3/3 (1745 tok) | 2/3 (1432 tok) | 3/3 (1465 tok) |
+| g07 What is affected if _query_terms changes? | impact | 1/4 (5990 tok) | 1/4 (1645 tok) | 4/4 (1866 tok) | 4/4 (1434 tok) | 4/4 (1453 tok) |
+| g08 How does graphify update rebuild the code graph without an LLM? | flow | 0/6 (5981 tok) | 0/6 (1665 tok) | 6/6 (2081 tok) | 1/6 (1438 tok) | 6/6 (1492 tok) |
+| g09 Which tests cover the graph file size cap and its environment override? | tests | 0/3 (5989 tok) | 0/3 (1691 tok) | 3/3 (2028 tok) | 2/3 (1438 tok) | 3/3 (1481 tok) |
+
+Verinoda claims: 98 (observed=10, primary_source_verified=1, statically_verified=73, strong_inference=13, weak_inference=1); verified share 0.86; weak/unknown 1 (unlabelled 1); negative facts stated as findings 0 (in 0 claim(s)); unknowns reported 2; relation claims labelled contradicted 0, of which the cited line does name the target 0 (via import alias 0)
+claim reuse: warm 0/0, cold 12/98 (claims whose id already existed in atlas.db before the run (same text + snapshot))
+
+not measured:
+  - model-in-the-loop answer accuracy, model tokens and model cost - not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+  - real upstream Graphify CLI baseline - not run: --graphify-cmd not given
+  - runtime correctness of answers (only presence of gold facts in the delivered context is scored)
+  - OS file-cache effects are not separated from process warm-up in cold vs warm timings
+  - memory use

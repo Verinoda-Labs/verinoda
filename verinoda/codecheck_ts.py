@@ -557,14 +557,6 @@ def _walk(n):
 
 # -- checking files ---------------------------------------------------------------------------------
 
-def ts_files(root: Path) -> list[Path]:
-    out = []
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith(".")]
-        out += [Path(dirpath) / f for f in filenames if f.endswith(SUFFIXES) and not f.endswith(".d.ts")]
-    return sorted(out)
-
-
 def _nearest(name: str, names, limit: int = 3) -> list[dict]:
     import difflib
 

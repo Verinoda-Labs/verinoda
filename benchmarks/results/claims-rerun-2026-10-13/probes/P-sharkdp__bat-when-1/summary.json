@@ -1,0 +1,18 @@
+{
+ "name": "P-sharkdp__bat-when-1",
+ "task": "sharkdp__bat-when-1",
+ "plugin_dir": "C:/Users/ozcin/Desktop/verinoda-symbiosis/.claude/worktrees/callrule/claude-mods/verinoda-live",
+ "rc": 0,
+ "secs": 14.3,
+ "turns": 4,
+ "cost": 0.11663409999999999,
+ "analyze_calls": 1,
+ "verinoda_calls": 1,
+ "tools": [
+  "mcp__verinoda__analyze",
+  "Grep",
+  "Bash"
+ ],
+ "session_id": "8e027c80-194b-4cb6-ae47-92f77d48484e",
+ "answer_head": "- The feature is `vendored-libgit2`, defined at `Cargo.toml:35` as `vendored-libgit2 = [\"git2/vendored-libgit2\"]`. It turns on the `git2` crate's vendored mode.\n- It was added on 2025-10-08 in commit `1838e25d`, titled \"feat(cargo): add vendored-libgit2 feature (#3426)\". `git log -S\"vendored-libgit2"
+}

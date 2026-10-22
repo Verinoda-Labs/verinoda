@@ -1,0 +1,17 @@
+{
+ "name": "B-axios__axios-when-1",
+ "task": "axios__axios-when-1",
+ "plugin_dir": "C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/mods/B",
+ "rc": 0,
+ "secs": 11.6,
+ "turns": 3,
+ "cost": 0.06278629999999999,
+ "analyze_calls": 0,
+ "verinoda_calls": 0,
+ "tools": [
+  "Bash",
+  "Bash"
+ ],
+ "session_id": "f04d5c2f-6154-4672-9904-cb0bb5da73cc",
+ "answer_head": "- `UnprocessableContent: 422` was added on 2026-08-04 by commit `39955a6`, \"feat(HttpStatusCode): add RFC 9110 aliases for 413 and 422 (#11082)\". The evidence is the `git log -S\"UnprocessableContent\"` run on `lib/helpers/HttpStatusCode.js`, which returns only that commit. The commit is an ancestor o"
+}

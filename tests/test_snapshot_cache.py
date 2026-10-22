@@ -14,7 +14,7 @@ from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402
 
-from verinoda import snapshot, workflow  # noqa: E402
+from verinoda import gitexec, snapshot, workflow  # noqa: E402
 from verinoda.paths import db_path  # noqa: E402
 from verinoda.store import open_store  # noqa: E402
 
@@ -131,10 +131,11 @@ def test_git_info_uses_one_status_call_and_matches_the_old_answer(tmp_path, monk
 
     def spy(args, *a, **k):
         if args and args[0] == "git":
-            calls.append(tuple(args[3:5]))
+            rest = [x for x in args if x not in gitexec.SAFE_FLAGS]  # git -C <repo> <subcommand> <first option>
+            calls.append(tuple(rest[3:5]))
         return real(args, *a, **k)
 
-    monkeypatch.setattr(snapshot.subprocess, "run", spy)
+    monkeypatch.setattr(gitexec.subprocess, "run", spy)
     new = snapshot.git_info(repo)
     assert new == old and new["is_git"] and not new["dirty"]
     assert calls == [("status", "--porcelain=v2")]

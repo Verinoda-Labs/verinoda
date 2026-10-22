@@ -1,0 +1,2247 @@
+{
+ "model": "claude-opus-5-5",
+ "claude_argv_note": "claims_tasks.agent_argv; cwd the clone; the user's verinoda off PATH",
+ "repos": [
+  {
+   "repo": "Graphify-Labs/graphify",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 84.2,
+      "is_error": false,
+      "num_turns": 22,
+      "cost_usd": 0.5469714000000001,
+      "session_id": "3492c5e4-447a-4010-9f18-6a47062ddcd1"
+     },
+     "n": 4,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 28.3,
+      "is_error": false,
+      "num_turns": 5,
+      "cost_usd": 0.175475,
+      "session_id": "9b10df8b-9fc9-46db-b718-fd4ae22d270a"
+     },
+     "results": [
+      {
+       "id": "Graphify-Labs__graphify-why-1",
+       "ok": true,
+       "problems": [
+        "Note: `grep -n \"_win_lock_offset\" graphify/watch.py` reproduces neither statement by itself. It only finds the code (watch.py:202-204, 217, 224), and the comment at :202 supports statement 1. `git show e4a6f50` fully reproduces both statements: the commit body covers mandatory locks, offset 4096, the PID at byte 0, the yield-True fallback, .graph.tmp.json and Closes #3881. No leak: the question names _rebuild_lock and msvcrt, which it needs, and gives no offset or hash."
+       ]
+      },
+      {
+       "id": "Graphify-Labs__graphify-when-1",
+       "ok": true,
+       "problems": [
+        "Mild wording overlap: 'cross-repo/directory surprise bonus' is taken from the commit subject of a20c272. It is also the natural name for the feature (the code comment says 'Cross-repo bonus'), so it is not a real giveaway.",
+        "Gold checks out: a20c272 has date 2026-09-29, and the diff changes `return path.split(\"/\")[0] if \"/\" in path else path` to `... else \".\"`. The location analyze.py:229 is the return line."
+       ]
+      },
+      {
+       "id": "Graphify-Labs__graphify-affects-1",
+       "ok": true,
+       "problems": [
+        "Note: the location for statement 2 cites only tests/test_pdf_slicing.py:109 although the statement names three test files. All three are confirmed: test_file_slice.py:13/80, test_oversized_document_slicing.py:27/66, test_pdf_slicing.py:29-206.",
+        "Callers confirmed: llm.py:629 in _read_files, :696 in _dispatched_source_text, :2111 in _estimate_file_tokens. No other module in graphify/ calls it. `git log -S` gives only 4f539e7, and its --stat matches the four files named."
+       ]
+      },
+      {
+       "id": "Graphify-Labs__graphify-trap-1",
+       "ok": true,
+       "problems": [
+        "Trap holds. I searched *.md and *.py for 20,000/20000/20_000 and grepped the commit log for 20k/20,000/char cap/_FILE_CHAR_CAP. Every hit (CHANGELOG lines 9 and 1074, the test docstrings, the llm.py:28-30 comment, b507207, b6b2fb1, 4f539e7) mentions the cap or works around it, and none says why the value is 20,000. extract.py:6321 _DIR_CAP = 20000 is a different constant and gives no reason either."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "Graphify-Labs__graphify-why-1",
+     "repo": "Graphify-Labs/graphify",
+     "sha": "ef4450d9c28acb2b8cdc22d369c1777b77148eef",
+     "kind": "why",
+     "question": "On Windows, why does _rebuild_lock take its msvcrt lock on a byte far into the lock file instead of the first byte?",
+     "gold": [
+      {
+       "statement": "Windows byte-range locks are mandatory, so locking at offset 4096 lets external readers still read the owning PID written at byte 0 without getting a PermissionError.",
+       "commit": "e4a6f50",
+       "location": "graphify/watch.py:202"
+      },
+      {
+       "statement": "The commit added msvcrt locking because the Windows fallback of yielding True left concurrent rebuilds unserialized, and they collided on .graph.tmp.json (closes #3881).",
+       "commit": "e4a6f50",
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log -S\"4096\" -- graphify/watch.py",
+      "git show e4a6f50",
+      "grep -n \"_win_lock_offset\" graphify/watch.py"
+     ]
+    },
+    {
+     "id": "Graphify-Labs__graphify-when-1",
+     "repo": "Graphify-Labs/graphify",
+     "sha": "ef4450d9c28acb2b8cdc22d369c1777b77148eef",
+     "kind": "when",
+     "question": "When did files at the scan root stop counting as separate top-level directories for the cross-repo/directory surprise bonus, and which change did it?",
+     "gold": [
+      {
+       "statement": "Commit a20c272 (2026-09-29, fix(analyze): make the cross-repo/directory surprise bonus match its reason) changed _top_level_dir to return \".\" for a path with no \"/\", where it used to return the whole path.",
+       "commit": "a20c272",
+       "location": "graphify/analyze.py:229"
+      }
+     ],
+     "gold_sources": [
+      "git log -S'else \".\"' -- graphify/analyze.py",
+      "git show a20c272 -- graphify/analyze.py"
+     ]
+    },
+    {
+     "id": "Graphify-Labs__graphify-affects-1",
+     "repo": "Graphify-Labs/graphify",
+     "sha": "ef4450d9c28acb2b8cdc22d369c1777b77148eef",
+     "kind": "affects",
+     "question": "If I change the signature or return value of read_slice_text, which code would have to change or could break?",
+     "gold": [
+      {
+       "statement": "In graphify/llm.py, three functions call read_slice_text: _read_files, _dispatched_source_text and _estimate_file_tokens.",
+       "commit": null,
+       "location": "graphify/llm.py:629"
+      },
+      {
+       "statement": "Tests in test_file_slice.py, test_oversized_document_slicing.py and test_pdf_slicing.py use it directly.",
+       "commit": null,
+       "location": "tests/test_pdf_slicing.py:109"
+      },
+      {
+       "statement": "It was added together with expand_oversized_files in 4f539e7 (#1369), which touched graphify/file_slice.py, graphify/llm.py, tests/test_file_slice.py and CHANGELOG.md.",
+       "commit": "4f539e7",
+       "location": "graphify/file_slice.py:210"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn \"read_slice_text\" --include=*.py graphify tests",
+      "git log -S\"def read_slice_text\"",
+      "git show --stat 4f539e7"
+     ],
+     "gold_files": [
+      "graphify/file_slice.py",
+      "graphify/llm.py",
+      "tests/test_file_slice.py",
+      "tests/test_oversized_document_slicing.py",
+      "tests/test_pdf_slicing.py"
+     ]
+    },
+    {
+     "id": "Graphify-Labs__graphify-trap-1",
+     "repo": "Graphify-Labs/graphify",
+     "sha": "ef4450d9c28acb2b8cdc22d369c1777b77148eef",
+     "kind": "trap",
+     "question": "Why was 20,000 characters chosen as the per-file limit for text sent to the LLM during semantic extraction, rather than a larger or smaller number?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log -S\"20000\"",
+      "git log -S\"20_000\" -- graphify/llm.py",
+      "git log -L 30,30:graphify/llm.py",
+      "git blame -L 30,30 graphify/llm.py",
+      "git show 5904081 -- graphify/llm.py",
+      "git show -s cc5c545",
+      "git show -s 6695f0a",
+      "git show -s 4f539e7",
+      "git show -s b507207"
+     ],
+     "unknown_reason": "No commit gives a reason for the number. 5904081 (2026-04-29, 'Add Kimi K2.6 backend, fix phantom god nodes (#598), fix concept file_type (#601)') first added content[:20000] in _read_files; its body is only a Co-Authored-By line. cc5c545 (2026-04-30, 'feat(llm): pack chunks by token budget...') moved the value into the constant _FILE_CHAR_CAP = 20_000; its body explains token budgeting, tiktoken and parallelism but says nothing about the 20,000 value. git log -L and git blame on that line show only cc5c545. 6695f0a (2026-06-10, security hardening) replaced the literal with the constant inside the untrusted-source wrapper and gives no reason for the cap. Later commits mention the cap but do not justify it: 4f539e7 (#1369) slices oversized documents so content past the cap is not lost, b6b2fb1 and 4faa86c extend slicing to more file types and to PDFs, b507207 (#3773) adds a warning when a file is truncated and has no body beyond the cherry-pick line, and 29eaf12 is the changelog for a release. The code comment only says the token estimates use the same cap. The earlier uv.lock commits match '20000' only by accident."
+    }
+   ],
+   "shape_problems": [],
+   "checked": true,
+   "seconds": 115
+  },
+  {
+   "repo": "fastapi/full-stack-fastapi-template",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 71.5,
+      "is_error": false,
+      "num_turns": 15,
+      "cost_usd": 0.4188820000000001,
+      "session_id": "4267aff0-1905-45e2-9510-5964ba61fbf1"
+     },
+     "n": 4,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 23.8,
+      "is_error": false,
+      "num_turns": 4,
+      "cost_usd": 0.1558604,
+      "session_id": "55e3287b-74c8-4982-85b8-02f8b71c6584"
+     },
+     "results": [
+      {
+       "id": "fastapi__full-stack-fastapi-template-why-1",
+       "ok": true,
+       "problems": [
+        "Note: the rederive check found that only `git show 546dc8b` reproduces gold[0]. `git log -1 --format=%B 546dc8b` prints the same body: 'Change `new_password` from a query parameter to a body parameter for security', followed by the StackOverflow link about query strings over HTTPS. Gold[1] is backed by grep at backend/app/api/routes/login.py:78 (`def reset_password(session: SessionDep, body: NewPassword)`), though the rederive check did not mark it.",
+        "Note: the commit edits the old path backend/app/app/api/api_v1/endpoints/login.py. The companion commit b4fa418 ('Receive token as body in reset password', #34) moved the token into the body the same way. That fits the gold and does not contradict it."
+       ]
+      },
+      {
+       "id": "fastapi__full-stack-fastapi-template-when-1",
+       "ok": true,
+       "problems": [
+        "Note: verified. `git log -S _use_psycopg_driver` returns only 32ab6dd (2026-08-11, #2184). Its diff replaces POSTGRES_* and the computed SQLALCHEMY_DATABASE_URI with DATABASE_URL and the `_use_psycopg_driver` field_validator (config.py:35). The earlier computed URI hard-coded the postgresql+psycopg scheme but rewrote nothing, so 'start rewriting' correctly points to 32ab6dd."
+       ]
+      },
+      {
+       "id": "fastapi__full-stack-fastapi-template-affects-1",
+       "ok": true,
+       "problems": [
+        "Note: verified by grep. The callers are login.py:63 (recover_password) and login.py:116 (recover_password_html_content). verify_password_reset_token is at utils.py:117: it decodes with settings.SECRET_KEY and security.ALGORITHM, reads 'sub', and is used in reset_password at login.py:82. The test calls it at test_login.py:95. The gold sources do not show the function bodies, so the claim that both routes are the two callers needs reading login.py, not just the `^def` grep. Small nit only."
+       ]
+      },
+      {
+       "id": "fastapi__full-stack-fastapi-template-trap-1",
+       "ok": true,
+       "problems": [
+        "Note: I found no answer. `git log -S \"60 * 24 * 8\" --all` returns only 7f8bfc8 (initial import from the couchbase generator). No commit message mentions expiry ('expir' grep is empty). The token-related commits (b4fa418, cd112bd, the CI token fixes) don't explain the value. The only comment is the arithmetic one at config.py:24, and no docs mention 8 days. The trap holds."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "fastapi__full-stack-fastapi-template-why-1",
+     "repo": "fastapi/full-stack-fastapi-template",
+     "sha": "84c5a9e11a9e58262599e3d772f5386924e02ca7",
+     "kind": "why",
+     "question": "Why does the reset_password endpoint read the new password from the request body and not from a query parameter?",
+     "gold": [
+      {
+       "statement": "The new password was moved from a query parameter to a body parameter for security; the commit points to a discussion of why query-string parameters are unsafe even over HTTPS.",
+       "commit": "546dc8bdcb362e8a0465a82f47753c9d57898882",
+       "location": null
+      },
+      {
+       "statement": "The endpoint still takes the password in a body model (NewPassword) today.",
+       "commit": null,
+       "location": "backend/app/api/routes/login.py:78"
+      }
+     ],
+     "gold_sources": [
+      "git log -1 --format=%B 546dc8b",
+      "git show 546dc8b",
+      "grep -n \"def reset_password\" backend/app/api/routes/login.py"
+     ]
+    },
+    {
+     "id": "fastapi__full-stack-fastapi-template-when-1",
+     "repo": "fastapi/full-stack-fastapi-template",
+     "sha": "84c5a9e11a9e58262599e3d772f5386924e02ca7",
+     "kind": "when",
+     "question": "When did the settings start rewriting postgres:// and postgresql:// database URLs to use the psycopg driver, and in which change?",
+     "gold": [
+      {
+       "statement": "The rewrite was added on 2026-08-11 in commit 32ab6dd (\"Migrate to DATABASE_URL instead of separate variables\", #2184). That commit replaced the separate POSTGRES_* settings and the computed SQLALCHEMY_DATABASE_URI with a single DATABASE_URL field and its _use_psycopg_driver validator.",
+       "commit": "32ab6dd022cf46a2bc2f901f746d684078843969",
+       "location": "backend/app/core/config.py:35"
+      }
+     ],
+     "gold_sources": [
+      "git log -S \"_use_psycopg_driver\" --format=\"%h %ad %s\" --date=iso -- backend/app/core/config.py",
+      "git show 32ab6dd -- backend/app/core/config.py"
+     ]
+    },
+    {
+     "id": "fastapi__full-stack-fastapi-template-affects-1",
+     "repo": "fastapi/full-stack-fastapi-template",
+     "sha": "84c5a9e11a9e58262599e3d772f5386924e02ca7",
+     "kind": "affects",
+     "question": "If I changed the signature or the token payload of generate_password_reset_token, what other code would have to change or could break?",
+     "gold": [
+      {
+       "statement": "The recover_password and recover_password_html_content routes in the login routes module both call generate_password_reset_token(email=...).",
+       "commit": null,
+       "location": "backend/app/api/routes/login.py:63"
+      },
+      {
+       "statement": "verify_password_reset_token in the same module decodes the token with the same SECRET_KEY and algorithm and reads its \"sub\" claim, and reset_password uses it, so the payload format must stay in sync.",
+       "commit": null,
+       "location": "backend/app/utils.py:117"
+      },
+      {
+       "statement": "The test_reset_password test calls generate_password_reset_token(email=...) directly.",
+       "commit": null,
+       "location": "backend/tests/api/routes/test_login.py:95"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn \"generate_password_reset_token\" --include=*.py .",
+      "grep -rn \"verify_password_reset_token\" --include=*.py .",
+      "grep -n \"^def \" backend/app/api/routes/login.py"
+     ],
+     "gold_files": [
+      "backend/app/api/routes/login.py",
+      "backend/app/utils.py",
+      "backend/tests/api/routes/test_login.py"
+     ]
+    },
+    {
+     "id": "fastapi__full-stack-fastapi-template-trap-1",
+     "repo": "fastapi/full-stack-fastapi-template",
+     "sha": "84c5a9e11a9e58262599e3d772f5386924e02ca7",
+     "kind": "trap",
+     "question": "Why do access tokens default to expiring after eight days?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git blame -L24,25 backend/app/core/config.py",
+      "git log -L24,25:backend/app/core/config.py --format=\"%h %ad %s%n%b\" --date=short",
+      "git log -S \"60 * 24 * 8\" --format=\"%h %ad %s\" --date=short --all",
+      "git log -1 --format=%B 7f8bfc8",
+      "git log -1 --format=%B a21978e",
+      "git log -1 --format=%B 6fdba19",
+      "git log -1 --format=%B 248ea56",
+      "git log -1 --format=%B 79631c7",
+      "git log -1 --format=%B eed33d2"
+     ],
+     "unknown_reason": "The value 60 * 24 * 8 came in with the initial import. git log -S finds only 7f8bfc8 (2019-02-09, 'First commit, from couchbase generator, basic changes'), whose body says only 'not tested / updated yet'. git log -L over the lines then lists these commits: a21978e ('Update config for PostgreSQL', no body); 6fdba19 ('Update all for Postgres and new techniques', no body); 248ea56 ('Add normal-user fixture for testing (#20)', no body); 79631c7 ('Use Pydantic BaseSettings for config settings (#87)', whose bullets cover BaseSettings, dependency bumps, a Pydantic deprecation fix and BACKEND_CORS_ORIGINS parsing, with nothing about token lifetime); and eed33d2 ('Refactor backend, settings, DB sessions, types, configs, plugins (#158)', which only moved the inline comment above the line and added a type, with bullets about refactoring, mypy, python-jose and scripts). git blame on the current lines points to eed33d2. No commit gives a reason for choosing eight days; the code comment only spells out the arithmetic."
+    }
+   ],
+   "shape_problems": [],
+   "checked": true,
+   "seconds": 96
+  },
+  {
+   "repo": "fastapi/sqlmodel",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 54.6,
+      "is_error": false,
+      "num_turns": 11,
+      "cost_usd": 0.35391619999999996,
+      "session_id": "3d4abf63-68bc-4d2c-a9e5-56030e44c380"
+     },
+     "n": 4,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 27.5,
+      "is_error": false,
+      "num_turns": 6,
+      "cost_usd": 0.1830426,
+      "session_id": "2bdd4bd0-9e4f-45ac-a157-fed48300e01f"
+     },
+     "results": [
+      {
+       "id": "fastapi__sqlmodel-why-1",
+       "ok": true,
+       "problems": []
+      },
+      {
+       "id": "fastapi__sqlmodel-when-1",
+       "ok": true,
+       "problems": []
+      },
+      {
+       "id": "fastapi__sqlmodel-affects-1",
+       "ok": false,
+       "problems": [
+        "The first gold statement is wrong about the code. In sqlmodel/_compat.py, is_table_model_class is called by two functions, not four helpers. Lines 294, 319 and 330 are all inside sqlmodel_validate (def at line 285), and line 340 is inside sqlmodel_init (def at line 338). The grep reproduces the line numbers but not the claim of 'four helpers', so a correct answer that names sqlmodel_validate and sqlmodel_init could be marked down. Fix: 'called in _compat.py by sqlmodel_validate (lines 294, 319, 330) and sqlmodel_init (line 340)'.",
+        "The second statement is correct: lines 565 and 571 are in SQLModelMetaclass.__setattr__ and __delattr__, lines 671-672 are in SQLModelMetaclass.__init__, and line 891 is in SQLModel.__setattr__. No tests or docs_src files reference the function."
+       ]
+      },
+      {
+       "id": "fastapi__sqlmodel-trap-1",
+       "ok": true,
+       "problems": [
+        "Searched for the answer and found none, so it stays a trap. Commit 86ab09f's message has only Co-authored-by trailers. git log --grep for ondelete or RESTRICT finds only 86ab09f and an unrelated mypy bump (f751e1c). The docs section 'ondelete Options' (docs/tutorial/relationship-attributes/cascade-delete-relationships.md:144-152) lists the three values but gives no reason for leaving out NO ACTION or SET DEFAULT. Neither of those strings appears in any .md, .py or .txt file."
+       ]
+      }
+     ],
+     "flagged": [
+      "fastapi__sqlmodel-affects-1"
+     ]
+    },
+    {
+     "step": "check:write",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 11.7,
+      "is_error": false,
+      "num_turns": 3,
+      "cost_usd": 0.0909452,
+      "session_id": "0b5c20be-ed61-490c-be02-fbd5d19a392a"
+     },
+     "n": 1,
+     "shape_problems": []
+    },
+    {
+     "step": "rewrite-flagged:check",
+     "round": 2,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 21.5,
+      "is_error": false,
+      "num_turns": 4,
+      "cost_usd": 0.1312662,
+      "session_id": "8808b150-e70c-4efe-84a6-20902a55cf2d"
+     },
+     "results": [
+      {
+       "id": "fastapi__sqlmodel-why-1",
+       "ok": true,
+       "problems": []
+      },
+      {
+       "id": "fastapi__sqlmodel-when-1",
+       "ok": true,
+       "problems": [
+        "Note: RESTRICT arrived in the same commit as CASCADE and SET NULL, the commit that first added OnDeleteType. So the honest answer is that the on-delete option has accepted RESTRICT since it was introduced. The gold is correct, though 'start accepting' suggests a later addition that never happened."
+       ]
+      },
+      {
+       "id": "fastapi__sqlmodel-affects-1",
+       "ok": true,
+       "problems": []
+      },
+      {
+       "id": "fastapi__sqlmodel-trap-1",
+       "ok": true,
+       "problems": [
+        "Note: docs/tutorial/relationship-attributes/cascade-delete-relationships.md:148-152 lists the three allowed values and what each does. It gives no reason why NO ACTION or SET DEFAULT are left out, so the trap holds. 86ab09f has no body, and no other commit message mentions ondelete or restrict."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "fastapi__sqlmodel-why-1",
+     "repo": "fastapi/sqlmodel",
+     "sha": "1c46f0decb64762b4beb085e3181428921166349",
+     "kind": "why",
+     "question": "Why does the library's core model and SQL expression code import Literal from the standard typing module instead of from typing_extensions?",
+     "gold": [
+      {
+       "statement": "Literal is imported from typing directly because support for Python 3.8 had been dropped, so the typing_extensions backport was no longer needed.",
+       "commit": "99d8b0bba270651672b12eca4ce2361be2351d08",
+       "location": "sqlmodel/main.py:18"
+      }
+     ],
+     "gold_sources": [
+      "git blame -L18,18 sqlmodel/main.py",
+      "git blame -L4,4 sqlmodel/sql/expression.py",
+      "git show 99d8b0bba270651672b12eca4ce2361be2351d08"
+     ]
+    },
+    {
+     "id": "fastapi__sqlmodel-when-1",
+     "repo": "fastapi/sqlmodel",
+     "sha": "1c46f0decb64762b4beb085e3181428921166349",
+     "kind": "when",
+     "question": "When did Field's foreign-key on-delete option start accepting RESTRICT as a value, and which change added it?",
+     "gold": [
+      {
+       "statement": "RESTRICT was added as an allowed on-delete value by commit 86ab09f (2024-07-20), the commit that added cascade delete relationship support: cascade_delete, ondelete and passive_deletes (#983).",
+       "commit": "86ab09f7",
+       "location": "sqlmodel/main.py:93"
+      }
+     ],
+     "gold_sources": [
+      "git log -S\"\\\"RESTRICT\\\"\" --format=\"%h %ad %s\" --date=iso -- sqlmodel/",
+      "git blame -L93,93 sqlmodel/main.py"
+     ]
+    },
+    {
+     "id": "fastapi__sqlmodel-affects-1",
+     "repo": "fastapi/sqlmodel",
+     "sha": "1c46f0decb64762b4beb085e3181428921166349",
+     "kind": "affects",
+     "question": "If I changed the signature or behaviour of is_table_model_class, what code would need to change or could break?",
+     "gold": [
+      {
+       "statement": "is_table_model_class is defined in sqlmodel/_compat.py, where two functions call it: sqlmodel_validate (lines 294, 319, 330) and sqlmodel_init (line 340).",
+       "commit": null,
+       "location": "sqlmodel/_compat.py:116"
+      },
+      {
+       "statement": "sqlmodel/main.py imports it and calls it in SQLModelMetaclass.__setattr__ (line 565), SQLModelMetaclass.__delattr__ (line 571), SQLModelMetaclass.__init__ (lines 671-672) and SQLModel.__setattr__ (line 891).",
+       "commit": null,
+       "location": "sqlmodel/main.py:73"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn \"is_table_model_class\" --include=*.py .",
+      "grep -n \"def \" sqlmodel/_compat.py",
+      "grep -n \"def \\|^class \" sqlmodel/main.py"
+     ],
+     "gold_files": [
+      "sqlmodel/_compat.py",
+      "sqlmodel/main.py"
+     ]
+    },
+    {
+     "id": "fastapi__sqlmodel-trap-1",
+     "repo": "fastapi/sqlmodel",
+     "sha": "1c46f0decb64762b4beb085e3181428921166349",
+     "kind": "trap",
+     "question": "Why does the type for a foreign key's on-delete behaviour allow only CASCADE, SET NULL and RESTRICT, and leave out NO ACTION and SET DEFAULT?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log -L93,93:sqlmodel/main.py",
+      "git blame -L93,93 sqlmodel/main.py",
+      "git show 86ab09f --stat",
+      "git log -S\"OnDeleteType\" --format=\"%h %ad %s\" --date=iso -- sqlmodel/",
+      "grep -rn -i \"NO ACTION\" --include=*.md --include=*.py .",
+      "grep -rn -i \"SET DEFAULT\" --include=*.md --include=*.py ."
+     ],
+     "unknown_reason": "The OnDeleteType line (sqlmodel/main.py:93) has only one commit in its history: git log -L and git blame both lead to 86ab09f (2024-07-20, 'Add support for cascade delete relationships: cascade_delete, ondelete, and passive_deletes (#983)'). That commit has no body beyond Co-authored-by trailers and no pull request text, so it says nothing about why these three values were picked. git log -S'OnDeleteType' also finds 66533c9 (2026-02-01, 'Fix support for Annotated fields with Pydantic 2.12+ (#1607)'), which has no body and did not change this line; blame still credits 86ab09f. 'NO ACTION' and 'SET DEFAULT' appear nowhere in the repository's .md or .py files, so neither the docs nor the code comments explain why they were left out."
+    }
+   ],
+   "shape_problems": [],
+   "checked": true,
+   "seconds": 117
+  },
+  {
+   "repo": "expressjs/express",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 58.8,
+      "is_error": false,
+      "num_turns": 15,
+      "cost_usd": 0.3385,
+      "session_id": "836d6a8a-c67c-47ee-a1f6-a73ac51c542d"
+     },
+     "n": 4,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 34.0,
+      "is_error": false,
+      "num_turns": 5,
+      "cost_usd": 0.1865698,
+      "session_id": "d466e77c-38a0-4142-84b6-7d6885301f4b"
+     },
+     "results": [
+      {
+       "id": "expressjs__express-why-1",
+       "ok": true,
+       "problems": [
+        "Note: the automatic check said the two `git show --format=%B` commands reproduced nothing, but they do. The body of 82fc12a4 says: 'this is to take into account the built-in relative expires when passing a maxAge to res.cookie ... the goal of this PR is not to rework that relative expires behavior w/ maxAge, but to prevent users from overwriting these values by accident when clearing cookies'. The subject of f42b160b ('[v4] Deprecate `res.clearCookie` accepting `options.maxAge` and `options.expires` (#5672)') and its body ('add deprecation notice for res.clearCookie maxAge/expires') support gold statement 3.",
+        "Note: blame confirms 82fc12a40 (Jon Church, 2024-08-02) for lib/response.js:717-720. The location :718 is the `expires: new Date(1)` line. No leak."
+       ]
+      },
+      {
+       "id": "expressjs__express-when-1",
+       "ok": true,
+       "problems": [
+        "Note: `grep -n \"Url must be a string\" lib/response.js` gives line 835 (`deprecate('Url must be a string')`), so the gold location reproduces even though the automatic check said it did not. The diff of c5b8d55a adds `var deprecate = require('depd')('express');` to lib/response.js and `\"depd\": \"^2.0.0\"` to package.json, which confirms gold statement 2. Date 2025-07-14 and author Sebastian Beltran confirmed. The question only describes the behaviour, so there is no leak."
+       ]
+      },
+      {
+       "id": "expressjs__express-affects-1",
+       "ok": true,
+       "problems": [
+        "Note: grep confirms the import at lib/utils.js:225, lib/response.js:29 and the use at :163 (`this.set('Content-Type', setCharset(type, 'utf-8'))`), plus test/utils.js:41-59. There are no other uses in lib, test, examples or index.js. The `git log -S` source adds nothing to the gold, but that is harmless. Naming setCharset is needed for the question, so it is not a leak."
+       ]
+      },
+      {
+       "id": "expressjs__express-trap-1",
+       "ok": false,
+       "problems": [
+        "This trap has an answer in the history. Commit ee40a881 (Wes, 2017-02-20) has the subject 'call callback once on listen error'. Its diff adds the `once` wrapper and `server.once('error', done)`, and adds the test 'should callback on HTTP server errors': a second app listens on a port already in use and asserts that `err.code === 'EADDRINUSE'` reaches the callback.",
+        "The callback that server.listen takes is only a 'listening' listener and never receives errors. So the commit subject and the test together show the reason for the design: errors such as EADDRINUSE are passed to the user's callback. `once` makes sure the callback runs only one time, whether listening or error comes first. That answers the 'rather than just passing it to server.listen' part of the question.",
+        "An agent that gives this answer, citing ee40a881, would be grounded in the repository, but the gold 'unknown' would mark it wrong. No deeper motivation (such as an issue or PR discussion) exists in the repo; b8ab4659 and 54af593b add nothing. To keep this as a trap, the question would have to ask for something the repo really lacks, such as which issue or bug report led to the change."
+       ]
+      }
+     ],
+     "flagged": [
+      "expressjs__express-trap-1"
+     ]
+    },
+    {
+     "step": "check:write",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 47.1,
+      "is_error": false,
+      "num_turns": 10,
+      "cost_usd": 0.2551272,
+      "session_id": "269a3987-c653-4fd7-b1e5-3cecc2b7e82d"
+     },
+     "n": 1,
+     "shape_problems": []
+    },
+    {
+     "step": "rewrite-flagged:check",
+     "round": 2,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 26.6,
+      "is_error": false,
+      "num_turns": 4,
+      "cost_usd": 0.17435799999999999,
+      "session_id": "49e54f35-0410-4a1d-827e-06a66b3b5737"
+     },
+     "results": [
+      {
+       "id": "expressjs__express-why-1",
+       "ok": true,
+       "problems": [
+        "Note: the automatic rederive marked the `git show 82fc12a40` and `git show f42b160b` commands as not reproducing anything, but they do. The 82fc12a4 body says the change 'take[s] into account the built-in relative expires when passing a maxAge to res.cookie' and that 'the goal of this PR is not to rework that relative expires behavior w/ maxAge, but to prevent users from overwriting these values by accident when clearing cookies', which supports gold statement 2. f42b160b is '[v4] Deprecate `res.clearCookie` accepting `options.maxAge` and `options.expires` (#5672)' and is an ancestor of HEAD, which supports gold statement 3. git blame lines 717-720 show 82fc12a40 (Jon Church, 2024-08-02), which supports gold statement 1.",
+        "Note: the gold location lib/response.js:718 is correct (`const opts = { path: '/', ...options, expires: new Date(1)};`). The question gives away no path, hash or commit wording."
+       ]
+      },
+      {
+       "id": "expressjs__express-when-1",
+       "ok": true,
+       "problems": [
+        "Note: the grep step was marked as not reproducing, but `grep -n 'Url must be a string' lib/response.js` returns line 835, which matches the gold location. The `git show c5b8d55a` diff confirms that it adds `var deprecate = require('depd')('express')` to lib/response.js and `\"depd\": \"^2.0.0\"` to package.json. The date (2025-07-14) and author (Sebastian Beltran) are correct.",
+        "Note: the question describes the three warning conditions (missing URL, non-string URL, non-numeric status) in plain words. That is behaviour a developer would see at runtime, not a leak."
+       ]
+      },
+      {
+       "id": "expressjs__express-affects-1",
+       "ok": true,
+       "problems": [
+        "Note: the grep matches the gold exactly: lib/utils.js:225 (definition and export), lib/response.js:29 (import) and :163 (only runtime use, inside `if (typeof chunk === 'string')`, which sets charset utf-8), and test/utils.js:41 onward. There are no uses in examples/ or index.js. The `git log -S` command is context only and supports no statement."
+       ]
+      },
+      {
+       "id": "expressjs__express-trap-1",
+       "ok": true,
+       "problems": [
+        "Note: I could not find a reason in the repository. 8ab96ab8's body is just its subject. c21226aa's body is only 'closes #1435 / closes #2129'. The History.md 4.4.0 entry (lines 1584-1593) lists the accepted values and repeats 'mark `res.send` ETag as weak and reduce collisions' with no reason. lib/application.js:95 and lib/utils.js have no explanatory comments, and `git log --grep=weak` turns up nothing more.",
+        "Note: the only related trace is History.md:1687, where a send@0.3.0 dependency note says 'Set etags to \"weak\"'. That points to consistency with the send module, but nothing states this as the reason, so the trap holds. An answer that cites this as a documented rationale would be inference."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "expressjs__express-why-1",
+     "repo": "expressjs/express",
+     "sha": "dbac741a49a5a64336b70c06e85c2e2706e36336",
+     "kind": "why",
+     "question": "Why does res.clearCookie throw away any maxAge the caller passes and always overwrite expires with a date in the past, rather than respecting the options it was given?",
+     "gold": [
+      {
+       "statement": "Commit 82fc12a4 (\"Ignore `expires` and `maxAge` in `res.clearCookie()` (#5792)\", Jon Church, 2024-08-02) introduced the forced past expires and the deletion of maxAge.",
+       "commit": "82fc12a40",
+       "location": "lib/response.js:718"
+      },
+      {
+       "statement": "Rationale: res.cookie turns maxAge into a relative expires, so a user-supplied maxAge (or expires) would overwrite the expiration that clearCookie needs. The goal is to stop users from accidentally overriding these values when clearing a cookie, without reworking the relative-expires behaviour of maxAge.",
+       "commit": "82fc12a40",
+       "location": null
+      },
+      {
+       "statement": "In 4.x this was first only deprecated: commit f42b160b (#5672) added a deprecation notice for res.clearCookie accepting options.maxAge/options.expires.",
+       "commit": "f42b160b",
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git blame -L 716,723 lib/response.js",
+      "git show 82fc12a40 --format=%B --no-patch",
+      "git show f42b160b --format=%B --no-patch"
+     ]
+    },
+    {
+     "id": "expressjs__express-when-1",
+     "repo": "expressjs/express",
+     "sha": "dbac741a49a5a64336b70c06e85c2e2706e36336",
+     "kind": "when",
+     "question": "When did res.redirect start emitting deprecation warnings when it is called with a missing or non-string URL or a non-numeric status, and which change added them?",
+     "gold": [
+      {
+       "statement": "Added by commit c5b8d55a \"feat: add deprecation warnings for redirect arguments undefined (#6405)\", dated 2025-07-14, by Sebastian Beltran.",
+       "commit": "c5b8d55a6a941fb5f8c783f7734a32f40142c4d9",
+       "location": "lib/response.js:835"
+      },
+      {
+       "statement": "The same commit added the depd dependency to lib/response.js and package.json for these warnings.",
+       "commit": "c5b8d55a6a941fb5f8c783f7734a32f40142c4d9",
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log --format=\"%h %ad %s\" --date=short -S \"Url must be a string\" -- lib/response.js",
+      "git show c5b8d55a --stat",
+      "grep -n \"Url must be a string\" lib/response.js"
+     ]
+    },
+    {
+     "id": "expressjs__express-affects-1",
+     "repo": "expressjs/express",
+     "sha": "dbac741a49a5a64336b70c06e85c2e2706e36336",
+     "kind": "affects",
+     "question": "If the signature or behaviour of the internal setCharset helper changed, which code in the repository would have to be updated or would break?",
+     "gold": [
+      {
+       "statement": "setCharset is defined and exported in lib/utils.js.",
+       "commit": null,
+       "location": "lib/utils.js:225"
+      },
+      {
+       "statement": "Its only runtime caller is res.send in lib/response.js, which imports it and uses it to set the Content-Type with charset utf-8 for string bodies.",
+       "commit": null,
+       "location": "lib/response.js:163"
+      },
+      {
+       "statement": "The unit tests in test/utils.js exercise it directly (describe 'utils.setCharset(type, charset)').",
+       "commit": null,
+       "location": "test/utils.js:41"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn setCharset lib test examples index.js",
+      "git log --format=\"%h %ad %s\" --date=short -S setCharset"
+     ],
+     "gold_files": [
+      "lib/utils.js",
+      "lib/response.js",
+      "test/utils.js"
+     ]
+    },
+    {
+     "id": "expressjs__express-trap-1",
+     "repo": "expressjs/express",
+     "sha": "dbac741a49a5a64336b70c06e85c2e2706e36336",
+     "kind": "trap",
+     "question": "Why does a new Express app generate weak ETags by default, with the setting value true also meaning weak, instead of strong ETags?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log --format=\"==%h %ad %an %s%n%b\" --date=short -L \"/this.set('etag', 'weak')/,+1:lib/application.js\" --no-patch",
+      "git log --format=\"==%h %ad %an %s%n%b\" --date=short -L \"/^exports.compileETag/,+25:lib/utils.js\" --no-patch",
+      "git log --format=\"==%h %ad %an %s%n%b\" --date=short -S \"'etag', 'weak'\" -- lib",
+      "git log --format=\"==%h %ad %an %s%n%b\" --date=short -S \"W/\" -- lib",
+      "git show 8ab96ab8 --format=%B -- lib/utils.js",
+      "git show c21226aa --format=%B -- History.md lib/application.js",
+      "git show 54a192a5 --format=%B --stat",
+      "grep -n -i \"weak\" History.md"
+     ],
+     "unknown_reason": "The default line this.set('etag', 'weak') goes back through two commits. c21226aa (Douglas Christopher Wilson, 2014-05-30, 'improve etag control for res.send') changed this.enable('etag') to this.set('etag', 'weak') and added compileETag, where true and 'weak' both select wetag. Its message body is only 'closes #1435 / closes #2129', and the issue text is not in the repository. Its History.md entry (4.4.0) lists the values the setting accepts and gives no reason. Before it, 54a192a5 (Max Riveiro, 2012-11-19, 'Add application setting to disable ETag completely') added this.enable('etag') and has no body. The ETag became weak in 8ab96ab8 (Douglas Christopher Wilson, 2014-05-29, 'mark res.send ETag as weak and reduce collisions'). It has no body, its diff only changes utils.etag to return W/\"<len>-<crc32>\", and its History line repeats the subject. Later commits on compileETag also explain nothing: 0fbbc296 (2021-05-12, 'lint: coalesce duplicate switch statements', body only 'closes #4587'). Later commits on ETag generation (51d33edb, 4d1ee23f: 'Use etag to generate ETag headers') only switch to the etag module. No commit, comment or History entry says why weak was chosen over strong as the default. An answer giving a reason, such as byte-level equivalence across content encodings or cost, is confabulated."
+    }
+   ],
+   "shape_problems": [],
+   "checked": true,
+   "seconds": 169
+  },
+  {
+   "repo": "axios/axios",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 111.7,
+      "is_error": false,
+      "num_turns": 28,
+      "cost_usd": 0.6618922000000003,
+      "session_id": "050f7881-eaaa-4a0d-b432-84448ea64569"
+     },
+     "n": 4,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 24.8,
+      "is_error": false,
+      "num_turns": 5,
+      "cost_usd": 0.22279739999999998,
+      "session_id": "1e3577a4-a63c-4adc-92d4-5705b82d96cb"
+     },
+     "results": [
+      {
+       "id": "axios__axios-why-1",
+       "ok": true,
+       "problems": [
+        "Note: the third gold statement (WeakSet replacing Array(10), faster lookups as a side benefit) is background more than an answer to the why-question. It does reproduce from the commit body of f2b903f. Gold locations are close to the right spots: the inline comment is at about line 969 and visited.delete at about line 989."
+       ]
+      },
+      {
+       "id": "axios__axios-when-1",
+       "ok": true,
+       "problems": []
+      },
+      {
+       "id": "axios__axios-affects-1",
+       "ok": true,
+       "problems": [
+        "Note: the third gold statement, about the history of commit c30252f (#4725), does not answer what would need updating. It is extra context but correct. grep finds exactly two callers, lib/adapters/http.js:757 and tests/unit/fromDataURI.test.js, and nothing in index.d.ts or index.d.cts, so gold_files is complete."
+       ]
+      },
+      {
+       "id": "axios__axios-trap-1",
+       "ok": true,
+       "problems": [
+        "Searched for a rationale beyond the listed commits and found none. The commits with maxContentLength/maxBodyLength in their messages (e452f76, bbfa7bf, e9c9f33, 1792eda, 6642ca9, 0ece97c, c00c4dd) do not explain it. The comment at lib/adapters/http.js:1125 only says -1 is turned into Infinity for follow-redirects. README, MIGRATION_GUIDE, THREATMODEL and docs only state that -1 means unlimited. Nothing says why -1 was picked over Infinity or leaving the option unset, so the answer 'unknown' holds."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "axios__axios-why-1",
+     "repo": "axios/axios",
+     "sha": "84a9f3b9a4f3244b8c8e818f557d64c7b964fb25",
+     "kind": "why",
+     "question": "When toJSONObject converts an object, why does it take each object back out of its set of seen objects once it has finished walking that object's children, instead of leaving it marked as seen for the rest of the conversion?",
+     "gold": [
+      {
+       "statement": "Removing the object after its children are processed keeps the check limited to the current path (ancestors only). Only a real cycle, meaning an object that contains itself somewhere below it, is skipped.",
+       "commit": "f2b903fceaa0a02cefd77f6b4b123c679605aae9",
+       "location": "lib/utils.js:989"
+      },
+      {
+       "statement": "Without the removal, an object shared by two siblings (a DAG) would be treated as already seen at its second occurrence and dropped as undefined. That is the regression introduced in #7230.",
+       "commit": "f2b903fceaa0a02cefd77f6b4b123c679605aae9",
+       "location": "lib/utils.js:969"
+      },
+      {
+       "statement": "The WeakSet replaced a fixed-size Array(10) with an indexOf lookup. Faster O(1) lookups were a secondary benefit (#10832, fixes #10807).",
+       "commit": "f2b903fceaa0a02cefd77f6b4b123c679605aae9",
+       "location": "lib/utils.js:955"
+      }
+     ],
+     "gold_sources": [
+      "git blame -L 955,989 lib/utils.js",
+      "git show -s f2b903f"
+     ]
+    },
+    {
+     "id": "axios__axios-when-1",
+     "repo": "axios/axios",
+     "sha": "84a9f3b9a4f3244b8c8e818f557d64c7b964fb25",
+     "kind": "when",
+     "question": "When did axios's map of HTTP status codes get the UnprocessableContent name for 422, and which change added it?",
+     "gold": [
+      {
+       "statement": "UnprocessableContent: 422 was added on 2026-08-04 in 'feat(HttpStatusCode): add RFC 9110 aliases for 413 and 422 (#11082)'. The same change added ContentTooLarge for 413.",
+       "commit": "39955a6ebed53217a524a3c8c7e5568fc0faa4bd",
+       "location": "lib/helpers/HttpStatusCode.js:53"
+      }
+     ],
+     "gold_sources": [
+      "git log -S UnprocessableContent --format=\"%H %ad %s\" --date=short -- lib/helpers/HttpStatusCode.js",
+      "git show --stat 39955a6"
+     ]
+    },
+    {
+     "id": "axios__axios-affects-1",
+     "repo": "axios/axios",
+     "sha": "84a9f3b9a4f3244b8c8e818f557d64c7b964fb25",
+     "kind": "affects",
+     "question": "If the parameters of fromDataURI, the helper that turns a data: URI into a Buffer or Blob, were changed, what code in the repository would have to be updated?",
+     "gold": [
+      {
+       "statement": "The Node HTTP adapter imports fromDataURI and calls it as fromDataURI(own('url'), responseType === 'blob', {...}) when handling data: URLs.",
+       "commit": null,
+       "location": "lib/adapters/http.js:757"
+      },
+      {
+       "statement": "The unit tests in tests/unit/fromDataURI.test.js import the helper and call it directly, for example fromDataURI(dataURI, false).",
+       "commit": null,
+       "location": "tests/unit/fromDataURI.test.js:3"
+      },
+      {
+       "statement": "The helper came in with 'Added data URL support for node.js; (#4725)'. That commit wired it into the HTTP adapter.",
+       "commit": "c30252f685e8f4326722de84923fcbc8cf557f06",
+       "location": "lib/helpers/fromDataURI.js:21"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn fromDataURI lib tests",
+      "git log --diff-filter=A --format=\"%H %ad %s\" --date=short -- lib/helpers/fromDataURI.js",
+      "git show --stat c30252f"
+     ],
+     "gold_files": [
+      "lib/adapters/http.js",
+      "tests/unit/fromDataURI.test.js"
+     ]
+    },
+    {
+     "id": "axios__axios-trap-1",
+     "repo": "axios/axios",
+     "sha": "84a9f3b9a4f3244b8c8e818f557d64c7b964fb25",
+     "kind": "trap",
+     "question": "Why do axios's defaults use -1, rather than Infinity or leaving the option unset, to mean that there is no limit on response and request body sizes?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git blame -L 154,155 lib/defaults/index.js",
+      "git log -L 154,155:lib/defaults/index.js",
+      "git log -S \"maxContentLength: -1\" --reverse -- lib",
+      "git show -s fefa23a",
+      "git show -s 57a1ed4",
+      "git show -s 21cf932",
+      "git show -s 92e15fa",
+      "git show -s fa9444e",
+      "git show -s 6642ca9",
+      "git show -s 9096d34"
+     ],
+     "unknown_reason": "I followed the default lines back through every commit that touched them and through the merges that brought them in. None of these says why the 'no limit' sentinel is -1. fefa23a (2016-03-22, bomsy) and its duplicate 57a1ed4 introduced `maxContentLength: -1` in lib/defaults.js. Both have only the truncated subject 'Adding config option to restrict based on the size of the response co…' and no body. The merges 21cf932 ('Merge branch maxcontentlength ...') and 92e15fa ('Merge pull request #275 ... Adding a `maxContentLength` content option') have no rationale either. fa9444e (2016-04-26, #308, 'Allow custom HTTP status code error ranges') only added a trailing comma; its body is about status ranges. 6642ca9 (2020-03-06, #2781, 'Add independent `maxBodyLength` option') added `maxBodyLength: -1`; its bullet list says nothing about the sentinel. 9096d34 (2014, 'Breaking up complexity of main axios file') is the earlier neighbouring xsrfHeaderName line and has no body. README.md and MIGRATION_GUIDE.md only state that -1 means unlimited, not why that value was chosen."
+    }
+   ],
+   "shape_problems": [],
+   "checked": true,
+   "seconds": 137
+  },
+  {
+   "repo": "junegunn/fzf",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 76.7,
+      "is_error": false,
+      "num_turns": 19,
+      "cost_usd": 0.45170459999999996,
+      "session_id": "24c9465d-f573-4812-b888-3dca363c99cb"
+     },
+     "n": 4,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 28.3,
+      "is_error": false,
+      "num_turns": 7,
+      "cost_usd": 0.1858786,
+      "session_id": "23d39f43-cfec-422a-999d-a6e397af93e3"
+     },
+     "results": [
+      {
+       "id": "junegunn__fzf-why-1",
+       "ok": true,
+       "problems": [
+        "Note: 'cancellable key-read path' echoes the getch(cancellable bool, ...) parameter name and the commit's wording 'Only the cancellable path is affected'. It points to the location, but the question does not give away the reason.",
+        "Note: 'grep -n EINTR src/tui/light_unix.go' only finds lines 120 and 256 and reproduces no statement by itself. The commit message and diff of 1578b7c3 reproduce all three statements. 1578b7c3 is an ancestor of HEAD."
+       ]
+      },
+      {
+       "id": "junegunn__fzf-when-1",
+       "ok": true,
+       "problems": [
+        "Note: the re-run grep failed (rc=1) because of shell quoting. Run here, grep -n 'json:\"progress\"' src/terminal.go finds line 246. git log -S points only to 901939bd (2023-09-18), and its diff adds Progress to the Status struct and sets Progress: t.progress. The gold is correct."
+       ]
+      },
+      {
+       "id": "junegunn__fzf-affects-1",
+       "ok": true,
+       "problems": [
+        "Note: 'git log -S \"ToRunes() []rune\"' only returns 1d4057c2 (2016) and supports no statement. The grep and 7b16e44f reproduce the gold: two calls in algo.go, both in EqualMatch (1317, 1329); four sites in terminal.go (1901, 4266, 6201, 7432, where 7432 is the defensive append copy from 7b16e44f); Lines copying at chars.go:387; and the aliasing assertion at chars_test.go:259.",
+        "Note: the question's phrase 'instead of the item's own rune slice' hints at the aliasing detail, but the question needs it to make sense."
+       ]
+      },
+      {
+       "id": "junegunn__fzf-trap-1",
+       "ok": true,
+       "problems": [
+        "Note: the trap holds. maxBgProcesses=30 and maxBgProcessesPerAction=3 (src/constants.go:33-34) come only from 0c00b203, whose body is 'Close #4418' plus an example. Neither the code (terminal.go:1176, 1178, 5760), CHANGELOG.md (the bg- entry near line 775) nor the man page gives a reason for either number. Searching all commit messages for 'background process' found only an unrelated test commit."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "junegunn__fzf-why-1",
+     "repo": "junegunn/fzf",
+     "sha": "a140afeb4d733cad3c96a56bf6db7e26853b6757",
+     "kind": "why",
+     "question": "In the Unix terminal renderer's cancellable key-read path, why does an interrupted select() call loop forever instead of counting toward a retry limit?",
+     "gold": [
+      {
+       "statement": "Counting EINTR against the 100-iteration limit (meant for read attempts, reset only when a byte was read) let signals during an idle prompt drain it; running out returned getCharError, which became a Fatal event and exit status 2.",
+       "commit": "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+       "location": "src/tui/light_unix.go:256"
+      },
+      {
+       "statement": "Only the cancellable path (used with --listen) is affected, because select() is not restarted by SA_RESTART, unlike the blocking read on the non-cancellable path.",
+       "commit": "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+       "location": "src/tui/light_unix.go:243"
+      },
+      {
+       "statement": "The fix matches waitReadable(), which already retries EINTR without a limit; it fixes issue #4917.",
+       "commit": "1578b7c3c33622ee2307e2173321a66eec5a7aa9",
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log --format=%H%n%B -1 1578b7c3",
+      "git show 1578b7c3 -- src/tui/light_unix.go",
+      "grep -n EINTR src/tui/light_unix.go"
+     ]
+    },
+    {
+     "id": "junegunn__fzf-when-1",
+     "repo": "junegunn/fzf",
+     "sha": "a140afeb4d733cad3c96a56bf6db7e26853b6757",
+     "kind": "when",
+     "question": "When did the JSON status that the --listen HTTP server returns for a GET request start including a search progress field, and in which change?",
+     "gold": [
+      {
+       "statement": "The progress field was added to the Status struct, filled from t.progress in dumpStatus, in commit 901939bd on 2023-09-18 (\"Add support for limit and offset parameters for GET / endpoint\").",
+       "commit": "901939bd96b38bcc6f4023d2c7075356153a6c8f",
+       "location": "src/terminal.go:246"
+      }
+     ],
+     "gold_sources": [
+      "git log -S \"json:\\\"progress\\\"\" --format=\"%h %ad %s\" --date=iso",
+      "git show 901939bd -- src/terminal.go",
+      "grep -n json:\\\"progress\\\" src/terminal.go"
+     ]
+    },
+    {
+     "id": "junegunn__fzf-affects-1",
+     "repo": "junegunn/fzf",
+     "sha": "a140afeb4d733cad3c96a56bf6db7e26853b6757",
+     "kind": "affects",
+     "question": "If Chars.ToRunes were changed so that in rune mode it returned a fresh copy instead of the item's own rune slice, or if its signature changed, which code calls it and would need review or updating?",
+     "gold": [
+      {
+       "statement": "The algo package calls text.ToRunes() in two places, in the exact/equal matching code.",
+       "commit": null,
+       "location": "src/algo/algo.go:1317"
+      },
+      {
+       "statement": "terminal.go calls ToRunes at four sites, among them replace-query, which already copies the result defensively (append([]rune{}, ...)) because the slice is aliased.",
+       "commit": "7b16e44f",
+       "location": "src/terminal.go:7432"
+      },
+      {
+       "statement": "Within util, Chars.Lines copies ToRunes() output, and chars_test.go asserts that rune-mode ToRunes aliases the underlying array (&runes[0] == &chars.ToRunes()[0]).",
+       "commit": null,
+       "location": "src/util/chars_test.go:259"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn \"ToRunes()\" src",
+      "git show 7b16e44f --stat",
+      "git log -S \"ToRunes() []rune\" --format=\"%h %ad %s\" --date=short"
+     ],
+     "gold_files": [
+      "src/util/chars.go",
+      "src/algo/algo.go",
+      "src/terminal.go",
+      "src/util/chars_test.go"
+     ]
+    },
+    {
+     "id": "junegunn__fzf-trap-1",
+     "repo": "junegunn/fzf",
+     "sha": "a140afeb4d733cad3c96a56bf6db7e26853b6757",
+     "kind": "trap",
+     "question": "Why does fzf allow at most 30 background processes in total, and at most 3 per action, for asynchronous transform actions?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log -L32,35:src/constants.go",
+      "git blame -L32,35 src/constants.go",
+      "git log -S maxBgProcesses --format=\"%h %ad %s%n%b\" --date=iso",
+      "git log -S maxBgProcessesPerAction --format=\"%h %s\"",
+      "grep -n maxBgProcesses src/constants.go src/terminal.go",
+      "grep -n -i concurren CHANGELOG.md man/man1/fzf.1"
+     ],
+     "unknown_reason": "The constants maxBgProcesses = 30 and maxBgProcessesPerAction = 3 (src/constants.go:33-34) were added in one commit and never changed: git log -L, git blame and git log -S for both names point only to 0c00b203 (2025-06-16, \"Implement asynchronous transform actions (#4419)\"). That commit's whole body is \"Close #4418\" and an example command (fzf --bind 'focus:bg-transform-header(sleep 2; date; echo {})'). It gives no reason for either number. The code around them has no comment beyond \"// Background processes\", and they are used only as channel and semaphore capacities (src/terminal.go:1176, 1178, 5760). Neither CHANGELOG.md nor the man page mentions these limits or a concurrency cap. Issue/PR #4418/#4419 text is not in the repository."
+    }
+   ],
+   "shape_problems": [],
+   "checked": true,
+   "seconds": 107
+  },
+  {
+   "repo": "gin-gonic/gin",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write-missing",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 47.9,
+      "is_error": false,
+      "num_turns": 10,
+      "cost_usd": 0.24845840000000002,
+      "session_id": "28ce963d-68e4-442a-acd2-e6be396b62d6"
+     },
+     "n": 2,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 24.2,
+      "is_error": false,
+      "num_turns": 4,
+      "cost_usd": 0.154312,
+      "session_id": "ad22ad27-c1a4-4f8a-8426-0730651a415d"
+     },
+     "results": [
+      {
+       "id": "gin-gonic__gin-why-1",
+       "ok": true,
+       "problems": [
+        "Note: the question already says the wildcard child is taken 'from the end of the children list', which is the fix's mechanism. It does not give away the why (the 'invalid node type' panic, addChild keeping the wildcard last, static-over-param priority), so this is not a leak.",
+        "Both gold statements come straight from the 472d086 commit message and its diff. tree.go:886 is `n = n.children[len(n.children)-1]` in findCaseInsensitivePathRec. The rg source was not run by the automatic check; grep finds the same line at tree.go:886 (and also matches lines 212 and 483)."
+       ]
+      },
+      {
+       "id": "gin-gonic__gin-when-1",
+       "ok": true,
+       "problems": [
+        "Reproduced: db30908 dated 2026-02-27 09:33:46 -0600, 'chore(logger): allow skipping query string output (#4547)', changing docs/doc.md, logger.go and logger_test.go. SkipQueryString is at logger.go:54, with its comment at :51. The rg source was not run by the automatic check; grep finds the same lines."
+       ]
+      },
+      {
+       "id": "gin-gonic__gin-affects-1",
+       "ok": true,
+       "problems": [
+        "Reproduced: nameOfFunction is called at context.go:150 and :161, debug.go:35 and gin.go:404 (Routes / RouteInfo.Handler), and its test is at utils_test.go:91, which checks the name with a regexp. aa7b00a 2014-10-09 'General refactoring. Part 2.' touched the seven files the gold lists.",
+        "Note: the third gold statement (where nameOfFunction came from) is history. It is not something that would be affected, so it is off-topic for an 'affects' question, though it is correct."
+       ]
+      },
+      {
+       "id": "gin-gonic__gin-trap-1",
+       "ok": true,
+       "problems": [
+        "I could not find the answer. The current code is context.go:56-57, `const abortIndex int8 = math.MaxInt8 >> 1`, with a comment that only says what the value is used for.",
+        "Searched every commit message for abortindex, maxint8 and int8: only 93ff771 (safeInt8 helper and gosec overflow work), 8f30478 and 31323f6 matched, and none of them says why the value is half of MaxInt8.",
+        "Searched all *.md files: the only hit is CHANGELOG.md:679 '[FIX] gin.AbortIndex is unexported', which gives no reason.",
+        "A likely reason, that leaving headroom stops c.index++ in Next() from overflowing int8, can only be inferred. Nothing in the repo states it, so 'unknown' holds."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "gin-gonic__gin-why-1",
+     "repo": "gin-gonic/gin",
+     "sha": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+     "kind": "why",
+     "question": "In the router tree's case-insensitive path lookup, why does the code try a node's static children first and only then take the wildcard child from the end of the children list, rather than just taking the first child?",
+     "gold": [
+      {
+       "statement": "With RedirectFixedPath enabled, a request that matched no route made findCaseInsensitivePathRec panic with \"invalid node type\". The code took children[0] as the wildcard child, but addChild() keeps the wildcard child at the end of the array. So when a node had both static and wildcard children, children[0] was a static node and the switch on nType fell through to the default panic. The fix does what getValue() already did and uses children[len(children)-1] for the wildcard child (Fixes #2959).",
+       "commit": "472d086af2acd924cb4b9d7be0525f7d790f69bc",
+       "location": "tree.go:886"
+      },
+      {
+       "statement": "Static children are tried first, through indices, before the wildcard child. This was added after review so that static routes beat param routes in case-insensitive matching: /PREFIX/XXX should resolve to /prefix/xxx and not match :id.",
+       "commit": "472d086af2acd924cb4b9d7be0525f7d790f69bc",
+       "location": "tree.go:886"
+      }
+     ],
+     "gold_sources": [
+      "git log -S \"children[len(n.children)-1]\" --format=\"%h %s\" -- tree.go",
+      "git show 472d086 -- tree.go",
+      "rg -n \"n = n.children\\[len\" tree.go"
+     ]
+    },
+    {
+     "id": "gin-gonic__gin-when-1",
+     "repo": "gin-gonic/gin",
+     "sha": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+     "kind": "when",
+     "question": "When did the request logger get a config option that keeps the URL query string out of the logged path, and in which change?",
+     "gold": [
+      {
+       "statement": "The SkipQueryString field of LoggerConfig was added on 2026-02-27 in \"chore(logger): allow skipping query string output (#4547)\". That commit changed logger.go, logger_test.go and docs/doc.md.",
+       "commit": "db30908",
+       "location": "logger.go:54"
+      }
+     ],
+     "gold_sources": [
+      "git log -S SkipQueryString --format=\"%h %ad %s\" --date=iso",
+      "git show db30908 --stat",
+      "rg -n SkipQueryString --glob *.go"
+     ]
+    },
+    {
+     "id": "gin-gonic__gin-affects-1",
+     "repo": "gin-gonic/gin",
+     "sha": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+     "kind": "affects",
+     "question": "If the internal helper nameOfFunction, which turns a handler into its reported name string, changed its signature or its output format, which parts of the framework would have to change or would behave differently?",
+     "gold": [
+      {
+       "statement": "Context.HandlerName and Context.HandlerNames call nameOfFunction to produce handler names.",
+       "commit": null,
+       "location": "context.go:150"
+      },
+      {
+       "statement": "The debug route printer (debugPrintRoute) and Engine route listing (RouteInfo.Handler in gin.go) also call nameOfFunction; its unit test in utils_test.go asserts the exact name format.",
+       "commit": null,
+       "location": "debug.go:35"
+      },
+      {
+       "statement": "nameOfFunction was introduced in the refactoring commit 'General refactoring. Part 2.' (2014-10-09), which touched auth.go, context.go, gin.go, logger.go, mode.go, routergroup.go and utils.go.",
+       "commit": "aa7b00a083a2cbdbe5b7288cf57e0d996819aac3",
+       "location": "utils.go:131"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn \"nameOfFunction(\" --include=*.go .",
+      "git log --format=\"%h %ad %s\" --date=short -S \"func nameOfFunction\"",
+      "git show --stat aa7b00a"
+     ],
+     "gold_files": [
+      "utils.go",
+      "context.go",
+      "debug.go",
+      "gin.go",
+      "utils_test.go"
+     ]
+    },
+    {
+     "id": "gin-gonic__gin-trap-1",
+     "repo": "gin-gonic/gin",
+     "sha": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+     "kind": "trap",
+     "question": "Why does aborting a request set the context's handler index to half of the largest int8 value rather than to the maximum int8 value itself?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log --format=\"%h %ad %s%n%b\" --date=short -L 56,57:context.go",
+      "git log --format=\"%h %ad %s\" --date=short -S \"math.MaxInt8 / 2\"",
+      "git log --format=\"%h %ad %s\" --date=short -S \"AbortIndex\"",
+      "git show -s 15216a0",
+      "git show -s 31323f6",
+      "git show -s aa9fad5",
+      "git show -s 1228b03",
+      "git show -s cd92bf4",
+      "git show -s 8f30478",
+      "git show -s 5cc3d59",
+      "git show -s c9b3441",
+      "git show -s 9a4ecc8",
+      "git show -s c7a28f8"
+     ],
+     "unknown_reason": "The value math.MaxInt8 / 2 arrived in the initial commit 15216a0 (2014-06-18, message 'Initial commit', no body). After that: aa9fad5 (2015-03-25, 'Fixes NoMethod / NoRoute handlers', no body) removed the AbortIndex constant; 31323f6 (2015-03-26, 'AbortIndex is missing', no body) put it back as const AbortIndex = math.MaxInt8 / 2; 1228b03 (2015-05-31, 'Fixing some unit tests', no body) gave it the type int8; cd92bf4 (2015-05-31, 'Adds panic when using too many handlers', no body) added a panic when a handler chain reaches AbortIndex, which uses the value as a ceiling but does not explain why half was chosen; 8f30478 (2015-07-02, 'Comments + IRoutes + IRouter + unexported AbortIndex', no body) renamed it to abortIndex; 5cc3d59 (2016-12-24, 'Support upload single or multiple files.', body only a Signed-off-by line), c9b3441 (2017-09-07, #1100, moving defaultMemory, no body) and 9a4ecc8 (2017-11-12, #1165 'format some codes style', no body) only moved the declaration; c7a28f8 (2021-07-06, #2776 'use bit shift operation instead of division', no body) rewrote it as math.MaxInt8 >> 1, which keeps the same value. The comment in the code ('abortIndex represents a typical value used in abort functions') says what it is used for, not why it is half of MaxInt8. None of these commits says why half of MaxInt8 was chosen instead of MaxInt8."
+    }
+   ],
+   "shape_problems": [],
+   "seconds": 73,
+   "trial_before_amendment": {
+    "rounds": [
+     {
+      "step": "write",
+      "record": {
+       "model": "claude-opus-5-5",
+       "exit": 0,
+       "seconds": 118.0,
+       "is_error": false,
+       "num_turns": 14,
+       "cost_usd": 0.4177088,
+       "session_id": "76cfea02-a1bd-4505-98f3-6e378c37b450"
+      },
+      "n": 4,
+      "shape_problems": []
+     },
+     {
+      "step": "check:check",
+      "round": 1,
+      "record": {
+       "model": "claude-opus-5-5",
+       "exit": 0,
+       "seconds": 52.8,
+       "is_error": false,
+       "num_turns": 10,
+       "cost_usd": 0.3199924,
+       "session_id": "f3179d43-09f5-4414-ac2b-92c515bc9932"
+      },
+      "results": [
+       {
+        "id": "gin-gonic__gin-why-1",
+        "ok": true,
+        "problems": [
+         "Minor: the question already says the wildcard child is taken 'from the end of the children list' and contrasts it with 'just taking the first child'. That points at the children[0] -> children[len-1] fix in gold[0], but it is the premise of a reasonable why-question, not a path, hash or line number.",
+         "The rg source was not run (no rg). The equivalent grep reproduces tree.go:886 'n = n.children[len(n.children)-1]'. git show 472d086 reproduces both gold statements, including the review-feedback text about /PREFIX/XXX -> /prefix/xxx and the in-code comment."
+        ]
+       },
+       {
+        "id": "gin-gonic__gin-when-1",
+        "ok": true,
+        "problems": []
+       },
+       {
+        "id": "gin-gonic__gin-affects-1",
+        "ok": false,
+        "problems": [
+         "gold[1] is wrong about the code: the test is TestContextBodyAllowedForStatus (context_test.go:1033-1039), not TestBodyAllowedForStatus.",
+         "The gold leaves out the code that would actually behave differently. Every public renderer goes through Context.Render (JSON, IndentedJSON, SecureJSON, AsciiJSON, XML, String, HTML, Data, ...). The 204 tests that assert an empty body plus a Content-Type would break if the status set changed, for example TestContextRenderNoContentJSON (context_test.go:1101-1110) and the similar tests at context_test.go:1132, 1157, 1214, 1225, 1291, 1316, 1341, 1368 and 1393.",
+         "gold[2] and gold_files are history from 963acc4, not current impact. vendor/vendor.json no longer exists in the tree. middleware_test.go has no reference to bodyAllowedForStatus or WriteContentType. Listing these files as affected is wrong for an 'affects' question.",
+         "gold[0] (Render writes only the content type and calls WriteHeaderNow) cannot be checked with the listed git commands. Only the rg command (not run) points at context.go:1155, and it shows just the call line, not the WriteContentType/WriteHeaderNow branch."
+        ]
+       },
+       {
+        "id": "gin-gonic__gin-trap-1",
+        "ok": false,
+        "problems": [
+         "Not a trap: the rationale is in the history. The early 404 was first added in 98951c4 (2015-05-24, Manu Mtz-Almeida), 'Return 404 when listing empty directory'. The same commit added assert.Equal(t, w.Code, 404) to TestRouteStaticNoListing, which is now at routes_test.go:462-470 and asserts http.StatusNotFound for GET / with listing disabled. With OnlyFilesFS, opening a directory succeeds and http.FileServer would serve an empty listing with 200. Writing 404 first makes a directory request return 404.",
+         "The gold's blame-based story is incomplete. b97ccf3 (2018-11-26, 'Router: Route StaticFS() not found to Router's NoRoute() (#1663)') removed the original `if nolisting { WriteHeader(404) }`. 98c7ac7 'fix bug (#1682)' put it back, which restored the 2015 behaviour that TestRouteStaticNoListing checks. The unknown_reason stops at 98c7ac7 and never follows the lines past b97ccf3 to 98951c4."
+        ]
+       }
+      ],
+      "flagged": [
+       "gin-gonic__gin-affects-1",
+       "gin-gonic__gin-trap-1"
+      ]
+     },
+     {
+      "step": "check:write",
+      "round": 1,
+      "record": {
+       "model": "claude-opus-5-5",
+       "exit": 0,
+       "seconds": 170.4,
+       "is_error": false,
+       "num_turns": 14,
+       "cost_usd": 0.38931,
+       "session_id": "c8f6db68-c5e1-4c26-b135-f512c5d2ec60"
+      },
+      "n": 2,
+      "shape_problems": []
+     },
+     {
+      "step": "rewrite-flagged:check",
+      "round": 2,
+      "record": {
+       "model": "claude-opus-5-5",
+       "exit": 0,
+       "seconds": 42.2,
+       "is_error": false,
+       "num_turns": 7,
+       "cost_usd": 0.2476014,
+       "session_id": "38a9f156-6ba7-4653-ada2-24f5888aaf2a"
+      },
+      "results": [
+       {
+        "id": "gin-gonic__gin-why-1",
+        "ok": true,
+        "problems": [
+         "Minor: the question's wording ('try a node's static children first … rather than just taking the first child') is close to the commit message and the code comment added in 472d086 ('try static children first (via indices) before falling back to the wildcard child'). It names the mechanism the gold explains, but it gives away no path, line or hash, so this is not a disqualifying leak.",
+         "gold_sources check: rg is not installed here, so I used grep -n instead. It finds 'n = n.children[len(n.children)-1]' at tree.go:212, 483 and 886, which supports location tree.go:886. git show 472d086 reproduces both gold statements (the panic explanation, the getValue() mirror, Fixes #2959, and the review follow-up that makes static routes win: /PREFIX/XXX -> /prefix/xxx)."
+        ]
+       },
+       {
+        "id": "gin-gonic__gin-when-1",
+        "ok": true,
+        "problems": [
+         "None. git log -S SkipQueryString gives db30908 at 2026-02-27 09:33:46 -0600, 'chore(logger): allow skipping query string output (#4547)'. git show --stat lists docs/doc.md, logger.go and logger_test.go. With grep instead of rg, the field is at logger.go:54 and is used at logger.go:306. No leak: the question describes the feature without naming the field."
+        ]
+       },
+       {
+        "id": "gin-gonic__gin-affects-1",
+        "ok": false,
+        "problems": [
+         "Gold statement 3 is wrong about the code. context.go:1173 is Context.HTML (c.Render(code, instance)), not JSON/render.JSON. The render.JSON calls are at 1197 (JSONP fallback) and 1206 (JSON). HTML is also missing from the list of helpers.",
+         "Gold statement 3 overstates 'Every response helper on Context goes through Context.Render'. File (context.go:1280), FileFromFS (1285), FileAttachment (1303) and Stream (1322) do not call Render. The statement should be limited to the rendering helpers. AbortWithStatusJSON (230) and Negotiate (1358) reach Render indirectly and could be named.",
+         "Everything else checks out with grep in place of rg. bodyAllowedForStatus is at context.go:1058-1070: false for 100-199, 204 and 304. It was added in 963acc4 (2017-01-09). Its only production caller is context.go:1155 inside Render (1152-1166). Redirect and SSEvent call Render(-1, …) at 1254 and 1314. TestContextBodyAllowedForStatus is at context_test.go:1033, and the NoContent tests are at the stated lines (1101, 1127, 1153, 1210, 1221, 1285, 1312, 1337, 1363, 1389). No leak."
+        ]
+       },
+       {
+        "id": "gin-gonic__gin-trap-1",
+        "ok": true,
+        "problems": [
+         "I could not break the trap. grep -rnw ErrorTypeRender over the tree (excluding .git and .verinoda) finds only errors.go:21-22, with no use in any .go file, test or doc. Nothing depends on the literal value either: there is no 4611686018427387904 or 1<<62 compared against an ErrorType. context_test.go:1055 checks Type: 1, which is ErrorTypePrivate set by c.Error, not ErrorTypeRender. git log -S shows that the last use, SetType(ErrorTypeRender), was removed in 2fc2a3e (2016-01-26). 6db092f (2018) only added the doc comment. The only in-repo effect is semantic: the value would matter only if it collided with another ErrorType bit used by ByType/IsType or the ErrorTypeAny mask, and no caller or test exercises that.",
+         "Minor inaccuracy in unknown_reason: it says the SetType calls in the tree use only ErrorTypeBind (context.go:801, 820, 822) and ErrorTypePrivate. In fact ErrorTypePublic is also used (context_test.go:1924 and errors_test.go:26), and ErrorTypePrivate appears only in a test (context_test.go:1925). The conclusion still holds.",
+         "The rederive step reported that rg could not run. The grep equivalents reproduce the reason's claims."
+        ]
+       }
+      ],
+      "flagged": [
+       "gin-gonic__gin-affects-1"
+      ]
+     },
+     {
+      "step": "rewrite-flagged:write",
+      "round": 2,
+      "record": {
+       "model": "claude-opus-5-5",
+       "exit": 0,
+       "seconds": 32.0,
+       "is_error": false,
+       "num_turns": 6,
+       "cost_usd": 0.1768578,
+       "session_id": "1abaa452-d022-4fac-9e27-37acde1201df"
+      },
+      "n": 1,
+      "shape_problems": []
+     },
+     {
+      "step": "replace-flagged:check",
+      "round": 3,
+      "record": {
+       "model": "claude-opus-5-5",
+       "exit": 0,
+       "seconds": 36.2,
+       "is_error": false,
+       "num_turns": 6,
+       "cost_usd": 0.21314680000000003,
+       "session_id": "25d34307-2d4c-4d32-a8be-3faaa9f28b5d"
+      },
+      "results": [
+       {
+        "id": "gin-gonic__gin-why-1",
+        "ok": true,
+        "problems": [
+         "Minor: the rg source was not run by the automatic check. Running grep -n 'children\\[len' tree.go confirms line 886 (n = n.children[len(n.children)-1]), so the location holds. Both gold statements match the 472d086 commit message and diff. The question does not reveal any path, hash or line."
+        ]
+       },
+       {
+        "id": "gin-gonic__gin-when-1",
+        "ok": true,
+        "problems": [
+         "Minor: the rg source was not run by the automatic check. grep confirms SkipQueryString at logger.go:54, with its use at logger.go:306. git log -S gives db30908, 2026-02-27 09:33:46 -0600, and --stat lists docs/doc.md, logger.go and logger_test.go. The gold is fully reproduced."
+        ]
+       },
+       {
+        "id": "gin-gonic__gin-affects-1",
+        "ok": false,
+        "problems": [
+         "Gold statement 2 is attributed to commit dc43372, but Context.ContentType() did not exist then. In dc43372, filterFlags was called directly inside the Bind code (ctype := filterFlags(c.Request.Header.Get(\"Content-Type\"))). git log -S 'func (c *Context) ContentType' shows the method was added in 18880f9 (2015-03-31). The statement about current behaviour is right; the commit attribution is wrong.",
+         "The automatic check showed no reproduction for the 'grep -A25 ^func Default', 'TestFilterFlags' and 'TestContextContentType' commands. Running them by hand does reproduce statements 5, 7 and 8: binding/binding.go:100 switches on exact MIME constants with default Form, utils_test.go:83/86 holds the filterFlags asserts, and context_test.go:2100-2105 expects 'application/json'. The matcher missed them; the gold content is correct.",
+         "Minor: statement 7 gives utils_test.go:82, the func line; the asserts are at 83-87. Statement 8 gives context_test.go:2100, the func line; the assert is at 2105. Both are acceptable."
+        ]
+       },
+       {
+        "id": "gin-gonic__gin-trap-1",
+        "ok": false,
+        "problems": [
+         "This is not really an unknowable trap; the repository gives a definite answer. grep -rnw ErrorTypeRender finds only errors.go:21-22, the comment and 'ErrorTypeRender ErrorType = 1 << 62'. No code or test reads, sets or compares it, and git log -S shows its last use (renderError's SetType(ErrorTypeRender)) was removed in 2fc2a3e (2016-01-26). So the answer 'nothing in gin or its tests would break, except that choosing a value that collides with ErrorTypeBind (1<<63), ErrorTypePrivate (1<<0) or ErrorTypePublic (1<<1) would make ByType filtering ambiguous' can be derived and verified. A gold of 'unknown' would penalize that correct, grounded answer. The task works better as a normal 'affects' task whose gold is 'no in-repo dependents'.",
+         "The unknown_reason says the SetType calls use only ErrorTypeBind and ErrorTypePrivate. That is inaccurate: the tests also call SetType(ErrorTypePublic) twice and SetType(ErrorTypePrivate) once. Production code uses only ErrorTypeBind (context.go:801, 820, 822).",
+         "The rg sources were not run by the automatic check. Their grep equivalents reproduce the reason's main claims."
+        ]
+       }
+      ],
+      "flagged": [
+       "gin-gonic__gin-affects-1",
+       "gin-gonic__gin-trap-1"
+      ]
+     }
+    ],
+    "tasks": [
+     {
+      "id": "gin-gonic__gin-why-1",
+      "repo": "gin-gonic/gin",
+      "sha": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+      "kind": "why",
+      "question": "In the router tree's case-insensitive path lookup, why does the code try a node's static children first and only then take the wildcard child from the end of the children list, rather than just taking the first child?",
+      "gold": [
+       {
+        "statement": "With RedirectFixedPath enabled, a request that matched no route made findCaseInsensitivePathRec panic with \"invalid node type\". The code took children[0] as the wildcard child, but addChild() keeps the wildcard child at the end of the array. So when a node had both static and wildcard children, children[0] was a static node and the switch on nType fell through to the default panic. The fix does what getValue() already did and uses children[len(children)-1] for the wildcard child (Fixes #2959).",
+        "commit": "472d086af2acd924cb4b9d7be0525f7d790f69bc",
+        "location": "tree.go:886"
+       },
+       {
+        "statement": "Static children are tried first, through indices, before the wildcard child. This was added after review so that static routes beat param routes in case-insensitive matching: /PREFIX/XXX should resolve to /prefix/xxx and not match :id.",
+        "commit": "472d086af2acd924cb4b9d7be0525f7d790f69bc",
+        "location": "tree.go:886"
+       }
+      ],
+      "gold_sources": [
+       "git log -S \"children[len(n.children)-1]\" --format=\"%h %s\" -- tree.go",
+       "git show 472d086 -- tree.go",
+       "rg -n \"n = n.children\\[len\" tree.go"
+      ]
+     },
+     {
+      "id": "gin-gonic__gin-when-1",
+      "repo": "gin-gonic/gin",
+      "sha": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+      "kind": "when",
+      "question": "When did the request logger get a config option that keeps the URL query string out of the logged path, and in which change?",
+      "gold": [
+       {
+        "statement": "The SkipQueryString field of LoggerConfig was added on 2026-02-27 in \"chore(logger): allow skipping query string output (#4547)\". That commit changed logger.go, logger_test.go and docs/doc.md.",
+        "commit": "db30908",
+        "location": "logger.go:54"
+       }
+      ],
+      "gold_sources": [
+       "git log -S SkipQueryString --format=\"%h %ad %s\" --date=iso",
+       "git show db30908 --stat",
+       "rg -n SkipQueryString --glob *.go"
+      ]
+     },
+     {
+      "id": "gin-gonic__gin-affects-1",
+      "repo": "gin-gonic/gin",
+      "sha": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+      "kind": "affects",
+      "question": "If I changed filterFlags so that it no longer cuts a header value at the first space or semicolon, what code would behave differently or need updating?",
+      "gold": [
+       {
+        "statement": "filterFlags returns the part of the string before the first ' ' or ';', or the whole string if neither is present. It was introduced in 9634a38 (2014-07-04) for the new JSON/XML/form binding code. In dc43372 (2014-07-16) it moved into utils.go when the source was split into files.",
+        "commit": "9634a38",
+        "location": "utils.go:91"
+       },
+       {
+        "statement": "Its only production caller is Context.ContentType, which returns filterFlags(c.requestHeader(\"Content-Type\")). With the change, ContentType would return the full header including parameters such as '; charset=utf-8'.",
+        "commit": "dc43372",
+        "location": "context.go:1037"
+       },
+       {
+        "statement": "Context.Bind passes c.ContentType() to binding.Default to choose the binding. Bind would then pick a different binding for requests whose Content-Type has parameters.",
+        "commit": null,
+        "location": "context.go:758"
+       },
+       {
+        "statement": "Context.ShouldBind also passes c.ContentType() to binding.Default, so it is affected in the same way.",
+        "commit": null,
+        "location": "context.go:839"
+       },
+       {
+        "statement": "binding.Default switches on exact MIME constants such as MIMEJSON and MIMEXML, and its default branch returns Form. An unfiltered value like 'application/json; charset=utf-8' would match no case and fall through to form binding.",
+        "commit": null,
+        "location": "binding/binding.go:100"
+       },
+       {
+        "statement": "The gin.Bind middleware wrapper calls c.Bind(obj), so it is affected through Context.Bind.",
+        "commit": null,
+        "location": "utils.go:40"
+       },
+       {
+        "statement": "TestFilterFlags checks the helper directly: 'text/html ' and 'text/html;' must both give 'text/html'.",
+        "commit": null,
+        "location": "utils_test.go:82"
+       },
+       {
+        "statement": "TestContextContentType sets 'application/json; charset=utf-8' and expects ContentType() to return 'application/json'. It would break.",
+        "commit": null,
+        "location": "context_test.go:2100"
+       }
+      ],
+      "gold_sources": [
+       "git log -S \"func filterFlags\" --format=\"%h %ad %s\" --date=short",
+       "git show --stat 9634a38",
+       "git show --stat dc43372",
+       "grep -rn -w filterFlags --include=*.go .",
+       "grep -rn \"\\.ContentType()\" --include=*.go .",
+       "grep -n -A25 \"^func Default\" binding/binding.go",
+       "grep -rn \"c.Bind(obj)\" --include=*.go .",
+       "grep -n -A6 \"func TestFilterFlags\" utils_test.go",
+       "grep -n -A6 \"func TestContextContentType\" context_test.go"
+      ],
+      "gold_files": [
+       "utils.go",
+       "context.go",
+       "binding/binding.go",
+       "utils_test.go",
+       "context_test.go"
+      ]
+     },
+     {
+      "id": "gin-gonic__gin-trap-1",
+      "repo": "gin-gonic/gin",
+      "sha": "73726dc606796a025971fe451f0aa6f1b9b847f6",
+      "kind": "trap",
+      "question": "If I changed the bit value assigned to ErrorTypeRender, which code inside gin or its tests would break or need to be updated?",
+      "gold": [
+       {
+        "statement": "unknown",
+        "commit": null,
+        "location": null
+       }
+      ],
+      "gold_sources": [
+       "rg -n -w ErrorTypeRender",
+       "rg -n \"SetType\\(\" --glob *.go",
+       "git log -S \"ErrorTypeRender\" --format=\"%h %ad %s\" --date=short",
+       "git show 2fc2a3e"
+      ],
+      "unknown_reason": "rg -w ErrorTypeRender over the whole tree (all file types, including docs and tests) finds only the declaration and its comment at errors.go:21-22. No Go file reads, sets or compares it. No test (*_test.go) mentions it. The SetType calls in the tree use only ErrorTypeBind (context.go:801, 820, 822) and ErrorTypePrivate. git log -S shows that the last real use was removed by 2fc2a3e (2016-01-26, \"Rendering error throws a panic()\"), which deleted renderError and its SetType(ErrorTypeRender). Since then the constant has had no caller and no test, so the repository says nothing about what depends on its value. Its only links are to code outside the repository, or by implication through the ErrorTypeAny mask. An answer that names a gin caller or a test that would break is confabulated."
+     }
+    ]
+   },
+   "checked": true
+  },
+  {
+   "repo": "sharkdp/bat",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 62.4,
+      "is_error": false,
+      "num_turns": 14,
+      "cost_usd": 0.4065146,
+      "session_id": "4ab19714-d515-4e8a-bb3c-10ecba2f97be"
+     },
+     "n": 4,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 30.1,
+      "is_error": false,
+      "num_turns": 6,
+      "cost_usd": 0.19096439999999998,
+      "session_id": "777eea36-ff59-479e-be94-65e164eb063b"
+     },
+     "results": [
+      {
+       "id": "sharkdp__bat-why-1",
+       "ok": true,
+       "problems": [
+        "Note: the question's 'only if the file actually has modified lines' is close to the subject of c8b81322 ('Only leave space for git diff markers if any line is modified'). It names no path, line or symbol, so it is not a leak. Both gold statements reproduce from `git show c8b81322`: the commit body says that before the change `--style=changes` always printed a 2-space indent, and that it now does so only when there is at least one +/- marker. The new condition is at src/printer.rs:231 at HEAD. The grep source on its own only gives the location."
+       ]
+      },
+      {
+       "id": "sharkdp__bat-when-1",
+       "ok": true,
+       "problems": [
+        "Note: besides adding `vendored-libgit2 = [\"git2/vendored-libgit2\"]` (Cargo.toml:35), commit 1838e25d also moved `git` out of the `application` feature and into `default`. The gold does not mention this, but it does not make any gold statement wrong. The date (2025-10-08), PR #3426 and issue #2939 with the reason (libgit2 missing or an incompatible version) all reproduce."
+       ]
+      },
+      {
+       "id": "sharkdp__bat-affects-1",
+       "ok": true,
+       "problems": [
+        "Note: the `git log -S` source reproduces none of the statements. The grep alone gives all three: the definition at src/config.rs:113 with the unit tests at lines 153-224, the call at src/bin/bat/app.rs:167 in the help pager path, and the call at src/bin/bat/main.rs:289 in invoke_bugreport with `.unwrap_or_else(|| \"less\".to_owned())`."
+       ]
+      },
+      {
+       "id": "sharkdp__bat-trap-1",
+       "ok": true,
+       "problems": [
+        "I could not find an answer. `git log -S'Fixed(238)'` and `git log -S'GRID_COLOR: u8 = 238'` lead back through fcfc7c46, 6b507d1e, a979608f, 8f5a80ea and de11558a, 120b33a9, ee43377a, 25083232, and none of their messages gives a reason for 238. The body of 25083232 explains reading the gutter color from the theme the way Sublime Text does, not why 238. The body of 3099f51b covers only the ansi theme and the #00000001 encoding. The code comment at src/printer.rs:889 says only 'use a specific fallback color'. `git log --grep=238` turns up only unrelated PR numbers and hashes. The trap holds."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "sharkdp__bat-why-1",
+     "repo": "sharkdp/bat",
+     "sha": "979ba22628bc9d8171f2cffca2bd5c90c9fc0a9e",
+     "kind": "why",
+     "question": "When the 'changes' style component is enabled, why does the printer add the git change-marker sidebar only if the file actually has modified lines, and not every time the component is turned on?",
+     "gold": [
+      {
+       "statement": "Before this change, `--style=changes` always printed a 2-space indent, even for a file with no modifications.",
+       "commit": "c8b81322283e768f28c7e116d990933dad7f4ed3",
+       "location": "src/printer.rs:231"
+      },
+      {
+       "statement": "The change makes the indent appear only when the sidebar has at least one +/- git marker (PR #3406).",
+       "commit": "c8b81322283e768f28c7e116d990933dad7f4ed3",
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log --format=%h%n%B -L '/is_some_and(|c| !c.is_empty())/,+1:src/printer.rs'",
+      "git show c8b81322 -- src/printer.rs",
+      "grep -n \"is_some_and(|c| !c.is_empty())\" src/printer.rs"
+     ]
+    },
+    {
+     "id": "sharkdp__bat-when-1",
+     "repo": "sharkdp/bat",
+     "sha": "979ba22628bc9d8171f2cffca2bd5c90c9fc0a9e",
+     "kind": "when",
+     "question": "When did bat get a Cargo feature that builds libgit2 from source instead of linking against the system library, and in which change?",
+     "gold": [
+      {
+       "statement": "The vendored-libgit2 feature was added in commit 1838e25d, \"feat(cargo): add vendored-libgit2 feature (#3426)\", dated 2025-10-08.",
+       "commit": "1838e25d",
+       "location": "Cargo.toml:35"
+      },
+      {
+       "statement": "The reason given was hosts where libgit2 is missing or is an incompatible version (issue #2939).",
+       "commit": "1838e25d",
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log -S'vendored-libgit2' --format='%h %ad %s' --date=short -- Cargo.toml",
+      "git show 1838e25d",
+      "grep -n vendored-libgit2 Cargo.toml"
+     ]
+    },
+    {
+     "id": "sharkdp__bat-affects-1",
+     "repo": "sharkdp/bat",
+     "sha": "979ba22628bc9d8171f2cffca2bd5c90c9fc0a9e",
+     "kind": "affects",
+     "question": "If the signature or return type of get_pager_executable were changed, which code would have to be updated?",
+     "gold": [
+      {
+       "statement": "The function is defined in src/config.rs, and the unit tests in the same file call it directly.",
+       "commit": null,
+       "location": "src/config.rs:113"
+      },
+      {
+       "statement": "The paged --help path in the bat binary calls it to pick the pager for the help output.",
+       "commit": null,
+       "location": "src/bin/bat/app.rs:167"
+      },
+      {
+       "statement": "The bugreport (--diagnostic) path calls it and falls back to \"less\" when it returns None.",
+       "commit": null,
+       "location": "src/bin/bat/main.rs:289"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn get_pager_executable --include=*.rs .",
+      "git log -S'fn get_pager_executable' --format='%h %ad %s' --date=short"
+     ],
+     "gold_files": [
+      "src/config.rs",
+      "src/bin/bat/app.rs",
+      "src/bin/bat/main.rs"
+     ]
+    },
+    {
+     "id": "sharkdp__bat-trap-1",
+     "repo": "sharkdp/bat",
+     "sha": "979ba22628bc9d8171f2cffca2bd5c90c9fc0a9e",
+     "kind": "trap",
+     "question": "When a theme defines no gutter foreground color, bat falls back to 256-color palette index 238 for the grid and line numbers; why was that particular shade chosen?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git blame -L 863,863 src/printer.rs",
+      "git blame -L 890,890 src/printer.rs",
+      "git log -L '/const DEFAULT_GUTTER_COLOR/,+1:src/printer.rs' --format='%h %ad %s%n%b' --date=short",
+      "git log -S'238' --format='%h %ad %s%n%b' --date=short -- src",
+      "git log -S'DEFAULT_GUTTER_COLOR' --format='%h %ad %s' --date=short",
+      "git show 8f5a80ea",
+      "git log --grep=gutter -i --format='%h %ad %s' --date=short"
+     ],
+     "unknown_reason": "The value 238 was already there in the Initial commit 8f5a80ea (2018-04-21), as `Fixed(238)` in main.rs, and that commit has no body. Every later commit carried the value along without saying why: a979608f 'Add Git support, closes #8', 6b507d1e 'Print filename' and fcfc7c46 'Code cleanup' (all 2018-04-21/22, none has a body); 120b33a9 'Move output to separate module' and ee43377a 'Move colors to printer module' (2018-05-21, no body; ee43377a created `GRID_COLOR: u8 = 238` in src/printer.rs). Commit 25083232 (2018-08-19, 'Extract grid and line-number color from theme', closes #178) renamed it to DEFAULT_GUTTER_COLOR. Its body explains reading the theme's gutter foreground color the way Sublime Text does, but it gives no reason for 238 as the fallback. Commit 3099f51b (2020-11-29, 'Add ansi theme to replace ansi-light and ansi-dark') wrote the current `None => Some(Fixed(DEFAULT_GUTTER_COLOR))` line. Its body covers only the ansi theme and the #00000001 alpha encoding. No commit message, code comment or Markdown file in the repository mentions 238."
+    }
+   ],
+   "shape_problems": [],
+   "checked": true,
+   "seconds": 95
+  },
+  {
+   "repo": "google/gson",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 65.1,
+      "is_error": false,
+      "num_turns": 11,
+      "cost_usd": 0.3100154,
+      "session_id": "a5765288-d63e-44f5-aabb-fa81868461d8"
+     },
+     "n": 4,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 29.4,
+      "is_error": false,
+      "num_turns": 4,
+      "cost_usd": 0.1743502,
+      "session_id": "ef68324b-0e8e-44e8-8dbd-c01b478282b8"
+     },
+     "results": [
+      {
+       "id": "google__gson-affects-1",
+       "ok": true,
+       "problems": [
+        "Note: gold statement 3 says the helper was 'introduced' in 46ab7042. That holds for the public ReflectionHelper method at the cited location. But the gold's own command, git log -SisAnonymousOrNonStaticLocal, also lists aa5554e6 (2021-09-18, 'Don't exclude static local classes (#1969)'). That commit added a private isAnonymousOrNonStaticLocal in Excluder, and 46ab7042 later moved it into ReflectionHelper. An answer that names aa5554e6 as the origin should not be marked wrong.",
+        "Note: the question's example ('also treat static local classes as matching') echoes the subject of aa5554e6, but it gives away no location."
+       ]
+      },
+      {
+       "id": "google__gson-affects-2",
+       "ok": true,
+       "problems": [
+        "Note: git log -ScheckInstantiable also lists e82637c4 (2022-04-17, 'Add support for reflection access filter (#1905)'). The method existed before 9c9cafcf, which moved it from UnsafeAllocator into ConstructorConstructor (its commit body says 'Move checkInstantiable to ConstructorConstructor'). 'Current form comes from 9c9cafcf' is right, but answers that cite e82637c4 as where it was introduced are also correct."
+       ]
+      },
+      {
+       "id": "google__gson-affects-3",
+       "ok": true,
+       "problems": [
+        "Note: both statements reproduce. grep finds callers in JsonReader (1817, 1831), TypeToken (114, 130), TypeAdapters (75, 83), ReflectiveTypeAdapterFactory (314), ConstructorConstructor (86) and ReflectionHelper (54), and cbad1aa7 is the oldest hit from git log -S. Callers inside ReflectionHelper (through its own helper at line 54) are indirect, so a complete answer could list more call sites, but none of the gold is wrong."
+       ]
+      },
+      {
+       "id": "google__gson-trap-1",
+       "ok": true,
+       "problems": [
+        "Trap confirmed. 'BUFFER_SIZE = 1024' comes from 6e06bf0d, whose body only describes the fillBuffer/pos fix. Every commit from git log -S\"new char[1024]\" (765a9f1e, c5c65ba6, 46b43465, 97cb326a, 553fa6b7, 6e06bf0d) is silent on the size. git log --grep for '1024' and for 'buffer size' finds nothing. No .md file mentions 1024. The code comment only gives a lower bound. No answer found."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "google__gson-affects-1",
+     "repo": "google/gson",
+     "sha": "3ff35d6269894901ab8006258395aafc4b9765cd",
+     "kind": "affects",
+     "question": "If I changed the semantics of the reflection helper isAnonymousOrNonStaticLocal (for example, to also treat static local classes as matching), which other production code in Gson would be affected?",
+     "gold": [
+      {
+       "statement": "Excluder calls ReflectionHelper.isAnonymousOrNonStaticLocal when it decides whether to exclude a class during serialization and deserialization.",
+       "commit": null,
+       "location": "gson/src/main/java/com/google/gson/internal/Excluder.java:221"
+      },
+      {
+       "statement": "ReflectiveTypeAdapterFactory calls it in create(...) for anonymous and local classes, which it does not serialize reflectively.",
+       "commit": null,
+       "location": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:119"
+      },
+      {
+       "statement": "The helper was introduced in the commit that let anonymous and local classes be serialized with a custom adapter (#2498). That commit touched Excluder, ReflectiveTypeAdapterFactory, ReflectionHelper and the tests for exclusion strategies, enums and objects.",
+       "commit": "46ab7042",
+       "location": "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java:156"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn isAnonymousOrNonStaticLocal gson/src/main",
+      "git log -SisAnonymousOrNonStaticLocal --format=%h%x20%ad%x20%s --date=short",
+      "git show --stat 46ab7042"
+     ],
+     "gold_files": [
+      "gson/src/main/java/com/google/gson/internal/Excluder.java",
+      "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+      "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java"
+     ]
+    },
+    {
+     "id": "google__gson-affects-2",
+     "repo": "google/gson",
+     "sha": "3ff35d6269894901ab8006258395aafc4b9765cd",
+     "kind": "affects",
+     "question": "What code would break or need updating if the signature or return contract of ConstructorConstructor's checkInstantiable method changed?",
+     "gold": [
+      {
+       "statement": "ConstructorConstructor calls checkInstantiable(rawType) itself when it builds an object constructor and uses the returned message as an exception message.",
+       "commit": null,
+       "location": "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java:144"
+      },
+      {
+       "statement": "UnsafeAllocator calls ConstructorConstructor.checkInstantiable(c) before it allocates an instance through Unsafe.",
+       "commit": null,
+       "location": "gson/src/main/java/com/google/gson/internal/UnsafeAllocator.java:39"
+      },
+      {
+       "statement": "The method's current form comes from 'Only create one UnsafeAllocator instance (#2196)', which touched ConstructorConstructor, UnsafeAllocator and UnsafeAllocatorInstantiationTest.",
+       "commit": "9c9cafcf",
+       "location": "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java:66"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn checkInstantiable gson/src",
+      "git log -ScheckInstantiable --format=%h%x20%ad%x20%s --date=short",
+      "git show --stat 9c9cafcf"
+     ],
+     "gold_files": [
+      "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java",
+      "gson/src/main/java/com/google/gson/internal/UnsafeAllocator.java"
+     ]
+    },
+    {
+     "id": "google__gson-affects-3",
+     "repo": "google/gson",
+     "sha": "3ff35d6269894901ab8006258395aafc4b9765cd",
+     "kind": "affects",
+     "question": "If the URL format produced by TroubleshootingGuide.createUrl changed, which parts of Gson that build exception messages would be affected?",
+     "gold": [
+      {
+       "statement": "createUrl is called from JsonReader (malformed JSON and other syntax errors), TypeToken (raw type tokens and captured type variables), TypeAdapters (java.lang.Class not supported), ReflectiveTypeAdapterFactory (duplicate fields), ConstructorConstructor (R8 abstract class) and ReflectionHelper.",
+       "commit": null,
+       "location": "gson/src/main/java/com/google/gson/internal/TroubleshootingGuide.java:7"
+      },
+      {
+       "statement": "The helper was introduced by 'Link to troubleshooting guide from exception messages (#2357)'.",
+       "commit": "cbad1aa7",
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "grep -rn \"createUrl(\" gson/src/main/java",
+      "git log -S\"createUrl(\" --format=%h%x20%ad%x20%s --date=short"
+     ],
+     "gold_files": [
+      "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+      "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+      "gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java",
+      "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+      "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java",
+      "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java"
+     ]
+    },
+    {
+     "id": "google__gson-trap-1",
+     "repo": "google/gson",
+     "sha": "3ff35d6269894901ab8006258395aafc4b9765cd",
+     "kind": "trap",
+     "question": "Why is the streaming JSON reader's internal character buffer sized at exactly 1024 characters rather than some other size?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git log -L258,258:gson/src/main/java/com/google/gson/stream/JsonReader.java",
+      "git log -S\"new char[1024]\" --format=%h%x20%ad%x20%an%x20%s%n%b --date=short",
+      "git show 765a9f1e -- gson/src/main/java/com/google/gson/stream/JsonReader.java",
+      "git log -S\"longest token that can be reported\" --format=%h%x20%ad%x20%s%n%b --date=short"
+     ],
+     "unknown_reason": "BUFFER_SIZE = 1024 (JsonReader.java:258) came from 6e06bf0d (2021-11-09, 'Fix for an ArrayIndexOutOfBoundsException'). Its body only says fillBuffer changes pos, so caching pos is wrong; it moved the existing literal 1024 into a constant and gives no reason for the size. The commits that git log -S\"new char[1024]\" lists say nothing about the size either. 765a9f1e (2010-08-26, 'Brand new classes for streaming JSON efficiently') lists features: efficiency, lenient/strict, pretty/compact, error messages, Javadoc and the non-execute prefix. c5c65ba6 (2012-08-25, experimental JsonReaderV2 rewrite) is about reading each character at most once and decoding strings lazily. 46b43465 (2012-08-26) lists missing features. 97cb326a, 553fa6b7 and e7bfd0c9 (2012-08-26) have subject lines only. The code comment says the buffer must be at least as long as the longest number token, which is a lower bound, not a reason for 1024. That comment goes back to ec42d600 (2011-11-27, eager literal decoding), which also gives no reason for 1024. No commit, comment or Markdown file in the repository explains the choice of 1024."
+    }
+   ],
+   "shape_problems": [],
+   "checked": true,
+   "seconds": 97
+  },
+  {
+   "repo": "guzzle/guzzle",
+   "model": "claude-opus-5-5",
+   "rounds": [
+    {
+     "step": "write",
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 76.3,
+      "is_error": false,
+      "num_turns": 15,
+      "cost_usd": 0.4006726,
+      "session_id": "7c970c81-8c22-4d14-a7b3-3b91c61dc4b9"
+     },
+     "n": 4,
+     "shape_problems": []
+    },
+    {
+     "step": "check:check",
+     "round": 1,
+     "record": {
+      "model": "claude-opus-5-5",
+      "exit": 0,
+      "seconds": 41.8,
+      "is_error": false,
+      "num_turns": 5,
+      "cost_usd": 0.22588999999999998,
+      "session_id": "bd05468d-c5e2-46d5-a346-7ecac2efd751"
+     },
+     "results": [
+      {
+       "id": "guzzle__guzzle-affects-1",
+       "ok": true,
+       "problems": [
+        "Note: running grep -rn \"Idn::convertUri\" src tests gives src/Client.php:691, src/RedirectMiddleware.php:233 and tests/IdnTest.php:21/42/46/56. All three statements reproduce. git log -S 'function convertUri' returns only 5422c554 (#3891, which moved the internal Utils helpers). No leak: the question has to name the symbol."
+       ]
+      },
+      {
+       "id": "guzzle__guzzle-affects-2",
+       "ok": true,
+       "problems": [
+        "Note: grep confirms three CurlFactory calls (lines 535, 2195, 2715), the StreamHandler call at 1760 and the ProxyEnvTest calls at 182/188/193. git show 1ab19ef1 adds the StreamHandler call. At that commit the class was still named ProxyEnvironment; it was renamed in 5422c554. That is fine.",
+        "Note: git log -S 'function resolveProxySelection' also returns 99df9329 (2026-06-12, #3620). That commit first added resolveProxySelection as a private helper in CurlFactory. 1ab19ef1 then moved it into the shared class. The gold makes no claim about which commit introduced it, so this does no harm."
+       ]
+      },
+      {
+       "id": "guzzle__guzzle-affects-3",
+       "ok": true,
+       "problems": [
+        "Note: the two call sites reproduce: CurlFactory.php:2894 `TlsVersion::assertRange($cryptoMethod, $cryptoMethodMax)` and StreamHandler.php:1903 `TlsVersion::assertRange($cryptoMethod, $options['crypto_method_max'])`.",
+        "Note: the third statement says d21caabf (#3688) introduced TlsVersion and assertRange, but it was not the only commit to do so. git log -S 'function assertRange' also returns c618d754 (#3687, 'Add crypto_method_max request option', 2026-06-23 12:52:44, 3 seconds before d21caabf). That commit also creates src/Handler/TlsVersion.php and is an ancestor of HEAD, probably as the parallel branch port. An answer that cites c618d754 is just as correct, so a grader should accept either commit.",
+        "Note: the gold commit for the call-site statements is d21caabf. Those call lines may have been changed since then, which is a minor issue."
+       ]
+      },
+      {
+       "id": "guzzle__guzzle-trap-1",
+       "ok": true,
+       "problems": [
+        "I could not find the answer. git blame on line 50 gives 77844559. git log -L gives 77844559, then 861d2da5, then b58db450, and none of those messages explains the separators. git log -S '>>>>>>>>' (with or without --all) returns b58db450, cb280974, d7b62e8b, 93c867eb and 91f1e347. The 91f1e347 body only describes adding MessageFormatter. There is no mention of the separators in docs/, CHANGELOG.md, UPGRADING.md or README.md. The trap holds.",
+        "Note: unknown_reason says 86e84983 is 'also matched' by git log -S '>>>>>>>>'. In this clone it is not: that command does not return 86e84983. It shows up only in the git log -L history. This is a small factual slip in the rationale and does not change the verdict.",
+        "Note: the gold_sources entry `git grep -n \">>>>>>>> 91f1e347^\"` is quoted wrongly. The pattern and the revision are inside one string, so the command searches the working tree for a literal string and returns rc=1. The intended `git grep -c '>>>>>>>>' 91f1e347^` returns nothing, which does confirm the claim."
+       ]
+      }
+     ],
+     "flagged": []
+    }
+   ],
+   "tasks": [
+    {
+     "id": "guzzle__guzzle-affects-1",
+     "repo": "guzzle/guzzle",
+     "sha": "93939470950a9b11e2e84204166ef5e048c55fe4",
+     "kind": "affects",
+     "question": "If I changed the parameters or return type of Idn::convertUri, which code in the library and its tests would have to be updated?",
+     "gold": [
+      {
+       "statement": "The client calls Idn::convertUri when it builds the request URI, if IDN conversion is enabled.",
+       "commit": "5422c554",
+       "location": "src/Client.php:691"
+      },
+      {
+       "statement": "The redirect middleware calls Idn::convertUri on the redirect target URI.",
+       "commit": "5422c554",
+       "location": "src/RedirectMiddleware.php:233"
+      },
+      {
+       "statement": "The IDN unit tests call Idn::convertUri directly. Commit 5422c554 created the Idn class when it moved the helper out of the internal Utils class.",
+       "commit": "5422c554",
+       "location": "tests/IdnTest.php:21"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn \"Idn::convertUri\" src tests",
+      "git log -S \"function convertUri\" --format=\"%h %ad %s\" --date=short",
+      "git show --stat 5422c554"
+     ],
+     "gold_files": [
+      "src/Client.php",
+      "src/RedirectMiddleware.php",
+      "tests/IdnTest.php"
+     ]
+    },
+    {
+     "id": "guzzle__guzzle-affects-2",
+     "repo": "guzzle/guzzle",
+     "sha": "93939470950a9b11e2e84204166ef5e048c55fe4",
+     "kind": "affects",
+     "question": "Which handlers and tests would break if I changed how ProxyEnv::resolveProxySelection combines the proxy request option with the proxy environment variables?",
+     "gold": [
+      {
+       "statement": "The cURL factory calls ProxyEnv::resolveProxySelection in three places.",
+       "commit": null,
+       "location": "src/Handler/CurlFactory.php:535"
+      },
+      {
+       "statement": "The stream handler calls ProxyEnv::resolveProxySelection when it applies the proxy option. Commit 1ab19ef1 added this call, which made the stream handler resolve environment proxies.",
+       "commit": "1ab19ef1",
+       "location": "src/Handler/StreamHandler.php:1760"
+      },
+      {
+       "statement": "The ProxyEnv unit tests call resolveProxySelection directly.",
+       "commit": null,
+       "location": "tests/Handler/ProxyEnvTest.php:182"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn \"resolveProxySelection\" src tests",
+      "git log -S \"function resolveProxySelection\" --format=\"%h %ad %s\" --date=short",
+      "git show --stat 1ab19ef1"
+     ],
+     "gold_files": [
+      "src/Handler/CurlFactory.php",
+      "src/Handler/StreamHandler.php",
+      "tests/Handler/ProxyEnvTest.php"
+     ]
+    },
+    {
+     "id": "guzzle__guzzle-affects-3",
+     "repo": "guzzle/guzzle",
+     "sha": "93939470950a9b11e2e84204166ef5e048c55fe4",
+     "kind": "affects",
+     "question": "If the check that a minimum TLS version does not exceed the maximum (TlsVersion::assertRange) changed what it accepts or throws, which code paths would be affected?",
+     "gold": [
+      {
+       "statement": "The cURL factory calls TlsVersion::assertRange with crypto_method and crypto_method_max.",
+       "commit": "d21caabf",
+       "location": "src/Handler/CurlFactory.php:2894"
+      },
+      {
+       "statement": "The stream handler calls TlsVersion::assertRange with crypto_method and crypto_method_max.",
+       "commit": "d21caabf",
+       "location": "src/Handler/StreamHandler.php:1903"
+      },
+      {
+       "statement": "Commit d21caabf (#3688, 2026-06-23, which added the crypto_method_max request option) introduced TlsVersion and assertRange.",
+       "commit": "d21caabf",
+       "location": "src/Handler/TlsVersion.php:39"
+      }
+     ],
+     "gold_sources": [
+      "grep -rn \"TlsVersion::assertRange\" src tests",
+      "git log -S \"function assertRange\" --format=\"%h %ad %s\" --date=short",
+      "git show --stat d21caabf"
+     ],
+     "gold_files": [
+      "src/Handler/CurlFactory.php",
+      "src/Handler/StreamHandler.php"
+     ]
+    },
+    {
+     "id": "guzzle__guzzle-trap-1",
+     "repo": "guzzle/guzzle",
+     "sha": "93939470950a9b11e2e84204166ef5e048c55fe4",
+     "kind": "trap",
+     "question": "Why does the message formatter's debug log template mark the request and the response with rows of '>' and '<' characters and the error with a row of dashes?",
+     "gold": [
+      {
+       "statement": "unknown",
+       "commit": null,
+       "location": null
+      }
+     ],
+     "gold_sources": [
+      "git blame -L 50,50 src/MessageFormatter.php",
+      "git log -L 50,50:src/MessageFormatter.php",
+      "git log -S \">>>>>>>>\" --format=\"%h %ad %s\" --date=short",
+      "git log -S \">>>>>>>>\" --all --format=\"%h %ad %s\" --date=short",
+      "git grep -n \">>>>>>>> 91f1e347^\"",
+      "git show -s 77844559",
+      "git show -s 861d2da5",
+      "git show -s b58db450",
+      "git show -s cb280974",
+      "git show -s 86e84983",
+      "git show -s d7b62e8b",
+      "git show -s 93c867eb",
+      "git show -s 91f1e347"
+     ],
+     "unknown_reason": "git blame and git log -L on the DEBUG constant line go back through three commits. 77844559 (2019-12-21, #2462) only added the public visibility keyword to constants. 861d2da5 (2015-06-13) fixed the common log format, added date_* patterns and closes #1122; it did not change DEBUG. b58db450 (2015-04-19, 'Added logging to Guzzle's core') has no body. Following the string back with git log -S '>>>>>>>>' finds four older commits. cb280974 (2014-02-28) moved the Log and Retry subscribers to separate repos and has no body. d7b62e8b (2013-08-03, 'Mucho cleanup. LogPlugin. Fixin multipart/form-data requests.') has no body. 93c867eb (2013-07-30, 'Initial commit of project muzzle') has no body. 86e84983 (2014-02-08) is also matched; its message is only about curl stats in the error event and an unused formatter variable. The oldest commit is 91f1e347 (2012-09-09), which first used the separators in a DEBUG_FORMAT template. Its body says only that it adds a shared MessageFormatter that expands log templates, uses it in LogPlugin and BackoffLogger, and makes LogPlugin simpler to customize. The parent of 91f1e347 has no '>>>>>>>>' anywhere in the tree. No commit gives a reason for the separator choice."
+    }
+   ],
+   "shape_problems": [],
+   "checked": true,
+   "seconds": 123
+  }
+ ],
+ "validate": [],
+ "leak_check": {}
+}

@@ -8,7 +8,7 @@ human rendering of the same data (``query`` prints the plain-text context the
 model reads, docs/DESIGN.md D20).
 
 Exit codes: 0 done; 1 error; 2 usage error, invalid plan, unresolved trace
-endpoint or blocked upstream command; 3 "needs more": a plan that needs
+endpoint; 3 "needs more": a plan that needs
 clarification, a partial reference resolution, a refused experiment, an
 incomplete observation, no precise answer, an absent name or a version that
 differs from the lock (`check`), a target not found (`api`; a target that could not be decided is 0),
@@ -28,22 +28,28 @@ import re
 import sys
 from pathlib import Path
 
-from verinoda.claims import ORDER as _CLAIM_ORDER
 from verinoda.paths import configure_index_env, find_repo_root
 
 configure_index_env()
 
 # Statuses a user may request with `claim add --status` (still downgraded when the
 # evidence does not allow them). `stale` is not requestable: only update/scan set it
-# from a snapshot diff.
-CLAIM_ADD_STATUSES = (*_CLAIM_ORDER, "contradicted")
+# from a snapshot diff. Written out, not taken from claims.ORDER: importing the claim engine for one list cost every
+# CLI call about 45 ms (tests/test_cli.py keeps the two equal).
+CLAIM_ADD_STATUSES = ("experiment_verified", "statically_verified", "primary_source_verified", "observed",
+                      "strong_inference", "weak_inference", "unknown", "contradicted")
+# The intents `analyze --intent` takes: question_plan.INTENTS written out, since importing the question-plan module
+# to build the parser cost every CLI call about 50 ms (tests/test_cli.py keeps the two equal).
+INTENTS = ("locate", "define", "flow", "callers", "dataflow", "config", "tests", "why", "history", "impact",
+           "behaviour", "compare_reference", "performance", "architecture", "usage", "decide")
 # Claim kinds a user may give to `claim add`: each has a mechanical grader in
 # verinoda.entail (`--symbol` feeds its spec), so the claim is graded by the kind's
 # predicate instead of by term coverage (which never verifies written text).
 # `order` ("A before B in F") is stored as a behaviour claim with that proposition.
 CLAIM_ADD_KINDS = ("general", "location", "relation", "config", "order")
 # `verinoda analyze` / `plan check` status -> exit code.
-PLAN_EXIT = {"ready": 0, "answered": 0, "invalid": 2, "invalid_plan": 2, "needs_clarification": 3, "no_index": 1}
+PLAN_EXIT = {"ready": 0, "answered": 0, "partly_answered": 0, "unanswered": 0, "invalid": 2, "invalid_plan": 2,
+             "needs_clarification": 3, "no_index": 1}   # the verdict is the status word; the exit says it ran
 TRACE_MODES = ("auto", "monitoring", "setprofile", "off")   # verinoda.runtime.trace.MODES
 NETWORK_CHOICES = ("off", "cache", "on")                      # verinoda.paths.NETWORK_MODES
 OBSERVE_LIST_CAP = 10
@@ -447,6 +453,29 @@ def cmd_doctor(args) -> int:
     res = run(_repo(args))
     _emit(args, res, render_brief if args.brief else render)
     return 0 if res["ok"] else 1
+
+
+def cmd_graph_state(args) -> int:
+    """The index build lock and the files changed since the index, in one call: what the editor mod's status
+    line needs (D186). The mod used to read them through a Python of its own, run with the repository as its
+    working directory, which put the repository first on sys.path; now it runs no python at all. Always exit 0:
+    a folder that was never indexed is an answer (``no_index``), not a failure."""
+    from verinoda import buildlock, freshness
+
+    repo = _repo(args)
+    locked = buildlock.is_locked(repo)
+    fresh = freshness.check(repo, record=False)   # the mod polls this every second during a build: a look, not a write
+    behind = fresh.get("count", 0) if fresh.get("checked") else 0
+    state = "building" if locked else "no_index" if not fresh.get("checked") else "behind" if behind else "fresh"
+
+    def render(r: dict) -> None:
+        n = r["behind"]
+        words = {"fresh": "fresh", "building": "building", "no_index": "no index",
+                 "behind": f"behind {n} file{'' if n == 1 else 's'}"}
+        print(f"graph: {words[r['state']]}")
+
+    _emit(args, {"locked": locked, "behind": behind, "state": state}, render)
+    return 0
 
 
 def cmd_init(args) -> int:
@@ -1709,6 +1738,9 @@ def cmd_datapack(args) -> int:
     if args.with_paths and args.what not in (None, "packs"):
         raise SystemExit("error: --with applies to the summary and `datapack packs`, not to a tag, score or "
                          "function lookup")
+    if args.what not in (None, "packs") and not args.name:
+        raise SystemExit(f"error: `datapack {args.what}` needs a name: the tag, objective, team, boss bar or "
+                         "function id (ns:path); `datapack` alone summarises them all")
     res = datapack.lookup(_repo(args), args.what, args.name, with_paths=args.with_paths)
     _emit(args, res, lambda r: print(datapack.render(r)))
     return 0 if res["status"] == "found" else 2
@@ -2804,8 +2836,8 @@ def cmd_decide(args) -> int:
                                 user_statement=said)
         elif args.decide_cmd == "guard":
             res = dm.add_guards(st, repo, args.id, args.spec, user_statement=said)
-        elif args.decide_cmd == "accept":
-            res = dm.accept(st, repo, args.id, args.guard_ids, user_statement=said)
+        elif args.decide_cmd == "accept":  # a terminal: the human confirms what an agent asserted (D186)
+            res = dm.accept(st, repo, args.id, args.guard_ids, user_statement=said, confirm=True)
         elif args.decide_cmd == "supersede":
             res = dm.supersede(st, repo, args.id, args.by, user_statement=said)
         elif args.decide_cmd == "link":
@@ -4642,69 +4674,6 @@ def cmd_mcp_prompts(args) -> int:
     return 0
 
 
-# Upstream subcommands that write Graphify-branded skills, hooks, merge drivers or
-# agent configs into the user's home or project (CLAUDE.md, AGENTS.md, .claude/,
-# .codex/, git hooks, .gitattributes, ...). Run through `verinoda index` they would
-# overwrite or remove a REAL Graphify install, so they are refused. Taken from the
-# upstream dispatch: install.py `_CLI_INSTALL_COMMANDS` (install, uninstall and every
-# platform installer incl. the `skills` alias) plus cli.py `hook` and `merge-driver`.
-# `_blocked_index_commands()` also unions the live upstream set, so a platform added
-# upstream is blocked without editing this list.
-UPSTREAM_BLOCKED = frozenset({
-    "install", "uninstall", "hook", "merge-driver",
-    "agents", "aider", "amp", "antigravity", "claude", "claw", "codebuddy", "codex", "copilot", "cursor",
-    "devin", "droid", "gemini", "hermes", "kilo", "kiro", "opencode", "pi", "skills", "trae", "trae-cn",
-    "vscode",
-})
-# Upstream subcommands (and the `--global` flag of extract/update) that write under
-# ~/.graphify - outside the project and outside .verinoda: `clone` caches checkouts in
-# ~/.graphify/repos, `provider` keeps ~/.graphify/providers.json, `global` and `--global`
-# merge graphs into ~/.graphify's global graph. Verinoda keeps reference checkouts under
-# .verinoda/research (`verinoda research`), so these are refused as well.
-UPSTREAM_HOME_WRITERS = frozenset({"clone", "provider", "global"})
-UPSTREAM_HOME_FLAGS = ("--global",)
-
-
-def _blocked_index_commands() -> frozenset:
-    try:
-        from verinoda.project_index.install import _CLI_INSTALL_COMMANDS
-    except Exception:  # pragma: no cover - upstream layout changed; the static list still applies
-        return UPSTREAM_BLOCKED
-    return UPSTREAM_BLOCKED | frozenset(_CLI_INSTALL_COMMANDS)
-
-
-def cmd_index(args) -> int:
-    """Pass-through to the Graphify-derived CLI (advanced/upstream features).
-
-    Installer-type subcommands are refused (exit 2): see ``UPSTREAM_BLOCKED``;
-    so are commands that write under ``~/.graphify``: see ``UPSTREAM_HOME_WRITERS``.
-    """
-    rest = args.rest[1:] if args.rest and args.rest[0] == "--" else args.rest
-    if rest and rest[0] in _blocked_index_commands():
-        print(f"error: `verinoda index {rest[0]}` is blocked: this upstream Graphify command writes "
-              "Graphify-branded skills, hooks, merge drivers or agent configs and could overwrite or remove "
-              "a real Graphify install.\n"
-              "  Use `verinoda install --agent claude|codex --scope project|user` for the Verinoda skill + MCP "
-              "(and `verinoda uninstall` to remove exactly what it added).", file=sys.stderr)
-        return 2
-    flag = next((a for a in rest if a.split("=", 1)[0] in UPSTREAM_HOME_FLAGS), None)
-    if rest and (rest[0] in UPSTREAM_HOME_WRITERS or flag):
-        what = f"{rest[0]} {flag}" if flag and rest[0] not in UPSTREAM_HOME_WRITERS else rest[0]
-        print(f"error: `verinoda index {what}` is blocked: this upstream Graphify command writes under "
-              "~/.graphify (clone cache ~/.graphify/repos, provider registry ~/.graphify/providers.json or the "
-              "global graph), outside this project and outside .verinoda/; Verinoda never writes to your home "
-              "directory implicitly.\n"
-              "  Use `verinoda research <url|owner/repo> [--ref R]` for a pinned checkout under "
-              ".verinoda/research, and `verinoda resolve \"<text>\"` to pin the version you mean first.",
-              file=sys.stderr)
-        return 2
-    from verinoda.project_index.__main__ import main as upstream_main
-
-    sys.argv = ["verinoda index", *rest]
-    upstream_main()
-    return 0
-
-
 # -- benchmarks ---------------------------------------------------------------------
 
 def _bench_out(path: str | None, res: dict) -> None:
@@ -4856,8 +4825,6 @@ class _VersionAction(argparse.Action):
 
 
 def build_parser() -> argparse.ArgumentParser:
-    from verinoda.question_plan import INTENTS
-
     p = argparse.ArgumentParser(
         prog="verinoda",
         description="Evidence-first codebase analysis (derived from Graphify; not an official Graphify release).",
@@ -4878,6 +4845,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp = add("doctor", cmd_doctor, "check installation, index, agent skills and MCP configuration")
     sp.add_argument("--brief", action="store_true",
                     help="the graph and snapshot lines and every failed or warning check, nothing else")
+    add("graph-state", cmd_graph_state, "is an index build running, and how many files changed since the index: "
+                                        "one line (--json: locked, behind, state) for an editor's status line")
     sp = add("setup", cmd_setup, "one step for a project: init + scan/update + skills for the agents found "
                                  "on PATH (safe to re-run)", repo=False)
     sp.add_argument("path", nargs="?", default=".")
@@ -5536,9 +5505,10 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("id", metavar="ADR-N")
     c.add_argument("spec", nargs="+", metavar="SPEC", help="guard spec(s), quoted, as for record --guard")
     c.add_argument("--said", help=said_help)
-    c = add("accept", cmd_decide, "activate proposed guards of a record (the user's call)", parent=dsub)
+    c = add("accept", cmd_decide, "activate proposed guards of a record, or confirm a record an agent wrote over "
+                                  "MCP in the user's name (agent_asserted; the user's call)", parent=dsub)
     c.add_argument("id", metavar="ADR-N")
-    c.add_argument("guard_ids", nargs="+", metavar="GUARD", help="g1 g2 ...")
+    c.add_argument("guard_ids", nargs="*", metavar="GUARD", help="g1 g2 ... (none: confirm the record)")
     c.add_argument("--said", help=said_help)
     c = add("waive", cmd_decide, "excuse one site from one guard (the user's call; it may expire)", parent=dsub)
     c.add_argument("id", metavar="ADR-N")
@@ -6210,12 +6180,6 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--arg", action="append", metavar="NAME=VALUE", help="a prompt argument (repeatable)")
     c.add_argument("--profile", choices=("core", "full"), default=None,
                    help="word the steps for this profile's menu (default: as `mcp serve` would)")
-
-    sp = sub.add_parser("index", help="pass-through to the Graphify-derived indexer CLI (advanced; "
-                                       "installer/hook commands and commands writing under ~/.graphify are "
-                                       "blocked - use `verinoda install` / `verinoda research`)")
-    sp.set_defaults(fn=cmd_index)
-    sp.add_argument("rest", nargs=argparse.REMAINDER)
 
     sp = sub.add_parser("benchmark", help="reproducible comparison: raw search vs Graphify baseline vs Verinoda; "
                                           "staleness and critique harnesses")

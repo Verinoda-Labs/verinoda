@@ -1,0 +1,93 @@
+[bench] copying corpus from C:\Users\ozcin\Desktop\verinoda-symbiosis\examples\orders_app to C:\Users\ozcin\AppData\Local\Temp\verinoda-bench-37z38lug\verinoda
+[bench] verinoda scan (cold)
+[bench] verinoda scan (warm)
+[bench] pass 1/1 q01 raw
+[bench] pass 1/1 q01 graphify_vendored
+[bench] pass 1/1 q01 verinoda_analyze
+[bench] pass 1/1 q01 verinoda_retrieve
+[bench] pass 1/1 q01 verinoda_retrieve_text
+[bench] pass 1/1 q02 raw
+[bench] pass 1/1 q02 graphify_vendored
+[bench] pass 1/1 q02 verinoda_analyze
+[bench] pass 1/1 q02 verinoda_retrieve
+[bench] pass 1/1 q02 verinoda_retrieve_text
+[bench] pass 1/1 q03 raw
+[bench] pass 1/1 q03 graphify_vendored
+[bench] pass 1/1 q03 verinoda_analyze
+[bench] pass 1/1 q03 verinoda_retrieve
+[bench] pass 1/1 q03 verinoda_retrieve_text
+[bench] pass 1/1 q04 raw
+[bench] pass 1/1 q04 graphify_vendored
+[bench] pass 1/1 q04 verinoda_analyze
+[bench] pass 1/1 q04 verinoda_retrieve
+[bench] pass 1/1 q04 verinoda_retrieve_text
+[bench] pass 1/1 q05 raw
+[bench] pass 1/1 q05 graphify_vendored
+[bench] pass 1/1 q05 verinoda_analyze
+[bench] pass 1/1 q05 verinoda_retrieve
+[bench] pass 1/1 q05 verinoda_retrieve_text
+[bench] pass 1/1 q06 raw
+[bench] pass 1/1 q06 graphify_vendored
+[bench] pass 1/1 q06 verinoda_analyze
+[bench] pass 1/1 q06 verinoda_retrieve
+[bench] pass 1/1 q06 verinoda_retrieve_text
+[bench] pass 1/1 q07 raw
+[bench] pass 1/1 q07 graphify_vendored
+[bench] pass 1/1 q07 verinoda_analyze
+[bench] pass 1/1 q07 verinoda_retrieve
+[bench] pass 1/1 q07 verinoda_retrieve_text
+[bench] pass 1/1 q08 raw
+[bench] pass 1/1 q08 graphify_vendored
+[bench] pass 1/1 q08 verinoda_analyze
+[bench] pass 1/1 q08 verinoda_retrieve
+[bench] pass 1/1 q08 verinoda_retrieve_text
+[bench] pass 1/1 q09 raw
+[bench] pass 1/1 q09 graphify_vendored
+[bench] pass 1/1 q09 verinoda_analyze
+[bench] pass 1/1 q09 verinoda_retrieve
+[bench] pass 1/1 q09 verinoda_retrieve_text
+[bench] pass 1/1 q10 raw
+[bench] pass 1/1 q10 graphify_vendored
+[bench] pass 1/1 q10 verinoda_analyze
+[bench] pass 1/1 q10 verinoda_retrieve
+[bench] pass 1/1 q10 verinoda_retrieve_text
+benchmark set orders_app (10 questions)  status=ok
+gold facts re-verified against the corpus: 32 checked, 0 failure(s)
+Question set provenance: questions written by: benchmark harness author (an agent, round 1), before any approach was run on the set; gold written by: same author, by reading every file of examples/orders_app; in sample: True; caveat: Verinoda has been developed against this example since round 1 (every track checks it), so Verinoda results on it are in-sample; questions and gold have not changed since 05890a1.
+tokens: chars/4 estimate;  model: not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+graphify CLI: not run: --graphify-cmd not given
+
+index (one-off):
+  Verinoda scan: cold 0.51 s, warm 0.37 s; 41 nodes / 74 edges; 11 cache files
+
+| approach | facts found | via locator | pinpointed | shown | all-facts Qs | tokens mean | tokens max | facts/1k tok | shown/1k tok | pinpointed/1k tok | locators/Q | tool calls/Q | cold s (median) | warm s (median) | neg. matched | cited line lacks target |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| raw grep+read | 31/32 | 31 | 31 | 31 | 9/10 | 1224 | 1781 | 2.53 | 2.53 | 2.53 | 28.7 | 5.6 | 0.036 | - | n/a | n/a |
+| Graphify query (vendored, depth 3) | 16/32 | 16 | 16 | 1 | 2/10 | 2235 | 2682 | 0.72 | 0.04 | 0.72 | 48.3 | 1 | 0.004 | - | 0/15 | 0/184 |
+| Verinoda analyze | 32/32 | 32 | 32 | 31 | 10/10 | 1429 | 2065 | 2.24 | 2.17 | 2.24 | 32.6 | 1 | 0.274 | - | 1/15 | 0/56 |
+| Verinoda retrieve (JSON) | 31/32 | 31 | 31 | 26 | 9/10 | 1401 | 1423 | 2.21 | 1.86 | 2.21 | 29.7 | 1 | 0.019 | - | 0/15 | 0/54 |
+| Verinoda retrieve (text) | 32/32 | 32 | 32 | 28 | 10/10 | 846 | 1071 | 3.78 | 3.31 | 3.78 | 25.7 | 1 | 0.032 | - | 0/15 | 0/46 |
+
+facts found per question (found/total):
+| question | category | raw grep+read | Graphify query (vendored, depth 3) | Verinoda analyze | Verinoda retrieve (JSON) | Verinoda retrieve (text) |
+|---|---|---|---|---|---|---|
+| q01 Where is an order written to the database? | where | 3/3 (1759 tok) | 1/3 (2518 tok) | 3/3 (1614 tok) | 3/3 (1411 tok) | 3/3 (908 tok) |
+| q02 What is the call path from the create-order HTTP handler to the database write? | flow | 3/3 (1736 tok) | 1/3 (718 tok) | 3/3 (1555 tok) | 2/3 (1405 tok) | 3/3 (828 tok) |
+| q03 Which environment variables configure the orders service and where are they read? | config | 3/3 (1274 tok) | 0/3 (2682 tok) | 3/3 (1242 tok) | 3/3 (1410 tok) | 3/3 (739 tok) |
+| q04 Which tests exercise the discount calculation? | tests | 3/4 (671 tok) | 4/4 (2642 tok) | 4/4 (1465 tok) | 4/4 (1322 tok) | 4/4 (677 tok) |
+| q05 Why does the project use SQLite for persistence? | why | 3/3 (689 tok) | 1/3 (2150 tok) | 3/3 (1237 tok) | 3/3 (1413 tok) | 3/3 (748 tok) |
+| q06 What needs retesting if OrderRepository.save changes? | impact | 3/3 (1249 tok) | 2/3 (2451 tok) | 3/3 (2065 tok) | 3/3 (1423 tok) | 3/3 (1071 tok) |
+| q07 Where is the 10% discount applied and what threshold controls it? | where | 3/3 (620 tok) | 2/3 (2007 tok) | 3/3 (922 tok) | 3/3 (1400 tok) | 3/3 (682 tok) |
+| q08 How does get_order_handler load an order from storage? | flow | 4/4 (1781 tok) | 1/4 (2468 tok) | 4/4 (1679 tok) | 4/4 (1410 tok) | 4/4 (1056 tok) |
+| q09 Where is the SQLite connection opened and what decides the database file? | where | 3/3 (853 tok) | 1/3 (2195 tok) | 3/3 (1282 tok) | 3/3 (1407 tok) | 3/3 (787 tok) |
+| q10 What happens when an order is submitted with no items? | behaviour | 3/3 (1607 tok) | 3/3 (2523 tok) | 3/3 (1230 tok) | 3/3 (1410 tok) | 3/3 (964 tok) |
+
+Verinoda claims: 145 (primary_source_verified=8, statically_verified=88, strong_inference=45, weak_inference=4); verified share 0.66; weak/unknown 4 (unlabelled 4); negative facts stated as findings 0 (in 0 claim(s)); unknowns reported 3; relation claims labelled contradicted 0, of which the cited line does name the target 0 (via import alias 0)
+claim reuse: warm 0/0, cold 88/145 (claims whose id already existed in atlas.db before the run (same text + snapshot))
+
+not measured:
+  - model-in-the-loop answer accuracy, model tokens and model cost - not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+  - real upstream Graphify CLI baseline - not run: --graphify-cmd not given
+  - runtime correctness of answers (only presence of gold facts in the delivered context is scored)
+  - OS file-cache effects are not separated from process warm-up in cold vs warm timings
+  - memory use

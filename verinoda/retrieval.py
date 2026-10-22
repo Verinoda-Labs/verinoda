@@ -35,7 +35,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import os
 import re
 import textwrap
@@ -149,10 +148,6 @@ def terms_for(question: str) -> list[str]:
 def term_regex(term: str) -> re.Pattern:
     """``term`` (case-insensitive) starting at an identifier-part boundary."""
     return re.compile(r"(?:(?<![^\W_])|(?<=[a-z0-9])(?=[A-Z]))(?i:" + re.escape(term) + ")")
-
-
-def label_signal(raw: float) -> float:
-    return min(1.0, math.log10(1.0 + max(0.0, raw)) / 4.0)
 
 
 def _excerpt(lines: list[str], a: int, b: int) -> str:

@@ -10,11 +10,12 @@ without a self-type never gains a spurious edge, that the new `requires`
 relation coexists cleanly with an unrelated `extends` on the same class, and
 that `affected` (blast radius) now traverses it.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 from pathlib import Path
 
-import networkx as nx
 
-from verinoda.project_index.affected import affected_nodes
 from verinoda.project_index.extract import extract_scala
 
 SRC = '''\
@@ -126,16 +127,3 @@ def test_requires_edges_carry_no_context(tmp_path):
             assert "context" not in e
 
 
-def test_affected_includes_self_type_dependents(tmp_path):
-    r, nid = _build(tmp_path)
-    g = nx.DiGraph()
-    for n in r["nodes"]:
-        g.add_node(n["id"], **n)
-    for e in r["edges"]:
-        g.add_edge(e["source"], e["target"], **e)
-
-    # HasConfig's blast radius now includes SimpleSelfType through `requires`
-    # (DEFAULT_AFFECTED_RELATIONS), mirroring how `inherits`/`mixes_in` are
-    # already traversed.
-    affected = {h.node_id for h in affected_nodes(g, nid["HasConfig"])}
-    assert nid["SimpleSelfType"] in affected

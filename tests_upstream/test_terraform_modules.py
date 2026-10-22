@@ -2,9 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 import networkx as nx
@@ -185,9 +182,10 @@ def test_cache_recomputes_topology_and_ids_are_portable(tmp_path, monkeypatch):
     assert not any(n["label"] == "Terraform module: app" for n in result["nodes"])
 
 
-@pytest.mark.parametrize("mode", ["watch", "cli"])
+# Verinoda patch (D186): the "cli" mode of the two incremental tests ran the upstream CLI, which left the
+# package; the watch mode is the path Verinoda's scan and update take (docs/UPSTREAM.md).
 @pytest.mark.parametrize("no_cluster", [True, False])
-def test_incremental_source_change_target_addition_and_deletion(tmp_path, monkeypatch, mode, no_cluster):
+def test_incremental_source_change_target_addition_and_deletion(tmp_path, monkeypatch, no_cluster):
     root = tmp_path / "repo"
     caller = _write(root, "env/main.tf", 'module "app" { source = "../app" }')
     a = _write(root, "app/a.tf", 'variable "x" {}')
@@ -198,16 +196,9 @@ def test_incremental_source_change_target_addition_and_deletion(tmp_path, monkey
     monkeypatch.chdir(root)
 
     def rebuild(changed=None):
-        if mode == "watch":
-            from verinoda.project_index.watch import _rebuild_code
-            assert _rebuild_code(root, changed_paths=changed, acquire_lock=False,
-                                 no_cluster=no_cluster)
-        else:
-            args = [sys.executable, "-m", "verinoda.project_index", "extract", str(root), "--code-only"]
-            if no_cluster:
-                args.append("--no-cluster")
-            p = subprocess.run(args, cwd=root, env=os.environ.copy(), capture_output=True, text=True)
-            assert p.returncode == 0, p.stdout + p.stderr
+        from verinoda.project_index.watch import _rebuild_code
+        assert _rebuild_code(root, changed_paths=changed, acquire_lock=False,
+                             no_cluster=no_cluster)
         result = json.loads((root / "graphify-out/graph.json").read_text())
         _assert_integrity(result)
         return result
@@ -229,8 +220,7 @@ def test_incremental_source_change_target_addition_and_deletion(tmp_path, monkey
     assert _module_edges(final)[0]["target"] == _node(final, "Terraform module: other")["id"]
 
 
-@pytest.mark.parametrize("mode", ["watch", "cli"])
-def test_incremental_exclusion_removes_incoming_module_links(tmp_path, monkeypatch, mode):
+def test_incremental_exclusion_removes_incoming_module_links(tmp_path, monkeypatch):
     root = tmp_path / "repo"
     _write(root, "main.tf", 'module "app" { source = "./app" }')
     _write(root, "app/main.tf", 'variable "x" {}')
@@ -238,15 +228,8 @@ def test_incremental_exclusion_removes_incoming_module_links(tmp_path, monkeypat
     monkeypatch.chdir(root)
 
     def rebuild(changed=None):
-        if mode == "watch":
-            from verinoda.project_index.watch import _rebuild_code
-            assert _rebuild_code(root, changed_paths=changed, acquire_lock=False, no_cluster=True)
-        else:
-            p = subprocess.run(
-                [sys.executable, "-m", "verinoda.project_index", "extract", str(root), "--code-only", "--no-cluster"],
-                capture_output=True, text=True,
-            )
-            assert p.returncode == 0, p.stdout + p.stderr
+        from verinoda.project_index.watch import _rebuild_code
+        assert _rebuild_code(root, changed_paths=changed, acquire_lock=False, no_cluster=True)
         return json.loads((root / "graphify-out/graph.json").read_text())
 
     assert len(_module_edges(rebuild())) == 1

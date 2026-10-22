@@ -62,8 +62,10 @@ _INERT_SUFFIXES = frozenset({".txt", ".csv", ".log", ".png", ".jpg", ".jpeg", ".
                              ".sqlite", ".db", ".bin", ".zip", ".gz"})
 _TOKEN = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*")
 _FILE_TOKEN_CAP = 2_000_000  # bytes read per file for its tokens; a larger file counts as naming everything
-# blake2b-64 of the vendored files whose build_from_json/to_json build_rows reproduces; others fall back
-PINNED = {"build.py": "7c9cdbd14158bb11", "export.py": "f2423c4e0c378860"}
+# blake2b-64 of the vendored files whose build_from_json/to_json build_rows reproduces; others fall back.
+# D186 edited both (build.py lost the LLM tiebreak's pass-through, export.py the graph-database re-export;
+# neither touches what build_rows reproduces): the fuzz was re-run against them and the pin moved.
+PINNED = {"build.py": "0cb7fb86cf62dfe1", "export.py": "e376d1c01e7ea0fb"}
 _IMPORT_RELATIONS = frozenset({"imports", "imports_from", "re_exports"})
 _BASE_RELATIONS = frozenset({"inherits", "implements", "extends", "mixes_in"})
 

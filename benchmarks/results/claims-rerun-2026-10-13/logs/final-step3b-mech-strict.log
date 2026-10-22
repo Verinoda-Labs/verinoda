@@ -1,0 +1,11 @@
+{
+ "none": {
+  "confirmed": 204,
+  "wrong": 55
+ },
+ "verinoda_guided": {
+  "confirmed": 246,
+  "wrong": 52
+ }
+}
+exit=0

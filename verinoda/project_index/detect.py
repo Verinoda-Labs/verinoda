@@ -14,11 +14,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable
 
-from verinoda.project_index.google_workspace import (
-    GOOGLE_WORKSPACE_EXTENSIONS,
-    convert_google_workspace_file,
-    google_workspace_enabled,
-)
+# Verinoda patch (D186): google_workspace.py left the package; .gdoc/.gsheet/.gslides shortcut files are
+# no longer classified as documents or converted (docs/UPSTREAM.md).
 from verinoda.project_index.paths import GRAPHIFY_OUT, out_path
 
 
@@ -542,8 +539,6 @@ def classify_file(path: Path) -> FileType | None:
             return FileType.PAPER
         return FileType.DOCUMENT
     if ext in OFFICE_EXTENSIONS:
-        return FileType.DOCUMENT
-    if ext in GOOGLE_WORKSPACE_EXTENSIONS:
         return FileType.DOCUMENT
     if ext in VIDEO_EXTENSIONS:
         return FileType.VIDEO
@@ -1960,7 +1955,7 @@ def _git_enumerate(
     return files, patterns[n_root:], pruned, ignored, outside
 
 
-def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace: bool | None = None, extra_excludes: list[str] | None = None, cache_root: Path | None = None, gitignore: bool = True, enumeration: str = "auto") -> dict:
+def detect(root: Path, *, follow_symlinks: bool | None = None, extra_excludes: list[str] | None = None, cache_root: Path | None = None, gitignore: bool = True, enumeration: str = "auto") -> dict:
     """Classify the files of the corpus under ``root``.
 
     ``enumeration`` (Verinoda patch): ``"auto"`` takes the file list from git when ``root`` is the top
@@ -1993,7 +1988,6 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
         )
     if follow_symlinks is None:
         follow_symlinks = False
-    google_workspace = google_workspace_enabled() if google_workspace is None else google_workspace
     files: dict[FileType, list[str]] = {
         FileType.CODE: [],
         FileType.DOCUMENT: [],
@@ -2233,35 +2227,6 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
             unclassified.append(str(p))
             continue
         if ftype:
-            if p.suffix.lower() in GOOGLE_WORKSPACE_EXTENSIONS:
-                if not google_workspace:
-                    skipped_sensitive.append(
-                        str(p)
-                        + " [Google Workspace shortcut skipped - pass --google-workspace "
-                        "or set GRAPHIFY_GOOGLE_WORKSPACE=1]"
-                    )
-                    continue
-                try:
-                    md_path = convert_google_workspace_file(p, converted_dir, xlsx_to_markdown=xlsx_to_markdown, root=root)
-                except Exception as exc:
-                    skipped_sensitive.append(str(p) + f" [Google Workspace export failed: {exc}]")
-                    continue
-                if md_path:
-                    # #3504: the sidecar lands under converted_dir, which the
-                    # documented .gitignore advice puts inside a gitignored
-                    # graphify-out/ -- an ignore check here would reject the
-                    # tool's own output for the same reason it should be
-                    # gitignored in the first place, silently dropping the
-                    # source document from the corpus. The ignore check exists
-                    # to keep USER files out of the scan, not to filter output
-                    # this same pass just produced from an already-admitted file.
-                    if _ignored_for_scan(md_path) and not md_path.is_relative_to(converted_dir):
-                        continue
-                    files[ftype].append(str(md_path))
-                    total_words += _wc(md_path)
-                else:
-                    skipped_sensitive.append(str(p) + " [Google Workspace export produced no readable text]")
-                continue
             # Office files: Verinoda reads them in place through their text view (verinoda/doctext.py),
             # so their nodes name the document itself; no markdown sidecar is written
             if p.suffix.lower() in OFFICE_EXTENSIONS:
@@ -2712,7 +2677,6 @@ def detect_incremental(
     manifest_path: str = _MANIFEST_PATH,
     *,
     follow_symlinks: bool | None = None,
-    google_workspace: bool | None = None,
     kind: str = "semantic",
     extra_excludes: list[str] | None = None,
     gitignore: bool = True,
@@ -2742,7 +2706,6 @@ def detect_incremental(
     full = detect(
         root,
         follow_symlinks=follow_symlinks,
-        google_workspace=google_workspace,
         extra_excludes=extra_excludes,
         gitignore=gitignore,
     )

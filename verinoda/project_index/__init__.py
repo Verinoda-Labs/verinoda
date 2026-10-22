@@ -18,7 +18,7 @@ def __getattr__(name):
         "to_html": ("verinoda.project_index.export", "to_html"),
         "to_svg": ("verinoda.project_index.export", "to_svg"),
         "to_canvas": ("verinoda.project_index.export", "to_canvas"),
-        "to_wiki": ("verinoda.project_index.wiki", "to_wiki"),
+        # Verinoda patch (D186): no `to_wiki`; wiki.py left with the upstream CLI surface (docs/UPSTREAM.md).
         "reflect": ("verinoda.project_index.reflect", "reflect"),
         "save_query_result": ("verinoda.project_index.ingest", "save_query_result"),
     }

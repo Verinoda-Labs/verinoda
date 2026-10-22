@@ -1,0 +1,19 @@
+{
+ "name": "B2-guzzle__guzzle-trap-1",
+ "task": "guzzle__guzzle-trap-1",
+ "plugin_dir": "C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/mods/B2",
+ "rc": 0,
+ "secs": 20.4,
+ "turns": 5,
+ "cost": 0.0480328,
+ "analyze_calls": 1,
+ "verinoda_calls": 1,
+ "tools": [
+  "mcp__verinoda__analyze",
+  "Grep",
+  "Bash",
+  "Bash"
+ ],
+ "session_id": "7b12bea7-9d36-40f2-9af6-a27f0a2c10d2",
+ "answer_head": "- **What the template is:** `src/MessageFormatter.php:50` defines `DEBUG = \">>>>>>>>\\n{request}\\n<<<<<<<<\\n{response}\\n--------\\n{error}\"`. The `>>>>>>>>` row comes before `{request}`, the `<<<<<<<<` row comes before `{response}`, and the `--------` row comes before `{error}`.\n- **What the markers d"
+}

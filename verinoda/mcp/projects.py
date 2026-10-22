@@ -36,7 +36,7 @@ DEFAULT_MAX_LOADED = 3
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 HUB_TOOLS = ("list_projects", "index_status")
 # the arguments the core menu's analyze and code_check take (server.build_server, ``slim``)
-CORE_ARGS = {"analyze": {"question", "budget_seconds"},
+CORE_ARGS = {"analyze": {"question", "budget_seconds", "show"},
              "code_check": {"paths", "diff", "snippet", "as_path", "deps"}}
 # arguments that can carry a file path: an absolute one inside exactly one served project ties the call to it
 PATH_ARGS = ("file_path", "path", "paths", "as_path", "targets", "target_path")

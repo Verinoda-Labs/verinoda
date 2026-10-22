@@ -25,10 +25,10 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-import subprocess
 import time
 from pathlib import Path
 
+from verinoda import gitexec
 from verinoda.snapshot import _GIT_SKIP_DIRS, _SKIP_DIRS, RACY_MARGIN_NS, hash_files
 
 SHOWN = 10                  # files named in a note (the full list stays in ``files``)
@@ -87,12 +87,7 @@ def _read_latest(db: Path) -> tuple[str | None, dict[str, tuple]]:
 
 def _git_ignored(repo: str, rels: list[str]) -> set[str] | None:
     """The paths among ``rels`` git ignores; None when git could not tell (not a work tree)."""
-    try:
-        r = subprocess.run(["git", "-C", repo, "check-ignore", "-z", "--stdin"],
-                           input="\0".join(rels) + "\0", capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=20)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
+    r = gitexec.run(repo, "check-ignore", "-z", "--stdin", input="\0".join(rels) + "\0", timeout=20)
     if r.returncode not in (0, 1):  # 128: not a git work tree - nothing is known to be ignored
         return None
     return {p for p in r.stdout.split("\0") if p}
@@ -115,13 +110,8 @@ def _git_listed(repo: str, rels: list[str]) -> dict[str, bool] | None:
             chunk.append(rels[i])
             size += len(rels[i]) + 3
             i += 1
-        try:
-            r = subprocess.run(["git", "-C", repo, "--literal-pathspecs", "ls-files", "-z", "-t", "--cached",
-                                "--others", "--exclude-standard", "--", *chunk],
-                               capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20,
-                               stdin=subprocess.DEVNULL)
-        except (OSError, subprocess.TimeoutExpired):
-            return None
+        r = gitexec.run(repo, "--literal-pathspecs", "ls-files", "-z", "-t", "--cached", "--others",
+                        "--exclude-standard", "--", *chunk, timeout=20)
         if r.returncode != 0:
             return None
         for entry in r.stdout.split("\0"):

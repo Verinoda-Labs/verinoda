@@ -160,6 +160,17 @@ def test_weak_claims_never_make_a_subquestion_met():
     assert analysis.judge(sq, rows, {"capped": ["callers: 3 call sites unresolved"]}) == "met_with_inference"
 
 
+def test_weak_claims_are_not_listed_as_answers():
+    # the answer list is what a reader takes as the answer; a claim the gate set aside is context (D185 listed the
+    # two weak commit lines of the fastapi why as answers)
+    sq = {"id": "q1", "intent": "locate"}
+    rows = [_claim("c1", "location"), _claim("c2", "location")]
+    assert analysis.answer_claims(sq, rows, {}) == ["c1", "c2"]
+    assert analysis.answer_claims(sq, rows, {"weak": ["c1"]}) == ["c2"]
+    assert analysis.answer_claims(sq, rows, {"weak": ["c1", "c2"]}) == []
+    assert analysis.answer_claims(sq, rows, {"weak": ["c1", "c2"], "weak_copy": ["c2"]}) == ["c2"]  # a copy answers
+
+
 def test_the_gate_never_raises_a_verdict():
     level = {"met": 3, "met_with_inference": 2}
     sqs = [{"id": "q1", "intent": i} for i in ("locate", "callers", "why", "config", "flow", "architecture")]
@@ -252,6 +263,38 @@ def test_where_is_x_ticked_needs_a_tick_of_x(fixtures):
     assert s["status"] == "met"
 
 
+def test_a_commit_states_the_reason_asked_about_only_with_the_questions_words():
+    # D185: "Ensure authentication takes constant time, to avoid enumeration attacks" carries a reason word, but it
+    # is the reason for another change; the question's own words (body, query, parameter) are what tie a commit to it
+    terms = ["reset_password", "endpoint", "read", "new", "password", "request", "body", "query", "parameter"]
+    other = "🔒️ Ensure authentication takes constant time, to avoid enumeration attacks (#2105)"
+    gold = ":lock: Update login.py to receive password as body (#33)"
+    gold_body = "Change `new_password` from a query parameter to a body parameter for security."
+    assert vg.states_reason(terms, other) is False
+    assert vg.states_reason(terms, gold, gold_body) is True          # "for security" is a reason; "body", "query" tie it
+    assert vg.states_reason(terms, "♻️ Simplify reset password logic by removing duplicate code (#1440)") is False
+    assert vg.states_reason(terms, "Keep prices in a dict to avoid repeated lookups") is False  # reason, other topic
+    assert vg.states_reason(["PriceCache", "dict"], "Keep prices in a dict to avoid repeated lookups") is True
+    assert vg.states_reason([], other) is True   # a question with no content words cannot be tied: the reason word decides
+    assert vg.states_reason(terms, "") is False
+    # a when-question needs the topic, not the reason
+    assert vg.shares_topic(["key", "argument", "renamed"], "rename the key argument") is True
+    assert vg.shares_topic(["dict"], "reformat the class") is False
+    # "Why was X moved?" meets "Move the ..." stem for stem: the consonant doubled before -ed goes back to one and
+    # -ied goes back to -y (the final review: moved/move, dropped/drop, copied/copy never matched, so the commit
+    # that states the reason became a lead and the question stayed unmet)
+    for asked, said in (("moved", "Move the price cache into its own module because the imports cycled"),
+                        ("dropped", "Drop the retry because it masked the error"), ("stopped", "Stop the timer"),
+                        ("mapped", "Map the ids"), ("committed", "Commit the batch"), ("logged", "Log the call"),
+                        ("copied", "Copy the key so the caller keeps its own"), ("retried", "Retry once"),
+                        ("entries", "Keep the entry list"), ("applied", "Apply the discount"),
+                        ("filled", "Fill the cache"), ("passed", "Pass the token")):
+        assert vg.shares_topic([asked], said) is True, asked
+    assert vg.states_reason(["moved"], "Move the price cache into its own module because the imports cycled") is True
+    assert vg.shares_topic(["read"], "the readthedocs link") is False   # a prefix still does not tie
+    assert vg.shares_topic(terms, gold, gold_body) is True and vg.shares_topic(terms, other) is False
+
+
 def test_a_commit_line_is_not_a_reason(fixtures):
     repo, st = fixtures["pyloop"]
     s = _sub(analysis.analyze(st, repo, "why does Transport pause reading?"))
@@ -341,3 +384,13 @@ def test_the_enumerated_head_negated_is_a_set_difference(q):
 ])
 def test_which_x_does_y_use_asks_what_y_uses(q, expected):
     assert vg.usage_question(q) is expected
+
+
+def test_a_reason_stated_with_so_or_therefore_counts():
+    # "the ledger stores cents, so the total is rounded" states a reason without because/to avoid; the sym_repo of
+    # tests/test_history.py says it that way and its why-question lost its claim when the gate asked for a cue word
+    body = "Invoices showed 10.000000001; the ledger stores cents, so the total is rounded where it is computed."
+    assert vg.states_reason(["round"], "Round totals to cents", body) is True
+    assert vg.states_reason(["cache"], "Keep a cache; therefore lookups stay cheap") is True
+    assert vg.states_reason(["cache"], "Keep a cache, hence fewer lookups") is True
+    assert vg.states_reason(["cache"], "Keep a cache or so") is False       # "so" alone is not a reason

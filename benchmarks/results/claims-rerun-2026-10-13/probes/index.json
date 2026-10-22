@@ -1,0 +1,389 @@
+[
+ {
+  "probe": "B-axios__axios-when-1",
+  "variant": "B",
+  "task": "axios__axios-when-1",
+  "analyze_calls": 0,
+  "tools": [
+   "Bash",
+   "Bash"
+  ],
+  "turns": 3,
+  "cost_usd": 0.06278629999999999,
+  "session_id": "f04d5c2f-6154-4672-9904-cb0bb5da73cc"
+ },
+ {
+  "probe": "B-fastapi__full-stack-fastapi-template-why-1",
+  "variant": "B",
+  "task": "fastapi__full-stack-fastapi-template-why-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.0529768,
+  "session_id": "85712619-b2dd-407a-9c14-d7ee655b6811"
+ },
+ {
+  "probe": "B-gin-gonic__gin-trap-1",
+  "variant": "B",
+  "task": "gin-gonic__gin-trap-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Read",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 6,
+  "cost_usd": 0.07096390000000001,
+  "session_id": "89078bf7-eba8-4cfa-9e7c-3f7a84bed955"
+ },
+ {
+  "probe": "B-guzzle__guzzle-trap-1",
+  "variant": "B",
+  "task": "guzzle__guzzle-trap-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 5,
+  "cost_usd": 0.06768160000000001,
+  "session_id": "2c58855c-e59a-4b42-a94c-88c485a056e9"
+ },
+ {
+  "probe": "B-junegunn__fzf-why-1",
+  "variant": "B",
+  "task": "junegunn__fzf-why-1",
+  "analyze_calls": 0,
+  "tools": [
+   "Grep",
+   "Read",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 5,
+  "cost_usd": 0.0637602,
+  "session_id": "df2a25d9-8dc9-4b8e-9930-a75acdd04660"
+ },
+ {
+  "probe": "B-sharkdp__bat-when-1",
+  "variant": "B",
+  "task": "sharkdp__bat-when-1",
+  "analyze_calls": 0,
+  "tools": [
+   "Bash",
+   "Bash"
+  ],
+  "turns": 3,
+  "cost_usd": 0.0438331,
+  "session_id": "1136ff71-ed8e-4e60-88b6-d2dea722ed15"
+ },
+ {
+  "probe": "B2-axios__axios-when-1",
+  "variant": "B2",
+  "task": "axios__axios-when-1",
+  "analyze_calls": 0,
+  "tools": [
+   "Grep",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.0362537,
+  "session_id": "2393dd27-fa7b-4271-8d34-724e005077ba"
+ },
+ {
+  "probe": "B2-fastapi__full-stack-fastapi-template-why-1",
+  "variant": "B2",
+  "task": "fastapi__full-stack-fastapi-template-why-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.040160299999999996,
+  "session_id": "26518e4b-96a2-4768-b533-cd5986032929"
+ },
+ {
+  "probe": "B2-gin-gonic__gin-trap-1",
+  "variant": "B2",
+  "task": "gin-gonic__gin-trap-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Read",
+   "Read"
+  ],
+  "turns": 5,
+  "cost_usd": 0.053589000000000005,
+  "session_id": "6fdb49b3-6901-4ec8-9922-6d0b7a8a39e7"
+ },
+ {
+  "probe": "B2-guzzle__guzzle-trap-1",
+  "variant": "B2",
+  "task": "guzzle__guzzle-trap-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 5,
+  "cost_usd": 0.0480328,
+  "session_id": "7b12bea7-9d36-40f2-9af6-a27f0a2c10d2"
+ },
+ {
+  "probe": "B2-junegunn__fzf-why-1",
+  "variant": "B2",
+  "task": "junegunn__fzf-why-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.048442900000000004,
+  "session_id": "c00631eb-5030-4b09-8b84-e4b95559e2fb"
+ },
+ {
+  "probe": "B2-sharkdp__bat-when-1",
+  "variant": "B2",
+  "task": "sharkdp__bat-when-1",
+  "analyze_calls": 0,
+  "tools": [
+   "Bash",
+   "Bash"
+  ],
+  "turns": 3,
+  "cost_usd": 0.0335794,
+  "session_id": "c0d9f3b8-48ff-4f77-9024-f612388b8c29"
+ },
+ {
+  "probe": "B3-axios__axios-when-1",
+  "variant": "B3",
+  "task": "axios__axios-when-1",
+  "analyze_calls": 0,
+  "tools": [
+   "Bash",
+   "Bash"
+  ],
+  "turns": 3,
+  "cost_usd": 0.1276555,
+  "session_id": "4b3adbab-5497-4296-a21a-6cc60b2356e2"
+ },
+ {
+  "probe": "B3-fastapi__full-stack-fastapi-template-why-1",
+  "variant": "B3",
+  "task": "fastapi__full-stack-fastapi-template-why-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.1219674,
+  "session_id": "a6c387fa-a2e5-4dfa-8902-e8f4ce73da68"
+ },
+ {
+  "probe": "B3-gin-gonic__gin-trap-1",
+  "variant": "B3",
+  "task": "gin-gonic__gin-trap-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Read",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 6,
+  "cost_usd": 0.1374585,
+  "session_id": "a10a51c1-7300-4039-b51c-3a7d650fa4b1"
+ },
+ {
+  "probe": "B3-guzzle__guzzle-trap-1",
+  "variant": "B3",
+  "task": "guzzle__guzzle-trap-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.12940149999999997,
+  "session_id": "ffb5c467-42ab-4d33-a9e5-6cf1eb08fa6a"
+ },
+ {
+  "probe": "B3-junegunn__fzf-why-1",
+  "variant": "B3",
+  "task": "junegunn__fzf-why-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Read",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 6,
+  "cost_usd": 0.14029270000000002,
+  "session_id": "61d133d0-320d-4ab6-9995-614fb25f204c"
+ },
+ {
+  "probe": "B3-sharkdp__bat-when-1",
+  "variant": "B3",
+  "task": "sharkdp__bat-when-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.11736860000000002,
+  "session_id": "a4eedae3-e93b-4fc2-9689-6b448b98346b"
+ },
+ {
+  "probe": "C-fastapi__full-stack-fastapi-template-why-1",
+  "variant": "C",
+  "task": "fastapi__full-stack-fastapi-template-why-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.052197999999999994,
+  "session_id": "164da1ab-2809-4214-9208-d8e135d3d215"
+ },
+ {
+  "probe": "C-guzzle__guzzle-trap-1",
+  "variant": "C",
+  "task": "guzzle__guzzle-trap-1",
+  "analyze_calls": 0,
+  "tools": [
+   "Grep",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.0612798,
+  "session_id": "b39f0399-e851-47e8-a54f-e0ac2bc069cb"
+ },
+ {
+  "probe": "C-junegunn__fzf-why-1",
+  "variant": "C",
+  "task": "junegunn__fzf-why-1",
+  "analyze_calls": 0,
+  "tools": [
+   "Grep",
+   "Read",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 5,
+  "cost_usd": 0.0627209,
+  "session_id": "6693aacf-90c8-4657-a71f-04818ef98bcd"
+ },
+ {
+  "probe": "P-axios__axios-when-1",
+  "variant": "P",
+  "task": "axios__axios-when-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.1360839,
+  "session_id": "abba3a1a-7f20-4a0b-a193-3c56620f1978"
+ },
+ {
+  "probe": "P-fastapi__full-stack-fastapi-template-why-1",
+  "variant": "P",
+  "task": "fastapi__full-stack-fastapi-template-why-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.11945820000000001,
+  "session_id": "4f3a1a6d-947d-492a-b4f6-28a9b869ced0"
+ },
+ {
+  "probe": "P-gin-gonic__gin-trap-1",
+  "variant": "P",
+  "task": "gin-gonic__gin-trap-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.1310676,
+  "session_id": "da238701-8e8a-4dc1-a6f0-5e86fa604d56"
+ },
+ {
+  "probe": "P-guzzle__guzzle-trap-1",
+  "variant": "P",
+  "task": "guzzle__guzzle-trap-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash",
+   "Bash"
+  ],
+  "turns": 5,
+  "cost_usd": 0.1347901,
+  "session_id": "1c0ad7f9-2922-4173-a1fe-cdeeac0ceb79"
+ },
+ {
+  "probe": "P-junegunn__fzf-why-1",
+  "variant": "P",
+  "task": "junegunn__fzf-why-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Read",
+   "Bash"
+  ],
+  "turns": 5,
+  "cost_usd": 0.1328051,
+  "session_id": "1f66f999-dc82-4194-adfd-73c26137f987"
+ },
+ {
+  "probe": "P-sharkdp__bat-when-1",
+  "variant": "P",
+  "task": "sharkdp__bat-when-1",
+  "analyze_calls": 1,
+  "tools": [
+   "mcp__verinoda__analyze",
+   "Grep",
+   "Bash"
+  ],
+  "turns": 4,
+  "cost_usd": 0.11663409999999999,
+  "session_id": "8e027c80-194b-4cb6-ae47-92f77d48484e"
+ }
+]

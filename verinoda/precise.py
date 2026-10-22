@@ -52,6 +52,7 @@ from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
+from verinoda.paths import contained_path
 from verinoda.store import Store, now
 
 KINDS = ("definitive", "dynamic", "ambiguous", "unresolved", "external")
@@ -539,7 +540,8 @@ def resolution_evidence(repo: Path, res: dict, *, commit: str | None = None) -> 
     for t in res.get("targets", [])[:5]:
         t = dict(t)
         if t.get("in_repo") and t.get("path") and t.get("line"):
-            lines = _read_lines(repo / t["path"])
+            p = contained_path(repo, t["path"])
+            lines = _read_lines(p) if p is not None else None
             text = lines[t["line"] - 1] if lines and 0 < t["line"] <= len(lines) else None
             t["def_hash"] = evmod.content_hash(text) if text and text.strip() else None
         targets.append(t)

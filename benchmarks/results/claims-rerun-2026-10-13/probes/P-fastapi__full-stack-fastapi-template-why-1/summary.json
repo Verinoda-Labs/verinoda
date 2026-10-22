@@ -1,0 +1,18 @@
+{
+ "name": "P-fastapi__full-stack-fastapi-template-why-1",
+ "task": "fastapi__full-stack-fastapi-template-why-1",
+ "plugin_dir": "C:/Users/ozcin/Desktop/verinoda-symbiosis/.claude/worktrees/callrule/claude-mods/verinoda-live",
+ "rc": 0,
+ "secs": 14.7,
+ "turns": 4,
+ "cost": 0.11945820000000001,
+ "analyze_calls": 1,
+ "verinoda_calls": 1,
+ "tools": [
+  "mcp__verinoda__analyze",
+  "Grep",
+  "Bash"
+ ],
+ "session_id": "4f3a1a6d-947d-492a-b4f6-28a9b869ced0",
+ "answer_head": "- **The endpoint reads the password from the body.** `reset_password` takes `body: NewPassword` (`backend/app/api/routes/login.py:77-78`). `NewPassword` is a model class at `backend/app/models.py:131`.\n- **It was moved from the query string to the body on purpose, for security.** Commit `546dc8b` (\""
+}

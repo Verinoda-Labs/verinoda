@@ -1,0 +1,1255 @@
+{
+  "rows": [
+    {
+      "above_ceiling": false,
+      "answer": "`.stop()` calls `.call_soon()` (loop/base.py:35) supports:graph_edge:loop_base_baseloop_stop -[calls]-> loop_base_baseloop_call_soon supports:source_code:loop/base.py:35 supports:static_resolution:loop/base.py:35 definitive\n`._run_timers()` calls `.call_soon()` (loop/base.py:26) supports:graph_edge:loop_base_baseloop_run_timers -[calls]-> loop_base_baseloop_call_soon supports:source_code:loop/base.py:26 supports:static_resolution:loop/base.py:26 definitive",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "loop/transport.py:9",
+          "loop/transport.py:12",
+          "loop/transport.py:19"
+        ],
+        "wrong": []
+      },
+      "id": "pyloop-callsoon-callers",
+      "kind": "trap",
+      "project": "pyloop",
+      "question": "what calls BaseLoop.call_soon?",
+      "right_met": false,
+      "seconds": 0.8,
+      "shape": "unresolved_method_calls",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [
+        "3 call sites unresolved: loop/transport.py:9, loop/transport.py:12, loop/transport.py:19 - these lines call or pass `call_soon` (through an object, a callback or a listener), and the graph did not tie them to call_soon or to any other defin"
+      ],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`.pause_reading()` lines 14-15 were changed in c80ed5b527 (2026-10-13): benchmark corpus supports:git_history:commit c80ed5b527dc07f0bc3ccbcf1888033743bc40b1 loop/transport.py",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "pyloop-why-pause",
+      "kind": "trap",
+      "project": "pyloop",
+      "question": "why does Transport pause reading?",
+      "right_met": false,
+      "seconds": 0.27,
+      "shape": "why_blame",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "why",
+          "status": "unmet"
+        }
+      ],
+      "unknowns": [
+        "documents state intent, not current behaviour",
+        "the reason was not found: 1 commit line(s) say when the code changed, not why, and no decision record, comment or document found states it"
+      ],
+      "verdict": "unmet",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`(module)` in reference/oldloop/events.py reads environment variable OLDLOOP_TIMER_RESOLUTION (reference/oldloop/events.py:5) supports:source_code:reference/oldloop/events.py:5\n`(module)` in reference/oldloop/events.py reads environment variable OLDLOOP_DEBUG (reference/oldloop/events.py:6) supports:source_code:reference/oldloop/events.py:6",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "loop/base.py"
+        ],
+        "wrong": []
+      },
+      "id": "pyloop-copy-env",
+      "kind": "trap",
+      "project": "pyloop",
+      "question": "which environment variable sets the timer resolution?",
+      "right_met": false,
+      "seconds": 0.27,
+      "shape": "copy_tree",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "config",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [
+        "the claims that answer it cite only reference/: a reference tree, a copy of the project or a vendored folder, not the project's own code"
+      ],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`verbItems()` calls `openPalette()` (static/app.js:17) supports:graph_edge:static_app_verbitems -[calls]-> static_app_openpalette supports:source_code:static/app.js:17",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "static/app.js:35"
+        ],
+        "wrong": []
+      },
+      "id": "webui-openpalette",
+      "kind": "trap",
+      "project": "webui",
+      "question": "What calls openPalette?",
+      "right_met": false,
+      "seconds": 0.21,
+      "shape": "listener_caller",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [
+        "1 call site unresolved: static/app.js:35 - these lines call or pass `openPalette` (through an object, a callback or a listener), and the graph did not tie them to openPalette or to any other definition of that name; the callers listed may b"
+      ],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`useAuth()` is defined at src/hooks/useAuth.ts:5-11 supports:source_code:src/hooks/useAuth.ts:5-11\n`description` is defined at package.json:5-5 supports:source_code:package.json:5",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "LoginButton",
+          "ProfileMenu"
+        ],
+        "wrong": []
+      },
+      "id": "webui-useauth-components",
+      "kind": "trap",
+      "project": "webui",
+      "question": "Which React components use the useAuth hook?",
+      "right_met": false,
+      "seconds": 0.18,
+      "shape": "hook_usage",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "unmet"
+        }
+      ],
+      "unknowns": [
+        "the question asks which code uses `react` / `useAuth`; the claims found are definitions, not code that uses it"
+      ],
+      "verdict": "unmet",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`EmberLamp` is defined at src/main/java/com/example/mixmod/block/EmberLamp.java:9-37 supports:source_code:src/main/java/com/example/mixmod/block/EmberLamp.java:9-37\n`.coolAll()` is defined at src/main/java/com/example/mixmod/block/EmberLamp.java:28-32 supports:source_code:src/main/java/com/example/mixmod/block/EmberLamp.java:28-32\n`MixMod` is defined at src/main/java/com/example/mixmod/MixMod.java:7-15 supports:source_code:src/main/java/com/example/mixmod/MixMod.java:7-15\nsrc/main/resources/mixmod.mixins.json:3 contains: \"package\": \"com.example.mixmod.mixin\", supports:source_code:src/main/resources/mixmod.mixins.json:3\nsrc/main/resources/fabric.mod.json:10 contains: \"mixins\": [\"mixmod.mixins.json\"], supports:source_code:src/main/resources/fabric.mod.json:10",
+      "ceiling": "not_met",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "LivingEntityMixin"
+        ],
+        "wrong": []
+      },
+      "id": "mixmod-unlisted",
+      "kind": "trap",
+      "project": "mixmod",
+      "question": "Which mixin classes are not listed in mixmod.mixins.json?",
+      "right_met": false,
+      "seconds": 0.24,
+      "shape": "set_difference",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "not_supported"
+        }
+      ],
+      "unknowns": [
+        "the question asks for a set difference ('are not listed': all of them minus those that are); the claims say where things are, not which are missing, and no check here computes it"
+      ],
+      "verdict": "not_supported",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`.onEndTick()` is defined at src/client/java/com/example/glowmod/client/GlowModClient.java:25-31 supports:source_code:src/client/java/com/example/glowmod/client/GlowModClient.java:25-31\n`.tick()` is defined at src/main/java/com/example/glowmod/repair/RepairScheduler.java:33-39 supports:source_code:src/main/java/com/example/glowmod/repair/RepairScheduler.java:33-39\n`.parse()` is defined at src/main/java/com/example/glowmod/config/GlowConfig.java:44-54 supports:source_code:src/main/java/com/example/glowmod/config/GlowConfig.java:44-54\nsrc/main/resources/data/glowmod/function/ritual/tick.mcfunction:1 contains: # One step of the ritual effects; keeps rescheduling itself while an altar has time left. supports:source_code:src/main/resources/data/glowmod/function/ritual/tick.mcfunction:1\nsrc/main/resources/glowmod.yml:10 contains: repair: supports:source_code:src/main/resources/glowmod.yml:10",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "glow-wisp-ticked",
+      "kind": "trap",
+      "project": "glow_mod",
+      "question": "where is the Wisp ticked?",
+      "right_met": false,
+      "seconds": 0.25,
+      "shape": "no_override",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "unmet"
+        }
+      ],
+      "unknowns": [
+        "no member of 'wisp' named for 'tick' was found: the claims are about other code, or name 'wisp' without a 'tick' of its own"
+      ],
+      "verdict": "unmet",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "glow-why-heart",
+      "kind": "trap",
+      "project": "glow_mod",
+      "question": "why does the Wisp drop a heart?",
+      "right_met": false,
+      "seconds": 0.22,
+      "shape": "why_blame",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "why",
+          "status": "unmet"
+        }
+      ],
+      "unknowns": [
+        "no decision record or commit message explains it"
+      ],
+      "verdict": "unmet",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "Data path cmd_decide() -> _decide_check() -> update() -> invalidate_stale() reaches persistence (sql-read) at verinoda/claims.py:1035 supports:source_code:verinoda/cli.py:1164 supports:source_code:verinoda/cli.py:1136 supports:source_code:verinoda/workflow.py:259 supports:source_code:verinoda/claims.py:1061\nData path cmd_decide() -> _decide_check() -> update() -> misaligned_files() reaches persistence (db-connection, sql-read) at verinoda/search_index.py:533 supports:source_code:verinoda/cli.py:1164 supports:source_code:verinoda/cli.py:1136 supports:source_code:verinoda/workflow.py:229 supports:source_code:verinoda/search_index.py:536 supports:source_code:verinoda/search_index.py:538\nData path cmd_decide() -> _decide_check() -> update() -> .latest_snapshot() reaches persistence (sql-read) at verinoda/store.py:618 supports:source_code:verinoda/cli.py:1164 supports:source_code:verinoda/cli.py:1136 supports:source_code:verinoda/workflow.py:215 supports:source_code:verinoda/store.py:619",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "verinoda-stale-decision",
+      "kind": "trap",
+      "project": "verinoda",
+      "question": "how does update decide which claims become stale?",
+      "right_met": false,
+      "seconds": 7.35,
+      "shape": "copy_tree",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "flow",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`_result_wrapper()` lines 1823-1844 were changed in 9508577882 (2026-10-13): benchmark corpus supports:git_history:commit 9508577882430851842da595316d1b2a345bbb0d verinoda/mcp/server.py\nDecision record docs/ARCHITECTURE.md (status: None) explains it: | `mcp/` | MCP server over the same functions: 35 tools, responses capped (12,000 characters by default). The long-lived process keeps the graph until graph.jso supports:design_doc:docs/ARCHITECTURE.md:104-112\nDecision record docs/DESIGN.md (status: None) explains it: - **D36. `verinoda probe`** (`verinoda/probe.py`, CLI `probe FILE::NAME` or `probe --changed`, MCP supports:design_doc:docs/DESIGN.md:1796-1807\nDecision record docs/upstream/ARCHITECTURE.md (status: None) explains it: - URLs \u2192 `validate_url()` (http/https only) + `_NoFileRedirectHandler` (blocks file:// redirects) supports:design_doc:docs/upstream/ARCHITECTURE.md:85-93",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "stdout redirection"
+        ],
+        "wrong": []
+      },
+      "id": "verinoda-lock-why",
+      "kind": "trap",
+      "project": "verinoda",
+      "question": "Why are MCP tool calls serialised with a lock?",
+      "right_met": false,
+      "seconds": 2.43,
+      "shape": "why_blame",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "why",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [
+        "documents state intent, not current behaviour",
+        "one subject and no second end: what it calls is an inference about how it works"
+      ],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`LivingEntityMixin` is defined at src/main/java/com/example/mixmod/mixin/LivingEntityMixin.java:11-19 supports:source_code:src/main/java/com/example/mixmod/mixin/LivingEntityMixin.java:11-19\n`PlayerEntityMixin` is defined at src/main/java/com/example/mixmod/mixin/PlayerEntityMixin.java:9-15 supports:source_code:src/main/java/com/example/mixmod/mixin/PlayerEntityMixin.java:9-15\nsrc/main/resources/mixmod.mixins.json:3 contains: \"package\": \"com.example.mixmod.mixin\", supports:source_code:src/main/resources/mixmod.mixins.json:3\nsrc/main/resources/fabric.mod.json:3 contains: \"id\": \"mixmod\", supports:source_code:src/main/resources/fabric.mod.json:3",
+      "ceiling": "not_met",
+      "gold": {
+        "complete": false,
+        "missing": [],
+        "wrong": [
+          "PlayerEntityMixin"
+        ]
+      },
+      "id": "mixmod-unlisted-tr",
+      "kind": "trap",
+      "project": "mixmod",
+      "question": "mixmod.mixins.json dosyas\u0131nda listelenmemi\u015f mixin s\u0131n\u0131flar\u0131 hangileri?",
+      "right_met": false,
+      "seconds": 0.16,
+      "shape": "set_difference",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "not_supported"
+        }
+      ],
+      "unknowns": [
+        "the question asks for a set difference ('listelenmemis mixin siniflari hangileri': all of them minus those that are); the claims say where things are, not which are missing, and no check here computes it"
+      ],
+      "verdict": "not_supported",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`.Spark()` is defined at src/main/java/com/example/mixmod/entity/Spark.java:11-14 supports:source_code:src/main/java/com/example/mixmod/entity/Spark.java:11-14\n`Spark` is defined at src/main/java/com/example/mixmod/entity/Spark.java:10-25 supports:source_code:src/main/java/com/example/mixmod/entity/Spark.java:10-25\n`.mixmod$drawSparkCount()` is defined at src/client/java/com/example/mixmod/mixin/client/InGameHudMixin.java:12-15 supports:source_code:src/client/java/com/example/mixmod/mixin/client/InGameHudMixin.java:12-15",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "mixmod-spark-ticked",
+      "kind": "trap",
+      "project": "mixmod",
+      "question": "where is the Spark ticked?",
+      "right_met": false,
+      "seconds": 0.14,
+      "shape": "no_override",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "unmet"
+        }
+      ],
+      "unknowns": [
+        "no member of 'spark' named for 'tick' was found: the claims are about other code, or name 'spark' without a 'tick' of its own"
+      ],
+      "verdict": "unmet",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`verbItems()` calls `openPalette()` (verinoda/ui/static/app.js:1698) supports:graph_edge:verinoda_ui_static_app_verbitems -[calls]-> verinoda_ui_static_app_openpalette supports:source_code:verinoda/ui/static/app.js:1698",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "app.js:2061"
+        ],
+        "wrong": []
+      },
+      "id": "verinoda-openpalette",
+      "kind": "trap",
+      "project": "verinoda",
+      "question": "What calls openPalette in the notes page JavaScript?",
+      "right_met": false,
+      "seconds": 1.75,
+      "shape": "listener_caller",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`get_order_handler()` calls `fetch_order()` (orders/api.py:25) supports:graph_edge:orders_api_get_order_handler -[calls]-> orders_service_fetch_order supports:source_code:orders/api.py:25 supports:static_resolution:orders/api.py:25 definitive\n`create_order_handler()` calls `place_order()` (orders/api.py:18) supports:graph_edge:orders_api_create_order_handler -[calls]-> orders_service_place_order supports:source_code:orders/api.py:18 supports:static_resolution:orders/api.py:18 definitive\n`place_order()` calls `validate_items()` (orders/service.py:20) supports:graph_edge:orders_service_place_order -[calls]-> orders_service_validate_items supports:source_code:orders/service.py:20 supports:static_resolution:orders/service.py:20 definitive\n`test_place_and_fetch_roundtrip()` calls `fetch_order()` (tests/test_service.py:10) supports:graph_edge:tests_test_service_test_place_and_fetch_roundtrip -[calls]-> orders_service_fetch_order supports:source_code:tests/test_service.py:10 supports:static_resolution:tests/test_service.py:10 definitive\n`test_place_and_fetch_roundtrip()` calls `place_order()` (tests/test_service.py:9) supports:graph_edge:tests_test_service_test_place_and_fetch_roundtrip -[calls]-> orders_service_place_order supports:source_code:tests/test_service.py:9 supports:static_resolution:tests/test_service.py:9 definitive\n`test_empty_order_rejected()` calls `place_order()` (tests/test_service.py:15) supports:graph_edge:tests_test_service_test_empty_order_rejected -[calls]-> o",
+      "ceiling": "not_met",
+      "gold": {
+        "complete": false,
+        "missing": [],
+        "wrong": [
+          "place_order",
+          "fetch_order"
+        ]
+      },
+      "id": "orders-not-called-by-handlers",
+      "kind": "trap",
+      "project": "orders_app",
+      "question": "Which functions in orders/service.py are not called by the HTTP handlers?",
+      "right_met": false,
+      "seconds": 0.3,
+      "shape": "set_difference",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "not_supported"
+        }
+      ],
+      "unknowns": [
+        "no call edge into it in the graph (dynamic, reflective or external callers are not extracted, and a method call on a receiver whose type the extractor could not tell - an untyped local, a chain - is left unbound)",
+        "no call edge into it in the graph (dynamic, reflective or external callers are not extracted, and a method call on a receiver whose type the extractor could not tell - an untyped local, a chain - is left unbound)",
+        "the question asks for a set difference ('are not called': all of them minus those that are); the claims say where things are, not which are missing, and no check here computes it"
+      ],
+      "verdict": "not_supported",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`OrderRepository` lines 8-26 were changed in 0df7a4b523 (2026-10-13): benchmark corpus supports:git_history:commit 0df7a4b523af58c3f5e556b8b06c685d89cd209c orders/repository.py\nDecision record docs/adr/0001-sqlite-persistence.md (status: accepted) mentions `OrderRepository`: We persist orders in SQLite through `OrderRepository` only. No other module supports:design_doc:docs/adr/0001-sqlite-persistence.md:3-7",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "orders-why-commit",
+      "kind": "trap",
+      "project": "orders_app",
+      "question": "Why does OrderRepository commit after every insert?",
+      "right_met": false,
+      "seconds": 0.54,
+      "shape": "why_blame",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "why",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [
+        "documents state intent, not current behaviour"
+      ],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`.stop()` calls `.call_soon()` (loop/base.py:35) supports:graph_edge:loop_base_baseloop_stop -[calls]-> loop_base_baseloop_call_soon supports:source_code:loop/base.py:35 supports:static_resolution:loop/base.py:35 definitive\n`._run_timers()` calls `.call_soon()` (loop/base.py:26) supports:graph_edge:loop_base_baseloop_run_timers -[calls]-> loop_base_baseloop_call_soon supports:source_code:loop/base.py:26 supports:static_resolution:loop/base.py:26 definitive",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "loop/transport.py:9",
+          "loop/transport.py:12",
+          "loop/transport.py:19"
+        ],
+        "wrong": []
+      },
+      "id": "pyloop-callsoon-callers-tr",
+      "kind": "trap",
+      "project": "pyloop",
+      "question": "BaseLoop.call_soon kimler taraf\u0131ndan \u00e7a\u011fr\u0131l\u0131yor?",
+      "right_met": false,
+      "seconds": 0.15,
+      "shape": "unresolved_method_calls",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [
+        "3 call sites unresolved: loop/transport.py:9, loop/transport.py:12, loop/transport.py:19 - these lines call or pass `call_soon` (through an object, a callback or a listener), and the graph did not tie them to call_soon or to any other defin"
+      ],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`useAuth()` is defined at src/hooks/useAuth.ts:5-11 supports:source_code:src/hooks/useAuth.ts:5-11",
+      "ceiling": "met_with_inference",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "LoginButton",
+          "ProfileMenu"
+        ],
+        "wrong": []
+      },
+      "id": "webui-useauth-components-tr",
+      "kind": "trap",
+      "project": "webui",
+      "question": "useAuth hook'unu hangi bile\u015fenler kullan\u0131yor?",
+      "right_met": false,
+      "seconds": 0.13,
+      "shape": "hook_usage",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "unmet"
+        }
+      ],
+      "unknowns": [
+        "the question asks which code uses `useAuth`; the claims found are definitions, not code that uses it"
+      ],
+      "verdict": "unmet",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`plan_nightly()` calls `schedule_task()` (loop/scheduler.py:11) supports:graph_edge:loop_scheduler_plan_nightly -[calls]-> loop_scheduler_schedule_task supports:source_code:loop/scheduler.py:11 supports:static_resolution:loop/scheduler.py:11 definitive\n`plan_hourly()` calls `schedule_task()` (loop/scheduler.py:16) supports:graph_edge:loop_scheduler_plan_hourly -[calls]-> loop_scheduler_schedule_task supports:source_code:loop/scheduler.py:16 supports:static_resolution:loop/scheduler.py:16 definitive",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "pyloop-schedule-callers",
+      "kind": "control",
+      "project": "pyloop",
+      "question": "what calls schedule_task?",
+      "right_met": true,
+      "seconds": 0.21,
+      "shape": "clean_callers",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`ADR 0001: callbacks run on the next pass` lines 1-7 were changed in c80ed5b527 (2026-10-13): benchmark corpus supports:git_history:commit c80ed5b527dc07f0bc3ccbcf1888033743bc40b1 docs/adr/0001-callbacks-run-on-the-next-pass.md\nDecision record docs/adr/0001-callbacks-run-on-the-next-pass.md (status: accepted) explains it: Callbacks queued with call_soon run on the next pass of run_once, never inside the call that supports:design_doc:docs/adr/0001-callbacks-run-on-the-next-pass.md:3-7",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "pyloop-why-adr",
+      "kind": "control",
+      "project": "pyloop",
+      "question": "why do callbacks queued with call_soon run on the next pass?",
+      "right_met": false,
+      "seconds": 0.29,
+      "shape": "why_record",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "why",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [
+        "documents state intent, not current behaviour"
+      ],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`init()` calls `renderList()` (static/app.js:30) supports:graph_edge:static_app_init -[calls]-> static_app_renderlist supports:source_code:static/app.js:30",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "webui-renderlist-callers",
+      "kind": "control",
+      "project": "webui",
+      "question": "What calls renderList?",
+      "right_met": false,
+      "seconds": 0.14,
+      "shape": "clean_callers",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`.coolAll()` is defined at src/main/java/com/example/mixmod/block/EmberLamp.java:28-32 supports:source_code:src/main/java/com/example/mixmod/block/EmberLamp.java:28-32\n`.tick()` is defined at src/main/java/com/example/mixmod/block/EmberLamp.java:21-26 supports:source_code:src/main/java/com/example/mixmod/block/EmberLamp.java:21-26\n`EmberLamp` is defined at src/main/java/com/example/mixmod/block/EmberLamp.java:9-37 supports:source_code:src/main/java/com/example/mixmod/block/EmberLamp.java:9-37\nsrc/main/java/com/example/mixmod/block/EmberLamp.java:8 contains: /** A lamp block that cools down a little every server tick after it was lit. */ supports:source_code:src/main/java/com/example/mixmod/block/EmberLamp.java:8",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "mixmod-lamp-ticked",
+      "kind": "control",
+      "project": "mixmod",
+      "question": "where is the EmberLamp ticked?",
+      "right_met": true,
+      "seconds": 0.14,
+      "shape": "action_site",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`GlowCommands.reload()` calls `GlowConfig.load()` (src/main/java/com/example/glowmod/command/GlowCommands.java:45) supports:graph_edge:src_main_java_com_example_glowmod_command_glowcommands_glowcommands_reload -[calls]-> src_main_java_com_example_glowmod_config_glowconfig_glowconfig_load supports:source_code:src/main/java/com/example/glowmod/command/GlowCommands.java:45\n`GlowMod.onInitialize()` calls `GlowConfig.load()` (src/main/java/com/example/glowmod/GlowMod.java:21) supports:graph_edge:src_main_java_com_example_glowmod_glowmod_glowmod_oninitialize -[calls]-> src_main_java_com_example_glowmod_config_glowconfig_glowconfig_load supports:source_code:src/main/java/com/example/glowmod/GlowMod.java:21",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "glow-config-load-callers",
+      "kind": "control",
+      "project": "glow_mod",
+      "question": "Who calls GlowConfig.load?",
+      "right_met": false,
+      "seconds": 0.17,
+      "shape": "clean_callers",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`Wisp` is defined at src/main/java/com/example/glowmod/entity/Wisp.java:14-45 supports:source_code:src/main/java/com/example/glowmod/entity/Wisp.java:14-45\n`.Wisp()` is defined at src/main/java/com/example/glowmod/entity/Wisp.java:15-18 supports:source_code:src/main/java/com/example/glowmod/entity/Wisp.java:15-18\n`.spawn()` is defined at src/main/java/com/example/glowmod/entity/Wisp.java:28-36 supports:source_code:src/main/java/com/example/glowmod/entity/Wisp.java:28-36",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "glow-wisp-defined",
+      "kind": "control",
+      "project": "glow_mod",
+      "question": "where is Wisp defined?",
+      "right_met": true,
+      "seconds": 0.19,
+      "shape": "clean_locate",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`.blocksPerTick()` is defined at reference/original-plugin/src/main/java/com/example/glowplugin/GlowPlugin.java:13-15 supports:source_code:reference/original-plugin/src/main/java/com/example/glowplugin/GlowPlugin.java:13-15\n`.tick()` is defined at src/main/java/com/example/glowmod/repair/RepairScheduler.java:33-39 supports:source_code:src/main/java/com/example/glowmod/repair/RepairScheduler.java:33-39\nreference/original-plugin/config.yml:8 contains: # blocks restored per tick after a ritual supports:source_code:reference/original-plugin/config.yml:8",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "glow-plugin-blockspertick",
+      "kind": "control",
+      "project": "glow_mod",
+      "question": "Where is blocksPerTick defined in the original plugin?",
+      "right_met": true,
+      "seconds": 0.18,
+      "shape": "named_reference",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`EmberForgeBlockEntity.serverTick()` calls `.addHeat()` (src/main/java/net/ashvale/emberforge/block/EmberForgeBlockEntity.java:82) supports:graph_edge:src_main_java_net_ashvale_emberforge_block_emberforgeblockentity_emberforgeblockentity_servertick -[calls]-> src_main_kotlin_net_ashvale_emberforge_heat_heatmath_heatmath_addheat supports:source_code:src/main/java/net/ashvale/emberforge/block/EmberForgeBlockEntity.java:82\n`EmberForgeBlockEntity.stoke()` calls `.addHeat()` (src/main/java/net/ashvale/emberforge/block/EmberForgeBlockEntity.java:141) supports:graph_edge:src_main_java_net_ashvale_emberforge_block_emberforgeblockentity_emberforgeblockentity_stoke -[calls]-> src_main_kotlin_net_ashvale_emberforge_heat_heatmath_heatmath_addheat supports:source_code:src/main/java/net/ashvale/emberforge/block/EmberForgeBlockEntity.java:141\n`.addHeat()` calls `.addHeat()` (src/main/kotlin/net/ashvale/emberforge/heat/HeatMath.kt:22) supports:graph_edge:src_main_kotlin_net_ashvale_emberforge_heat_heatmath_heatmath_addheat -[calls]-> src_main_kotlin_net_ashvale_emberforge_heat_heatmath_heatmath_addheat supports:source_code:src/main/kotlin/net/ashvale/emberforge/heat/HeatMath.kt:22\n`HeatMathTest.heatStaysBetweenZeroAndTheMaximum()` calls `.addHeat()` (src/test/java/net/ashvale/emberforge/HeatMathTest.java:23) supports:graph_edge:src_test_java_net_ashvale_emberforge_heatmathtest_heatmathtest_heatstaysbetweenzeroandthemaximum -[calls]-> src_main_kotlin_net_ashvale_emberforge_heat_heatmath_heatm",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "forge-addheat-callers",
+      "kind": "control",
+      "project": "forge_mod",
+      "question": "Who calls HeatMath.addHeat?",
+      "right_met": false,
+      "seconds": 0.37,
+      "shape": "clean_callers",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`.serverTick()` is defined at src/main/java/net/ashvale/emberforge/block/EmberForgeBlockEntity.java:75-120 supports:source_code:src/main/java/net/ashvale/emberforge/block/EmberForgeBlockEntity.java:75-120\n`EmberForgeBlockEntity` is defined at src/main/java/net/ashvale/emberforge/block/EmberForgeBlockEntity.java:33-179 supports:source_code:src/main/java/net/ashvale/emberforge/block/EmberForgeBlockEntity.java:33-179\n`.getTicker()` is defined at src/main/java/net/ashvale/emberforge/block/EmberForgeBlock.java:69-73 supports:source_code:src/main/java/net/ashvale/emberforge/block/EmberForgeBlock.java:69-73",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "forge-blockentity-ticked",
+      "kind": "control",
+      "project": "forge_mod",
+      "question": "where is the EmberForgeBlockEntity ticked?",
+      "right_met": true,
+      "seconds": 0.24,
+      "shape": "action_site",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "Decision record docs/adr/0001-sqlite-persistence.md (status: accepted) explains it: We persist orders in SQLite through `OrderRepository` only. No other module supports:design_doc:docs/adr/0001-sqlite-persistence.md:3-7\n`ADR 0001: SQLite for order persistence` lines 1-7 were changed in 0df7a4b523 (2026-10-13): benchmark corpus supports:git_history:commit 0df7a4b523af58c3f5e556b8b06c685d89cd209c docs/adr/0001-sqlite-persistence.md",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "orders-why-sqlite",
+      "kind": "control",
+      "project": "orders_app",
+      "question": "Why does the project use SQLite for persistence?",
+      "right_met": true,
+      "seconds": 0.35,
+      "shape": "why_record",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "why",
+          "status": "met"
+        }
+      ],
+      "unknowns": [
+        "documents state intent, not current behaviour"
+      ],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`create_order_handler()` calls `place_order()` (orders/api.py:18) supports:graph_edge:orders_api_create_order_handler -[calls]-> orders_service_place_order supports:source_code:orders/api.py:18 supports:static_resolution:orders/api.py:18 definitive\n`test_place_and_fetch_roundtrip()` calls `place_order()` (tests/test_service.py:9) supports:graph_edge:tests_test_service_test_place_and_fetch_roundtrip -[calls]-> orders_service_place_order supports:source_code:tests/test_service.py:9 supports:static_resolution:tests/test_service.py:9 definitive\n`test_empty_order_rejected()` calls `place_order()` (tests/test_service.py:15) supports:graph_edge:tests_test_service_test_empty_order_rejected -[calls]-> orders_service_place_order supports:source_code:tests/test_service.py:15 supports:static_resolution:tests/test_service.py:15 definitive",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "orders-place-order-callers",
+      "kind": "control",
+      "project": "orders_app",
+      "question": "Who calls place_order?",
+      "right_met": true,
+      "seconds": 0.17,
+      "shape": "clean_callers",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`update()` calls `invalidate_stale()` (verinoda/workflow.py:259) supports:graph_edge:verinoda_workflow_update -[calls]-> verinoda_claims_invalidate_stale supports:source_code:verinoda/workflow.py:259 supports:static_resolution:verinoda/workflow.py:259 definitive\n`_current_snapshot()` calls `invalidate_stale()` (verinoda/workflow.py:322) supports:graph_edge:verinoda_workflow_current_snapshot -[calls]-> verinoda_claims_invalidate_stale supports:source_code:verinoda/workflow.py:322 supports:static_resolution:verinoda/workflow.py:322 definitive\n`replay()` calls `invalidate_stale()` (verinoda/benchmark/staleness.py:405) supports:graph_edge:verinoda_benchmark_staleness_replay -[calls]-> verinoda_claims_invalidate_stale supports:source_code:verinoda/benchmark/staleness.py:405 supports:static_resolution:verinoda/benchmark/staleness.py:405 definitive\n`_index_refused()` calls `invalidate_stale()` (verinoda/workflow.py:45) supports:graph_edge:verinoda_workflow_index_refused -[calls]-> verinoda_claims_invalidate_stale supports:source_code:verinoda/workflow.py:45 supports:static_resolution:verinoda/workflow.py:45 definitive\n`scan()` calls `invalidate_stale()` (verinoda/workflow.py:161) supports:graph_edge:verinoda_workflow_scan -[calls]-> verinoda_claims_invalidate_stale supports:source_code:verinoda/workflow.py:161 supports:static_resolution:verinoda/workflow.py:161 definitive\n`test_shift_edit_rebinds_symbol_claims_instead_of_staling_them()` calls `invalidate_stale()` (tests/test_snapsho",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "verinoda-invalidate-callers",
+      "kind": "control",
+      "project": "verinoda",
+      "question": "what calls invalidate_stale?",
+      "right_met": true,
+      "seconds": 1.11,
+      "shape": "clean_callers",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`detect()` is defined at verinoda/copies.py:72-152 supports:source_code:verinoda/copies.py:72-152\n`update()` is defined at verinoda/copies.py:161-170 supports:source_code:verinoda/copies.py:161-170\n`load()` is defined at verinoda/copies.py:173-185 supports:source_code:verinoda/copies.py:173-185\nverinoda/copies.py:19-23 contains: Detected copies are written to ``copies.json`` beside the index at every scan and update, and supports:source_code:verinoda/copies.py:19-23",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "verinoda-detect-defined",
+      "kind": "control",
+      "project": "verinoda",
+      "question": "where is detect defined in copies.py?",
+      "right_met": true,
+      "seconds": 0.67,
+      "shape": "clean_locate",
+      "split": "dev",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`._run_timers()` is defined at loop/base.py:22-26 supports:source_code:loop/base.py:22-26",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "pyloop-resolution-defined",
+      "kind": "control",
+      "project": "pyloop",
+      "question": "where is TIMER_RESOLUTION defined?",
+      "right_met": true,
+      "seconds": 0.18,
+      "shape": "clean_locate",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`useAuth()` is defined at src/hooks/useAuth.ts:5-11 supports:source_code:src/hooks/useAuth.ts:5-11",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "webui-useauth-defined",
+      "kind": "control",
+      "project": "webui",
+      "question": "Where is the useAuth hook defined?",
+      "right_met": true,
+      "seconds": 0.12,
+      "shape": "clean_locate",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`ServerWorldMixin` is defined at src/main/java/com/example/mixmod/mixin/ServerWorldMixin.java:10-16 supports:source_code:src/main/java/com/example/mixmod/mixin/ServerWorldMixin.java:10-16\n`.mixmod$afterTick()` is defined at src/main/java/com/example/mixmod/mixin/ServerWorldMixin.java:12-15 supports:source_code:src/main/java/com/example/mixmod/mixin/ServerWorldMixin.java:12-15\nsrc/main/resources/mixmod.mixins.json:2 contains: \"required\": true, supports:source_code:src/main/resources/mixmod.mixins.json:2",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "mixmod-mixin-defined",
+      "kind": "control",
+      "project": "mixmod",
+      "question": "Where is ServerWorldMixin defined?",
+      "right_met": true,
+      "seconds": 0.16,
+      "shape": "clean_locate",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`ServerWorldMixin.mixmod$afterTick()` calls `EmberLamp.coolAll()` (src/main/java/com/example/mixmod/mixin/ServerWorldMixin.java:14) supports:graph_edge:src_main_java_com_example_mixmod_mixin_serverworldmixin_serverworldmixin_mixmod_aftertick -[calls]-> src_main_java_com_example_mixmod_block_emberlamp_emberlamp_coolall supports:source_code:src/main/java/com/example/mixmod/mixin/ServerWorldMixin.java:14",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "mixmod-coolall-callers",
+      "kind": "control",
+      "project": "mixmod",
+      "question": "What calls EmberLamp.coolAll?",
+      "right_met": false,
+      "seconds": 0.12,
+      "shape": "clean_callers",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "callers",
+          "status": "met_with_inference"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met_with_inference",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`.register()` is defined at src/main/java/com/example/glowmod/item/ModItems.java:20-22 supports:source_code:src/main/java/com/example/glowmod/item/ModItems.java:20-22\n`ModItems` is defined at src/main/java/com/example/glowmod/item/ModItems.java:12-32 supports:source_code:src/main/java/com/example/glowmod/item/ModItems.java:12-32\n`.ModItems()` is defined at src/main/java/com/example/glowmod/item/ModItems.java:17-18 supports:source_code:src/main/java/com/example/glowmod/item/ModItems.java:17-18",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "glow-items-registered",
+      "kind": "control",
+      "project": "glow_mod",
+      "question": "Where are the mod's items registered?",
+      "right_met": true,
+      "seconds": 0.21,
+      "shape": "action_site",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`.getMaxHeat()` is defined at src/main/java/net/ashvale/emberforge/menu/EmberForgeMenu.java:74-76 supports:source_code:src/main/java/net/ashvale/emberforge/menu/EmberForgeMenu.java:74-76\nconfig/emberforge-common.toml:13 contains: max_heat = 200 supports:source_code:config/emberforge-common.toml:13",
+      "ceiling": "met",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "EmberConfig.java"
+        ],
+        "wrong": []
+      },
+      "id": "forge-maxheat-declared",
+      "kind": "control",
+      "project": "forge_mod",
+      "question": "Where is max_heat declared?",
+      "right_met": false,
+      "seconds": 0.2,
+      "shape": "clean_locate",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": true
+    },
+    {
+      "above_ceiling": false,
+      "answer": "`(module)` in orders/config.py reads environment variable ORDERS_DATABASE_URL (orders/config.py:5) supports:source_code:orders/config.py:5\n`(module)` in orders/config.py reads environment variable ORDERS_DISCOUNT_THRESHOLD (orders/config.py:7) supports:source_code:orders/config.py:7\n`(module)` in orders/config.py reads environment variable ORDERS_MAX_ITEMS (orders/config.py:6) supports:source_code:orders/config.py:6",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "orders-env-config",
+      "kind": "control",
+      "project": "orders_app",
+      "question": "Which environment variables configure the orders service?",
+      "right_met": true,
+      "seconds": 0.22,
+      "shape": "clean_config",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "config",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "orders/repository.py:17 touches storage (orm-write, sql-write): \"INSERT INTO orders (customer, total) VALUES (?, ?)\", (customer, total) supports:source_code:orders/repository.py:17\norders/repository.py:19 touches storage (orm-write, sql-write): self.conn.commit() supports:source_code:orders/repository.py:19\norders/repository.py:10 touches storage (db-connection, sql-write): self.conn = sqlite3.connect(url) supports:source_code:orders/repository.py:10\norders/repository.py:12 touches storage (db-connection, sql-write): \"CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY, customer TEXT, total REAL)\" supports:source_code:orders/repository.py:12\norders/repository.py:24 touches storage (sql-read): \"SELECT id, customer, total FROM orders WHERE id = ?\", (order_id,) supports:source_code:orders/repository.py:24",
+      "ceiling": "met",
+      "gold": {
+        "complete": true,
+        "missing": [],
+        "wrong": []
+      },
+      "id": "orders-order-written",
+      "kind": "control",
+      "project": "orders_app",
+      "question": "Where is an order written to the database?",
+      "right_met": true,
+      "seconds": 0.17,
+      "shape": "clean_locate",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "locate",
+          "status": "met"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "met",
+      "wrong_met": false
+    },
+    {
+      "above_ceiling": false,
+      "answer": "",
+      "ceiling": "met",
+      "gold": {
+        "complete": false,
+        "missing": [
+          "VERINODA_MCP_MAX_CHARS"
+        ],
+        "wrong": []
+      },
+      "id": "verinoda-mcp-size-env",
+      "kind": "control",
+      "project": "verinoda",
+      "question": "Which environment variable sets the MCP response size limit?",
+      "right_met": false,
+      "seconds": 1.41,
+      "shape": "clean_config",
+      "split": "held_out",
+      "subquestions": [
+        {
+          "id": "q1",
+          "intent": "config",
+          "status": "unmet"
+        }
+      ],
+      "unknowns": [],
+      "verdict": "unmet",
+      "wrong_met": false
+    }
+  ],
+  "schema": "verinoda.verdict_audit_result/1",
+  "split": "all",
+  "summary": {
+    "all": {
+      "above_ceiling": 0,
+      "cases": 39,
+      "controls": 22,
+      "controls_kept": 15,
+      "controls_kept_rate": 0.682,
+      "controls_lost_ids": [
+        "pyloop-why-adr",
+        "webui-renderlist-callers",
+        "glow-config-load-callers",
+        "forge-addheat-callers",
+        "mixmod-coolall-callers",
+        "forge-maxheat-declared",
+        "verinoda-mcp-size-env"
+      ],
+      "skipped": 0,
+      "traps": 17,
+      "verdicts": {
+        "met": 16,
+        "met_with_inference": 13,
+        "not_supported": 3,
+        "unmet": 7
+      },
+      "wrong_met": 1,
+      "wrong_met_controls": 1,
+      "wrong_met_ids": [
+        "forge-maxheat-declared"
+      ],
+      "wrong_met_rate": 0.026,
+      "wrong_met_traps": 0
+    },
+    "dev": {
+      "above_ceiling": 0,
+      "cases": 23,
+      "controls": 13,
+      "controls_kept": 9,
+      "controls_kept_rate": 0.692,
+      "controls_lost_ids": [
+        "pyloop-why-adr",
+        "webui-renderlist-callers",
+        "glow-config-load-callers",
+        "forge-addheat-callers"
+      ],
+      "skipped": 0,
+      "traps": 10,
+      "verdicts": {
+        "met": 9,
+        "met_with_inference": 9,
+        "not_supported": 1,
+        "unmet": 4
+      },
+      "wrong_met": 0,
+      "wrong_met_controls": 0,
+      "wrong_met_ids": [],
+      "wrong_met_rate": 0.0,
+      "wrong_met_traps": 0
+    },
+    "held_out": {
+      "above_ceiling": 0,
+      "cases": 16,
+      "controls": 9,
+      "controls_kept": 6,
+      "controls_kept_rate": 0.667,
+      "controls_lost_ids": [
+        "mixmod-coolall-callers",
+        "forge-maxheat-declared",
+        "verinoda-mcp-size-env"
+      ],
+      "skipped": 0,
+      "traps": 7,
+      "verdicts": {
+        "met": 7,
+        "met_with_inference": 4,
+        "not_supported": 2,
+        "unmet": 3
+      },
+      "wrong_met": 1,
+      "wrong_met_controls": 1,
+      "wrong_met_ids": [
+        "forge-maxheat-declared"
+      ],
+      "wrong_met_rate": 0.062,
+      "wrong_met_traps": 0
+    }
+  }
+}

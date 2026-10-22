@@ -66,7 +66,7 @@ from verinoda import question_plan as qp
 from verinoda import textnorm as tn
 from verinoda.analysis_view import ECHO_CHARS
 from verinoda.claims import ORDER, VERIFIED, ClaimRuleError, Claims
-from verinoda.paths import load_config
+from verinoda.paths import load_config, one_look
 from verinoda.snapshot import current_state, git
 from verinoda.store import Store, new_id, now
 
@@ -94,6 +94,9 @@ CALLERS_LISTED = 6          # calling functions turned into claims; the rest are
 LOCATION_FIRST = {"locate", "define", "behaviour", "performance", "architecture", "usage"}
 UNGROUNDED_MAJORITY = 0.5   # more than this share of content words absent from the repo -> unknown
 MIN_STATUS_DEFAULT = "strong_inference"
+WHY_COMMITS = 20            # commits of a symbol's lines a why-question reads (git log -L, newest first) ...
+WHY_CLAIMS = 3              # ... and at most this many of them, those that state a reason, become claims
+DONE_STATUSES = ("answered", "partly_answered", "unanswered")   # the analysis ran; the word is its verdict (D186)
 PERSISTENCE_TARGET = "(persistence)"
 # An unknown's question is often its sub-question's whole text; for an issue pasted as the question that
 # is the issue again, once per unknown and charged to the context budget each time. It is kept on one line
@@ -171,14 +174,6 @@ def fold_tr(text: str) -> str:
 def _legacy(intents) -> list[str]:
     names = {LEGACY_INTENT.get(i, i) for i in intents}
     return [n for n in LEGACY_ORDER if n in names]
-
-
-def turkish_intents(question: str) -> list[str]:
-    """Intents found by the Turkish cue tables alone (legacy names)."""
-    found = set()
-    for cl in qp.segment(question):
-        found.update(c["intent"] for c in qp.clause_cues(cl["text"]) if c["lang"] == "tr")
-    return _legacy(found)
 
 
 def intents_for(question: str, lexicon=None) -> list[str]:
@@ -1896,6 +1891,33 @@ def _decision_terms(ctx: _Ctx, sub: _Sub) -> list[str]:
     return list(dict.fromkeys(words + exp))
 
 
+# a code term a question names: a backticked token, a snake_case or a camelCase identifier (a plain word or a
+# dotted expression such as `PriceCache.get` is not one, D186)
+_TERM_RX = re.compile(r"`([^`\s]+)`|(?<![\w.])([A-Za-z]\w*)(?![\w.])")
+_IDENT_RX = re.compile(r"_|[a-z][A-Z]|^[A-Z][a-z]+[A-Z]")
+
+
+def _code_terms(text: str) -> list[str]:
+    """The code terms ``text`` names, in its order, each once."""
+    out: list[str] = []
+    for m in _TERM_RX.finditer(text or ""):
+        term = m.group(1) or m.group(2)
+        if "." in term or len(term) < 3 or (m.group(2) and not _IDENT_RX.search(term)):
+            continue
+        if term not in out:
+            out.append(term)
+    return out
+
+
+def _asks_added(question: str, term: str) -> bool:
+    """Is the question "when was <term> added / introduced"? Only then is the term's first appearance read for a
+    when-question (D186: on four of the eight D185 when tasks the term's first appearance predates the change
+    asked about by 7-16 years)."""
+    rx = (r"\bwhen\b[^?]*?\b(?:was|were|did|is)\s+(?:the\s+)?`?" + re.escape(term)
+          + r"`?(?:\(\))?(?:\s+\w+){0,2}\s+(?:added|introduced|created|first\s+(?:added|introduced|appeared))")
+    return re.search(rx, question or "", re.IGNORECASE) is not None
+
+
 def _h_why(ctx: _Ctx, sub: _Sub) -> None:
     g, rec, repo = ctx.g, ctx.rec, ctx.repo
     if not _begin(ctx, sub, "why"):
@@ -1905,8 +1927,11 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
     names = {i["symbol"].strip(".()") for i in sub.items} | {Path(i["file"]).name for i in sub.items}
     files = {i["file"] for i in sub.items}
     terms = _decision_terms(ctx, sub)
-    found = False
+    question = sub.sq.get("text_user_lang") or sub.sq.get("text") or ""
+    asks_why = sub.sq.get("intent") != "history"   # a when-question (intent history) shares this handler
+    found = found_doc = False   # found_doc: a decision document was cited (its intent may have aged, below)
     why_not = None   # why the symbol's commits could not be read, for the unknown
+    timed_out: list[str] = []   # the git reads that exceeded VERINODA_MCP_GIT_TIMEOUT: said, never an error
     for dec in hv["decisions"]:
         text = "\n".join(am._read(repo, dec["doc"]))
         folded = tn.fold_tr(text).lower()
@@ -1939,8 +1964,16 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
                           evidence=[(ev, "supports")], subjects=[dec["doc"]],
                           uncertainties=[f"matched only because the document names {what}; it may not state the "
                                          "reason that was asked about"])
-        if c is not None:
-            found = True
+        # only a document that explains answers: one that merely names the symbol is an inference beside the
+        # commit leads, not the answer that hides them (the final review: with such a document the result was
+        # `answered` with no commit anywhere in it)
+        if c is not None and explains:
+            found = found_doc = True
+    leads: list[str] = []   # commits that changed the lines without stating the reason: one line each, to open
+    capped = False   # a history longer than WHY_COMMITS: the window is said, never a count of the read commits
+    own_words = {tn.fold_tr(w).lower() for n in names for w in [n, *tn.split_identifier(n)]}
+    topic = [t for t in terms if t not in own_words]   # the question's words that are not the subject's own name
+    sub.extra["why_topic"] = topic   # the verdict gate judges the commits it sees by the same words
     for it in sub.prod[:1]:
         sp = g.span(it["id"]) if it["id"] in g.G else None
         if not sp or not hv["is_git"] or not ctx.budget.ok:
@@ -1949,29 +1982,96 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
         if it["file"] in (rec.stale_files or ()):   # the index's lines are not the file's any more
             why_not = f"{it['file']} changed since the index: its commits were not read"
             continue
-        # the commits whose diffs changed the symbol's lines, each message quoted whole (subject and body):
-        # the author's own words are the "why" evidence, nothing is summarised
+        # the commits whose diffs changed the symbol's lines, each message quoted whole (subject and body): the
+        # author's own words are the "why" evidence when they state a reason about what was asked, nothing is
+        # summarised. The other commits are leads, not claims: the three newest commits of a line range are
+        # rarely the one that explains it (D185: the explaining commit was the eleventh of fourteen)
         try:
-            got = history.symbol_commits(repo, it["file"], a, b, limit=3)
+            got = history.symbol_commits(repo, it["file"], a, b, limit=WHY_COMMITS)
         except ValueError as exc:
             got = {"commits": [], "note": str(exc)}
         ctx.step("git_log_L", f"{it['file']}:{a}-{b}")
         unc = [got["note"]] if got.get("note") else []
         if not got.get("commits") and got.get("note"):
             why_not = got["note"]
-        for c in got.get("commits") or []:
-            if rec.claim(f"`{it['symbol']}` lines {a}-{b} were changed in {c['commit'][:10]} ({c['date'][:10]}): "
-                         f"{c['subject']}", kind="history", status="primary_source_verified",
-                         evidence=[(c["evidence"], "supports")], subjects=[it["file"]],
-                         uncertainties=unc or None) is not None:
+            if got.get("timed_out"):
+                timed_out.append(f"git log -L {it['file']}:{a}-{b}")
+        commits = got.get("commits") or []
+        capped = capped or bool(got.get("more"))
+        if asks_why:
+            # a why is answered by a commit whose message states a reason about what was asked
+            answers = [c for c in commits if verdict_gate.states_reason(topic, c["subject"], c.get("body") or "")]
+        else:
+            # a when is answered by the commits that changed the lines: those about the question's words first,
+            # else the newest (the three newest were the whole answer until D186)
+            answers = [c for c in commits if verdict_gate.shares_topic(topic, c["subject"], c.get("body") or "")] \
+                or commits
+        chosen = {c["commit"] for c in answers[:WHY_CLAIMS]}
+        for c in commits:
+            if c["commit"] in chosen \
+                    and rec.claim(f"`{it['symbol']}` lines {a}-{b} were changed in {c['commit'][:10]} "
+                                  f"({c['date'][:10]}): {c['subject']}", kind="history",
+                                  status="primary_source_verified", evidence=[(c["evidence"], "supports")],
+                                  subjects=[it["file"]], uncertainties=unc or None) is not None:
                 found = True
-    if not found and not rec.skipped["why"]:
+                continue
+            leads.append(f"{c['commit'][:10]} {c['date'][:10]} {c['subject'][:90]}")
+    # the path-free first appearance of a code term the question names is a lead, never the answer (D186): for a
+    # why whose commits state no reason (the term may have been born in another file), and for "when was X added"
+    # alone (on four of eight D185 when tasks the first appearance predates the change asked about by years)
+    born: list[tuple[str, str]] = []   # (term, lead line)
+    wanted = [t for t in _code_terms(question)[:2] if asks_why or _asks_added(question, t)]
+    if hv["is_git"] and wanted and (not found or not asks_why) and ctx.budget.ok:
+        for term in wanted:
+            try:
+                first = history.oldest_appearance(repo, term)
+            except ValueError:
+                first = None
+            ctx.step("git_log_S", term)
+            if first and first.get("sha"):
+                born.append((term, (f"first appearance of `{term}`: {first['sha'][:10]} {first['date'][:10]} "
+                                    f"{first['subject'][:90]} (path-free)")))
+            elif first and first.get("timed_out"):
+                timed_out.append(f"git log -S{term}")
+    if not asks_why:
+        for term, line in born:
+            _unknown(ctx, sub, {"question": f"when did `{term}` first appear?",
+                                "why": ("a lead, not the answer: the term's first appearance in the project may "
+                                        "predate the change asked about"),
+                                "commits": [line],
+                                "next_step": f"`git show {line.split(': ', 1)[1].split(' ', 1)[0]}`; history_search "
+                                             f"with text={term!r} lists every commit that changed it"})
+    else:
+        leads += [line for _, line in born]
+    slow = (f" ({', '.join(timed_out)} timed out after {history.GIT_TIMEOUT:g} s: not read)" if timed_out else "")
+    retry = (f"; raise VERINODA_MCP_GIT_TIMEOUT (now {history.GIT_TIMEOUT:g} s) and ask again" if timed_out else "")
+    if leads:
+        sub.extra["why_leads"] = leads   # for the verdict gate's note, when it sets the claims aside
+    if capped:
+        sub.extra["why_more"] = WHY_COMMITS   # the gate's note says the window too
+    if not found and not rec.skipped["why"] and leads:   # a why with commits that state no reason (a when claims them)
+        n = len(leads) - len(born)
+        # a cut history is said as a window (the review's case: 26 commits, the reason 25th from the top, and
+        # "20 commit(s) changed these lines and none states a reason" read as the whole history)
+        read = (f"the {WHY_COMMITS} newest commits of these lines were read and none states a reason about it "
+                "in its message; older commits were not read" if capped else
+                f"{n} commit(s) changed these lines and none states a reason about it in its message")
+        _unknown(ctx, sub, {"question": sub.sq.get("text") or SUBQUESTIONS["why"],
+                            "why": (f"the reason was not found: {read}" if n else
+                                    "the reason was not found: no commit of these lines was read"
+                                    + (f" ({why_not})" if why_not else ""))
+                                   + "; no decision record explains it" + slow,
+                            "commits": leads,
+                            "next_step": "open a commit with `git show <sha>`; `history_search` with the symbol "
+                                         "lists every commit that changed these lines (newest first, both ends "
+                                         "kept); search the issue tracker or PR discussion" + retry})
+    elif not found and not rec.skipped["why"]:
         _unknown(ctx, sub, {"question": sub.sq.get("text") or SUBQUESTIONS["why"],
                             "why": "no decision record or commit message explains it"
-                                   + (f" ({why_not})" if why_not else ""),
+                                   + (f" ({why_not})" if why_not else "") + slow,
                             "next_step": "search issue tracker/PR discussion; or `verinoda research <reference>` "
-                                         "if the design follows an external reference"})
-    elif found:
+                                         "if the design follows an external reference" + retry})
+    elif found_doc:   # a commit message is dated by itself; a document is not (D185: this fired with no document 75 times)
         _unknown(ctx, sub, {"question": "is the recorded rationale still the actual reason?",
                             "why": "documents state intent, not current behaviour",
                             "next_step": "compare with code via `verinoda challenge <claim>`"})
@@ -2746,7 +2846,8 @@ def _finish_sub(ctx: _Ctx, sub: _Sub, out: dict, handler: str) -> dict:
     out["_flags"] = sub.flags
     # what the verdict gate needs later (verdict_gate.apply): the code the question names or links
     named = sub.extra.get("anchored") or set(sub.seeds) | set(sub.subject_nodes)
-    out["_gate"] = {"subjects": sorted(n for n in named if n in ctx.g.G), "words": list(sub.words)}
+    out["_gate"] = {"subjects": sorted(n for n in named if n in ctx.g.G), "words": list(sub.words),
+                    **{k: sub.extra[k] for k in ("why_topic", "why_leads") if sub.extra.get(k) is not None}}
     # made for this sub-question only as context (definitions of search hits, links among them), not by
     # its handler: a claim is shared by text, so a caller a handler found stays an answer
     out["_context"] = [cid for cid in ctx.rec.by_sq.get(sub.sq["id"], [])
@@ -2804,14 +2905,18 @@ def _asks_when_runs(sq: dict) -> bool:
 
 def answer_claims(sq: dict, claims: list[dict], flags: dict | None = None) -> list[str]:
     """The claims that answer a sub-question, strongest first: of a kind its ``done_when`` asks for,
-    about its subject (not ``off_subject`` context), not stale, contradicted or unknown."""
+    about its subject (not ``off_subject`` context), not stale, contradicted or unknown, and not set aside by
+    the verdict gate (``weak``: a commit line for a why, a definition for a usage question), unless the gate
+    only found it in a copy of the code (``weak_copy``: the answer, with inference). A reader takes the list
+    as the answer; a claim that cannot make the verdict is context (D185)."""
     _kind, _min, kinds = _verdict_kinds(sq, flags)
     off = set((flags or {}).get("off_subject") or [])
-    ans = [c for c in claims if c.get("kind") in kinds and c["id"] not in off
+    aside = set((flags or {}).get(verdict_gate.WEAK) or []) - set((flags or {}).get(verdict_gate.WEAK_COPY) or [])
+    ans = [c for c in claims if c.get("kind") in kinds and c["id"] not in off and c["id"] not in aside
            and c.get("status") in _RANK and c["status"] not in ("unknown", "stale", "contradicted")]
     exclusive = ((flags or {}).get("exclusive") or {}).get("answer")
     if exclusive:  # "is X only called in Y?": what the only_in engine found answers, the rest is context
-        ans = [c for c in claims if c["id"] in set(exclusive)
+        ans = [c for c in claims if c["id"] in set(exclusive) and c["id"] not in aside
                and c.get("status") in _RANK and c["status"] not in ("unknown", "stale", "contradicted")]
     def in_tests(c: dict) -> bool:  # the product's own code first (a caller in the API before one in a test)
         subs = c.get("subjects") or []
@@ -3007,20 +3112,51 @@ REFRESH_BUSY_WAIT_SMALL = 10.0  # and waits this long for another build of it (a
 REFRESH_MODES = ("auto", "inline", "skip")
 
 
+def _outdated_extraction(repo: Path) -> dict | None:
+    """``{"was", "now"}`` when another extraction than this install's built the graph (an upgrade), else None.
+    `verinoda update` rebuilds such a graph once even when no file changed; analyze does the same, or its answers
+    cite what the old extractor made of every unchanged file."""
+    from verinoda import buildlock
+
+    if not graph_path_exists(repo):
+        return None
+    was, now = buildlock.recorded_extraction(repo), buildlock.extraction_stamp(repo)
+    return None if was == now else {"was": was, "now": now}
+
+
 def _refresh_estimate(repo: Path, store: Store, snap: dict, state: dict,
-                      g=None) -> tuple[float | None, list[str], bool]:
+                      g=None, outdated: bool = False) -> tuple[float | None, list[str], bool]:
     """``(expected seconds, changed files, graph rebuild needed)`` of refreshing the index now
-    (``g``: the loaded graph, which spares reading graph.json)."""
-    from verinoda import buildlock, workflow
+    (``g``: the loaded graph, which spares reading graph.json; ``outdated``: the graph is rebuilt whatever
+    changed, :func:`_outdated_extraction`)."""
+    from verinoda import buildlock, selffiles, workflow
     from verinoda.snapshot import changed_files
 
     diff = changed_files(store.snapshot_files(snap["id"]), state["files"])
+    own = selffiles.own_filter(repo)
+
+    def index_reads(rel: str) -> bool:
+        # Verinoda's own files (skills, marked blocks) and a config added with only its server entry are what
+        # `verinoda setup` leaves behind after a build: nothing the index reads changed with them (D186). A config
+        # the graph had read is unchanged only when its content, that entry left out, is what the last build read
+        # (the digest it recorded): one edited down to Verinoda's entry alone lost the other servers' nodes (the
+        # final review)
+        if own(rel):
+            return False
+        if rel in diff["removed"] or not selffiles.is_mcp_config(rel):
+            return True
+        if rel in diff["added"]:
+            return not selffiles.nothing_but_own(repo / rel)
+        read = buildlock.recorded_configs(repo)
+        return not (rel in read and selffiles.config_digest(repo / rel) == read[rel])
+
+    diff = {k: [f for f in v if index_reads(f)] for k, v in diff.items()}
     changed = diff["modified"] + diff["added"] + diff["removed"]
     in_graph = None
     if g is not None:
         in_graph = {f for _n, d in g.G.nodes(data=True) if (f := d.get("source_file"))}
     try:
-        graph = workflow._graph_affected(repo, diff, in_graph)
+        graph = outdated or workflow._graph_affected(repo, diff, in_graph)
     except Exception:  # noqa: BLE001 - unknown: assume the expensive path
         graph = True
     if not graph:
@@ -3047,22 +3183,25 @@ def slow_refresh(repo: Path, snap: dict, est: float | None, changed: list[str], 
 
 
 def _refresh_index(store: Store, repo: Path, snap: dict | None, state: dict, mode: str, budget: Budget,
-                   step, unknown, extra_unc: list[str], g=None) -> dict:
+                   step, unknown, extra_unc: list[str], g=None, outdated: dict | None = None) -> dict:
     """Step 0 of :func:`analyze`: refresh the index, or say why the answer uses the previous one.
 
     Returns what happened (``ran``, ``seconds``, ``skipped``, ``stale_files``...) plus ``_snapshot``,
     the snapshot the analysis stands on. The time a refresh takes is given back to the budget.
-    ``g``: the graph already loaded (the MCP server's), if any."""
+    ``g``: the graph already loaded (the MCP server's), if any. ``outdated``: :func:`_outdated_extraction`."""
     from verinoda import buildlock, workflow
 
     if mode not in REFRESH_MODES:
         raise ValueError(f"refresh must be one of {', '.join(REFRESH_MODES)}, not {mode!r}")
-    info: dict = {"ran": False}
+    info: dict = {"ran": False, **({"extraction": outdated} if outdated else {})}
     skip_why = None
     changed: list[str] = []
     if snap is not None and graph_path_exists(repo):
-        est, changed, rebuild = _refresh_estimate(repo, store, snap, state, g)
+        est, changed, rebuild = _refresh_estimate(repo, store, snap, state, g, outdated=bool(outdated))
         info["changed_count"] = len(changed)
+        if not changed and not outdated:  # nothing the index reads has changed: the snapshot stands, no update
+            step("refresh_index", "working tree unchanged for the index; not refreshed")
+            return {**info, "_snapshot": snap}
         if mode == "skip":
             skip_why = "not asked to refresh"
         elif mode == "auto":
@@ -3100,17 +3239,21 @@ def _refresh_index(store: Store, repo: Path, snap: dict | None, state: dict, mod
             return {**info, "_snapshot": prev}
         else:
             info["ran"] = True
-            step("refresh_index", f"working tree changed; re-indexed ({res.get('changed_count')} files, "
+            why = "working tree changed" if changed or not outdated else "an older extraction built the graph"
+            step("refresh_index", f"{why}; re-indexed ({res.get('changed_count')} files, "
                                   f"{took:.1f} s, not charged to the budget), "
                                   f"{len(res.get('stale') or [])} claim(s) marked stale")
             return {**info, "changed_count": res.get("changed_count"), "_snapshot": res["snapshot"]}
     # answered from the previous index: said once, and on every claim that cites a changed file
     files = info.get("stale_files") or []
     more = info.get("stale_count", 0) - len(files[:5])
+    if files:
+        predates = (f"the index predates {info.get('stale_count', 0)} changed file(s) ("
+                    + ", ".join(files[:5]) + (f", +{more}" if more > 0 else "") + ")")
+    else:
+        predates = f"an older extraction built the index ({(outdated or {}).get('was')})"
     unknown({"question": "does the index describe the current working tree?",
-             "why": f"the index predates {info.get('stale_count', 0)} changed file(s) ("
-                    + ", ".join(files[:5]) + (f", +{more}" if more > 0 else "")
-                    + f"); not refreshed: {skip_why}; this answer uses the previous index",
+             "why": f"{predates}; not refreshed: {skip_why}; this answer uses the previous index",
              "next_step": info["next_step"]})
     step("refresh_index", f"skipped: {skip_why}; answering from snapshot {(snap or {}).get('id')}")
     return {**info, "_snapshot": snap}
@@ -3122,6 +3265,7 @@ def graph_path_exists(repo: Path) -> bool:
     return graph_path(repo).exists()
 
 
+@one_look()  # each (root, path) is resolved once per analysis
 def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budget | None = None,
             run_tests: bool = False, challenge: bool = True, max_claims: int = 12, graph=None,
             observe: bool = False, refresh: str = "auto", intent: str | None = None) -> dict:
@@ -3169,8 +3313,10 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
     extra_unc: list[str] = []
     refresh_info: dict | None = None
     stale_all: set[str] = set()
-    if snap is None or snap["tree_hash"] != state["tree_hash"]:
-        refresh_info = _refresh_index(store, repo, snap, state, refresh, budget, step, unknown, extra_unc, g=graph)
+    outdated = _outdated_extraction(repo) if snap is not None else None
+    if snap is None or snap["tree_hash"] != state["tree_hash"] or outdated:
+        refresh_info = _refresh_index(store, repo, snap, state, refresh, budget, step, unknown, extra_unc, g=graph,
+                                      outdated=outdated)
         snap = refresh_info.pop("_snapshot")
         stale_all = set(refresh_info.pop("_stale_all", None) or ())
     if snap is None:  # nothing indexed to stand on
@@ -3178,7 +3324,9 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
                   "snapshot": None, "claims": [], "unknowns": unknowns, "critique": [], "steps": steps}
         result["usage"] = budget.usage()
         return result
-    g = graph if graph is not None else index.load(repo)
+    # a graph handed in describes the index before a refresh this call ran (the MCP server hands its kept graph
+    # over when the tree is unchanged, which a rebuild for an older extraction does not need)
+    g = graph if graph is not None and not (refresh_info or {}).get("ran") else index.load(repo)
     commit = snap["commit_sha"]
     lex = _lexicon(repo, g, store, snap, step)
 
@@ -3371,7 +3519,8 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
     # what answers comes first (a reader, and a size cap that keeps the head, see it); the rest is context
     rank = {cid: i for i, cid in enumerate(dict.fromkeys(answering))}
     out_claims = sorted(out_claims, key=lambda c: rank.get(c["id"], len(rank)))
-    result = {**base, "status": "answered", "plan_check": qp.compact_check(check_res), "subquestions": subs,
+    status = overall_status([s.get("status") or "" for s in subs])
+    result = {**base, "status": status, "plan_check": qp.compact_check(check_res), "subquestions": subs,
               "claims": out_claims, "unknowns": unknowns, "critique": crit, "steps": steps}
     if question.strip():
         from verinoda import facts
@@ -3392,8 +3541,19 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
     pb = rec.precise_budget
     if pb is not None and (pb.sites or pb.skipped):
         result["usage"]["precise"] = pb.as_dict()
-    _store_analysis(store, aid, question, snap, budget, result, [c["id"] for c in out_claims], plan_id, "answered")
+    _store_analysis(store, aid, question, snap, budget, result, [c["id"] for c in out_claims], plan_id, status)
     return result
+
+
+def overall_status(statuses: list[str]) -> str:
+    """The analysis' own status from its sub-questions': ``answered`` when every one is met (with or without
+    inference; a decision question is answered by its brief), ``partly_answered`` when some are, ``unanswered``
+    when none is. Until D186 it read ``answered`` whatever the sub-questions said, and a reader took the word for
+    the verdict (D185)."""
+    done = {"met", "met_with_inference", qp.HUMAN_DECISION}
+    if not statuses or all(s in done for s in statuses):
+        return "answered"
+    return "partly_answered" if any(s in done for s in statuses) else "unanswered"
 
 
 def _store_analysis(store: Store, aid: str, question: str, snap: dict, budget: Budget, result: dict,

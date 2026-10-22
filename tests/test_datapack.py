@@ -120,6 +120,10 @@ def test_cli(repo, capsys):
     assert len(json.loads(capsys.readouterr().out)["sites"]) == 2
     assert cli.main(["datapack", "function", "wings:fold", "--repo", str(repo)]) == 0
     assert "called by wings:tick" in capsys.readouterr().out
+    # a kind without a name looked up the name None ("function None: not found")
+    for what in ("tag", "score", "team", "bossbar", "function"):
+        with pytest.raises(SystemExit, match=f"`datapack {what}` needs a name"):
+            cli.main(["datapack", what, "--repo", str(repo)])
 
 
 def _dangling_link(link, target) -> bool:

@@ -1,0 +1,4 @@
+{"ts":1791748091.516,"surface":"cli","name":"check","args_chars":118,"result_chars":1563,"result_tokens_est":391,"args_tokens_est":30,"seconds":0.5378,"pid":22800,"stderr_chars":0}
+{"ts":1791748099.305,"surface":"mcp","name":"analyze","args_chars":219,"result_chars":11837,"result_tokens_est":2960,"args_tokens_est":55,"seconds":3.5878,"pid":36128}
+{"ts":1791748099.441,"surface":"mcp","name":"run_tool:change_review","args_chars":88,"result_chars":6423,"result_tokens_est":1606,"args_tokens_est":22,"seconds":0.1272,"pid":36128}
+{"ts":1791748111.236,"surface":"cli","name":"mcp","args_chars":29,"result_chars":229,"result_tokens_est":58,"args_tokens_est":8,"seconds":20.7292,"pid":36128,"stderr_chars":229}

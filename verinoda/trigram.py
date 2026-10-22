@@ -34,7 +34,6 @@ from __future__ import annotations
 import os
 import re
 import sqlite3
-import subprocess
 import time
 from array import array
 from pathlib import Path
@@ -45,6 +44,8 @@ try:  # Python 3.11+
 except ImportError:  # pragma: no cover - older Pythons
     import sre_constants as _src  # type: ignore[no-redef]
     import sre_parse as _sre  # type: ignore[no-redef]
+
+from verinoda import gitexec
 
 SCHEMA = 2
 MAX_FILE_BYTES = 2_000_000
@@ -177,9 +178,11 @@ _TABLES = ("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);"
 
 
 def _open(db: Path) -> sqlite3.Connection:
+    from verinoda.store import wal
+
     conn = sqlite3.connect(str(db), timeout=120, isolation_level=None)
     try:
-        conn.execute("PRAGMA journal_mode=WAL")
+        wal(conn, 120)   # searches opening a new index together (the MCP server and a hook, threads of one)
         conn.execute("PRAGMA synchronous=NORMAL")
         row = None
         try:
@@ -253,17 +256,13 @@ def _list_files(repo: Path) -> list[str]:
     own_abs = {atlas_dir(repo), index_dir(repo).resolve()}
     own_rel = [os.path.relpath(p, repo).replace("\\", "/") + "/" for p in own_abs
                if str(p).lower().startswith(str(repo).lower())]
-    try:
-        r = subprocess.run(["git", "ls-files", "-z", "-co", "--exclude-standard"], cwd=repo, capture_output=True,
-                           timeout=120)
-        if r.returncode == 0:
-            out = []
-            for p in r.stdout.decode("utf-8", "surrogateescape").split("\0"):
-                if p and not p.startswith(".git/") and not any(p.startswith(o) for o in own_rel):
-                    out.append(p)
-            return sorted(set(out))
-    except (OSError, subprocess.SubprocessError):
-        pass
+    r = gitexec.run(repo, "ls-files", "-z", "-co", "--exclude-standard", binary=True, timeout=120)
+    if r.returncode == 0:
+        out = []
+        for p in r.stdout.decode("utf-8", "surrogateescape").split("\0"):
+            if p and not p.startswith(".git/") and not any(p.startswith(o) for o in own_rel):
+                out.append(p)
+        return sorted(set(out))
     out = []
     for root, dirs, files in os.walk(repo):
         dirs[:] = [d for d in dirs if not d.startswith(".") and (Path(root) / d).resolve() not in own_abs

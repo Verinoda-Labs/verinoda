@@ -35,6 +35,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, TextIO
 
+from verinoda import gitexec
+
 COMMITS = 300            # the anchor's own commits read
 WINDOW = 12000           # the walk of a long history stops this many commits back (about 3 s on 115,000 commits)
 BULK = 30                # a commit changing more files than this (a reformat, a mass rename) is left out
@@ -53,10 +55,6 @@ PACK_BYTES = 40_000_000  # packs larger than this: the length of the history is 
 KINDS = ("cochange", "neighbour", "pair", "twin")  # strongest evidence first
 _SKIP_DIRS = {".git", ".verinoda", "node_modules", "__pycache__", ".venv", "venv", ".tox", ".mypy_cache",
               ".pytest_cache", "dist", "build"}
-_GIT = ("git", "--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "core.quotepath=off")
-# variables that point git at another repository (a caller running under `git bisect run` has them set)
-_GIT_LOCATION_ENV = {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_COMMON_DIR",
-                     "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_PREFIX", "GIT_NAMESPACE"}
 
 _C_EXT = (".c", ".h", ".S", ".cpp", ".hpp", ".cc", ".hh", ".cxx", ".hxx")
 _C_INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*[<"]([^>"\n]+)[>"]', re.MULTILINE)
@@ -110,10 +108,6 @@ def _is_doc(p: str) -> bool:
 
 # -- git ---------------------------------------------------------------------------------------------------------
 
-def _env() -> dict[str, str]:
-    return {k: v for k, v in os.environ.items() if k not in _GIT_LOCATION_ENV}
-
-
 def _kill_tree(proc: subprocess.Popen) -> None:
     """End a process and what it started: on Windows `git` is often a shim (Git\\cmd\\git.exe) that starts the real git, and
     ending the shim alone leaves the real one running to its end."""
@@ -129,8 +123,8 @@ def _run(repo: Path, args: list[str], deadline: float, stdin: str | None = None)
     if left <= 0.05:
         return None, "timeout"
     try:
-        proc = subprocess.Popen([*_GIT, "-C", str(repo), *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=_env(),
-                                stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE)
+        proc = gitexec.popen(repo, *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE)
     except OSError:
         return None, "git not found"
     try:

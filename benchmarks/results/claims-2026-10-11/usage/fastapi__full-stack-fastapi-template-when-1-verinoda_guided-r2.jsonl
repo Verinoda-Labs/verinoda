@@ -1,0 +1,6 @@
+{"ts":1791748038.07,"surface":"cli","name":"check","args_chars":137,"result_chars":1563,"result_tokens_est":391,"args_tokens_est":35,"seconds":0.5172,"pid":13676,"stderr_chars":0}
+{"ts":1791748045.964,"surface":"mcp","name":"analyze","args_chars":164,"result_chars":10321,"result_tokens_est":2581,"args_tokens_est":41,"seconds":5.1096,"pid":38464}
+{"ts":1791748046.412,"surface":"mcp","name":"run_tool:history_search","args_chars":67,"result_chars":3226,"result_tokens_est":807,"args_tokens_est":17,"seconds":0.4391,"pid":38464}
+{"ts":1791748049.222,"surface":"mcp","name":"run_tool:history_search","args_chars":68,"result_chars":1993,"result_tokens_est":499,"args_tokens_est":17,"seconds":0.4257,"pid":38464}
+{"ts":1791748049.655,"surface":"mcp","name":"run_tool:history_search","args_chars":64,"result_chars":1963,"result_tokens_est":491,"args_tokens_est":16,"seconds":0.427,"pid":38464}
+{"ts":1791748056.196,"surface":"cli","name":"mcp","args_chars":29,"result_chars":248,"result_tokens_est":62,"args_tokens_est":8,"seconds":19.5415,"pid":38464,"stderr_chars":248}

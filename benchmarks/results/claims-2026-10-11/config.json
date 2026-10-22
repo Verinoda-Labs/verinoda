@@ -1,0 +1,26 @@
+{
+  "work": "C:/vbench-claims",
+  "model": "claude-sonnet-5-5",
+  "plugin_dir": "C:/Users/ozcin/Desktop/verinoda-symbiosis/claude-mods/verinoda-live",
+  "mod_options": {
+    "auto": "nudge"
+  },
+  "verinoda_bin": [
+    "C:/Users/ozcin/Desktop/verinoda-symbiosis/.venv/Scripts"
+  ],
+  "drop_path": [
+    "C:/Users/ozcin/.local/bin"
+  ],
+  "arms": [
+    "none",
+    "verinoda_guided"
+  ],
+  "arm_workers": {
+    "none": 2,
+    "verinoda_guided": 2
+  },
+  "timeout_s": 1200,
+  "max_turns": 40,
+  "repeats": 3,
+  "judge_timeout_s": 300
+}

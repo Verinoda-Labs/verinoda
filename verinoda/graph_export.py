@@ -1,8 +1,8 @@
 """`verinoda export`: the graph in formats other tools read - GraphML, Neo4j Cypher, an Obsidian vault, SVG.
 
 What is written is the index's graph as Verinoda reads it (``index.load``: edges in their true
-direction, parallel edges kept), not Graphify's undirected build graph that `verinoda index export`
-writes. Every edge carries what a claim about it would rest on: its relation, the extractor's
+direction, parallel edges kept), not Graphify's undirected build graph that the upstream exporter
+wrote. Every edge carries what a claim about it would rest on: its relation, the extractor's
 ``confidence``, the ``file:line`` it was read at and a ``status`` - ``strong_inference`` for an
 EXTRACTED edge, ``weak_inference`` for an INFERRED or AMBIGUOUS one, ``unknown`` for one with no
 line (a file alone is no line-level evidence). That is the ceiling of an edge nobody has checked

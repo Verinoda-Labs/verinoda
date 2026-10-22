@@ -53,6 +53,30 @@ def test_an_unreadable_file_is_tried_again(repo, monkeypatch):
     assert again["total"] == 1 and again["index_update"]["changed"] >= 1
 
 
+def test_connections_that_open_a_new_index_at_once_all_get_it(tmp_path):
+    # the switch to WAL takes an exclusive lock, and SQLite answers "database is locked" at once, without the busy
+    # timeout, to two connections that both hold a shared lock and both want it: about 3 rounds in 10 of 8 searches
+    # opening a new index together failed (test_two_searches_at_once_do_not_fail failed in whole-suite runs)
+    for r in range(20):
+        db = tmp_path / f"r{r}" / "trigram.db"
+        db.parent.mkdir()
+        gate, errors = threading.Barrier(8), []
+
+        def go(db=db, gate=gate, errors=errors):
+            gate.wait()
+            try:
+                trigram._open(db).close()
+            except Exception as exc:  # noqa: BLE001 - the test reports any failure
+                errors.append(exc)
+
+        ts = [threading.Thread(target=go) for _ in range(8)]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+        assert errors == [], (r, errors[:1])
+
+
 def test_two_searches_at_once_do_not_fail(repo):
     errors = []
 

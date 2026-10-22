@@ -64,6 +64,184 @@ def _evidence_rows(st, cid):
     return Claims(st).evidence(cid)
 
 
+CACHE_PY = '''"""Prices."""
+
+
+class PriceCache:
+    def __init__(self):
+        self.data = {}
+
+    def get(self, key):
+        return self.data.get(key)
+'''
+
+
+def _why_repo(root: Path, with_reason: bool) -> Path:
+    """A repository whose PriceCache lines were changed by four or five commits, newest first: a polish whose
+    message carries a reason word about another topic, a reformat, a rename, and (``with_reason``) the commit
+    that states why a dict is used, fourth from the top: outside the three newest commits."""
+    repo = root / ("why_reason" if with_reason else "why_bare")
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    f = repo / "cache.py"
+    f.write_text(CACHE_PY, encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "add the price cache")
+    if with_reason:
+        f.write_text(CACHE_PY.replace("        self.data = {}", "        # entries expire by time\n        self.data = {}"),
+                     encoding="utf-8")
+        _git(repo, "commit", "-q", "-am", "Keep prices in a dict to avoid lru_cache's count-based expiry")
+    text = f.read_text(encoding="utf-8").replace("def get(self, key):\n        return self.data.get(key)",
+                                                 "def get(self, name):\n        return self.data.get(name)")
+    f.write_text(text, encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "rename the key argument")
+    text = text.replace('class PriceCache:\n', 'class PriceCache:\n    """Prices by key."""\n\n')
+    f.write_text(text, encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "reformat the class")
+    text = text.replace('"""Prices by key."""', '"""Prices by key, newest first."""')
+    f.write_text(text, encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "polish the docstring to ensure clarity")
+    workflow.init(repo)
+    return repo
+
+
+def test_a_why_reads_past_the_three_newest_commits_and_ties_the_reason_to_the_question(tmp_path):
+    repo = _why_repo(tmp_path, with_reason=True)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+    finally:
+        st.close()
+    (s,) = res["subquestions"]
+    assert s["status"] == "met" and res["status"] == "answered"
+    answers = [c for c in res["claims"] if c["id"] in s["answer_claim_ids"]]
+    assert any("count-based expiry" in c["text"] for c in answers)          # the fourth commit, past the old limit of 3
+    assert not any("ensure clarity" in c["text"] for c in answers)         # a reason word about another topic: a lead
+    assert not any("documents state intent" in u["why"] for u in res["unknowns"])  # no document was cited
+
+
+def test_a_why_with_no_stated_reason_is_unanswered_and_lists_the_commits_as_leads(tmp_path):
+    repo = _why_repo(tmp_path, with_reason=False)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+    finally:
+        st.close()
+    (s,) = res["subquestions"]
+    assert s["status"] == "unmet" and res["status"] == "unanswered"
+    u = next(x for x in res["unknowns"] if "the reason was not found" in x["why"])
+    assert len(u["commits"]) == 5 and all(re.match(r"^[0-9a-f]{7,10} \d{4}-\d{2}-\d{2} ", c) for c in u["commits"][:4])
+    assert u["commits"][0].endswith("polish the docstring to ensure clarity")  # newest first, git's order
+    assert u["commits"][4].startswith("first appearance of `PriceCache`: ")     # the term's path-free birth (D186)
+    assert "4 commit(s) changed these lines" in u["why"]
+    assert "git show" in u["next_step"] and "history_search" in u["next_step"]
+
+
+def test_a_decision_document_that_only_names_the_symbol_leaves_the_commits_as_leads(tmp_path):
+    """D186: a why whose commits state no reason lists them as leads and adds the term's path-free first
+    appearance, whether or not a decision document mentions the symbol. A document that names it without the
+    question's topic is an inference claim beside those leads, not the answer that hides them (the final review:
+    with such a document the result was `answered` with no commit anywhere in it)."""
+    repo = _why_repo(tmp_path, with_reason=False)
+    adr = repo / "docs" / "adr" / "0001-price-cache.md"
+    adr.parent.mkdir(parents=True)
+    adr.write_text("# ADR 0001: the price cache\n\nStatus: accepted\n\nThe `PriceCache` class holds the prices the "
+                   "order flow reads.\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "record the price cache decision")
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+    finally:
+        st.close()
+    mention = next(c for c in res["claims"] if c["text"].startswith("Decision record docs/adr/0001-price-cache.md"))
+    assert " mentions `PriceCache`" in mention["text"] and mention["status"] != "primary_source_verified"
+    u = next(x for x in res["unknowns"] if "the reason was not found" in x["why"])
+    assert sum(1 for c in u["commits"] if re.match(r"^[0-9a-f]{7,10} \d{4}-\d{2}-\d{2} ", c)) >= 4
+    assert any(c.startswith("first appearance of `PriceCache`: ") for c in u["commits"])
+    assert not any("is the recorded rationale still the actual reason" in x["question"] for x in res["unknowns"])
+
+
+def test_a_why_whose_history_is_longer_than_the_window_says_the_window(tmp_path, monkeypatch):
+    """D186: a history unknown says what was not read. With a window of WHY_COMMITS over a longer history the
+    unknown names the window and the older commits, not a count of the read commits as if they were all of them
+    (the final review's reproduction: 26 commits, the reason 25th from the top, "20 commit(s) changed these
+    lines and none states a reason")."""
+    repo = _why_repo(tmp_path, with_reason=False)   # four commits changed the lines
+    monkeypatch.setattr(analysis, "WHY_COMMITS", 2)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+    finally:
+        st.close()
+    u = next(x for x in res["unknowns"] if "the reason was not found" in x["why"])
+    assert "the 2 newest commits of these lines were read" in u["why"] and "older commits were not read" in u["why"]
+    assert "commit(s) changed these lines" not in u["why"]
+    assert len([c for c in u["commits"] if not c.startswith("first appearance")]) == 2
+    assert "history_search" in u["next_step"]
+
+
+def test_a_config_holding_only_verinodas_server_is_not_a_change_for_the_index(tmp_path):
+    # `verinoda setup` writes .mcp.json after the index is built; the file has nothing the index reads, yet every
+    # analyze re-indexed for it (108 of 120 D185 calls, 90 of 100 SWE-bench calls, about 4 s each)
+    repo = _copy_example(tmp_path / "orders_app")
+    workflow.init(repo)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        own = {"command": "python", "args": ["-m", "verinoda", "mcp", "serve", "--repo-of", ".mcp.json"]}
+        (repo / ".mcp.json").write_text(json.dumps({"mcpServers": {"verinoda": own}}), encoding="utf-8")
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        ir = res["index_refresh"]
+        assert ir["ran"] is False and ir["changed_count"] == 0 and "skipped" not in ir
+        assert not any("does the index describe" in (u.get("question") or "") for u in res["unknowns"])
+        (repo / ".mcp.json").write_text(json.dumps({"mcpServers": {"verinoda": own, "other": {"command": "x"}}}),
+                                        encoding="utf-8")
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        assert res["index_refresh"]["ran"] is True and res["index_refresh"]["changed_count"] == 1  # another server
+        # shrunk back to Verinoda's entry alone: the graph had read the other server, so this is a change too (the
+        # final review: the graph kept the removed server's nodes under "index current")
+        (repo / ".mcp.json").write_text(json.dumps({"mcpServers": {"verinoda": own}}), encoding="utf-8")
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        assert res["index_refresh"]["ran"] is True and res["index_refresh"]["changed_count"] == 1
+    finally:
+        st.close()
+
+
+def test_a_when_question_is_answered_by_the_commits_about_it_whether_or_not_they_state_a_reason(tmp_path):
+    # intent `history` shares the why handler; the reason gate is the why-question's (a review of D186 found the
+    # gate had reached when-questions, turning an introducing commit with a plain message into a lead)
+    repo = _why_repo(tmp_path, with_reason=True)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "When was the key argument of PriceCache.get renamed?")
+        (s,) = res["subquestions"]
+        assert s["status"] == "met" and res["status"] == "answered"
+        texts = [c["text"] for c in res["claims"] if c["id"] in s["answer_claim_ids"]]
+        assert any("rename the key argument" in t for t in texts)        # a plain message, no reason word
+        res = analysis.analyze(st, repo, "When did PriceCache start keeping prices in a dict?")
+        (s,) = res["subquestions"]
+        texts = [c["text"] for c in res["claims"] if c["id"] in s["answer_claim_ids"]]
+        assert any("count-based expiry" in t for t in texts)             # the fourth newest, about the question
+        assert not any("documents state intent" in u["why"] for u in res["unknowns"])
+    finally:
+        st.close()
+
+
+def test_overall_status_follows_the_sub_questions():
+    assert analysis.overall_status(["met", "met_with_inference"]) == "answered"
+    assert analysis.overall_status(["met", qp.HUMAN_DECISION]) == "answered"
+    assert analysis.overall_status(["met", "unmet"]) == "partly_answered"
+    assert analysis.overall_status(["unmet"]) == "unanswered"
+    assert analysis.overall_status(["not_supported", "blocked_by_clarification"]) == "unanswered"
+    assert analysis.overall_status([]) == "answered"
+
+
 def test_intents_for():
     assert analysis.intents_for(FLOW_Q)[:2] == ["flow", "dataflow"]
     assert analysis.intents_for("Why does OrderRepository use SQLite?")[0] == "why"
@@ -244,6 +422,46 @@ def test_analysis_refreshes_a_changed_tree_before_citing(tmp_path):
         assert res["snapshot"]["id"] != old and res["steps"][0]["step"] == "refresh_index"
         loc = next(c for c in res["claims"] if c["text"].startswith("`surcharge()` is defined at"))
         assert "orders/pricing.py:18-19" in loc["text"] and loc["status"] == "statically_verified"
+    finally:
+        st.close()
+
+
+def test_analysis_rebuilds_a_graph_an_older_extraction_built_even_when_no_file_changed(tmp_path, monkeypatch):
+    # `verinoda update` and index_update rebuild a graph whose recorded extraction stamp is not this install's (an
+    # upgrade); analyze looked only at the tree hash, so after an upgrade it cited what the old extractor made of
+    # every unchanged file until something else ran an update (the D186 final review)
+    from verinoda import buildlock, index
+    from verinoda.paths import index_dir
+
+    repo = _copy_example(tmp_path / "orders_app")
+    workflow.init(repo)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        stats = index_dir(repo) / buildlock.STATS_NAME
+        data = json.loads(stats.read_text(encoding="utf-8"))
+        data["extraction"] = "s0-older"
+        stats.write_text(json.dumps(data), encoding="utf-8")
+        # a project whose rebuild is slow: answered from the old graph, which the answer says
+        with monkeypatch.context() as m:
+            m.setattr(analysis, "REFRESH_SMALL_PROJECT", 0)
+            m.setattr(buildlock, "last_build_seconds", lambda repo: 999.0)
+            res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        ir = res["index_refresh"]
+        assert ir["ran"] is False and "999" in ir["skipped"] and ir["extraction"]["was"] == "s0-older", ir
+        why = next(u["why"] for u in res["unknowns"] if "does the index describe" in (u.get("question") or ""))
+        assert "an older extraction built the index (s0-older)" in why and "not refreshed" in why
+        # the MCP server hands its kept graph over when the tree is unchanged: after the rebuild it is not used (an
+        # empty one stands in for the old graph here; the answer must come from the graph the rebuild wrote)
+        kept = index.load(repo)
+        kept.G = kept.G.__class__()
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False, graph=kept)
+        ir = res["index_refresh"]
+        assert ir["ran"] is True and ir["changed_count"] == 0, ir
+        assert any(c["text"].startswith("`compute_total()` is defined at") for c in res["claims"]), res["claims"]
+        assert buildlock.recorded_extraction(repo) == buildlock.extraction_stamp(repo)
+        res = analysis.analyze(st, repo, "Where is compute_total defined?", challenge=False)
+        assert res.get("index_refresh") is None  # rebuilt once: the next call stands on it
     finally:
         st.close()
 
@@ -664,7 +882,7 @@ def test_both_versions_of_a_two_version_question_are_named(proj):
     """D67 review H1: 2.0.1 is not dropped as "contained" in 2.0.10."""
     repo, st = proj
     res = analysis.analyze(st, repo, "Why did 2.0.10 break compute_total when it worked in 2.0.1?", challenge=False)
-    assert res["status"] == "answered" and "plan_fallback" not in res
+    assert res["status"] in analysis.DONE_STATUSES and "plan_fallback" not in res  # the plan ran, whatever it found
     notes = [n for s in res["subquestions"] for n in _version_notes(res, s["id"])]
     assert notes and all("2.0.10 (2.0.10)" in n and "2.0.1 (2.0.1)" in n for n in notes)
 
@@ -1348,3 +1566,53 @@ def test_the_claims_that_answer_come_first(proj):
     assert "create_order_handler" in res["claims"][0]["text"]  # the product's own caller, before the tests
     res = analysis.analyze(st, repo, "Where is an order written to the database?")
     assert "orders/repository.py:17" in res["claims"][0]["text"]  # the INSERT, not a settings loader
+
+
+def test_a_why_with_no_stated_reason_adds_the_terms_first_appearance_as_a_lead(tmp_path):
+    """The path-free first appearance of the question's code term joins the leads (D186): a why whose commits state
+    no reason, and a when-question of the form "when was X added"; never a claim, and not for another when-form,
+    where the term's first appearance predates the change asked about."""
+    repo = _why_repo(tmp_path, with_reason=False)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+        u = next(x for x in res["unknowns"] if "the reason was not found" in x["why"])
+        born = [c for c in u["commits"] if c.startswith("first appearance of `PriceCache`: ")]
+        assert len(born) == 1 and born[0].endswith(" add the price cache (path-free)")
+        assert re.match(r"^first appearance of `PriceCache`: [0-9a-f]{10} \d{4}-\d{2}-\d{2} ", born[0])
+        assert not any("first appearance" in c["text"] for c in res["claims"])
+        res = analysis.analyze(st, repo, "When was PriceCache added?")
+        lead = next(x for x in res["unknowns"]
+                    if any(c.startswith("first appearance of `PriceCache`: ") for c in x.get("commits") or []))
+        assert "lead" in lead["why"] and "git show" in lead["next_step"]
+        assert not any("first appearance" in c["text"] for c in res["claims"])
+        res = analysis.analyze(st, repo, "When did PriceCache start keeping prices in a dict?")
+        assert not any("first appearance" in c for x in res["unknowns"] for c in x.get("commits") or [])
+    finally:
+        st.close()
+
+
+def test_a_why_whose_symbol_history_times_out_is_not_a_tool_error(tmp_path, monkeypatch):
+    """Review focus 2 of D186: git log -L over the symbol's lines exceeds VERINODA_MCP_GIT_TIMEOUT -> the analysis
+    completes, the unknown says what timed out and how to go on; no exception, no error result."""
+    from verinoda import gitexec
+
+    repo = _why_repo(tmp_path, with_reason=True)
+    st = open_store(repo)
+    try:
+        workflow.scan(st, repo)
+        real = gitexec.run
+
+        def slow_log(repo_, *args, **kw):   # the -L, -S and -G reads over a whole history: the ones the budget is for
+            if "log" in args and any(a.startswith(("-L", "-S", "-G")) for a in args):
+                return gitexec.GitResult(124, "", "git log timed out after 60 s", timed_out=True)
+            return real(repo_, *args, **kw)
+
+        monkeypatch.setattr(gitexec, "run", slow_log)
+        res = analysis.analyze(st, repo, "Why does PriceCache use a dict?")
+        assert res["status"] in analysis.DONE_STATUSES and "error" not in res
+        u = next(x for x in res["unknowns"] if "timed out" in x["why"])
+        assert "VERINODA_MCP_GIT_TIMEOUT" in u["next_step"]
+    finally:
+        st.close()

@@ -9,11 +9,12 @@ Covers the pure aggregation/rendering helpers (deterministic, no LLM, no graph
 required) and the end-to-end CLI, including the "second session benefits from the
 first" worked example from the issue.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -29,7 +30,6 @@ from verinoda.project_index.reflect import (
     render_lessons_md,
 )
 
-PYTHON = sys.executable
 FIXTURES = Path(__file__).parent / "fixtures"
 
 # Fixed clock so time-decay scoring is byte-stable in tests (reflect/aggregate take `now`).
@@ -38,13 +38,6 @@ _NOW = datetime(2026, 6, 1, tzinfo=timezone.utc)
 
 def _days_before(n: int) -> str:
     return (_NOW - timedelta(days=n)).isoformat()
-
-
-def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [PYTHON, "-m", "verinoda.project_index"] + args,
-        cwd=cwd, capture_output=True, text=True,
-    )
 
 
 # --- frontmatter parsing -------------------------------------------------------
@@ -456,107 +449,6 @@ def test_second_session_benefits_from_the_first(tmp_path):
     assert "where is the cache?" in body       # don't re-derive this dead end
 
 
-def test_cli_reflect_end_to_end(tmp_path):
-    cwd = tmp_path
-    r1 = _run(["save-result", "--question", "how does auth work?",
-               "--answer", "JWT", "--nodes", "AuthMiddleware",
-               "--outcome", "useful"], cwd)
-    assert r1.returncode == 0, r1.stderr
-    r2 = _run(["reflect"], cwd)
-    assert r2.returncode == 0, r2.stderr
-    assert "Reflected 1 memories" in r2.stdout
-    lessons = cwd / "graphify-out" / "reflections" / "LESSONS.md"
-    assert lessons.exists()
-    assert "`AuthMiddleware`" in lessons.read_text(encoding="utf-8")
-
-
-def test_cli_save_result_rejects_bad_outcome(tmp_path):
-    """argparse `choices` rejects an unknown outcome before save_query_result runs."""
-    r = _run(["save-result", "--question", "q", "--answer", "a",
-              "--outcome", "great"], tmp_path)
-    assert r.returncode != 0
-    assert "great" in (r.stderr + r.stdout)
-
-
-def test_cli_save_result_reads_answer_from_file(tmp_path):
-    """--answer-file lets callers pass a long/multiline answer via a file instead
-    of a fragile inline arg (Windows/PowerShell quoting), #1502."""
-    ans = tmp_path / "answer.txt"
-    ans.write_text("line one\nline two with a \"quote\"\n", encoding="utf-8")
-    r = _run(["save-result", "--question", "how does auth work?",
-              "--answer-file", str(ans), "--outcome", "useful"], tmp_path)
-    assert r.returncode == 0, r.stderr
-    docs = list((tmp_path / "graphify-out" / "memory").glob("*.md"))
-    assert docs, "save-result wrote no memory doc"
-    body = docs[0].read_text(encoding="utf-8")
-    assert "line one" in body and "line two" in body
-
-
-def test_cli_save_result_requires_answer_or_answer_file(tmp_path):
-    """Neither --answer nor --answer-file -> clean argparse error, not a crash."""
-    r = _run(["save-result", "--question", "q", "--outcome", "useful"], tmp_path)
-    assert r.returncode != 0
-    assert "--answer" in (r.stderr + r.stdout)
-
-
-def test_cli_reflect_cold_start_writes_empty_lessons(tmp_path):
-    """First run with no graphify-out/memory/ still succeeds and writes a valid doc."""
-    r = _run(["reflect"], tmp_path)
-    assert r.returncode == 0, r.stderr
-    assert "Reflected 0 memories" in r.stdout
-    lessons = tmp_path / "graphify-out" / "reflections" / "LESSONS.md"
-    assert lessons.exists()
-    assert "from 0 session memories" in lessons.read_text(encoding="utf-8")
-
-
-def test_cli_reflect_respects_out_flag(tmp_path):
-    cwd = tmp_path
-    _run(["save-result", "--question", "q", "--answer", "a",
-          "--outcome", "useful", "--nodes", "X"], cwd)
-    dest = cwd / "custom" / "lessons.md"
-    r = _run(["reflect", "--out", str(dest)], cwd)
-    assert r.returncode == 0, r.stderr
-    assert dest.exists()
-
-
-def test_cli_reflect_groups_by_community_when_graph_present(tmp_path):
-    """With a real graph.json present, reflect auto-detects it and groups lessons
-    under the community of the cited node — including when the node is cited by its
-    LABEL (what save-result records), not its id (regression guard: keying community
-    lookup on ids alone collapsed every lesson into Uncategorized)."""
-    out = _make_graph(tmp_path)
-    graph = json.loads((out / "graph.json").read_text())
-    node_label = graph["nodes"][0]["label"]
-
-    _run(["save-result", "--question", "q", "--answer", "a",
-          "--nodes", node_label, "--outcome", "useful"], tmp_path)
-    r = _run(["reflect"], tmp_path)
-    assert r.returncode == 0, r.stderr
-    body = (out / "reflections" / "LESSONS.md").read_text(encoding="utf-8")
-    assert "## By topic" in body
-    # The label-cited node must land in a real community, not Uncategorized.
-    assert "### Uncategorized" not in body
-
-
-def test_cli_node_existence_gate_drops_stale_node_end_to_end(tmp_path):
-    """Through reflect()/CLI with a real graph.json: a cited node that isn't in the
-    graph is dropped from LESSONS.md; a real one stays. Exercises _load_known_nodes
-    + the wiring, not just the known_nodes param."""
-    out = _make_graph(tmp_path)
-    # Cite the node by its LABEL — what an agent/`save-result` actually records —
-    # not its id. The gate must match labels too, else every real citation is
-    # silently dropped whenever a graph is present (regression guard).
-    real = json.loads((out / "graph.json").read_text())["nodes"][0]["label"]
-
-    _run(["save-result", "--question", "q", "--answer", "a",
-          "--nodes", real, "GhostNode", "--outcome", "useful"], tmp_path)
-    r = _run(["reflect"], tmp_path)
-    assert r.returncode == 0, r.stderr
-    body = (out / "reflections" / "LESSONS.md").read_text(encoding="utf-8")
-    assert "GhostNode" not in body
-    assert f"`{real}`" in body
-
-
 def _make_graph(tmp_path: Path) -> Path:
     """Build a minimal graph.json + analysis/labels in tmp_path/graphify-out/.
 
@@ -642,59 +534,6 @@ def test_lessons_fresh_false_when_graph_sidecar_newer(tmp_path, sidecar_name):
     os.utime(out, (1500, 1500))
     os.utime(tmp_path / sidecar_name, (2000, 2000))
     assert lessons_fresh(out, mem, graph, analysis, labels) is False
-
-
-def test_cli_reflect_if_stale_skips_when_fresh(tmp_path):
-    """`reflect --if-stale` skips the rebuild when LESSONS.md is already current,
-    and still runs when a new outcome arrives."""
-    out = _make_graph(tmp_path)
-    real = json.loads((out / "graph.json").read_text())["nodes"][0]["label"]
-    _run(["save-result", "--question", "q", "--answer", "a",
-          "--nodes", real, "--outcome", "useful"], tmp_path)
-    first = _run(["reflect"], tmp_path)
-    assert first.returncode == 0
-    lessons = out / "reflections" / "LESSONS.md"
-    body_before = lessons.read_text(encoding="utf-8")
-
-    # Second call with --if-stale: nothing changed -> skipped, file untouched.
-    skipped = _run(["reflect", "--if-stale"], tmp_path)
-    assert skipped.returncode == 0
-    assert "up to date" in (skipped.stdout + skipped.stderr).lower()
-    assert lessons.read_text(encoding="utf-8") == body_before
-
-    # A new outcome makes it stale -> --if-stale runs again.
-    _run(["save-result", "--question", "q2", "--answer", "a",
-          "--nodes", real, "--outcome", "useful"], tmp_path)
-    ran = _run(["reflect", "--if-stale"], tmp_path)
-    assert ran.returncode == 0
-    assert "up to date" not in (ran.stdout + ran.stderr).lower()
-
-
-def test_cli_reflect_if_stale_reruns_when_labels_newer(tmp_path):
-    """A label refresh changes LESSONS.md topic headings, so --if-stale must rebuild."""
-    out = _make_graph(tmp_path)
-    graph_data = json.loads((out / "graph.json").read_text())
-    node = graph_data["nodes"][0]
-    real = node["label"]
-    community = str(node["community"])
-    _run(["save-result", "--question", "q", "--answer", "a",
-          "--nodes", real, "--outcome", "useful"], tmp_path)
-    first = _run(["reflect"], tmp_path)
-    assert first.returncode == 0, first.stderr
-
-    lessons = out / "reflections" / "LESSONS.md"
-    labels_path = out / ".graphify_labels.json"
-    labels = json.loads(labels_path.read_text(encoding="utf-8"))
-    labels[community] = "Renamed Topic"
-    labels_path.write_text(json.dumps(labels), encoding="utf-8")
-
-    import os
-    os.utime(lessons, (1500, 1500))
-    os.utime(labels_path, (2000, 2000))
-    ran = _run(["reflect", "--if-stale"], tmp_path)
-    assert ran.returncode == 0, ran.stderr
-    assert "up to date" not in (ran.stdout + ran.stderr).lower()
-    assert "### Renamed Topic" in lessons.read_text(encoding="utf-8")
 
 
 def test_dead_ends_and_corrections_dedupe_by_question():

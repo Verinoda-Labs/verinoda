@@ -1,0 +1,19 @@
+{
+ "name": "C-junegunn__fzf-why-1",
+ "task": "junegunn__fzf-why-1",
+ "plugin_dir": "C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/mods/C",
+ "rc": 0,
+ "secs": 15.9,
+ "turns": 5,
+ "cost": 0.0627209,
+ "analyze_calls": 0,
+ "verinoda_calls": 0,
+ "tools": [
+  "Grep",
+  "Read",
+  "Bash",
+  "Bash"
+ ],
+ "session_id": "6693aacf-90c8-4657-a71f-04818ef98bcd",
+ "answer_head": "- **The loop.** On `EINTR`, the cancellable select path does `continue` and retries with no counter (`src/tui/light_unix.go:252-258`). Only a different select error returns `getCharError` (`src/tui/light_unix.go:259`). The code comment gives the reason: \"An interrupted wait is not a failed read, so "
+}

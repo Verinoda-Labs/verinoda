@@ -1,0 +1,14 @@
+| approach | facts found | pinpointed | neg. matched | tokens mean | facts/1k tok | shown/1k tok | pinpointed/1k tok | cold s (median) | warm s (median) |
+|---|---|---|---|---|---|---|---|---|---|
+| raw grep+read | 5/37 -> 5/37 | 4 -> 4 | n/a -> n/a | 5991 -> 5991 | 0.09 -> 0.09 | 0.09 -> 0.09 | 0.07 -> 0.07 | 1.191 -> 0.415 | - -> - |
+| Graphify query (vendored, depth 3) | 2/37 -> 2/37 | 2 -> 2 | 0/7 -> 0/7 | 1287 -> 1287 | 0.17 -> 0.17 | 0.17 -> 0.17 | 0.17 -> 0.17 | 0.689 -> 0.252 | - -> - |
+| Verinoda analyze | 31/37 -> 31/37 | 19 -> 19 | 0/7 -> 0/7 | 2027 -> 2010 | 1.70 -> 1.71 | 1.15 -> 1.16 | 1.04 -> 1.05 | 3.713 -> 1.475 | - -> - |
+| Verinoda retrieve (JSON) | 26/37 -> 26/37 | 17 -> 17 | 0/7 -> 0/7 | 1436 -> 1436 | 2.01 -> 2.01 | 0.93 -> 0.93 | 1.32 -> 1.32 | 0.364 -> 0.138 | - -> - |
+| Verinoda retrieve (text) | 31/37 -> 31/37 | 18 -> 18 | 0/7 -> 0/7 | 1431 -> 1431 | 2.41 -> 2.41 | 1.63 -> 1.63 | 1.40 -> 1.40 | 0.412 -> 0.152 | - -> - |
+
+per fact (totals can hide a swap):
+Graphify query (vendored, depth 3): lost found none, lost shown none; gained found 0, shown 0
+raw grep+read: lost found none, lost shown none; gained found 0, shown 0
+Verinoda analyze: lost found none, lost shown none; gained found 0, shown 0
+Verinoda retrieve (JSON): lost found none, lost shown none; gained found 0, shown 0
+Verinoda retrieve (text): lost found none, lost shown none; gained found 0, shown 0

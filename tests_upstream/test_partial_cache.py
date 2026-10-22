@@ -6,8 +6,10 @@ It is tagged with an internal ``_partial`` marker; ``save_semantic_cache`` stamp
 that file's entry ``partial: True``, and ``load_cached`` then treats a partial
 entry as a cache MISS so the file is re-dispatched instead of served forever.
 """
+# Verinoda patch (D186): the tests of the upstream LLM, PR and media layer (llm.py, prs.py,
+# transcribe.py, google_workspace.py, exporters/graphdb.py) left the package with it
+# (docs/UPSTREAM.md); the tests below are upstream's.
 
-from verinoda.project_index import llm
 from verinoda.project_index.cache import (
     save_semantic_cache,
     load_cached,
@@ -117,61 +119,6 @@ def test_clean_slice_does_not_repromote_empty_parse_partial(tmp_path):
     assert load_cached(doc, root=tmp_path, kind="semantic", prompt="P") is None
 
 
-def test_partial_files_carries_empty_parse_truncation():
-    """_partial_source_files must surface a file recorded in _partial_files even
-    when the result has zero items (the empty-parse case)."""
-    import verinoda.project_index.llm as llm
-    result = {"nodes": [], "edges": [], "hyperedges": [], "_partial_files": ["big.md"]}
-    assert llm._partial_source_files(result) == ["big.md"]
-    # And it unions with intrinsic item markers.
-    result2 = {"nodes": [{"id": "a", "source_file": "x.md", "_partial": True}],
-               "edges": [], "hyperedges": [], "_partial_files": ["big.md"]}
-    assert llm._partial_source_files(result2) == ["big.md", "x.md"]
-
-
-def test_stamped_manifest_excludes_partial_files():
-    """A truncated file produced output this run but is left unstamped in the
-    manifest (like a failed chunk) so detect_incremental re-queues it."""
-    from pathlib import Path
-    from verinoda.project_index.cli import _stamped_manifest_files
-
-    files_by_type = {"document": ["a.md", "b.md"], "code": ["x.py"]}
-    sem_result = {
-        "nodes": [
-            {"id": "1", "source_file": "a.md"},
-            {"id": "2", "source_file": "b.md"},
-        ],
-        "edges": [], "hyperedges": [],
-    }
-    out = _stamped_manifest_files(files_by_type, sem_result, Path("."),
-                                  partial_source_files={"b.md"})
-    # a.md extracted cleanly -> stamped; b.md truncated -> excluded; code kept.
-    assert out["document"] == ["a.md"]
-    assert out["code"] == ["x.py"]
-
-
-def test_stamped_manifest_excludes_failed_ast_sources():
-    """#2543: code files whose AST extract failed (missing extra) stay unstamped."""
-    from pathlib import Path
-    from verinoda.project_index.cli import _stamped_manifest_files
-
-    files_by_type = {
-        "document": ["a.md"],
-        "code": ["/abs/ok.py", "/abs/schema.sql"],
-    }
-    sem_result = {
-        "nodes": [{"id": "1", "source_file": "a.md"}],
-        "edges": [], "hyperedges": [],
-    }
-    out = _stamped_manifest_files(
-        files_by_type, sem_result, Path("/abs"),
-        failed_ast_sources={"/abs/schema.sql"},
-    )
-    assert out["document"] == ["a.md"]
-    assert out["code"] == ["/abs/ok.py"]
-    assert "/abs/schema.sql" not in out["code"]
-
-
 def test_group_has_partial_marker():
     assert _group_has_partial_marker({"nodes": [{"_partial": True}]}) is True
     assert _group_has_partial_marker({"edges": [{"_partial": True}]}) is True
@@ -179,31 +126,3 @@ def test_group_has_partial_marker():
     assert _group_has_partial_marker({}) is False
 
 
-def test_mark_partial_and_partial_source_files():
-    result = {
-        "nodes": [{"id": "a", "source_file": "x.md"}],
-        "edges": [{"source": "a", "target": "b", "source_file": "x.md"}],
-        "hyperedges": [{"id": "h", "source_file": "y.md"}],
-    }
-    llm._mark_partial(result)
-    assert result["nodes"][0]["_partial"] is True
-    assert result["edges"][0]["_partial"] is True
-    assert result["hyperedges"][0]["_partial"] is True
-    assert llm._partial_source_files(result) == ["x.md", "y.md"]
-
-
-def test_partial_source_files_empty_when_unmarked():
-    result = {"nodes": [{"id": "a", "source_file": "x.md"}], "edges": [], "hyperedges": []}
-    assert llm._partial_source_files(result) == []
-
-
-def test_strip_partial_markers_removes_internal_key():
-    result = {
-        "nodes": [{"id": "a", "_partial": True}],
-        "edges": [{"source": "a", "target": "b", "_partial": True}],
-        "hyperedges": [{"id": "h", "_partial": True}],
-    }
-    llm._strip_partial_markers(result)
-    assert "_partial" not in result["nodes"][0]
-    assert "_partial" not in result["edges"][0]
-    assert "_partial" not in result["hyperedges"][0]

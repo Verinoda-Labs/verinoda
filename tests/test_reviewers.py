@@ -140,16 +140,16 @@ def test_cli_json_carries_the_block(repo, capsys):
     assert out["reviewers"]["suggested"][0]["author"] == "Bob"
 
 
-def test_the_mcp_response_carries_a_compact_block(repo):
+def test_the_mcp_response_leaves_the_block_to_review_json(repo):
+    """D186 §4.4: who to ask is bookkeeping for a model reading findings (with concerns_checked and coverage, 56% of
+    a response in the usage logs); the CLI's --json keeps it (test_cli_json_carries_the_block)."""
     from verinoda.mcp.server import AtlasTools
 
-    r, (_, second, _) = repo
+    r, _ = repo
     text = (r / "shop/pricing.py").read_text(encoding="utf-8")
     (r / "shop/pricing.py").write_bytes(text.replace("x * 0.2", "x * 0.3").encode("utf-8"))
-    who = AtlasTools(r).change_review()["reviewers"]
-    assert who["suggested"] == [{"author": "Bob", "lines": 1, "of": 1, "status": "strong_inference"}]
-    assert who["related_commits"][0]["commit"] == second[:12] and "claim" not in who["related_commits"][0]
-    assert "review --json" in who["note"]
+    res = AtlasTools(r).change_review()
+    assert "reviewers" not in res and "error" not in res and "concerns" in res  # the findings are still there
 
 
 def test_inserted_lines_name_no_one_and_mailmap_keeps_the_user_out(repo):

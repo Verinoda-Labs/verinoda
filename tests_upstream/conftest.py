@@ -64,18 +64,6 @@ def _sandbox_home(tmp_path_factory, monkeypatch):
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
     return home
 
-@pytest.fixture(autouse=True)
-def _isolate_backend_env(monkeypatch):
-    """detect_backend() probes the developer's real shell: with GOOGLE_API_KEY (or
-    any of a dozen others) exported, the backend-detection tests picked that
-    backend instead of the one the test set up (#3481). Clear every variable it
-    reads before each test; a test that wants one sets it with monkeypatch."""
-    from verinoda.project_index.llm import backend_detection_env_vars
-
-    for key in backend_detection_env_vars():
-        monkeypatch.delenv(key, raising=False)
-
-
 _ANALYZE_WARNING_FILTERS = (
     "ignore:Tensorflow not installed; ParametricUMAP will be unavailable:ImportWarning:umap",
     "ignore:Please import `random` from the `scipy\\.sparse` namespace.*:"
@@ -93,11 +81,6 @@ def pytest_collection_modifyitems(items: list[Any]) -> None:
 
 
 # --- Verinoda port adjustments (appended by tools/port_upstream.py) --------
-# test_skillgen.py regenerates upstream's own skill bodies and audits them
-# against blobs from upstream's git history (`git show <sha>:graphify/...`).
-# That history does not exist in this repository, and those skill bodies are
-# not Verinoda's product skills, so the suite is excluded (docs/UPSTREAM.md).
-collect_ignore = ["test_skillgen.py"]
 
 _PORT_DIVERGENT = {
     # Upstream's installer compares the skill stamp to the *graphifyy* version

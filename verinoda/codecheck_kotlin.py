@@ -52,11 +52,6 @@ SCOPE_FUNCTIONS = frozenset({"let", "run", "apply", "also", "with", "takeIf", "t
 _DECLS = ("class_declaration", "object_declaration")
 
 
-def kotlin_files(root: Path) -> list[Path]:
-    """The build's Kotlin sources (``.kt``; build scripts ``.gradle.kts`` are not code of the project)."""
-    return cj.java_files(root, (".kt",))
-
-
 def _t(n, src: bytes) -> str:
     return src[n.start_byte:n.end_byte].decode("utf-8", "replace")
 

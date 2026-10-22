@@ -1,3 +1,6 @@
+# Verinoda patch (D186): the tests of the upstream LLM, PR and media layer (llm.py, prs.py,
+# transcribe.py, google_workspace.py, exporters/graphdb.py) left the package with it
+# (docs/UPSTREAM.md); the tests below are upstream's.
 import os
 import subprocess
 import unicodedata
@@ -838,40 +841,6 @@ def test_classify_video_extensions():
     assert classify_file(Path("audio.m4a")) == FileType.VIDEO
 
 
-def test_classify_google_workspace_shortcuts():
-    assert classify_file(Path("notes.gdoc")) == FileType.DOCUMENT
-    assert classify_file(Path("budget.gsheet")) == FileType.DOCUMENT
-    assert classify_file(Path("deck.gslides")) == FileType.DOCUMENT
-
-
-def test_detect_skips_google_workspace_shortcuts_by_default(tmp_path):
-    (tmp_path / "notes.gdoc").write_text('{"doc_id":"doc-1"}', encoding="utf-8")
-
-    result = detect(tmp_path)
-
-    assert not result["files"]["document"]
-    assert any("Google Workspace shortcut skipped" in item for item in result["skipped_sensitive"])
-
-
-def test_detect_converts_google_workspace_shortcuts_when_enabled(tmp_path, monkeypatch):
-    shortcut = tmp_path / "notes.gdoc"
-    shortcut.write_text('{"doc_id":"doc-1"}', encoding="utf-8")
-
-    def fake_convert(path, out_dir, *, xlsx_to_markdown=None, root=None):
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out = out_dir / "notes_converted.md"
-        out.write_text("# Notes\n\nA converted Google Doc.", encoding="utf-8")
-        return out
-
-    monkeypatch.setattr("verinoda.project_index.detect.convert_google_workspace_file", fake_convert)
-
-    result = detect(tmp_path, google_workspace=True)
-
-    assert len(result["files"]["document"]) == 1
-    assert result["files"]["document"][0].endswith("notes_converted.md")
-    assert result["total_words"] > 0
-
-
 def test_detect_office_sidecar_survives_a_gitignored_output_dir(tmp_path):
     """#3504, Verinoda: with graphify-out/ gitignored, an Office document still reaches the corpus. It is
     read in place (verinoda/doctext.py), so there is no sidecar for the ignore check to drop."""
@@ -887,29 +856,6 @@ def test_detect_office_sidecar_survives_a_gitignored_output_dir(tmp_path):
 
     assert [Path(f).name for f in result["files"]["document"]] == ["report.docx"]
     assert result["total_words"] > 0
-
-
-def test_detect_google_workspace_sidecar_survives_a_gitignored_output_dir(tmp_path, monkeypatch):
-    """Same trap as the Office sidecar case (#3504), for the Google Workspace
-    conversion branch, which writes into the same converted/ directory."""
-    (tmp_path / ".gitignore").write_text("graphify-out/\n", encoding="utf-8")
-    shortcut = tmp_path / "notes.gdoc"
-    shortcut.write_text('{"doc_id":"doc-1"}', encoding="utf-8")
-
-    def fake_convert(path, out_dir, *, xlsx_to_markdown=None, root=None):
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out = out_dir / "notes_converted.md"
-        out.write_text("# Notes\n\nA converted Google Doc.", encoding="utf-8")
-        return out
-
-    monkeypatch.setattr("verinoda.project_index.detect.convert_google_workspace_file", fake_convert)
-
-    result = detect(tmp_path, google_workspace=True)
-
-    assert len(result["files"]["document"]) == 1, (
-        "the Google Workspace sidecar was dropped by the gitignore check on the tool's own output dir"
-    )
-    assert result["files"]["document"][0].endswith("notes_converted.md")
 
 
 def test_detect_includes_video_key(tmp_path):

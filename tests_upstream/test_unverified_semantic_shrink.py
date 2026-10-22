@@ -7,15 +7,16 @@ can arm the shrink guard (force=False) and prevent the under-produced source fro
 being stamped in manifest.json, preserving the existing graph and allowing
 subsequent incremental runs to retry.
 """
+# Verinoda patch (D186): the tests of the upstream CLI (`python -m verinoda.project_index`), its installer,
+# hooks, wiki, `affected` and `diagnostics` left the package with them (docs/UPSTREAM.md); the tests below
+# are upstream's.
 from __future__ import annotations
 
 import json
 from pathlib import Path
 import pytest
 
-import verinoda.project_index.__main__ as mainmod
 from verinoda.project_index.build import build_merge, merge_raw_extraction
-import verinoda.project_index.llm as llmmod
 
 
 def _sem_node(sf: str, name: str) -> dict:
@@ -165,153 +166,4 @@ def test_merge_raw_extraction_parity(tmp_path):
 
 # ── 2. Integration / CLI Tests for #3203 Behavior ─────────────────────────────
 
-def _run_cli():
-    try:
-        mainmod.main()
-    except SystemExit as exc:
-        return exc.code
-    return 0
 
-
-def test_3203_e2e_repro_protected_and_manifest_unstamped(tmp_path, monkeypatch, capsys):
-    """Reproduce #3203: Initial 3 nodes for README.md -> re-extracted with 1 node.
-    The shrink guard refuses the overwrite, exits 1, and README.md is not stamped.
-    """
-    corpus = tmp_path / "repo"
-    corpus.mkdir()
-    readme = corpus / "README.md"
-    guide = corpus / "GUIDE.md"
-    readme.write_text("# Readme\nInitial content\n", encoding="utf-8")
-    guide.write_text("# Guide\nGuide content\n", encoding="utf-8")
-
-    out_dir = corpus / "graphify-out"
-
-    # Step 1: Initial build (README: 3 nodes, GUIDE: 2 nodes)
-    def _mock_llm_run1(files, **kwargs):
-        on_chunk = kwargs.get("on_chunk_done")
-        res = {
-            "nodes": [
-                {"id": "readme_doc", "label": "Readme", "file_type": "document", "source_file": "README.md"},
-                {"id": "readme_sec1", "label": "Section 1", "file_type": "document", "source_file": "README.md"},
-                {"id": "readme_sec2", "label": "Section 2", "file_type": "document", "source_file": "README.md"},
-                {"id": "guide_doc", "label": "Guide", "file_type": "document", "source_file": "GUIDE.md"},
-                {"id": "guide_sec1", "label": "Guide Sec", "file_type": "document", "source_file": "GUIDE.md"},
-            ],
-            "edges": [], "hyperedges": [],
-            "input_tokens": 10, "output_tokens": 10, "uncovered_files": [],
-        }
-        if on_chunk:
-            on_chunk(0, 1, res)
-        return res
-
-    monkeypatch.setattr(llmmod, "extract_corpus_parallel", _mock_llm_run1)
-    monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake")
-
-    monkeypatch.setattr(mainmod.sys, "argv", ["graphify", "extract", str(corpus), "--backend", "claude"])
-    code1 = _run_cli()
-    assert code1 == 0
-
-    graph1 = json.loads((out_dir / "graph.json").read_text(encoding="utf-8"))
-    assert len(graph1["nodes"]) == 5
-
-    manifest1 = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
-    assert "README.md" in manifest1
-    initial_hash = manifest1["README.md"]["semantic_hash"]
-
-    # Step 2: Edit README.md and re-extract returning only 1 node
-    readme.write_text("# Readme\nEdited content\n", encoding="utf-8")
-
-    def _mock_llm_run2(files, **kwargs):
-        on_chunk = kwargs.get("on_chunk_done")
-        res = {
-            "nodes": [
-                {"id": "readme_doc_renamed", "label": "Readme Renamed", "file_type": "document", "source_file": "README.md"},
-            ],
-            "edges": [], "hyperedges": [],
-            "input_tokens": 10, "output_tokens": 5, "uncovered_files": [],
-        }
-        if on_chunk:
-            on_chunk(0, 1, res)
-        return res
-
-    monkeypatch.setattr(llmmod, "extract_corpus_parallel", _mock_llm_run2)
-    monkeypatch.setattr(mainmod.sys, "argv", ["graphify", "extract", str(corpus), "--backend", "claude"])
-
-    code2 = _run_cli()
-    # The shrink guard arms and refuses overwrite because graph shrinks 5 -> 3
-    assert code2 == 1
-
-    err = capsys.readouterr().err
-    assert "unverified semantic shrink detected for 'README.md' (3 -> 1 nodes)" in err
-    assert "Refusing to overwrite" in err
-
-    # The existing graph on disk is still the healthy 5-node graph
-    graph2 = json.loads((out_dir / "graph.json").read_text(encoding="utf-8"))
-    assert len(graph2["nodes"]) == 5
-
-    # Manifest is NOT stamped with the new hash for README.md
-    manifest2 = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest2["README.md"]["semantic_hash"] == initial_hash
-
-
-def test_3203_allow_partial_override_permits_intentional_reduction(tmp_path, monkeypatch, capsys):
-    """Passing --allow-partial permits an intentional semantic reduction and stamps manifest."""
-    corpus = tmp_path / "repo"
-    corpus.mkdir()
-    readme = corpus / "README.md"
-    readme.write_text("# Readme\nInitial content\n", encoding="utf-8")
-
-    out_dir = corpus / "graphify-out"
-
-    def _mock_llm_run1(files, **kwargs):
-        on_chunk = kwargs.get("on_chunk_done")
-        res = {
-            "nodes": [
-                {"id": "readme_doc", "label": "Readme", "file_type": "document", "source_file": "README.md"},
-                {"id": "readme_sec1", "label": "Section 1", "file_type": "document", "source_file": "README.md"},
-                {"id": "readme_sec2", "label": "Section 2", "file_type": "document", "source_file": "README.md"},
-            ],
-            "edges": [], "hyperedges": [],
-            "input_tokens": 10, "output_tokens": 10, "uncovered_files": [],
-        }
-        if on_chunk:
-            on_chunk(0, 1, res)
-        return res
-
-    monkeypatch.setattr(llmmod, "extract_corpus_parallel", _mock_llm_run1)
-    monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake")
-
-    monkeypatch.setattr(mainmod.sys, "argv", ["graphify", "extract", str(corpus), "--backend", "claude"])
-    code1 = _run_cli()
-    assert code1 == 0
-
-    # Re-extract with --allow-partial
-    readme.write_text("# Readme\nShortened content\n", encoding="utf-8")
-
-    def _mock_llm_run2(files, **kwargs):
-        on_chunk = kwargs.get("on_chunk_done")
-        res = {
-            "nodes": [
-                {"id": "readme_doc", "label": "Readme", "file_type": "document", "source_file": "README.md"},
-            ],
-            "edges": [], "hyperedges": [],
-            "input_tokens": 10, "output_tokens": 5, "uncovered_files": [],
-        }
-        if on_chunk:
-            on_chunk(0, 1, res)
-        return res
-
-    monkeypatch.setattr(llmmod, "extract_corpus_parallel", _mock_llm_run2)
-    monkeypatch.setattr(
-        mainmod.sys, "argv",
-        ["graphify", "extract", str(corpus), "--backend", "claude", "--allow-partial"],
-    )
-
-    code2 = _run_cli()
-    assert code2 == 0
-
-    # With override, the 1-node graph is persisted
-    graph = json.loads((out_dir / "graph.json").read_text(encoding="utf-8"))
-    assert len(graph["nodes"]) == 1

@@ -1,0 +1,18 @@
+{
+ "name": "P-axios__axios-when-1",
+ "task": "axios__axios-when-1",
+ "plugin_dir": "C:/Users/ozcin/Desktop/verinoda-symbiosis/.claude/worktrees/callrule/claude-mods/verinoda-live",
+ "rc": 0,
+ "secs": 15.5,
+ "turns": 4,
+ "cost": 0.1360839,
+ "analyze_calls": 1,
+ "verinoda_calls": 1,
+ "tools": [
+  "mcp__verinoda__analyze",
+  "Grep",
+  "Bash"
+ ],
+ "session_id": "abba3a1a-7f20-4a0b-a193-3c56620f1978",
+ "answer_head": "- `UnprocessableContent: 422` is in the status-code map at `lib/helpers/HttpStatusCode.js:53`. The old `UnprocessableEntity: 422` sits just above it at line 52, with a `@deprecated Use UnprocessableContent instead` note at line 50.\n- Commit `39955a6` first added the name, on 2026-08-04: \"feat(HttpSt"
+}

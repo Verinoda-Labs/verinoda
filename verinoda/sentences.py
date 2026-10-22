@@ -23,6 +23,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from verinoda.paths import contained_path
+
 FILES_READ = 20            # ranked prose files read, in rank order
 MAX_SENTENCE_CHARS = 400   # longer sentences are cut and marked
 MAX_FILE_BYTES = 2_000_000
@@ -158,7 +160,9 @@ def find(g, question: str, *, max_items: int = DEFAULT_ITEMS, filters: bool = Tr
     found: dict[str, dict] = {}
     order: list[str] = []
     for rank_no, f in enumerate(read):
-        p = Path(g.root) / f
+        p = contained_path(Path(g.root), f)
+        if p is None:
+            continue
         try:
             if p.stat().st_size > MAX_FILE_BYTES and not f.lower().endswith((".pdf", ".docx", ".xlsx", ".pptx")):
                 continue

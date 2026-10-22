@@ -1,0 +1,81 @@
+[bench] copying corpus from C:\Users\ozcin\Desktop\verinoda-symbiosis\benchmarks\corpora\heldout_repoatlas_7371990 to C:\Users\ozcin\AppData\Local\Temp\verinoda-bench-cbmw2e04\verinoda
+[bench] verinoda scan (cold)
+[bench] verinoda scan (warm)
+[bench] pass 1/1 h01 raw
+[bench] pass 1/1 h01 graphify_vendored
+[bench] pass 1/1 h01 verinoda_analyze
+[bench] pass 1/1 h01 verinoda_retrieve
+[bench] pass 1/1 h01 verinoda_retrieve_text
+[bench] pass 1/1 h02 raw
+[bench] pass 1/1 h02 graphify_vendored
+[bench] pass 1/1 h02 verinoda_analyze
+[bench] pass 1/1 h02 verinoda_retrieve
+[bench] pass 1/1 h02 verinoda_retrieve_text
+[bench] pass 1/1 h03 raw
+[bench] pass 1/1 h03 graphify_vendored
+[bench] pass 1/1 h03 verinoda_analyze
+[bench] pass 1/1 h03 verinoda_retrieve
+[bench] pass 1/1 h03 verinoda_retrieve_text
+[bench] pass 1/1 h04 raw
+[bench] pass 1/1 h04 graphify_vendored
+[bench] pass 1/1 h04 verinoda_analyze
+[bench] pass 1/1 h04 verinoda_retrieve
+[bench] pass 1/1 h04 verinoda_retrieve_text
+[bench] pass 1/1 h05 raw
+[bench] pass 1/1 h05 graphify_vendored
+[bench] pass 1/1 h05 verinoda_analyze
+[bench] pass 1/1 h05 verinoda_retrieve
+[bench] pass 1/1 h05 verinoda_retrieve_text
+[bench] pass 1/1 h06 raw
+[bench] pass 1/1 h06 graphify_vendored
+[bench] pass 1/1 h06 verinoda_analyze
+[bench] pass 1/1 h06 verinoda_retrieve
+[bench] pass 1/1 h06 verinoda_retrieve_text
+[bench] pass 1/1 h07 raw
+[bench] pass 1/1 h07 graphify_vendored
+[bench] pass 1/1 h07 verinoda_analyze
+[bench] pass 1/1 h07 verinoda_retrieve
+[bench] pass 1/1 h07 verinoda_retrieve_text
+[bench] pass 1/1 h08 raw
+[bench] pass 1/1 h08 graphify_vendored
+[bench] pass 1/1 h08 verinoda_analyze
+[bench] pass 1/1 h08 verinoda_retrieve
+[bench] pass 1/1 h08 verinoda_retrieve_text
+benchmark set heldout_repoatlas (8 questions)  status=ok
+gold facts re-verified against the corpus: 33 checked, 0 failure(s)
+Question set provenance: questions written by: retrieval research agent (round-3 research), after its prototype was built and before the prototype was run on this corpus; gold written by: retrieval research agent, same time; gold reviewed by: measurement agent (round-3 measurement step): every fact re-read and re-anchored to commit 7371990; no fact added or removed, question wording unchanged; in sample: False; caveat: held out from RepoAtlas design, not unseen: the search track ran it during development and reports it was not used for tuning; original file: retrieval_track/heldout.json (research scratch, not in the repository).
+tokens: chars/4 estimate;  model: not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+graphify CLI: not run: --graphify-cmd not given
+
+index (one-off):
+  Verinoda scan: cold 10.64 s, warm 2.91 s; 3618 nodes / 9735 edges; 106 cache files
+
+| approach | facts found | via locator | pinpointed | shown | all-facts Qs | tokens mean | tokens max | facts/1k tok | shown/1k tok | pinpointed/1k tok | locators/Q | tool calls/Q | cold s (median) | warm s (median) | neg. matched | cited line lacks target |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| raw grep+read | 9/33 | 8 | 3 | 11 | 1/8 | 5992 | 5998 | 0.19 | 0.23 | 0.06 | 41 | 2 | 0.152 | - | n/a | n/a |
+| Graphify query (vendored, depth 3) | 8/33 | 2 | 2 | 2 | 0/8 | 1654 | 1684 | 0.60 | 0.15 | 0.15 | 66 | 1 | 0.221 | - | 0/0 | 0/0 |
+| Verinoda analyze | 26/33 | 22 | 21 | 19 | 4/8 | 1956 | 2446 | 1.66 | 1.21 | 1.34 | 30.9 | 1 | 1.062 | - | 0/0 | 0/19 |
+| Verinoda retrieve (JSON) | 23/33 | 19 | 18 | 15 | 3/8 | 1438 | 1449 | 2.00 | 1.30 | 1.56 | 24.4 | 1 | 0.140 | - | 0/0 | 0/0 |
+| Verinoda retrieve (text) | 25/33 | 21 | 20 | 19 | 3/8 | 1431 | 1489 | 2.18 | 1.66 | 1.75 | 24.6 | 1 | 0.153 | - | 0/0 | 0/190 |
+
+facts found per question (found/total):
+| question | category | raw grep+read | Graphify query (vendored, depth 3) | Verinoda analyze | Verinoda retrieve (JSON) | Verinoda retrieve (text) |
+|---|---|---|---|---|---|---|
+| h01 Where is an experiment's process tree killed when it times out? | where | 0/4 (5983 tok) | 0/4 (1656 tok) | 4/4 (1794 tok) | 4/4 (1441 tok) | 4/4 (1486 tok) |
+| h02 Which environment variables are passed to experiment commands, and where is that decided? | config | 4/4 (5992 tok) | 0/4 (1684 tok) | 2/4 (1862 tok) | 2/4 (1424 tok) | 2/4 (1489 tok) |
+| h03 What does repoatlas scan call to build the index and invalidate stale claims? | flow | 1/5 (5998 tok) | 1/5 (1646 tok) | 5/5 (2446 tok) | 4/5 (1430 tok) | 4/5 (1476 tok) |
+| h04 What is affected if evidence.content_hash changes? | impact | 0/5 (5998 tok) | 4/5 (1645 tok) | 5/5 (2180 tok) | 5/5 (1441 tok) | 5/5 (1452 tok) |
+| h05 How is a claim marked stale when its cited files change? | behaviour | 0/4 (5991 tok) | 2/4 (1646 tok) | 2/4 (1997 tok) | 2/4 (1429 tok) | 2/4 (1356 tok) |
+| h06 Why can a claim not be deleted from the store? | why | 0/2 (5994 tok) | 0/2 (1658 tok) | 2/2 (1795 tok) | 2/2 (1445 tok) | 2/2 (1376 tok) |
+| h07 Where does RepoAtlas decide whether an experiment command needs a container? | where | 0/4 (5986 tok) | 1/4 (1661 tok) | 3/4 (1932 tok) | 2/4 (1449 tok) | 3/4 (1357 tok) |
+| h08 Which tests cover stale claim invalidation? | tests | 4/5 (5997 tok) | 0/5 (1640 tok) | 3/5 (1643 tok) | 2/5 (1447 tok) | 3/5 (1459 tok) |
+
+Verinoda claims: 60 (contradicted=5, statically_verified=43, strong_inference=8, weak_inference=4); verified share 0.72; weak/unknown 4 (unlabelled 4); negative facts stated as findings 0 (in 0 claim(s)); unknowns reported 1; relation claims labelled contradicted 0, of which the cited line does name the target 0 (via import alias 0)
+claim reuse: warm 0/0, cold 6/60 (claims whose id already existed in atlas.db before the run (same text + snapshot))
+
+not measured:
+  - model-in-the-loop answer accuracy, model tokens and model cost - not measured: llm='none' (use --llm anthropic with ANTHROPIC_API_KEY set)
+  - real upstream Graphify CLI baseline - not run: --graphify-cmd not given
+  - runtime correctness of answers (only presence of gold facts in the delivered context is scored)
+  - OS file-cache effects are not separated from process warm-up in cold vs warm timings
+  - memory use

@@ -28,7 +28,6 @@ import json
 import os
 import re
 import shlex
-import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -255,11 +254,9 @@ def _scope(rel: str) -> str:
 
 
 def _main_worktree(repo: Path) -> Path | None:
-    try:
-        r = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=repo,
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10)
-    except (OSError, subprocess.SubprocessError):
-        return None
+    from verinoda import gitexec
+
+    r = gitexec.run(repo, "rev-parse", "--path-format=absolute", "--git-common-dir", timeout=10)
     out = r.stdout.strip()
     return Path(out).parent if r.returncode == 0 and out and Path(out).name == ".git" else None
 
@@ -425,11 +422,11 @@ class Tree:
         """The repository-relative paths git ignores (made by a build, or kept locally)."""
         if not rels:
             return set()
-        try:   # NUL-separated bytes: text mode on Windows would send "\r\n", and git would read the "\r" as a name
-            r = subprocess.run(["git", "check-ignore", "--no-index", "-z", "--stdin"], cwd=self.repo,
-                               input="\0".join(rels).encode("utf-8") + b"\0", capture_output=True, timeout=30)
-        except (OSError, subprocess.SubprocessError):
-            return set()
+        from verinoda import gitexec
+
+        # NUL-separated bytes: text mode on Windows would send "\r\n", and git would read the "\r" as a name
+        r = gitexec.run(self.repo, "check-ignore", "--no-index", "-z", "--stdin",
+                        input="\0".join(rels).encode("utf-8") + b"\0", binary=True, timeout=30)
         return {s for s in r.stdout.decode("utf-8", errors="replace").split("\0") if s}
 
     # manifests

@@ -72,7 +72,14 @@ from verinoda.paths import configure_index_env
 
 configure_index_env()  # before anything imports verinoda.project_index
 
-from verinoda.paths import ATLAS_DIRNAME, atlas_dir, graph_path, receiver_calls_path  # noqa: E402
+from verinoda.paths import (  # noqa: E402
+    ATLAS_DIRNAME,
+    atlas_dir,
+    contained_path,
+    evidence_root_allowed,
+    graph_path,
+    receiver_calls_path,
+)
 
 TOOL_NAMES: tuple[str, ...] = (
     "project_query",
@@ -144,11 +151,11 @@ DECISION_ACTIONS = ("list", "record", "import", "guard", "accept", "waive", "sup
 DECISION_NEEDS_USER = ("record", "guard", "accept", "waive", "supersede", "link", "answer")
 DEBUG_KINDS = ("fix", "probe", "rerun", "differential")
 DEBUG_STRATEGIES = ("differential", "bisect", "rerun", "observe")
-# analyze: what the agent reads first and what is cut last (the interpretation and the per-sub-question verdicts)
-ANALYZE_KEEP = ("analysis_id", "snapshot", "understood_as", "subquestions")
-# over the cap, bookkeeping goes before evidence: the critique log and the plan's links first, then the
-# passages (from the end: the top-ranked stay; `project_query` gives them in full), claims last
-ANALYZE_FIRST_CUT = ("critique", "plan_check.links", "passages")
+# analyze: the response is built under its own budget (analysis_view.lead_view, D186): the verdict, the answer
+# claims whole, the leads; the generic cap stays a backstop, and under a smaller cap these are kept whole
+ANALYZE_BUDGET = 2500        # chars of compact JSON (about 1,000 tokens)
+ANALYZE_LEAD_BUDGET = 4500   # with show="lead": the first lead's source lines on top
+ANALYZE_KEEP = ("status", "understood_as", "errors", "clarifications")
 PLAN_HINT = ("draft and check a plan with `verinoda plan draft` / `verinoda plan check` (MCP, profile full: "
              "question_plan_draft / question_plan_check); the format: `verinoda plan schema`")
 # A file modified this close to (or after) the start of a call may have changed while it was read, or
@@ -381,6 +388,23 @@ def compact_check_result(res: dict) -> dict:
     return out
 
 
+def _review_coverage_line(cov: Any) -> str:
+    """change_review's coverage as one line under 200 characters (D186): the first clause of its method, what was
+    not checked (each item cut at its reason) and how many limits there are; ``verinoda review --json`` has the
+    method whole, every limit and every reason."""
+    if not isinstance(cov, dict):
+        return _clip(str(cov or ""), 199)
+    head = str(cov.get("method") or "").split(";")[0].strip()
+    limits = cov.get("limits") if isinstance(cov.get("limits"), list) else []
+    tail = f"{len(limits)} limits in `verinoda review --json`" if limits else ""
+    unchecked = cov.get("not_checked") if isinstance(cov.get("not_checked"), list) else []
+    names = ", ".join(dict.fromkeys(n for n in (str(x).split(" (", 1)[0].strip() for x in unchecked) if n))
+    # what is left of the 199 characters goes to the names: they are what the model must not read as checked
+    room = 199 - len(head) - len(tail) - 2 * len("; ") - len("not checked: ")
+    parts = [head, f"not checked: {_clip(names, max(room, 24))}" if names else "", tail]
+    return _clip("; ".join(p for p in parts if p), 199)
+
+
 def cap_response(obj: dict, limit: int = MAX_RESPONSE_CHARS, *, first: tuple[str, ...] = (),
                  keep_tail: tuple[str, ...] = ("history",), keep: tuple[str, ...] = ()) -> dict:
     """Cut ``obj`` until its compact JSON (truncation note included) fits ``limit`` chars.
@@ -390,10 +414,14 @@ def cap_response(obj: dict, limit: int = MAX_RESPONSE_CHARS, *, first: tuple[str
     Then the largest list (or name->data map) anywhere in the tree is cut, or
     the longest string when it dominates. Cuts are proportional to the excess,
     so the result stays close to the limit. Lists under a key in ``keep_tail``
-    keep their last items (newest history) instead of the first. Top-level
-    keys in ``keep`` are placed first in the response and are cut only when
-    nothing else is left to cut. Nothing is re-ordered inside a value or
-    invented; ``truncation.cut`` says what was cut (kept/total). Top-level
+    keep their last items (newest history) instead of the first. A list of
+    commits (git's order, newest first) keeps both ends, the newest and the
+    oldest, drops the middle and names each dropped commit (``sha date``) in
+    the note: the first appearance of a text is evidence as much as its last
+    change, and a cut that silently drops it reads as "no such change" (D185).
+    Top-level keys in ``keep`` are placed first in the response and are cut
+    only when nothing else is left to cut. Nothing is re-ordered inside a value
+    or invented; ``truncation.cut`` says what was cut (kept/total). Top-level
     ``coverage`` (method and limits of a heuristic view) is never cut.
     """
     obj = _jsonable(obj)
@@ -415,22 +443,37 @@ def cap_response(obj: dict, limit: int = MAX_RESPONSE_CHARS, *, first: tuple[str
         # size of obj + ',"truncated":true,"truncation":<note>' minus the limit
         return _size(obj) + 32 + _size(note()) - limit
 
-    def record(path: tuple, total: int, kept: int) -> None:
+    commit_tags: dict[str, list[str]] = {}  # a commit list's tags in git's order, read before its first cut
+
+    def record(path: tuple, total: int, kept: int, dropped: list[str] | None = None) -> None:
         k = _path_str(path)
         prev = notes.get(k)
         notes[k] = {"kept": kept, "total": prev["total"] if prev else total}
+        if dropped is not None:
+            if len(dropped) > 25:
+                dropped = dropped[:25] + [f"+{len(dropped) - 25} more"]
+            notes[k]["dropped"] = dropped
 
     def cut_seq(path: tuple, node: list | dict, size: int, over: int) -> None:
         n = len(node)
         keep_n = int(n * (size - over) / size) if size > over else 1
         keep_n = max(1, min(n - 1, keep_n))
-        record(path, n, keep_n)
         if isinstance(node, dict):
+            record(path, n, keep_n)
             for k in list(node)[keep_n:]:
                 del node[k]
+        elif _commit_list(node):
+            keep_n = max(2, keep_n)
+            head = (keep_n + 1) // 2
+            tags = commit_tags.setdefault(_path_str(path), [_commit_tag(d) for d in node])
+            del node[head: n - (keep_n - head)]
+            left = {_commit_tag(d) for d in node}
+            record(path, n, keep_n, [t for t in tags if t not in left])
         elif bool(path) and path[-1] in keep_tail:
+            record(path, n, keep_n)
             del node[: n - keep_n]
         else:
+            record(path, n, keep_n)
             del node[keep_n:]
 
     for key in first:
@@ -464,6 +507,45 @@ def cap_response(obj: dict, limit: int = MAX_RESPONSE_CHARS, *, first: tuple[str
     if unmet:  # only protected/indivisible content is left; say so instead of cutting it
         obj["truncation"]["over_limit"] = True
     return obj
+
+
+# a history row, `sha date author subject` (verinoda.history, D186)
+_ROW_RX = re.compile(r"^([0-9a-f]{7,40}) (\d{4}-\d{2}-\d{2}) ")
+
+
+def _commit_sha(item: Any) -> str | None:
+    """The commit an item of a history list stands for: a commit row (``commit``), a row string (``sha date
+    ...``) or a history claim whose first evidence names ``commit_sha``; None for anything else."""
+    if isinstance(item, str):
+        m = _ROW_RX.match(item)
+        return m.group(1) if m else None
+    if not isinstance(item, dict):
+        return None
+    sha = item.get("commit")
+    if isinstance(sha, str) and sha:
+        return sha
+    ev = item.get("evidence")
+    if item.get("kind") == "history" and isinstance(ev, list) and ev and isinstance(ev[0], dict):
+        sha = ev[0].get("commit_sha")
+        return sha if isinstance(sha, str) and sha else None
+    return None
+
+
+def _commit_list(node: list) -> bool:
+    return len(node) >= 2 and all(_commit_sha(x) for x in node)
+
+
+def _commit_tag(item: dict | str) -> str:
+    if isinstance(item, str):
+        m = _ROW_RX.match(item)
+        return f"{m.group(1)[:7]} {m.group(2)}" if m else item[:7]
+    date = item.get("date")
+    if not isinstance(date, str):
+        ev = item.get("evidence")
+        meta = ev[0].get("meta") if isinstance(ev, list) and ev and isinstance(ev[0], dict) else None
+        date = (meta or {}).get("date") if isinstance(meta, dict) else None
+    sha = (_commit_sha(item) or "")[:7]
+    return f"{sha} {date[:10]}" if isinstance(date, str) and date else sha
 
 
 # -- graph helpers ----------------------------------------------------------------
@@ -601,18 +683,25 @@ class AtlasTools:
             )
 
     def _run(self, tool: str, fn: Callable[[], dict], *, need: str = "atlas",
-             first: tuple[str, ...] = (), keep: tuple[str, ...] = ()) -> dict:
-        with self._lock:
-            self._call_started_ns = time.time_ns()
-            try:
+             first: tuple[str, ...] = (), keep: tuple[str, ...] = (), lock: bool = True) -> dict:
+        # lock=False (D186): a read that touches only git and the loaded graph (history_search) is not held up by a
+        # build of this or another project in the process. The stdout redirection goes with the lock: it is
+        # process-wide too (two threads swapping sys.stdout can leave it on either stream), and such a read calls
+        # nothing that prints. Its start time is not noted either: the racy-file check of the locked call it may
+        # overlap with keeps the earlier, stricter start.
+        with contextlib.ExitStack() as stack:
+            if lock:
+                stack.enter_context(self._lock)
                 # Stray prints from core/vendored code must never reach the
                 # JSON-RPC channel on stdout.
-                with contextlib.redirect_stdout(sys.stderr):
-                    self._check(need)
-                    res = fn()
-                    if not isinstance(res, dict):
-                        res = {"result": res}
-                    return cap_response(res, self.max_chars, first=first, keep=keep)
+                stack.enter_context(contextlib.redirect_stdout(sys.stderr))
+                self._call_started_ns = time.time_ns()
+            try:
+                self._check(need)
+                res = fn()
+                if not isinstance(res, dict):
+                    res = {"result": res}
+                return cap_response(res, self.max_chars, first=first, keep=keep)
             except ToolFailure as f:
                 return cap_response({**f.as_dict(), "tool": tool}, self.max_chars)
             except KeyError as exc:
@@ -636,7 +725,8 @@ class AtlasTools:
                 return {"error": _error_code(exc), "message": f"{type(exc).__name__}: {exc}"[:600],
                         "tool": tool, "hint": _error_hint(exc, self.repo)}
             finally:
-                self._note_spans()
+                if lock:   # an unlocked call derives no span outside the lock: what it derived, it noted under it
+                    self._note_spans()
 
     @contextlib.contextmanager
     def _store(self):
@@ -1185,10 +1275,20 @@ class AtlasTools:
                 raise ValueError("symbol is empty: pass a name or path:A-B")
             if _opt_text(symbol):
                 t = _opt_text(symbol)
-                g = stale = None
-                if not history._SPAN.match(t):
-                    g, stale = self._graph(), self._freshness().get("files") or ()
-                return history.symbol_history(self.repo, g, t, stale=stale or (), limit=_clamp(limit, 1, 100, "limit"))
+                if history._SPAN.match(t):
+                    target = history.symbol_target(self.repo, None, t)
+                else:
+                    # the graph and the spans it derives are shared with the locked tools: a name is resolved under
+                    # the lock (a parallel call inserting a span while this one iterated them raised "dictionary
+                    # changed size during iteration" in 0.2-0.3% of calls under churn, the final review); only the
+                    # git read runs outside it
+                    with self._lock:
+                        g, stale = self._graph(), self._freshness().get("files") or ()
+                        target = history.symbol_target(self.repo, g, t, stale=stale or ())
+                        self._note_spans()
+                if "status" in target:
+                    return target
+                return history.symbol_history_of(self.repo, target, limit=_clamp(limit, 1, 100, "limit"))
             if _opt_text(base):
                 return history.compare(self.repo, base, _opt_text(head) or "HEAD", path=_opt_text(path))
             if _opt_text(text):
@@ -1201,7 +1301,10 @@ class AtlasTools:
                 res.setdefault("next_step", "fewer filters, no path, or a shorter text; regex=true matches "
                                             "changed lines")
             return res
-        return self._run("history_search", go, keep=("status", "claims", "unknowns", "appeared", "disappeared"))
+        # first_appearance (path-free) is placed before appeared (under the path): read top-down, the path-bound
+        # commit was taken for the first appearance (D186, the guzzle class)
+        return self._run("history_search", go, keep=("status", "scope", "more", "first_appearance", "appeared",
+                                                     "disappeared", "claims"), lock=False)
 
     def map_view(self, view: str, targets: list[str] | None = None) -> dict:
         def go():
@@ -1334,14 +1437,15 @@ class AtlasTools:
                     raise ToolFailure("invalid_argument", str(exc)[:600], "base is a git revision such as HEAD~1; "
                                       "targets are 'path/file.py' or 'path/file.py::Qual.name'") from None
             res.pop("files", None)
+            # D186: what ran and who to ask are `review --json`'s; with coverage they were 56% of an MCP response
+            for bookkeeping in ("concerns_checked", "reviewers"):
+                res.pop(bookkeeping, None)
+            if isinstance(res.get("coverage"), dict):
+                res["coverage"] = _review_coverage_line(res["coverage"])
             ms = res.get("made_stale")
             if isinstance(ms, dict) and not any(ms.get(k) for k in ("claims", "notes", "decisions")):
                 # nothing made stale: the counts say what was compared; the limits stay in `review --json`
                 res["made_stale"] = {k: ms[k] for k in ("counts", "checked") if k in ms}
-            if isinstance(res.get("reviewers"), dict):
-                from verinoda import reviewers
-
-                res["reviewers"] = reviewers.compact(res["reviewers"])
             if isinstance(res.get("affected"), dict):
                 from verinoda import affected as aff
 
@@ -1357,8 +1461,8 @@ class AtlasTools:
                 res["affected_tests"] = testmap.compact(aff)
             return res
         return self._run("change_review", go, need="graph",
-                         # the findings come before the lists that lead to them: what to read first, the tests,
-                         # what ran (concerns_checked) and what went stale are cut before any concern is
+                         # the findings come before the lists that lead to them: what to read first, the tests
+                         # and what went stale are cut before any concern is
                          keep=("summary", "exit", "counts", "affected_tests", "risk", "concerns", "unknown", "changes", "api_changes",
                                "decisions", "differential", "since_last"),
                          first=("dependents", "binding_readers", "skipped", "read_first"))
@@ -1427,7 +1531,7 @@ class AtlasTools:
     # -- analysis & claims ----------------------------------------------------------
     def analyze(self, question: str = "", run_tests: bool = False, budget_seconds: float = 60,
                 budget_calls: int = 40, plan_json: str | None = None, observe: bool = False,
-                intent: str | None = None) -> dict:
+                intent: str | None = None, show: str | None = None) -> dict:
         def go():
             from verinoda import analysis
             from verinoda.question_plan import INTENTS
@@ -1437,6 +1541,10 @@ class AtlasTools:
             if not q and plan is None:
                 raise ToolFailure("invalid_argument", "question must be a non-empty string (or pass plan_json)",
                                   "pass the user's question, or a checked plan as plan_json")
+            want_show = _opt_text(show)
+            if want_show not in (None, "lead"):
+                raise ToolFailure("invalid_argument", f"unknown show {want_show!r}",
+                                  "leave it out, or pass show='lead' for the first lead's source lines", valid=["lead"])
             want = _opt_text(intent)
             if intent is not None and want is None:  # a blank intent is a mistake, not "no intent"
                 raise ToolFailure("invalid_argument", "intent must not be blank",
@@ -1464,13 +1572,22 @@ class AtlasTools:
                 raise ToolFailure("invalid_plan", f"the plan failed validation ({len(problems)} problem(s)); "
                                                   "nothing was analysed", PLAN_HINT, problems=problems,
                                   analysis_id=res.get("analysis_id"), plan_id=res.get("plan_id"))
-            from verinoda.analysis_view import lean_capped
+            from verinoda.analysis_view import lead_view
 
-            # the answer, not the run (verinoda.analysis_view); plan_audit / claim_inspect for more. Capped
-            # here: a claim left out as printed by the passages comes back when the cut removes its lines.
-            return lean_capped(res, lambda d: cap_response(d, self.max_chars, first=ANALYZE_FIRST_CUT,
-                                                           keep=ANALYZE_KEEP))
-        return self._run("analyze", go, need="graph", first=ANALYZE_FIRST_CUT, keep=ANALYZE_KEEP)
+            # leads, not an investigation (D186): the verdict, the answer claims whole, what to read next, cut to
+            # its budget by the builder itself; plan_audit, claim_inspect and project_query give the rest
+            return lead_view(res, budget=ANALYZE_BUDGET, show=want_show, read=self._lead_lines,
+                             lead_budget=ANALYZE_LEAD_BUDGET)
+        return self._run("analyze", go, need="graph", keep=ANALYZE_KEEP)
+
+    def _lead_lines(self, rel: str, start: int, end: int) -> str | None:
+        """Source lines for analyze's ``show="lead"``: a path the result cites, read under the repository only
+        (:func:`verinoda.paths.contained_path`: a drive-relative ``C:foo.py`` or a link out of the tree is refused)."""
+        from verinoda.evidence import read_lines
+        from verinoda.paths import contained_path
+
+        p = contained_path(self.repo, rel)
+        return read_lines(p, start, end) if p is not None else None
 
     def plan_audit(self, analysis_id: str, refresh: bool = True) -> dict:
         def go():
@@ -1529,7 +1646,10 @@ class AtlasTools:
             if not out["verifying"]:
                 out["note"] = f"{stype} evidence is recorded for traceability and never verifies a claim by itself"
             if ev.get("path") and ev.get("line_start"):
-                root = Path((ev.get("meta") or {}).get("root") or self.repo)
+                meta_root = (ev.get("meta") or {}).get("root")
+                root = Path(meta_root or self.repo)
+                allowed = not meta_root or evidence_root_allowed(self.repo, root)
+                p = contained_path(root, str(ev["path"])) if allowed else None
                 a = int(ev["line_start"])
                 b = int(ev.get("line_end") or a)
                 shown_end = min(b, a + EXCERPT_MAX_LINES - 1)
@@ -1541,9 +1661,13 @@ class AtlasTools:
                     recheck = {"performed": False,
                                "reason": "no content hash was recorded for this evidence (e.g. a graph edge), "
                                          "so there is nothing to compare; the current lines are shown for reference"}
-                recheck.update({"root": str(root), "file_exists": (root / ev["path"]).is_file(),
-                                "current_lines": [a, shown_end],
-                                "current_text": evmod.read_lines(root / ev["path"], a, shown_end)})
+                if p is None:  # none of the roots evidence may cite, or a path out of it (D186): nothing is read or named
+                    recheck.update({"rejected": "the evidence root or path is outside the repository and its "
+                                                "reference checkouts; nothing was read",
+                                    "current_lines": None, "current_text": None})
+                else:
+                    recheck.update({"root": str(root), "file_exists": p.is_file(), "current_lines": [a, shown_end],
+                                    "current_text": evmod.read_lines(p, a, shown_end)})
             else:
                 recheck = {"performed": False,
                            "reason": f"not file/line evidence (source_type={stype}); "
@@ -1848,13 +1972,18 @@ class AtlasTools:
                         dm.refuse_script_guards(_str_list(guards, "guards"))
                     if act == "record":
                         g = self._graph() if governs and graph_path(self.repo).exists() else None
-                        return dm.record(st, self.repo, chosen=_text(chosen, "chosen"),
-                                         rationale=_text(rationale, "rationale"), title=_opt_text(title),
-                                         brief_id=_opt_text(brief_id), guards=_str_list(guards, "guards"),
-                                         governs=_str_list(governs, "governs"),
-                                         revisit_when=_str_list(revisit_when, "revisit_when"),
-                                         supersedes=_opt_text(supersedes), user_statement=said, graph=g,
-                                         allow_scripts=False)
+                        # an agent asserts the user's words: the record is not enforced until the human
+                        # confirms it in a terminal (D186)
+                        out = dm.record(st, self.repo, chosen=_text(chosen, "chosen"),
+                                        rationale=_text(rationale, "rationale"), title=_opt_text(title),
+                                        brief_id=_opt_text(brief_id), guards=_str_list(guards, "guards"),
+                                        governs=_str_list(governs, "governs"),
+                                        revisit_when=_str_list(revisit_when, "revisit_when"),
+                                        supersedes=_opt_text(supersedes), user_statement=said, graph=g,
+                                        allow_scripts=False, confirmed=False)
+                        out["next_step"] = (f"the record is agent_asserted and not enforced until the human "
+                                            f"confirms it in a terminal: `verinoda decide accept {out['id']}`")
+                        return out
                     if act == "import":
                         g = self._graph() if graph_path(self.repo).exists() else None
                         return dm.import_doc(st, self.repo, _text(document, "document"), graph=g, user_statement=said)
@@ -2216,31 +2345,41 @@ DEFAULT_PROFILE = "core"
 # names them with their arguments; every listed tool is standing context in every request.
 CORE_DIRECT: tuple[str, ...] = ("project_query", "analyze", "code_check", "index_update")
 GATEWAY = "run_tool"
-# what the gateway's description says of each tool behind it: its arguments and what it returns
+# What the gateway's description says of each tool behind it: its arguments and one clause (D186: no value lists; a
+# wrong value comes back as an error that lists the valid ones). The menu is standing context in every request.
 GATEWAY_CATALOG: dict[str, str] = {
-    "node_inspect": "node_inspect {name}: a symbol's definition and edges with file:line",
-    "relation_trace": "relation_trace {source, target, mode?: flow|any}: call paths between symbols",
-    "map_view": "map_view {view: hierarchy|dependencies|dataflow|config|tests|history|impact|cycles|outline|dead|hotspots|sides|repo|"
-                "dsm|model|saved, targets?}",
-    "claim_list": "claim_list {status?}, claim_inspect {claim_id}, evidence_inspect {evidence_id}: claims, "
-                  "evidence re-checked",
-    "change_review": "change_review {targets?, change?: body|signature|remove} before editing, {since_last?} after: "
-                     "what it touches",
+    "node_inspect": "node_inspect {name}: a symbol's definition and edges",
+    "relation_trace": "relation_trace {source, target}: call paths between symbols",
+    "map_view": "map_view {view, targets?}: architecture views (impact, hierarchy, ...)",
+    "claim_list": "claim_list {status?}, claim_inspect {claim_id}, evidence_inspect {evidence_id}: claims, evidence",
+    "change_review": "change_review {targets?, change?, since_last?}: what an edit touches",
     "decision_check": "decision_check {changed_only?}: tree vs accepted decisions",
     "dependency_ask": "dependency_ask {source, target}: may source import it",
-    "history_search": "history_search {text|symbol|message|base, ...}: when text came/went, commits, compare",
-    "tq": "tq {questions}: typed questions (calls, reaches, callers, which...), many per call",
-    "locate": "locate {text, anchors?}: files an issue touches and what changes with them; "
-              "coupled {files}: what changes with files",
+    "history_search": "history_search {text|symbol|message|base}: when text came or went, commits",
+    "tq": "tq {questions}: typed questions, many per call",
+    "locate": "locate {text}, coupled {files}: files an issue touches, files that change together",
     # behind run_tool only in a server over several projects (the single-project core menu has no room for them)
     "list_projects": "list_projects {}: the projects served",
     "index_status": "index_status {}: a project's index state and stale files",
 }
 
+# The one status rule (D186): what counts as a fact, that Verinoda's output is a lead to confirm with one check of the
+# agent's own, that a cut list proves no absence, and which call comes first on a history question. Measured basis: 7
+# of the 12 false facts on the answerable D185 tasks asserted an absence; the earlier last sentence, "a question one
+# grep or one file read answers needs no Verinoda call", was the way out the model took in 39 of 39 headless sessions
+# of the D186 re-run (no Verinoda call at all). It sits in the instructions' tail and is copied into the two skills
+# (tests/test_agents.py compares the copy). No braces: the instructions go through str.format.
+STATUS_RULE = ("State as fact only what carries statically_verified, primary_source_verified, observed or "
+               "experiment_verified; strong_inference and below are not facts. Verinoda output is a lead: before "
+               "stating 'no such change', 'first added in' or why something changed, confirm with one git or grep "
+               "check of your own. truncated: true or more: true proves no absence: narrow the call or check with "
+               "git/grep yourself. On a why, when, which-commit or what-does-it-affect question, call analyze first: "
+               "Grep, Read and git come after it.")
+
 _INSTRUCTIONS_HEAD = """Verinoda: evidence-first answers about the repository {repo}.
 Questions: project_query (where is X; hits are leads) or analyze (claims with evidence: start the answer with its
-understood_as, one block per sub-question; never state weak_inference or unknown as fact). One symbol: node_inspect;
-call paths: relation_trace; architecture: map_view; earlier claims: claim_list, claim_inspect, evidence_inspect.
+understood_as, one block per sub-question). One symbol: node_inspect; call paths: relation_trace;
+architecture: map_view; earlier claims: claim_list, claim_inspect, evidence_inspect.
 Cite the narrowest lines that support a claim (source lines are numbered), not the whole span of a header.
 Editing: change_review before and after (report every concern); index_update after editing; code_check only on
 code you wrote or edited, not to read code."""
@@ -2282,8 +2421,8 @@ reference_id) inspects one at its pin; reference_compare compares a mechanism.
 
 _INSTRUCTIONS_CORE_HEAD = """Verinoda: evidence-first answers about the repository {repo}.
 Questions: project_query (where is X; hits are leads) or analyze (claims with evidence: start the answer with its
-understood_as, one block per sub-question; never state weak_inference or unknown as fact). Cite the narrowest lines
-that support a claim (source lines are numbered), not the whole span of a header. index_update after editing;
+understood_as, one block per sub-question). Cite the narrowest lines that support a claim (source lines are
+numbered), not the whole span of a header. index_update after editing;
 code_check only on code you wrote or edited, not to read code. run_tool reaches node_inspect, relation_trace,
 map_view, claim_list, claim_inspect, evidence_inspect, change_review (before and after editing: report every
 concern) and history_search (when a text appeared or disappeared: the commit is the evidence)."""
@@ -2297,8 +2436,7 @@ runtime tracing): `verinoda mcp serve --profile full`, or the `verinoda` CLI."""
 
 _INSTRUCTIONS_TAIL = """
 Rules: graph edges are extractions, never verification. Missing evidence -> 'unknown' plus a next step, never a
-guess. "truncated": true means lists were cut. Errors: {{"error", "message", "hint"}}; not_initialised/no_index:
-call index_update."""
+guess. """ + STATUS_RULE + """ Errors: {{"error", "message", "hint"}}; not_initialised/no_index: call index_update."""
 
 
 def instructions(profile: str = DEFAULT_PROFILE, *, decisions: bool = True) -> str:
@@ -2358,7 +2496,7 @@ def gateway_description(behind: list[str]) -> str:
         if key in GATEWAY_CATALOG and key not in said:
             said.add(key)
             parts.append(GATEWAY_CATALOG[key])
-    return ("Run one more Verinoda tool (name, arguments). " + "; ".join(parts) + ".")
+    return ("Run one more Verinoda tool: " + "; ".join(parts) + ".")
 
 
 INSTRUCTIONS = instructions("full")
@@ -2373,9 +2511,8 @@ DESCRIPTIONS: dict[str, str] = {
         "of each file (its own commits), relative imports and includes, .c/.h partners, same-name twins. "
         "Leads, not verified claims; the result says what history could not be read."),
     "project_query": (
-        "Where is X / what handles Y: ranked code locations as plain text (path:lines headers, call outlines, "
-        "numbered source lines; up to 6000 chars, truncation stated). format='json' for programs. Hits are "
-        "leads, not verified claims."),
+        "Where is X / what handles Y: ranked code locations as text with numbered source lines. Hits are leads, "
+        "not claims."),
     "node_inspect": (
         "One symbol or file (id, label, 'path/file.py::symbol', 'Class.method', path): location, source (at "
         "most 30 lines) and edges in and out with file:line. A 'scored' resolution is a guess: check "
@@ -2396,11 +2533,13 @@ DESCRIPTIONS: dict[str, str] = {
         "evaluated; a path that ends at a method nothing calls is an entry point or dead code."),
     "history_search": (
         "Git history. With text: the commit that first added it and, when HEAD has none, the one that last "
-        "removed it, each a claim with the commit as evidence and file:line (regex=true: a pattern over changed "
-        "lines). Without text: commits by message, author, path, since/until dates and diff content (a regex), "
-        "newest first. With base: what head (default HEAD) has that base has not - commits and changed files. "
-        "With symbol (a name or path:A-B): the commits that changed its lines, each message quoted. "
-        "Regexes are git's (POSIX extended). A parameter of another mode is an error."),
+        "removed it, claims with the commit as evidence and file:line (regex=true: a pattern over changed lines); "
+        "a text born in another file is said so. Without text: commits by message, author, path, since/until "
+        "dates and diff content (a regex), newest first. With base: what head (default HEAD) has that base has "
+        "not. With symbol (a name or path:A-B): one row per commit that changed its lines, newest first, the "
+        "message bodies of both ends and of any stating a reason quoted. scope says what was searched; more: "
+        "raise limit; a time-out answers status partial. Regexes are git's (POSIX extended). A parameter of "
+        "another mode is an error."),
     "map_view": (
         "One architecture view: hierarchy, dependencies, dataflow, config, tests, history, impact "
         "(dependents of targets; default the working-tree changes), cycles (file dependency cycles and the "
@@ -2426,10 +2565,9 @@ DESCRIPTIONS: dict[str, str] = {
         "nowhere is not_found with did_you_mean, never replaced). Stored (plan_id). status: ready | "
         "needs_clarification (ask the user, record answers[] with clarification_id) | invalid (an error)."),
     "analyze": (
-        "Answer a question as claims with evidence: one verdict per sub-question, claims with file:line, "
-        "unknowns with next steps, and the passages. needs_clarification is a normal result (ask the user). "
-        "run_tests / observe also run or trace the tests that reach the answer (isolated copy). Re-indexes "
-        "first if the tree changed."),
+        "Start here for a why, when, which-commit or what-does-it-affect question: a verdict, answer claims and leads "
+        "with file:line and commit hashes. Leads are what to read next, not claims; confirm one with your own git or "
+        "grep. needs_clarification is normal: ask the user."),
     "plan_audit": (
         "Re-judge an earlier analysis' sub-questions on the current claim statuses (refresh=true re-indexes "
         "first, so claims whose files changed are stale); 'changed' lists the verdicts that moved."),
@@ -2457,10 +2595,9 @@ DESCRIPTIONS: dict[str, str] = {
         "other languages): definitive | dynamic | ambiguous | external | unresolved. With target_path/target_line "
         "a verdict: confirms | refutes | undetermined (definitive answers only). Read-only."),
     "code_check": (
-        "Python, Java, Kotlin, TS/JS imports; other languages: not_checked (exit 4). For code you wrote or "
-        "edited: do the modules, names, methods, arguments and keys it uses exist in the project and its "
-        "environment? Input: paths, diff (a revision; nothing: changes against HEAD), or snippet + as_path. "
-        "Each site: exists | absent (nearest names) | unknown | not_installed | guarded; exit 3 = absent."),
+        "Python, Java, Kotlin, TS/JS imports; other languages: not_checked. For code you wrote or edited: do the "
+        "modules, names, methods and arguments it uses exist? No arguments: the changes against HEAD. Each site: "
+        "exists | absent (nearest names) | unknown | not_installed | guarded."),
     "api_members": (
         "The real members of a Python module, class or function (dotted target) in the project's environment, "
         "or of a Java class on the build's classpath (access included): name, kind, signature, file:line, "
@@ -2502,8 +2639,8 @@ DESCRIPTIONS: dict[str, str] = {
         "the user's notes on it or on a glob matching it, Cursor/Kiro rules for it - as a PostToolUse hook "
         "output; {} when nothing does."),
     "index_update": (
-        "Re-index after editing files (on a folder never scanned: the first scan); claims whose files changed "
-        "become stale. mode: noop | incremental | full | first_scan."),
+        "Re-index after editing files (a never-scanned folder: the first scan); claims on changed files become "
+        "stale."),
     "list_projects": (
         "The projects this server answers for: name (what the project argument takes), path, index state, "
         "trusted, and whether the graph is kept in memory."),
@@ -2889,7 +3026,8 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
         message: Annotated[OptStr, Field(description="Without text: a regex the commit message matches.")] = None,
         author: Annotated[OptStr, Field(description="Without text: a regex the author's name or e-mail matches.")]
         = None,
-        path: Annotated[OptStr, Field(description="Only the history of this file or folder.")] = None,
+        path: Annotated[OptStr, Field(description="A literal file or folder prefix, not a glob; one file path "
+                                                  "follows renames.")] = None,
         since: Annotated[OptStr, Field(description="Commits after this date ('2026-01-31', '2 weeks ago').")] = None,
         until: Annotated[OptStr, Field(description="Commits before this date.")] = None,
         diff: Annotated[OptStr, Field(description="Commits whose added or removed lines match this regex.")] = None,
@@ -2972,9 +3110,13 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
                                             "Used only when the rules' reading agrees, else intent_check gives "
                                             "both and the rules' is used. Never changes a claim's status.")]
         = None,
+        show: Annotated[Literal["lead"] | None,
+                        Field(description="'lead': also the first lead's numbered source lines (at most 60).")]
+        = None,
     ) -> dict[str, Any]:
         return emit(t.analyze(question, run_tests=run_tests, budget_seconds=budget_seconds,
-                              budget_calls=budget_calls, plan_json=plan_json, observe=observe, intent=intent))
+                              budget_calls=budget_calls, plan_json=plan_json, observe=observe, intent=intent,
+                              show=show))
 
     @register("plan_audit")
     def plan_audit(
@@ -3371,8 +3513,11 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
         def analyze_core(
             question: Annotated[str, Field(description="The question.")],
             budget_seconds: Annotated[float, Field(description="Wall-time budget in seconds (1-600).")] = 60,
+            show: Annotated[Literal["lead"] | None,
+                            Field(description="'lead': also the first lead's numbered source lines (at most 60).")]
+            = None,
         ) -> dict[str, Any]:
-            return emit(t.analyze(question, budget_seconds=budget_seconds))
+            return emit(t.analyze(question, budget_seconds=budget_seconds, show=show))
 
         def code_check_core(
             paths: Annotated[list[str] | None, Field(description="Repository-relative files or directories.")]

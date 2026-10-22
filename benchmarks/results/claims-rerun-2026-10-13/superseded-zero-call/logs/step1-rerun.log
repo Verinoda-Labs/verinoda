@@ -1,0 +1,27 @@
+clone axios/axios
+clone fastapi/full-stack-fastapi-template
+clone gin-gonic/gin
+clone guzzle/guzzle
+clone junegunn/fzf
+clone sharkdp/bat
+18 sessions to run (0 done)
+01:07:40 fastapi__full-stack-fastapi-template-why-1:verinoda_guided:r2 answer=1198 chars verinoda_calls=0 turns=4 $0.1169376 14.9 s
+01:07:43 fastapi__full-stack-fastapi-template-why-1:verinoda_guided:r1 answer=1278 chars verinoda_calls=0 turns=6 $0.12863270000000002 18.0 s
+01:07:59 fastapi__full-stack-fastapi-template-why-1:verinoda_guided:r3 answer=1303 chars verinoda_calls=0 turns=4 $0.04932879999999999 12.9 s
+01:08:02 junegunn__fzf-why-1:verinoda_guided:r1 answer=1519 chars verinoda_calls=0 turns=3 $0.0519502 12.1 s
+01:08:18 junegunn__fzf-why-1:verinoda_guided:r2 answer=1542 chars verinoda_calls=0 turns=3 $0.051735699999999996 11.9 s
+01:08:21 junegunn__fzf-why-1:verinoda_guided:r3 answer=1633 chars verinoda_calls=0 turns=3 $0.0535827 12.3 s
+01:08:44 guzzle__guzzle-trap-1:verinoda_guided:r1 answer=1214 chars verinoda_calls=0 turns=4 $0.0577174 13.4 s
+01:08:45 guzzle__guzzle-trap-1:verinoda_guided:r2 answer=1133 chars verinoda_calls=0 turns=4 $0.0571117 12.8 s
+01:09:08 gin-gonic__gin-trap-1:verinoda_guided:r1 answer=1570 chars verinoda_calls=0 turns=4 $0.059869500000000006 16.0 s
+01:09:09 guzzle__guzzle-trap-1:verinoda_guided:r3 answer=1134 chars verinoda_calls=0 turns=4 $0.056625800000000004 13.5 s
+01:09:28 gin-gonic__gin-trap-1:verinoda_guided:r3 answer=1622 chars verinoda_calls=0 turns=3 $0.05267390000000001 13.1 s
+01:09:37 gin-gonic__gin-trap-1:verinoda_guided:r2 answer=1798 chars verinoda_calls=0 turns=8 $0.0836462 23.4 s
+01:09:53 axios__axios-when-1:verinoda_guided:r1 answer=906 chars verinoda_calls=0 turns=4 $0.0619385 11.5 s
+01:10:00 axios__axios-when-1:verinoda_guided:r2 answer=1042 chars verinoda_calls=0 turns=4 $0.0648807 12.7 s
+01:10:15 axios__axios-when-1:verinoda_guided:r3 answer=798 chars verinoda_calls=0 turns=4 $0.0613184 11.3 s
+01:10:32 sharkdp__bat-when-1:verinoda_guided:r1 answer=934 chars verinoda_calls=0 turns=4 $0.046640799999999996 13.0 s
+01:10:42 sharkdp__bat-when-1:verinoda_guided:r2 answer=802 chars verinoda_calls=0 turns=4 $0.045076700000000004 11.3 s
+01:11:00 sharkdp__bat-when-1:verinoda_guided:r3 answer=1046 chars verinoda_calls=0 turns=3 $0.0445737 12.2 s
+all done
+exit=0

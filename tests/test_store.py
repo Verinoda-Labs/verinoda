@@ -340,3 +340,68 @@ def test_a_readonly_store_never_creates_or_migrates(tmp_path):
     conn = sqlite3.connect(p)
     assert _version(conn) == 1  # left as it was
     conn.close()
+
+
+def _open_together(opener, rounds: int = 10, n: int = 8) -> list[Exception]:
+    """``n`` threads open a new database at once, ``rounds`` times; the errors they met."""
+    import tempfile
+    import threading
+
+    errors: list[Exception] = []
+    for _ in range(rounds):
+        db = Path(tempfile.mkdtemp()) / "atlas.db"
+        gate = threading.Barrier(n)
+
+        def go(db=db, gate=gate):
+            gate.wait()
+            try:
+                opener(db)
+            except Exception as exc:  # noqa: BLE001 - the test reports any failure
+                errors.append(exc)
+
+        ts = [threading.Thread(target=go) for _ in range(n)]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+    return errors
+
+
+def test_stores_that_open_a_new_database_at_once_all_get_it():
+    # two processes opening a new atlas.db (setup and the MCP server, the mod's update and a query) both read schema
+    # v0 and both ran every migration: 10 rounds in 10 of 8 threads failed ("duplicate column name: plan_id"), and
+    # the switch to WAL failed with "database is locked", which SQLite gives at once to such contenders
+    errors = _open_together(lambda db: Store(str(db)).close())
+    assert errors == [], errors[:1]
+
+
+def test_migrations_in_one_transaction_make_the_schema_executescript_made():
+    # the migrations now run statement by statement under one write lock (executescript commits first): the schema
+    # is the same, triggers included
+    def schema(conn):
+        return [tuple(r) for r in conn.execute("SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name")]
+
+    old = sqlite3.connect(":memory:")
+    old.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    for v in range(1, SCHEMA_VERSION + 1):
+        old.executescript(storemod._MIGRATIONS[v])
+    new = Store(":memory:")
+    assert schema(new.conn) == schema(old) and len(schema(old)) > 40
+    assert sum(1 for s in storemod._MIGRATIONS.values() for _ in storemod._statements(s)) > 100
+
+
+def test_a_newer_schema_found_under_the_migration_lock_is_said_as_such(tmp_path, monkeypatch):
+    # another process upgraded the file between the first look and the lock: the error names the newer schema (it
+    # was a ProgrammingError on the closed connection)
+    db = tmp_path / "atlas.db"
+    Store(str(db)).close()
+    raw = sqlite3.connect(str(db))
+    raw.execute("UPDATE meta SET value = ? WHERE key = 'schema_version'", (str(SCHEMA_VERSION + 1),))
+    raw.commit()
+    raw.close()
+    real = Store._schema_version
+    calls = []
+    monkeypatch.setattr(Store, "_schema_version", lambda self: 0 if not calls.append(1) and len(calls) == 1
+                        else real(self))
+    with pytest.raises(storemod.SchemaTooNew):
+        Store(str(db))

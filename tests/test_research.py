@@ -677,3 +677,28 @@ def test_render_outputs_are_compact(fx, capsys):
     out = capsys.readouterr().out
     assert "pinned tag v1" in out and "local only: threading.Lock" in out and "unreachable" in out
     assert len(out.splitlines()) < 120
+
+
+def test_reference_clones_and_fetches_name_their_source_for_the_protocol_flags(tmp_path, monkeypatch):
+    """A clone, fetch or ls-remote of a reference goes through gitexec with ``net=<source>`` and ``--`` before the
+    source (D186): the funnel pins the protocols to https and ssh and refuses redirects."""
+    from verinoda import gitexec
+    from verinoda.references.gitref import GitRunner
+
+    calls = []
+
+    def fake_run(repo, *args, **kw):
+        calls.append((args, kw.get("net")))
+        return gitexec.GitResult(128, "", "fatal: refused by the test")
+
+    monkeypatch.setattr(gitexec, "run", fake_run)
+    url = "https://example.invalid/owner/repo.git"
+    spec = {"slug": "owner-repo", "url": url, "path": None, "class": None, "type": "git"}
+    out = rs._research_git(None, tmp_path / "proj", spec, None, {"warnings": [], "status": "ok"})
+    assert out["status"] == "unreachable"
+    (args, net), = [c for c in calls if "clone" in c[0]]
+    assert net == url and args.index("--") < args.index(url) and "clone" in args[:args.index("--")]
+    runner = GitRunner(network="on", cache_root=tmp_path / "proj" / ".verinoda" / "research")
+    assert runner.refs(url)["ok"] is False
+    (args, net), = [c for c in calls if "ls-remote" in c[0]]
+    assert net == url and args.index("--") < args.index(url)

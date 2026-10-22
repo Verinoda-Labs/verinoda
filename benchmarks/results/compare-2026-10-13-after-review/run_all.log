@@ -1,0 +1,19 @@
+[2026-10-12T23:35:46Z] branch=symbiosis-redesign-2026-10-12 head=575b2a50ad84a0e680d7f711c2007ddba0d0207a
+python 3.12.0
+[2026-10-12T23:35:46Z] START orders_app: python -m verinoda.benchmark run --repo examples/orders_app --questions verinoda/benchmark/questions/orders_app.json --out C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/bench-after-review/orders_app.json --llm none --repeat 1
+[2026-10-12T23:35:54Z] END orders_app rc=0 seconds=8
+[2026-10-12T23:35:54Z] START orders_app_tr: python -m verinoda.benchmark run --repo examples/orders_app --questions verinoda/benchmark/questions/orders_app_tr.json --out C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/bench-after-review/orders_app_tr.json --llm none --repeat 1
+[2026-10-12T23:36:04Z] END orders_app_tr rc=0 seconds=9
+[2026-10-12T23:36:04Z] START glow_mod: python -m verinoda.benchmark run --repo examples/glow_mod --questions verinoda/benchmark/questions/glow_mod.json --out C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/bench-after-review/glow_mod.json --llm none --repeat 1
+[2026-10-12T23:36:15Z] END glow_mod rc=0 seconds=11
+[2026-10-12T23:36:15Z] START forge_mod: python -m verinoda.benchmark run --repo examples/forge_mod --questions verinoda/benchmark/questions/forge_mod.json --out C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/bench-after-review/forge_mod.json --llm none --repeat 1
+[2026-10-12T23:36:29Z] END forge_mod rc=0 seconds=14
+[2026-10-12T23:36:29Z] START graphify_core: python -m verinoda.benchmark run --repo C:/Users/ozcin/Desktop/RepoAtlas/upstream-graphify --questions verinoda/benchmark/questions/graphify_core.json --out C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/bench-after-review/graphify_core.json --llm none --repeat 1
+[2026-10-12T23:37:21Z] END graphify_core rc=0 seconds=52
+[2026-10-12T23:37:21Z] START graphify_core_tr: python -m verinoda.benchmark run --repo C:/Users/ozcin/Desktop/RepoAtlas/upstream-graphify --questions verinoda/benchmark/questions/graphify_core_tr.json --out C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/bench-after-review/graphify_core_tr.json --llm none --repeat 1
+[2026-10-12T23:38:13Z] END graphify_core_tr rc=0 seconds=52
+[2026-10-12T23:38:13Z] START heldout_repoatlas: python -m verinoda.benchmark run --repo benchmarks/corpora/heldout_repoatlas_7371990 --questions verinoda/benchmark/questions/heldout_repoatlas.json --out C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/bench-after-review/heldout_repoatlas.json --llm none --repeat 1
+[2026-10-12T23:38:46Z] END heldout_repoatlas rc=0 seconds=33
+[2026-10-12T23:38:46Z] START verinoda_user_tr: python -m verinoda.benchmark run --repo . --at 3bd1b94a5cfcd8689d423bcb0dafa06974f8769f --questions verinoda/benchmark/questions/verinoda_user_tr.json --out C:/Users/ozcin/AppData/Local/Temp/claude/C--Users-ozcin-Desktop-verinoda-symbiosis/5da6b32a-3f88-419e-8ce7-aa28c22daf16/scratchpad/bench-after-review/verinoda_user_tr.json --llm none --repeat 1
+[2026-10-12T23:39:25Z] END verinoda_user_tr rc=0 seconds=38
+[2026-10-12T23:39:25Z] ALL DONE
