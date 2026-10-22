@@ -178,12 +178,17 @@ def test_other_project_or_environment_is_not_a_duplicate(proj):
     assert g["valid_env"] == "py3.12" and g["project"] == "p"
 
 
-def test_the_later_verification_is_kept(proj):
+def test_the_later_verification_is_kept(proj, monkeypatch):
     repo, st = proj
     old = st.latest_snapshot()["id"]
     earlier, later = sorted([_claim(repo, st, "b.py", "b() returns 2")["id"],
                              _claim(repo, st, "b.py", "b() returns 2", 2, 2)["id"]])   # the id tiebreak: earlier
     _write(repo, "c.py", "def c():\n    return 3\n")
+    # the two snapshots in the same second (times are kept to the second): the later is still the later one; the
+    # tie fell to the claim ids, so this test failed in about half of the whole-suite runs on a fast machine
+    from verinoda import snapshot
+
+    monkeypatch.setattr(snapshot, "now", lambda: st.latest_snapshot()["created_at"])
     workflow.update(st, repo)
     new = st.latest_snapshot()["id"]
     assert new != old and st.claim(earlier)["status"] == st.claim(later)["status"]

@@ -61,7 +61,8 @@ def duplicate_groups(store) -> list[dict]:
         live = [c for c in cs if c["status"] not in LIVE_EXCLUDED]
         if len(live) < 2:
             continue
-        live.sort(key=lambda c: (rank.get(c["status"], len(ORDER)), -_verified_stamp(store, c), c["id"]))
+        live.sort(key=lambda c: (rank.get(c["status"], len(ORDER)), *(-x for x in _verified_stamp(store, c)),
+                                 c["id"]))
         out.append({"key": key, "project": project, "valid_env": env or None, "keep": live[0]["id"],
                     "fold": [c["id"] for c in live[1:]], "text": live[0]["text"][:160],
                     "statuses": [c["status"] for c in live]})
@@ -89,14 +90,15 @@ def _stamp(v) -> float:
         return 0.0
 
 
-def _verified_stamp(store, c: dict) -> float:
-    """When the claim was last verified: ``verified_at`` names the snapshot it was verified at (older rows may
-    hold a time); 0 for a claim never verified."""
+def _verified_stamp(store, c: dict) -> tuple[float, int]:
+    """When the claim was last verified, as (time, snapshot order): ``verified_at`` names the snapshot it was
+    verified at (older rows may hold a time); (0, 0) for a claim never verified. Times are kept to the second, so
+    two snapshots of one second are told apart by their order in the table, as latest_snapshot does."""
     v = c.get("verified_at")
     if not v:
-        return 0.0
-    s = store.one("SELECT created_at FROM snapshots WHERE id = ?", (v,))
-    return _stamp(s["created_at"] if s else v)
+        return 0.0, 0
+    s = store.one("SELECT created_at, rowid FROM snapshots WHERE id = ?", (v,))
+    return (_stamp(s["created_at"]), int(s["rowid"])) if s else (_stamp(v), 0)
 
 
 def _fold(store, repo: Path, keep: str, dup: str) -> dict:
