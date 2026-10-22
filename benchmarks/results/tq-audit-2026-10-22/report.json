@@ -1,13 +1,13 @@
 {
  "schema": "verinoda.tq_audit/1",
  "written": "2026-10-22",
- "commit": "0fa7d20809bd",
+ "commit": "767e99f1f940",
  "gold_files": {
   "tq_gold/held_out.json": "4860547c7c6ce26f0956c71882aa934eec3bc667b4accf1c73eb0202d60e589f",
   "tq_gold2/held_out.json": "c19578ede6befd35354ce8d43dfa6e1589d74e28e21c1e0afb1ee3bfd2f72031"
  },
  "gold_sha": "4962f768961f78360d2e3d720c8dc32abe1b43f8a90b1d2bb27ef639d8b2f6c5",
- "engine_sha": "cc39feb7c7f7fd8d08136bd512266b62b4d72f331602fda9f3fbefda7f8dcb06",
+ "engine_sha": "0a77829c0f21fc603cb32d348b3b2efd801c555d675d4afc5319e3d7c3ce4cb3",
  "summary": {
   "held_out_cases": 357,
   "skipped": 0,
@@ -24,7 +24,7 @@
   "cells_decided_n_ge_30": 4,
   "cells_shown": 3,
   "dev_cases": 75,
-  "seconds": 69.6
+  "seconds": 69.8
  },
  "cells": [
   {
