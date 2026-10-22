@@ -101,15 +101,6 @@ def _short(text: str | None, n: int = 120) -> str:
     return text if len(text) <= n else text[: n - 3] + "..."
 
 
-def _slugify(text: str, n: int = 40) -> str:
-    s = re.sub(r"[^A-Za-z0-9._-]+", "-", text).strip("-.")
-    return (s or "ref")[:n]
-
-
-def _h6(text: str) -> str:
-    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:6]
-
-
 def _git(cwd: Path | None, *args: str, timeout: float = GIT_LOCAL_TIMEOUT,
          net: str | None = None) -> tuple[int, str, str]:
     """Run git without a shell and without interactive prompts (:mod:`verinoda.gitexec`, D186). ``net`` names

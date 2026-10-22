@@ -456,10 +456,6 @@ def _package(spec: dict, ecosystem: str, name: str, version: str | None, *, exac
     return spec
 
 
-def _docs_python_or_url(host: str) -> bool:
-    return host == "docs.python.org"
-
-
 def classify_url(s: str, kind: str = "auto") -> dict:
     parsed = urllib.parse.urlparse(s)
     scheme = parsed.scheme.lower()

@@ -1400,11 +1400,6 @@ def _py_end_line(p: Path, start: int) -> int | None:
         return None
 
 
-def _py_def_ends(p: Path) -> dict[int, int]:
-    """def/class start line (and first decorator line) -> end line, for one file."""
-    return py_file_info(p).ends
-
-
 def _file_lines(p: Path) -> list[str] | None:
     """Lines of a source file, cached per file version (size and mtime). A PDF, Office document or
     image has the lines of its text view (:mod:`verinoda.doctext`)."""
@@ -1619,10 +1614,6 @@ def _ts_def_info(p: Path) -> tuple[dict[int, int], dict[int, list[TsNamedDef]]]:
         return _cached(_TS_CACHE, _stat_key(p), lambda: ts_def_info(p.read_bytes(), p.suffix.lower()))
     except (OSError, ValueError):
         return {}, {}
-
-
-def _ts_def_ends(p: Path) -> dict[int, int]:
-    return _ts_def_info(p)[0]
 
 
 # -- load ---------------------------------------------------------------------------------------

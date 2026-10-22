@@ -297,19 +297,3 @@ def github_issue(transport, owner: str, repo: str, number: int) -> dict:
             **_meta(resp)}
 
 
-def github_pull(transport, owner: str, repo: str, number: int) -> dict:
-    resp, err = _get(transport, f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}",
-                     accept="application/vnd.github+json")
-    if err:
-        return err
-    bad = _status_fail(resp, f"GitHub PR {owner}/{repo}#{number}")
-    if bad:
-        return bad
-    try:
-        d = resp.json()
-    except ValueError:
-        return {"ok": False, "reason": "bad_response", "error": "invalid GitHub JSON"}
-    return {"ok": True, "state": d.get("state"), "merged": d.get("merged"),
-            "merge_commit_sha": d.get("merge_commit_sha"), "base_sha": (d.get("base") or {}).get("sha"),
-            "base_ref": (d.get("base") or {}).get("ref"), "head_sha": (d.get("head") or {}).get("sha"),
-            "head_ref": (d.get("head") or {}).get("ref"), "title": d.get("title"), **_meta(resp)}

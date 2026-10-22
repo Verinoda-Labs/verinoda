@@ -176,14 +176,6 @@ def _legacy(intents) -> list[str]:
     return [n for n in LEGACY_ORDER if n in names]
 
 
-def turkish_intents(question: str) -> list[str]:
-    """Intents found by the Turkish cue tables alone (legacy names)."""
-    found = set()
-    for cl in qp.segment(question):
-        found.update(c["intent"] for c in qp.clause_cues(cl["text"]) if c["lang"] == "tr")
-    return _legacy(found)
-
-
 def intents_for(question: str, lexicon=None) -> list[str]:
     """Rule-based intents of a question in the legacy vocabulary (``location`` for locate/define)."""
     return _legacy(qp.intents_for(question, lexicon)) or ["location"]

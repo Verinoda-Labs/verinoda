@@ -143,11 +143,6 @@ def _manifest_items(manifest: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
     return tuple(out["file"]), tuple(out["md_block"])
 
 
-def _manifest_files(manifest: Path) -> tuple[str, ...]:
-    """Project-relative paths of the ``kind: "file"`` items of every install the manifest records."""
-    return _manifest_items(manifest)[0]
-
-
 def _block_only(p: Path) -> bool:
     """Does the file hold a marked block (:func:`find_block`) and nothing else but white space?"""
     key = _stat_key(p)
