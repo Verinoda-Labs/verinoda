@@ -767,11 +767,11 @@ class _Eval:
         self.used += n
         if self.used > self.max_expansions:
             raise _Stop("max_expansions")
-        if (self.used & 0x3FF) < n and time.monotonic() > self.deadline:
+        if (self.used & 0x3FF) < n and time.perf_counter() > self.deadline:
             raise _Stop("timeout")
 
     def check_time(self) -> None:
-        if time.monotonic() > self.deadline:
+        if time.perf_counter() > self.deadline:
             raise _Stop("timeout")
 
     # routes
@@ -1272,7 +1272,9 @@ def run(repo: Path, text: str | None = None, *, query: Query | None = None, ctx:
         ctx.fresh = freshness.check(repo)
     fresh = ctx.fresh
     stale = set(fresh.get("files") or [])
-    deadline = time.monotonic() + timeout
+    # perf_counter, not monotonic: Python 3.12's monotonic clock steps by about 15.6 ms on Windows, and a query
+    # that ended within one step never saw its --timeout pass
+    deadline = time.perf_counter() + timeout
     ev = _Eval(g, q, max_expansions=max_expansions, deadline=deadline, stale=stale, ctx=ctx)
     ev.asked_route = route
     items = q.items or [Item("var", v, None, 0) for v in q.match_vars]

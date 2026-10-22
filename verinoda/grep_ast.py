@@ -226,7 +226,7 @@ class _Matcher:
 
     def tick(self) -> None:
         self.steps += 1
-        if self.steps % 512 == 1 and time.monotonic() > self.deadline:
+        if self.steps % 512 == 1 and time.perf_counter() > self.deadline:
             raise _Timeout
 
     def bind(self, binds: dict, name: str, value: str) -> bool:
@@ -470,13 +470,15 @@ def run(repo: Path, pattern: str | None = None, *, rules: list[dict] | None = No
                  "matches": [], "count": 0, "truncated": False, "files_searched": 0, "by_lang": {},
                  "not_searched": {"timed_out": [], "too_large": 0, "unreadable": [], "budget_spent": 0,
                                   "pattern_not_parsed": unparsed}}
-    t_end = time.monotonic() + total_seconds
+    # perf_counter, not monotonic: Python 3.12's monotonic clock steps by about 15.6 ms on Windows, and a file
+    # searched within one step never saw its bound pass (a bound of 0 s searched everything)
+    t_end = time.perf_counter() + total_seconds
     for n, f in enumerate(cand):
         sfx = Path(f).suffix.lower()
         mine = [(k, compiled[(k, sfx)]) for k in range(len(jobs)) if (k, sfx) in compiled]
         if not mine:
             continue
-        if time.monotonic() > t_end:
+        if time.perf_counter() > t_end:
             res["not_searched"]["budget_spent"] = sum(
                 1 for g in cand[n:] if any((k, Path(g).suffix.lower()) in compiled for k in range(len(jobs))))
             break
@@ -495,7 +497,7 @@ def run(repo: Path, pattern: str | None = None, *, rules: list[dict] | None = No
         if not mine:
             continue
         try:
-            deadline = min(time.monotonic() + file_seconds, t_end)
+            deadline = min(time.perf_counter() + file_seconds, t_end)
             tree = _parser(sfx).parse(src)
             for k, pnode in mine:
                 for hit in search_file(src, sfx, pnode, deadline=deadline, tree=tree):
