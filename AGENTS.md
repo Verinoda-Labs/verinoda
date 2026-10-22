@@ -14,6 +14,8 @@ runs beside the agent in a session.
   model for what, the probe method), what it taught, and the order of work after it. Read it after this file: its plan is
   the order; the improvement pane (backlog 13.9, `claude-mods/verinoda-live/IMPROVE-PANE.md`) is the feature option.
 - `docs/OZELLIKLER-RAPORU.md`: every design section in three lines (Turkish).
+- `docs/drafts/2026-10-22-d187-devam.md` (Turkish): where the D187 cleanup session (2026-10-22) left off, what it installed on
+  this machine and what comes next; its helper scripts are beside it.
 - `benchmarks/`: the harnesses and their results. `benchmarks/results/**` is measured data.
 - **The mod: read `claude-mods/verinoda-live/AGENTS.md` before touching that folder.**
 
