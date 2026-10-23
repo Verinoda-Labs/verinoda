@@ -692,9 +692,10 @@ project (below).
   folder, or register the server with `--repo <project>`. `--profile full` serves as before.
 - **No update builds the first index of such a folder**, also when it holds a `.verinoda` without an index: a user-scope install
   keeps its manifest in `~/.verinoda`, and `index_update` or `verinoda update` in the home folder indexed the whole home folder as
-  a project. Both now refuse (exit 1, `mode: not_one_project`) and name `verinoda scan <folder>`, which still indexes a folder
-  when asked to. A repository whose top holds submodules or nested clones is one project, not a workspace of them (the first
-  scan from MCP refused it before).
+  a project. `index_update` now answers `error: not_initialised` with a hint to start the server with `--repo <project>` (or run
+  `verinoda scan <project>`); `verinoda update` exits 1 with `mode: not_one_project` and names `verinoda scan <folder>`, which
+  still indexes a folder when asked to. A repository whose top holds submodules or nested clones is one project, not a workspace
+  of them (the first scan from MCP refused it before).
 - **`index_update`'s MCP result is a summary**: the snapshot (`id`, a 12-character `commit`, `dirty`, `file_count`), the mode,
   the counts, the first 8 paths of each change list (code files first; a cut list is marked `truncated` with `kept`/`total`),
   the stale claims (id, clipped text, the first changed files), every error, hint and note. It no longer carries the snapshot's

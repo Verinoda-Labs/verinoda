@@ -18453,7 +18453,8 @@ Tokens counted by `/context` (installed 318fa0b against this branch, the same ma
   `test_mcp.py`, `test_mcp_projects.py`, `test_paths.py`, `test_update_fast.py`, `test_tq_measured.py` and `test_tq.py` 240
   passed. `paths.py` and `workflow.py` are in tq's engine: `verinoda benchmark tq-audit` was run again
   (`benchmarks/results/tq-audit-2026-10-23/`): 357 held-out cases, 347 right, 3 wrong, 7 unknown, the same 22 cells and 3 shown
-  as on 2026-10-22. Lint finding sets unchanged per file.
+  as on 2026-10-22. Lint finding sets unchanged per file. The whole suite at c7ae87d: 5395 passed, 20 skipped, 3 deselected,
+  0 failed (32 minutes, alone on the machine).
 - Not measured: an agent session with these changes (cost, model calls, accuracy); a billed count (every count here is the
   tokenizer's through `/context`); whether the shorter description changes when the skill is loaded.
 
