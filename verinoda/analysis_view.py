@@ -671,12 +671,15 @@ def render_text(res: dict) -> str:
         if lk.get("status") == "not_found":
             out.append("plan check: " + _link(lk))
         elif lk.get("status") != "weak":
-            # with a named file: a word where it is in that file; a link into a file no answer is about is left out
-            at = (lk.get("in_scope_at") or [lk.get("at")])[0] if keep else lk.get("at")
-            if keep and at and str(at).rsplit(":", 1)[0] not in keep:
-                continue
+            # with a named file: the link where it is in a file named or answering, else the word's place in the
+            # named file; one that is in neither is left out (D190)
+            at = lk.get("at")
+            if keep and (not at or str(at).rsplit(":", 1)[0] not in keep):
+                at = (lk.get("in_scope_at") or [None])[0]
+                if at is None:
+                    continue
             linked.setdefault((at, lk.get("status")), []).append(str(lk.get("text")))
-    if linked:  # where the question's words resolved in the code (the MCP view lists the same links)
+    if linked:  # where the question's words resolved in the code (the MCP view lists the links as the check made them)
         out.append("plan links: " + "; ".join(_link({"text": ", ".join(words), "at": at, "status": st},
                                                     untagged="linked") for (at, st), words in linked.items()))
     if res.get("index_refresh_error"):

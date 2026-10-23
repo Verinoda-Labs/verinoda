@@ -549,16 +549,24 @@ def oldest_appearance(repo: Path, text: str, *, regex: bool = False, path: str |
         return None
     sha, date, author, subject = (lines[-1].split("\x1f", 3) + [""] * 4)[:4]
     out = {"sha": sha, "date": date, "author": author, "subject": subject, "path": None, "line": None, "text": None}
-    # the diff option goes before --end-of-options: after it, git read --relative as a revision and the show failed,
-    # so a sub-project's first appearance was never corrected (the final review)
-    shown = _run_git(repo, _LIT, "show", "-U0", *_DIFF_SAFE, _FMT, *rel, "--end-of-options", sha, *spec)
-    if shown.timed_out:
+    def added_in(pathspec: list[str]) -> dict | str | None:
+        # the diff option goes before --end-of-options: after it, git read --relative as a revision and the show
+        # failed, so a sub-project's first appearance was never corrected (the final review)
+        shown = _run_git(repo, _LIT, "show", "-U0", *_DIFF_SAFE, _FMT, *rel, "--end-of-options", sha, *pathspec)
+        if shown.timed_out:
+            return "timed_out"
+        if shown.returncode != 0:
+            return None
+        return next((f for c in _parse_patches(shown.stdout, _counter(t, bool(regex))) for f in c["files"]
+                     if f["added"]), None)
+
+    added = added_in(spec)
+    if added is None and follow:   # before a move the file had another path: the commit under the project's folder
+        added = added_in(_scope(repo, None)[0])
+    if added == "timed_out":
         return {"timed_out": True}
-    if shown.returncode == 0:
-        added = next((f for c in _parse_patches(shown.stdout, _counter(t, bool(regex))) for f in c["files"]
-                      if f["added"]), None)
-        if added:
-            out.update(path=added["path"], line=added["added_at"], text=added["added_line"])
+    if added:
+        out.update(path=added["path"], line=added["added_at"], text=added["added_line"])
     out["evidence"] = _ev({"commit": sha, "date": date, "author": author, "subject": subject}, path=out["path"],
                           line=out["line"], excerpt=out["text"])
     return out

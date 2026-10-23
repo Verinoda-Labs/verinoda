@@ -1,11 +1,13 @@
-"""The file a question names scopes its plain words, a subject found by one word of several is not met, and a why
-says where the line it asks about came from (docs/DESIGN.md D190).
+"""The file a question names is where its plain words are looked for first, a subject found by one word of several is
+not met, and a why says where the line it asks about came from (docs/DESIGN.md D190).
 
 The case is a real agent's question about a chat bot (2026-10-23): "In <file>, why does relay() call talk.set for
 the player even when the reply was [SUSKUN] (silent)? When was the 60 second conversation window introduced and what
 depends on it?". Verinoda linked "window" to a capture helper in another folder and called the when-part met with
 that helper's commits; its why read the function's commits for a stated reason, found none and did not say that the
-line predates the [SUSKUN] case; and a folder of the path was searched as a code term.
+line predates the [SUSKUN] case; and a folder of the path was searched as a code term. Two fresh reviews of the fix
+added the cases at the end: a fence around the named file, a line's commit read as a reason, seeds for a callers part,
+a value in a when-question, and a cap that lowered right answers.
 """
 
 from __future__ import annotations
@@ -162,7 +164,7 @@ def test_the_when_part_is_answered_from_the_named_file_not_a_same_named_helper_e
     texts = [c["text"] for c in _answers(answer, "q2")]
     assert texts and not any("find_window" in t or "seconds" in t or "fxrun" in t for t in texts), texts
     assert any(shas[0][:10] in t for t in texts), texts        # the commit that brought the window
-    assert _status(answer, "q2") == "met_with_inference"       # its subject is read from words, not named
+    assert _status(answer, "q2") == "met"   # read from words, and its commit says "conversation window"
 
 
 def test_a_why_says_the_line_it_asks_about_came_before_the_case_it_names(bot, answer):
@@ -370,7 +372,7 @@ def test_the_file_named_in_the_same_sentence_is_where_to_look_not_the_subject(bo
     res = _ask(repo, f"In {BOT}, when was the 60 second conversation window introduced?")
     texts = [c["text"] for c in _answers(res, "q1")]
     assert texts and not any("find_window" in t or "fxrun" in t for t in texts), texts
-    assert _status(res, "q1") == "met_with_inference"
+    assert any("talk" in t for t in texts)   # the window's own line, met: its commit says "conversation window"
 
 
 @pytest.fixture(scope="module")
@@ -403,3 +405,137 @@ def test_the_passages_keep_the_searchs_own_lines():
         "expanded: window->pencere", "## a.js:1-2 f", "1 function f () {", "(calls / called by: name@line)",
         "… 3 more candidates", "next: verinoda query",
         "(+1 passage(s) of other files than the question names left out: `verinoda query` gives them)"]
+
+
+# -- the second review's cases (each failed on 718c7d2, the review round) -------------------------------------------
+
+BOT_PY = "MyGame/bot/herald.py"
+HERALD_PY = '''TALK_MS = {"limit": 60000}  # oyuncu -> son cevap zamani (60 sn sohbet pencere)
+
+
+def say(text):
+    return text
+
+
+def deliver(text, item):
+    return say(text)  # the game window chat line
+
+
+def relay(item):
+    text = item["message"]
+    deliver(text, item)
+    return text
+'''
+FX_PY = '''def find_window(title):
+    return title
+
+
+def capture_game_window(title):
+    return find_window(title)
+
+
+def snapshot():
+    return capture_game_window("game")
+'''
+
+
+def test_a_callers_part_is_not_seeded_with_the_named_files_candidates(tmp_path):
+    # the named file's line "the game window chat line" made deliver() the target of a callers part, met
+    repo, _ = _history_repo(tmp_path, "seeds", [(BOT_PY, HERALD_PY, "init"), ("MyGame/tools/fx.py", FX_PY, "fx")])
+    res = _ask(repo, f"In {BOT_PY}, where is relay defined? What calls the game window capture?")
+    texts = [c["text"] for c in _answers(res, "q2")]
+    assert any("capture_game_window" in t for t in texts) and not any("deliver" in t for t in texts), texts
+
+
+def test_a_when_about_a_value_keeps_the_newest_commits_beside_the_first(retry_policy):
+    repo, shas = retry_policy   # "of 6" came with the last edit; the first commit alone was met
+    texts = _when(repo, "When was the retry limit of 6 introduced?")
+    assert any(shas[-1][:10] in t for t in texts), texts
+
+
+def test_a_plain_word_question_naming_a_file_by_its_basename_is_not_met_by_one_word(bot):
+    repo, _ = bot   # "fxrun.py" counted as a word find_window() carries
+    res = _ask(repo, "In fxrun.py, when was the 60 second conversation window introduced?")
+    assert any("find_window" in c["text"] for c in _answers(res, "q1")) and _status(res, "q1") == "met_with_inference"
+
+
+def test_a_plan_link_is_printed_where_the_answer_is(bot):
+    repo, _ = bot   # "window" was printed at the bot's comment while the part was answered by the helper
+    text = analysis_view.render_text(
+        _ask(repo, f"Where is relay defined in {BOT}? And where is the game window found by its title?"))
+    links = next(ln for ln in text.splitlines() if ln.startswith("plan links:"))
+    assert "window -> MyGame/tools/fxrun.py:1-3" in links or "window -> MyGame/tools/fxrun.py" in links, links
+
+
+def test_two_named_files_share_a_words_candidates(tmp_path):
+    # the first file (by name) spells the word in three functions: it took every place, and the second had none
+    many = "".join(f"function f{i} () {{\n  return {i} // the window\n}}\n\n" for i in range(3))
+    one = "function g () {\n  return 0 // the window\n}\n"
+    other = "function openWindow () {\n  return 1\n}\n"   # a name elsewhere links the word in the whole project
+    repo, _ = _history_repo(tmp_path, "two", [("a_first.js", many, "a"), ("b_second.js", one, "b"),
+                                              ("c_other.js", other, "c")])
+    g = index.load(repo)
+    lex = lexicon.load(repo)
+    plan = qp.draft("In a_first.js and b_second.js, where is the window handled?", g, lex)
+    window = next(lk for lk in qp.check(plan, g, repo, lex)["links"] if lk["text"] == "window")
+    assert {g.file(n) for n in window["in_scope"]} == {"a_first.js", "b_second.js"}, window["in_scope"]
+
+
+@pytest.fixture(scope="module")
+def orders(tmp_path_factory):
+    """The orders example with a history whose commits state their reasons (the second review's repository)."""
+    src = Path(__file__).resolve().parents[1] / "examples" / "orders_app"
+    files = {p.relative_to(src).as_posix(): p.read_text(encoding="utf-8") for p in src.rglob("*")
+             if p.is_file() and "__pycache__" not in p.parts and p.suffix in (".py", ".md", ".toml")}
+    pricing, repository, config, service = (files[f"orders/{n}.py"] for n in ("pricing", "repository", "config",
+                                                                               "service"))
+    first = dict(files)
+    first["orders/pricing.py"] = pricing.replace(
+        "    # 10% off above the configured threshold.\n    if subtotal > DISCOUNT_THRESHOLD:\n"
+        "        return round(subtotal * 0.9, 2)\n    return subtotal", "    return subtotal")
+    first["orders/repository.py"] = repository.replace("        self.conn.commit()\n", "")
+    first["orders/config.py"] = config.replace('float(os.environ.get("ORDERS_DISCOUNT_THRESHOLD", "100.0"))', "100.0")
+    assert all(first[f] != files[f] for f in ("orders/pricing.py", "orders/repository.py", "orders/config.py"))
+    repo = tmp_path_factory.mktemp("scope") / "orders"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    for rel, text in first.items():
+        _write(repo, rel, text)
+    _commit(repo, "initial import")
+    for rel, text, message in (
+            ("orders/pricing.py", pricing,
+             "pricing: 10% off above the threshold, because large orders were abandoned at checkout"),
+            ("orders/config.py", config, "config: read the discount threshold from the environment"),
+            ("orders/repository.py", repository, "repository: commit after every insert so that a crash loses no order"),
+            ("orders/service.py", service.replace("    return repo.get(order_id)", "    return repo.get(int(order_id))"),
+             "service: cast the id so that a string id from the URL works")):
+        _write(repo, rel, text)
+        _commit(repo, message)
+    return _scanned(repo)
+
+
+@pytest.mark.parametrize("question", ["Why does the repository commit after every insert?",
+                                      "Where is the database connection opened?",
+                                      "Where is the maximum number of items per order checked?"])
+def test_the_cap_counts_what_the_answer_says_and_leaves_out_function_words(orders, question):
+    # each was met on 2ad768f with a right answer, and capped by the first cap (claims one by one, without their
+    # text, "after", "every", "per" counted)
+    assert _status(_ask(orders, question), "q1") == "met"
+
+
+def test_a_why_that_names_no_file_keeps_its_records_and_its_slashed_words(orders):
+    # without a named file the decision records are matched as before; "None/dict" is no path to drop
+    res = _ask(orders, "Why does fetch_order return None or a dict?")
+    assert _status(res, "q1") == "met_with_inference" and any(
+        c["text"].startswith("Decision record") for c in _answers(res, "q1")), _answers(res, "q1")
+    slashed = _ask(orders, "Why does fetch_order return None/dict?")
+    assert not any("cast the id" in c["text"] for c in _answers(slashed, "q1")), _answers(slashed, "q1")
+
+
+def test_a_why_lists_the_lines_commit_once_and_a_moved_case_keeps_its_place(answer, moved):
+    (why,) = [u for u in answer["unknowns"] if u.get("sub_question") == "q1" and "reason was not found" in u["why"]]
+    shas = [x.split(" ", 1)[0] for x in why["commits"]]
+    assert len(shas) == len(set(shas)), why["commits"]
+    repo, moved_shas = moved
+    (case,) = [c for c in _ask(repo, WHY)["claims"] if "first appears" in c["text"]]
+    assert any(moved_shas[0] in e and "bot/herald.js:" in e for e in case.get("evidence") or []), case.get("evidence")

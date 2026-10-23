@@ -68,6 +68,7 @@ import time
 from collections import defaultdict
 from functools import lru_cache
 from importlib import resources
+from itertools import zip_longest
 from pathlib import Path, PurePosixPath
 
 from verinoda import textnorm as tn
@@ -1570,24 +1571,26 @@ def _candidate_strings(mention: dict, lexicon) -> list[tuple[str, str, float]]:
     return uniq
 
 
-def _lines_naming(g, files, forms: list[str]) -> list[str]:
+def _lines_naming(g, files, forms: list[str], per_file: int = 3) -> list[str]:
     """The symbols whose lines in ``files`` carry a word starting with one of ``forms`` (folded: "pencere" finds the
-    "penceresi" of a comment, a Turkish ending), in line order, at most 6; a line outside every symbol gives none. The
-    text index ties a comment to its unit, so a constant's comment was not found by it (D190)."""
+    "penceresi" of a comment, a Turkish ending): each file's first ``per_file`` in line order, the files taken in turn
+    (two named files share the places); a line outside every symbol gives none. The text index ties a comment to its
+    unit, so a constant's comment was not found by it (D190)."""
     if not forms:
         return []
     rx = re.compile(r"(?<![^\W_])(?:" + "|".join(re.escape(tn.fold_tr(f).lower()) for f in forms) + ")")
-    out: list[str] = []
+    by_file: list[list[str]] = []
     for f in sorted(files):
-        data = _read_small(Path(g.root) / f)
-        for i, line in enumerate((data or "").splitlines(), 1):
+        found: list[str] = []
+        for i, line in enumerate((_read_small(Path(g.root) / f) or "").splitlines(), 1):
             if rx.search(tn.fold_tr(line).lower()):
                 n = g.symbol_at(f, i)
-                if n and n not in out:
-                    out.append(n)
-                    if len(out) >= 6:
-                        return out
-    return out
+                if n and n not in found:
+                    found.append(n)
+                    if len(found) >= per_file:
+                        break
+        by_file.append(found)
+    return [n for row in zip_longest(*by_file) for n in row if n]
 
 
 def _text_hits(g, ix: _Index, words: list[str], lexicon) -> list[tuple[str, str]]:
@@ -1736,16 +1739,18 @@ def link_mention(mention: dict, graph, lexicon=None, *, with_hash: bool = True,
         from verinoda import lexicon as lexmod
 
         inside = {n: info["score"] for n, info in scored.items() if g.file(n) in scope}
-        forms = [w.lower() for w in words if len(w) >= 3] + [
-            k for w in words for k in lexmod.seed_keys_for(w) if k not in words]
+        # the word, its Turkish stem ("penceresi" finds "pencere") and its seed dictionary's Turkish
+        forms = list(dict.fromkeys([w.lower() for w in words if len(w) >= 3]
+                                   + [s for w in words for s in tn.tr_stem_candidates(w)[1:] if len(s) >= 5]
+                                   + [k for w in words for k in lexmod.seed_keys_for(w) if k not in words]))
         for n in _lines_naming(g, scope, forms):
             inside[n] = max(inside.get(n, 0.0), TIER_SCORES["text_hit"])
     for info in scored.values():
         info["matches"].sort(key=lambda m: -m["score"])
     link: dict = {"mention": mention.get("id"), "text": mention.get("text"), "status": "unlinked",
                   "alternatives": [], "rejected_candidates": rejected, "nodes": []}
-    if inside:
-        best_inside = [n for n, _s in sorted(inside.items(), key=lambda kv: (-kv[1], kv[0]))][:3]
+    if inside:   # the best first, else as found (the project's candidates, then the files' lines, each file in turn)
+        best_inside = [n for n, _s in sorted(inside.items(), key=lambda kv: -kv[1])][:3]
         link["in_scope"], link["in_scope_at"] = best_inside, [_at(g, n) for n in best_inside]
     shape = code_shape(mention.get("text") or "")
     if shape and not _exact_name(scored):
@@ -1830,8 +1835,8 @@ def _is_concept(mention: dict) -> bool:
 
 
 def named_scope(g, links: list[dict]) -> frozenset[str]:
-    """The files a message names by a path that links one file (``bot/herald.js``): its plain words are read
-    inside them (D190). A folder, or a name two files share, is no scope."""
+    """The files a message names by a path that links one file (``bot/herald.js``): its plain words get their
+    candidates there beside their project-wide links (D190). A folder, or a name two files share, is no scope."""
     out: set[str] = set()
     for lk in links:
         if lk.get("tier") == "path" and lk.get("status") == "linked":

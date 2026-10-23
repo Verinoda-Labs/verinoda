@@ -535,18 +535,35 @@ _SUBJECT_CUES = frozenset({"when", "where", "introduced", "introduce", "added", 
                            "located", "locate", "lives", "zaman", "nerede", "nerde", "hangi", "eklendi", "eklenmis",
                            "eklenen", "eklenmisti", "geldi", "girdi", "olusturuldu", "yazildi", "tanimli", "tanimlandi",
                            "tanimlanmis", "tanimlanir"})
+# words that say how often or in what order, not what (the review: "after every insert", "items per order")
+_FUNCTION_WORDS = frozenset({"after", "before", "each", "every", "per", "start", "started", "starting", "all", "any",
+                             "some", "other", "only", "also", "then", "than", "into", "onto", "upon", "over", "again",
+                             "still", "just", "even", "much", "many", "more", "most", "such", "same", "both", "whether",
+                             "while", "during", "since", "until", "unless", "not", "never", "without", "nor",
+                             "neither"})
+_EDGE_PUNCT = ",.;:!?()[]{}\"'`"
 
 
-_PATH_TOKEN = re.compile(r"\S+[/\\]\S+")   # a path names where to look, not the subject
+def strip_paths(text: str) -> str:
+    """``text`` without the file paths and file names it names (`bot/herald.js`, `fxrun.py`): they say where to look,
+    not what the subject is (D190; the review: a basename's stem counted as a word every symbol of that file carries).
+    A token with a slash that names no file ("None/dict", "read/write") stays."""
+    from verinoda import question_plan as qp
+
+    def is_file(tok: str) -> bool:
+        stem, dot, ext = tok.strip(_EDGE_PUNCT).rpartition(".")
+        return bool(dot) and ext.lower() in qp._CODE_EXTS and re.search(r"[A-Za-z]", stem) is not None
+
+    return " ".join(t for t in (text or "").split() if not is_file(t))
 
 
 def subject_words(text: str) -> list[str]:
-    """The words a question describes its subject with: its content words without the intent's cue words and the
-    paths it names."""
+    """The words a question describes its subject with: its content words without the intent's cue words, the words
+    that only say how often or in what order, and the paths it names."""
     from verinoda import question_plan as qp
 
-    return [w for w in dict.fromkeys(tn.words(_PATH_TOKEN.sub(" ", text))) if w not in _WHY_CUES
-            and w not in _SUBJECT_CUES and w not in qp._GENERIC_EN and w not in tn.TR_QUESTION_WORDS and len(w) >= 3
+    return [w for w in dict.fromkeys(tn.words(strip_paths(text))) if w not in _WHY_CUES and w not in _SUBJECT_CUES
+            and w not in _FUNCTION_WORDS and w not in qp._GENERIC_EN and w not in tn.TR_QUESTION_WORDS and len(w) >= 3
             and not w.isdigit()]
 
 
@@ -592,23 +609,25 @@ def carried_words(g, repo: Path, words: list[str], symbol: str, file: str, text:
 
 def _found_by(g, repo: Path, text: str, claims: list[dict], expansions: dict | None = None
               ) -> tuple[str, list[str], list[str]] | None:
-    """For an answer whose subject the question does not name: ``(the first claim's subject, the question's words it
-    carries, the others)`` when no claim's subject carries at least half of two or more such words (D190: "window"
-    found `find_window()` for "the 60 second conversation window"); None otherwise. A claim about a line
-    ("file:line touches storage: INSERT INTO orders ...") is judged by its own words."""
+    """For an answer whose subject the question does not name: ``(the first claim's subject, the question's words the
+    answer carries, the others)`` when its claims together carry at most a third of two or more such words - in their
+    subjects' names, files and defining lines, and in their own text (a commit's message, a quoted line); None
+    otherwise. D190: "window" found `find_window()` for "the 60 second conversation window" (one word of three); the
+    second review: claims judged one by one, without their own text, against half of the words, lowered correct
+    answers (`validate_items` carries two of "maximum number of items per order")."""
     words = subject_words(text)
     if len(words) < 2 or not claims:
         return None
-    first = None
+    carried: set[str] = set()
+    name = None
     for c in claims:
         sym, file = _claim_symbol(c), _claim_file(c)
-        hits = carried_words(g, repo, words, sym, file, "" if sym else c.get("text") or "", expansions)
-        if 2 * len(hits) >= len(words):
-            return None
-        if first is None:
+        carried |= set(carried_words(g, repo, words, sym, file, c.get("text") or "", expansions))
+        if name is None:
             name = (qp_bare(sym) + ("()" if sym.endswith(")") else "")) if sym else (file or "the line")
-            first = (name, hits, [w for w in words if w not in hits])
-    return first
+    if 3 * len(carried) > len(words):
+        return None
+    return name or "the answer", [w for w in words if w in carried], [w for w in words if w not in carried]
 
 
 def _uses_subject(g, node: str | None, subjects: set[str]) -> bool:
@@ -717,7 +736,7 @@ def apply(ctx, sq: dict, rows: list[dict], flags: dict, s: dict, res: dict, gate
             if not states_reason(topic, subj_line, quoted):
                 weak[c["id"]] = "commit"
 
-    # a subject the question does not name (its words found it, D190): one that carries less than half of the
+    # a subject the question does not name (its words found it, D190): an answer that carries at most a third of the
     # question's words is an inference
     notes: list[dict] = []
     if gate.get("named_code", True) is False:

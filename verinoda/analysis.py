@@ -1909,12 +1909,9 @@ def _apply_observations(ctx: _Ctx) -> None:
             break
 
 
-_PATH_TOKEN_RX = re.compile(r"\S+[/\\]\S+")   # a path the question names: where to look, not a word of its topic
-
-
 def _decision_terms(ctx: _Ctx, sub: _Sub) -> list[str]:
-    # without the paths it names: their folders matched a commit's "bot:" prefix as the topic of a why (D190)
-    text = _PATH_TOKEN_RX.sub(" ", sub.sq.get("text_user_lang") or sub.sq.get("text") or "")
+    # without the files it names: their folders matched a commit's "bot:" prefix as the topic of a why (D190)
+    text = verdict_gate.strip_paths(sub.sq.get("text_user_lang") or sub.sq.get("text") or "")
     cue_words = {"why", "neden", "nicin", "niye", "reason", "rationale", "decision", "decided", "gerekce", "karar"}
     words = [w for w in _content_words(text) if w not in cue_words and w not in qp._GENERIC_EN and len(w) >= 3]
     exp = []
@@ -2072,13 +2069,16 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
         return
     hv = ctx.view("history")
     ctx.step("history_view", f"{len(hv['decisions'])} decision docs, git={hv['is_git']}")
-    # a decision record must name what the question names (its links, seeds, carried subject), not any search hit: a
-    # hit in another folder brought a design note about an unrelated file (D190); a part that names no code in a
-    # message that names a file took its subject by its words, and a record must name that subject
+    # in a message that names a file, a decision record must name what the question names (its links, seeds, carried
+    # subject), not any search hit: a hit in another folder brought a design note about an unrelated file (D190); a part
+    # that names no code took its subject by its words, and a record must name that subject. Without a named file the
+    # records are matched as before (the review: a plain-word why lost its record)
     if ctx.scope and sub.extra.get("names_code") is False:
         core = sub.prod[:1] or sub.items[:1]
-    else:
+    elif ctx.scope:
         core = [i for i in sub.items if i["id"] in (sub.extra.get("anchored") or ())] or sub.items
+    else:
+        core = sub.items
     names = {i["symbol"].strip(".()") for i in core} | {Path(i["file"]).name for i in core}
     files = {i["file"] for i in core}
     terms = _decision_terms(ctx, sub)
@@ -2164,10 +2164,12 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
                 or commits
             if commits and not got.get("more") and b - a < ORIGIN_LINES and _asks_origin(question):
                 # "when was it introduced": the oldest commit of the lines brought them (D190), beside the commits
-                # about the question's words - never the newest in their place; a cut history has not read the
-                # oldest, and the window is said
-                answers = [commits[-1]] + [c for c in commits[:-1] if topic and verdict_gate.shares_topic(
-                    topic, c["subject"], c.get("body") or "")]
+                # about the question's words, else the newest - a value the question names may have come with a
+                # later edit ("when was the limit of 6 introduced", the second review's case); a cut history has not
+                # read the oldest, and the window is said
+                about = [c for c in commits[:-1]
+                         if topic and verdict_gate.shares_topic(topic, c["subject"], c.get("body") or "")]
+                answers = [commits[-1]] + (about or commits[:-1])
         chosen = {c["commit"] for c in answers[:WHY_CLAIMS]}
         for c in commits:
             if c["commit"] in chosen \
@@ -2225,7 +2227,9 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
                                     "the reason was not found: no commit of these lines was read"
                                     + (f" ({why_not})" if why_not else ""))
                                    + "; no decision record explains it" + slow,
-                            "commits": ([origin_lead] if origin_lead else []) + leads,
+                            # the line's commit first, and not again among the function's (the second review)
+                            "commits": ([origin_lead] if origin_lead else []) + [
+                                x for x in leads if not origin_lead or x.split(" ", 1)[0] != origin_lead.split(" ", 1)[0]],
                             "next_step": "open a commit with `git show <sha>`; `history_search` with the symbol "
                                          "lists every commit that changed these lines (newest first, both ends "
                                          "kept); search the issue tracker or PR discussion" + retry})
@@ -2684,8 +2688,10 @@ def _run_subquestion(ctx: _Ctx, sq: dict, share: int | None) -> dict:
     names_code = _names_code(links, mentions, sq.get("text_user_lang") or sq.get("text") or "") or bool(
         sq.get("subject_from") and ctx.names_code.get(sq["subject_from"]))
     ctx.names_code[sq["id"]] = sub.extra["names_code"] = names_code
+    # the named file's candidates seed only a part that asks about one subject: a callers or impact part would take them
+    # for its targets, unchosen (the second review: "what calls the game window capture" met with deliver())
     inputs = qp.retrieval_inputs(ctx.plan, ctx.check, sq, ctx.lex, subject_nodes=subject_nodes,
-                                 scope_seeds=not names_code)
+                                 scope_seeds=not names_code and sq["intent"] in SUBJECT_INTENTS)
     sub.seeds = inputs["seeds"]
     sub.extra["expansions"] = inputs["expansions"]
     include_tests = (ctx.plan.get("constraints") or {}).get("include_tests", True)
@@ -3056,8 +3062,7 @@ def _finish_sub(ctx: _Ctx, sub: _Sub, out: dict, handler: str) -> dict:
                     **{k: sub.extra[k] for k in ("why_topic", "why_leads") if sub.extra.get(k) is not None},
                     # a subject read from words, not named: the gate judges it by them and their English (D190)
                     **({"named_code": False, "expansions": sub.extra.get("expansions") or {}}
-                       if sub.extra.get("names_code") is False else {}),
-                    **({"scope": sorted(ctx.scope)} if ctx.scope else {})}
+                       if sub.extra.get("names_code") is False else {})}
     # made for this sub-question only as context (definitions of search hits, links among them), not by
     # its handler: a claim is shared by text, so a caller a handler found stays an answer
     out["_context"] = [cid for cid in ctx.rec.by_sq.get(sub.sq["id"], [])
