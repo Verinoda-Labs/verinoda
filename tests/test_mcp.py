@@ -470,6 +470,21 @@ def test_a_core_server_outside_one_project_lists_no_tool(tmp_path, monkeypatch):
     assert len(names(mcp_server.build_server(proj))) == 5  # a project nobody scanned yet: index_update scans it
 
 
+def test_a_work_tree_holding_nested_clones_is_one_project(tmp_path):
+    """D188's review: a repository whose top holds submodules or nested clones (sub-folders with their own .git) is
+    one project, not a workspace of them: its menu is served and index_update scans it."""
+    proj = tmp_path / "proj"
+    for name in ("vendor_a", "vendor_b"):
+        (proj / name).mkdir(parents=True)
+        _git(proj / name, "init", "-q")
+    _git(proj, "init", "-q")
+    (proj / "app.py").write_text("def main():\n    return 1\n", encoding="utf-8")
+    assert mcp_server.not_one_project(proj) is None
+    assert len(mcp_server.listed_tools(proj, "core")) == 5
+    res = AtlasTools(proj).index_update()
+    assert "error" not in res and res["mode"] == "first_scan", res
+
+
 def test_instructions_carry_the_one_status_rule():
     """D186: one status rule, in the instructions' tail (the skills copy it): what counts as a fact, that Verinoda's
     output is a lead to confirm with one check of the agent's own, and that a cut list proves no absence. It
@@ -1715,6 +1730,11 @@ def test_index_update_says_what_changed_without_the_cli_record(tmp_path):
     wire = json.dumps(up, ensure_ascii=False)
     assert str(proj.name) not in wire and "graph.json" not in wire and "tree_hash" not in wire, wire
     assert _size(up) < 900, _size(up)
+    # the view marks its own cuts, so the response cap passes it whole: a note's lists are cut by the same rule
+    many = mcp_server.update_view({"mode": "incremental", "facts": {"lowered": [f"fact{i}" for i in range(30)],
+                                                                    "seconds": 0.1}})
+    assert many["facts"] == {"lowered": [f"fact{i}" for i in range(mcp_server.CHANGED_SHOWN)], "seconds": 0.1}
+    assert many["truncation"]["cut"]["facts.lowered"] == {"kept": mcp_server.CHANGED_SHOWN, "total": 30}
 
 
 # -- response cap -------------------------------------------------------------------------

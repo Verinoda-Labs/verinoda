@@ -18393,14 +18393,21 @@ connected to, and the server is registered at user scope, so that is every sessi
   opened in the home folder and 2 in the desktop folder that holds several projects: folders where every tool can only refuse.
 - **A defect on the way.** A user-scope install keeps its manifest in `~/.verinoda`, so the home folder counts as initialised,
   and `index_update` there took the update path instead of the first scan's refusal: on a copy (a `.verinoda` with the manifest,
-  two git projects and a file) it built an index of every file under the folder. In the real home folder that is a scan of
-  everything under it.
+  two git projects and a file) it built an index of every file under the folder. `verinoda update` (and `update --fast`, what
+  the mod runs) did the same on the copy: the engine's update has no rule of its own, and a terminal opens in the home folder.
+  The mod could not set it off by itself (its root finder never takes a home folder or a drive root unless the settings name
+  it). In the real home folder that is a scan of everything under it.
 
 ### 160.2 Decisions
 
-1. **`index_update` refuses a folder that is not one project while it has no index**, a `.verinoda` there or not:
-   `not_one_project` (a home folder, a drive root, a workspace of two or more sub-folders with their own `.git` or `.verinoda`) is
-   the rule the first scan had, now checked on the update path too when there is no graph.
+1. **No update builds the first index of a folder that is not one project**, a `.verinoda` there or not. `not_one_project`
+   (`verinoda/paths.py`: a home folder, a drive root, a workspace of two or more sub-folders with their own `.git` or `.verinoda`)
+   is the rule the MCP first scan had; it is checked by `index_update` on the update path when there is no graph, by
+   `workflow.update` when there is no snapshot (`first_index_refusal`, mode `not_one_project`, for every caller) and by
+   `verinoda update` before it makes the store, so a refused folder keeps no `atlas.db`. `verinoda scan <folder>` still indexes a
+   folder when asked to. A folder that is itself a git work tree's top is one project (its submodules and nested clones are its
+   own: the review found them taken for a workspace); that is checked after the home folder and the drive root, so a dotfiles
+   repository in the home folder is still the home folder.
 2. **A core server over such a folder without an index serves no tool.** `served_tools` returns nothing, so the menu lists
    nothing, the workflows (MCP prompts) are not registered, the instructions are one line saying why and what to do (70 tokens)
    and the log line says `no tool served (pass --repo)`. With no Verinoda tool in the request the mod adds no call rule and pins
@@ -18410,8 +18417,9 @@ connected to, and the server is registered at user scope, so that is every sessi
    hex), dirty and file count; the graph's counts; the first 8 paths of each list, code files first, a cut list marked
    `truncated` with `kept`/`total` as the response cap marks one; the stale claims as id, text clipped to 120 characters and
    their first 3 changed files; every error, hint and note. Of `derived` only an error is kept (`derived_errors`), of
-   `background` only whether it started and why not; the graph build's `incremental` statistics go. `verinoda update --json`
-   keeps the whole record.
+   `background` only whether it started and why not; the graph build's `incremental` statistics go; a note's lists (`facts`,
+   the dropped references) are cut by the same rule, since the response cap passes a response that marks its own cuts (as it
+   passes analyze's lead view). `verinoda update --json` keeps the whole record.
 4. **The core instructions lose two sentences** no call depends on: the list of what `--profile full` adds (the pointer stays)
    and the error shape (every error result carries its own hint, `not_initialised` and `no_index` naming `index_update`):
    1,734 -> 1,533 characters. The call rule's three statements are not touched (160.4).
@@ -18439,9 +18447,13 @@ Tokens counted by `/context` (installed 318fa0b against this branch, the same ma
   tokens (per result 0.872-0.984); with an answer claim repeated under a second sub-question named by its id and the snapshot
   commit at 12 hex, 0.912 (0.746-0.980); the two trims alone in JSON, 0.972. The tokenizer reads compact JSON's keys cheaply; the
   cost is the content: paths, claim texts, ids and hashes (hex at about 1.5 characters a token).
-- Tests: the nine files that touch these parts (`test_mcp.py`, `test_mcp_projects.py`, `test_mcp_prompts.py`, `test_depcheck.py`,
-  `test_repo_group.py`, `test_tq.py`, `test_update_fast.py`, `test_agents.py`, `test_more_agents.py`) 316 passed, 1 skipped;
-  `test_tq_measured.py` 16 passed (the server is not in tq's engine). Lint finding sets unchanged per file.
+- Tests: the nine files that touch the server parts (`test_mcp.py`, `test_mcp_projects.py`, `test_mcp_prompts.py`,
+  `test_depcheck.py`, `test_repo_group.py`, `test_tq.py`, `test_update_fast.py`, `test_agents.py`, `test_more_agents.py`) 316
+  passed, 1 skipped; after the review's fixes (the CLI and engine refusal, the git-root rule, the notes' lists), `test_cli.py`,
+  `test_mcp.py`, `test_mcp_projects.py`, `test_paths.py`, `test_update_fast.py`, `test_tq_measured.py` and `test_tq.py` 240
+  passed. `paths.py` and `workflow.py` are in tq's engine: `verinoda benchmark tq-audit` was run again
+  (`benchmarks/results/tq-audit-2026-10-23/`): 357 held-out cases, 347 right, 3 wrong, 7 unknown, the same 22 cells and 3 shown
+  as on 2026-10-22. Lint finding sets unchanged per file.
 - Not measured: an agent session with these changes (cost, model calls, accuracy); a billed count (every count here is the
   tokenizer's through `/context`); whether the shorter description changes when the skill is loaded.
 
@@ -18473,8 +18485,12 @@ and gets no `atlas.db`; a core server over a home folder or a workspace of two p
 line saying why, its log line says no tool is served, `--profile full` lists every tool and a project nobody scanned lists the
 five; `index_update`'s first scan and update carry no `derived`, the update's lists keep code first and mark the cut with
 `kept`/`total`, the snapshot has its four keys and a 12-character commit, no folder, graph path or tree hash is sent, and the
-response stays under 900 characters with 42 changed files; the core instructions are under 1,600 characters without the error
-shape or the full profile's list. `tests/test_agents.py`: the Claude skill's description is at most 300 characters.
+response stays under 900 characters with 42 changed files, and a note's long list is cut and marked; the core instructions are
+under 1,600 characters without the error shape or the full profile's list; a work tree holding two nested clones is one project
+(its menu is served, index_update scans it). `tests/test_cli.py`: `verinoda update` (and `--fast`) in a home folder holding an
+install manifest exits 1 naming `verinoda scan`, makes no `atlas.db` and no graph, a dotfiles repository there changes nothing,
+and `workflow.update` itself answers `not_one_project`. `tests/test_agents.py`: the Claude skill's description is at most 300
+characters.
 
 ## Sources
 

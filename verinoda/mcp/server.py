@@ -78,6 +78,7 @@ from verinoda.paths import (  # noqa: E402
     contained_path,
     evidence_root_allowed,
     graph_path,
+    not_one_project,
     receiver_calls_path,
 )
 
@@ -638,24 +639,6 @@ def index_state(repo: Path) -> str:
     return "initialised" if atlas_dir(repo).is_dir() else "not_scanned"
 
 
-def not_one_project(repo: Path) -> str | None:
-    """Why ``repo`` is not one project (a home folder, a drive root, a workspace holding two or more projects:
-    sub-folders with their own .git or .verinoda), or None. Such a folder is a wrongly resolved project:
-    index_update never scans it."""
-    repo = Path(repo).resolve()
-    if repo == Path.home().resolve():
-        return "a home folder"
-    if repo.parent == repo:
-        return "a drive root"
-    try:
-        projects = [d.name for d in repo.iterdir() if d.is_dir() and not d.name.startswith(".")
-                    and ((d / ".git").exists() or atlas_dir(d).is_dir())]
-    except OSError:
-        projects = []
-    return (f"a workspace of {len(projects)} projects ({', '.join(sorted(projects)[:5])})"
-            if len(projects) >= 2 else None)
-
-
 CHANGED_SHOWN = 8   # paths of each list index_update shows (D188); `verinoda update --json` keeps every one
 STALE_TEXT = 120    # characters of a stale claim's text index_update shows
 
@@ -701,6 +684,9 @@ def update_view(res: dict) -> dict:
             continue  # how the graph build patched the graph: the CLI's record
         elif isinstance(v, list):
             out[k] = first(k, v)
+        elif isinstance(v, dict):  # a note (facts, busy, dropped references): its lists cut by the same rule, since
+            # the response cap passes a response that marks its own cuts
+            out[k] = {x: first(f"{k}.{x}", y) if isinstance(y, list) else y for x, y in v.items()}
         else:
             out[k] = v
     if cut:

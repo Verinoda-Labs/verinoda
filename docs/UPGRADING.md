@@ -682,15 +682,19 @@ command, no MCP tool change, no new dependency; `atlas.db` stays at schema v10.
 ### D188: What a session carries
 
 Fewer tokens in every request of an agent session; the measurements are in `docs/DESIGN.md` section 160. No new command, no new
-dependency, no schema change; the CLI's output is unchanged.
+dependency, no schema change; the CLI's output is unchanged, except that `verinoda update` refuses a folder that is not one
+project (below).
 
 - **A server outside a project serves nothing.** `verinoda mcp serve` (the core profile) started in a home folder, a drive root or
   a workspace holding several projects, where there is no index, lists no tool and its instructions are one line that says why;
   its log line says `no tool served (pass --repo)`. Before, a user-scope server there put its tools, its instructions and the
   mod's call rule into every request (about 1,600 tokens) for tools that could only refuse. Open the session in the project's
   folder, or register the server with `--repo <project>`. `--profile full` serves as before.
-- **`index_update` never scans such a folder**, also when it holds a `.verinoda` without an index: a user-scope install keeps its
-  manifest in `~/.verinoda`, and an `index_update` in the home folder scanned the whole home folder as a project.
+- **No update builds the first index of such a folder**, also when it holds a `.verinoda` without an index: a user-scope install
+  keeps its manifest in `~/.verinoda`, and `index_update` or `verinoda update` in the home folder indexed the whole home folder as
+  a project. Both now refuse (exit 1, `mode: not_one_project`) and name `verinoda scan <folder>`, which still indexes a folder
+  when asked to. A repository whose top holds submodules or nested clones is one project, not a workspace of them (the first
+  scan from MCP refused it before).
 - **`index_update`'s MCP result is a summary**: the snapshot (`id`, a 12-character `commit`, `dirty`, `file_count`), the mode,
   the counts, the first 8 paths of each change list (code files first; a cut list is marked `truncated` with `kept`/`total`),
   the stale claims (id, clipped text, the first changed files), every error, hint and note. It no longer carries the snapshot's

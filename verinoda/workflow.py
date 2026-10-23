@@ -9,7 +9,7 @@ from pathlib import Path
 from verinoda import buildlock, index
 from verinoda import evidence as evmod
 from verinoda.claims import ACTIVE, CONFIDENCE_CAP, RECHECK_TYPES, Claims, assess_change, invalidate_stale
-from verinoda.paths import ensure_atlas, graph_path
+from verinoda.paths import ensure_atlas, graph_path, not_one_project
 from verinoda.snapshot import changed_files, current_state, take_snapshot
 from verinoda.store import Store
 
@@ -288,6 +288,20 @@ def _graph_affected(repo: Path, diff: dict, in_graph: set[str] | None = None) ->
     return False
 
 
+def first_index_refusal(repo: Path) -> dict | None:
+    """An update's result when it would build the first index of a folder that is not one project
+    (:func:`verinoda.paths.not_one_project`: a home folder, a drive root, a workspace of projects), else None. A
+    user-scope install keeps its manifest in ~/.verinoda, so the home folder looked initialised and an update there
+    indexed every file under it (D188). `verinoda scan` still indexes such a folder when asked to."""
+    why = not_one_project(repo)
+    if not why:
+        return None
+    return {"snapshot": None, "error": f"{repo} is {why}, not one project: an update builds no first index of it",
+            "hint": f"run it in a project's folder or pass --repo <project>; `verinoda scan {repo}` indexes this "
+                    "folder on purpose",
+            "mode": "not_one_project", "index_mode": "none", "index_seconds": 0.0, "changed_count": 0, "stale": []}
+
+
 def update(store: Store, repo: Path, *, wait: float = buildlock.DEFAULT_WAIT_SECONDS, purpose: str = "update",
            on_wait=None, fast: bool = False) -> dict:
     """Refresh after edits: rebuild the graph, re-index only the files changed since the last snapshot.
@@ -316,8 +330,14 @@ def update(store: Store, repo: Path, *, wait: float = buildlock.DEFAULT_WAIT_SEC
     not describe yet. No snapshot is recorded until that build ends, so every reading command keeps saying
     those files changed since the index. The graph the background build makes is the one a full update
     makes.
+
+    The first index of a folder that is not one project is never built here (:func:`first_index_refusal`).
     """
     repo = Path(repo).resolve()
+    if store.latest_snapshot() is None:
+        refused = first_index_refusal(repo)
+        if refused is not None:
+            return refused
     try:
         with buildlock.build_lock(repo, wait=wait, purpose=purpose, on_wait=on_wait):
             res = _update(store, repo, fast=fast)

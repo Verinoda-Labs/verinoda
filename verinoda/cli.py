@@ -753,12 +753,16 @@ def cmd_scan(args) -> int:
 
 def cmd_update(args) -> int:
     from verinoda import buildlock, workflow
+    from verinoda.paths import graph_path
 
     given = args.repo or args.path
     repo = Path(given).resolve() if given else find_repo_root()
-    st = _store(repo, create=True)
-    res = workflow.update(st, repo, wait=buildlock.CLI_WAIT_SECONDS, on_wait=_waiting_note,
-                          fast=getattr(args, "fast", False))
+    # the engine refuses it too; here before the store, so a refused home folder keeps no atlas.db (D188)
+    res = None if graph_path(repo).exists() else workflow.first_index_refusal(repo)
+    if res is None:
+        st = _store(repo, create=True)
+        res = workflow.update(st, repo, wait=buildlock.CLI_WAIT_SECONDS, on_wait=_waiting_note,
+                              fast=getattr(args, "fast", False))
     if not res.get("error"):
         summary = _decision_summary(repo, noop=res.get("mode") == "noop")
         if summary:
