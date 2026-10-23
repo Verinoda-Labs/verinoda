@@ -144,15 +144,17 @@ def test_a_folder_of_a_path_is_not_a_code_term():
     assert analysis._code_terms("why does `MyGame` load PriceCache?") == ["MyGame", "PriceCache"]
 
 
-def test_the_file_a_question_names_scopes_its_plain_words(bot):
+def test_the_file_a_question_names_gives_its_plain_words_their_candidates_there(bot):
     repo, _ = bot
     g = index.load(repo)
     lex = lexicon.load(repo)
     plan = qp.draft(QUESTION, g, lex)
-    res = qp.check(plan, g, repo, lex)
-    where = {lk["text"]: sorted({g.file(n) for n in qp.mention_nodes(lk)}) for lk in res["links"]
-             if lk["status"] in ("linked", "weak", "ambiguous")}
-    assert where and all(files == [BOT] for files in where.values()), where
+    links = {lk["text"]: lk for lk in qp.check(plan, g, repo, lex)["links"]}
+    # the project-wide link stays as without the file; the word's candidates in the file are kept beside it, an
+    # English word's through its Turkish ("window" -> the "pencere" of the window's comment)
+    assert g.file(qp.mention_nodes(links["window"])[0]) == "MyGame/tools/fxrun.py"
+    assert [g.file(n) for n in links["window"]["in_scope"]] == [BOT] and links["window"]["in_scope_at"] == [f"{BOT}:2-2"]
+    assert not links["second"].get("in_scope")
 
 
 def test_the_when_part_is_answered_from_the_named_file_not_a_same_named_helper_elsewhere(bot, answer):
@@ -205,3 +207,199 @@ def test_a_subject_found_by_one_word_of_several_is_not_met(helper):
     assert s["status"] == "met_with_inference", s
     assert any("find_window" in u["why"] and "'window'" in u["why"] for u in res["unknowns"]), res["unknowns"]
     assert named["subquestions"][0]["status"] == "met"         # a subject the question names as code is not capped
+
+
+def _history_repo(root: Path, name: str, steps: list[tuple[str, str, str]]) -> tuple[Path, list[str]]:
+    repo = root / name
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    shas = []
+    for rel, text, message in steps:
+        _write(repo, rel, text)
+        shas.append(_commit(repo, message))
+    return _scanned(repo), shas
+
+
+def _when(repo: Path, question: str) -> list[str]:
+    st = open_store(repo)
+    try:
+        res = analysis.analyze(st, repo, question)
+    finally:
+        st.close()
+    (s,) = res["subquestions"]
+    return [c["text"] for c in _answers(res, s["id"])]
+
+
+SETTINGS = ("const retryPolicy = { limit: 3 }\n\nfunction fetchPage (url) {\n  return url\n}\n\n"
+            "module.exports = { retryPolicy, fetchPage }\n")
+FETCH = '''def fetch(url, tries=1):
+    """Read a page."""
+    for _ in range(tries):
+        return url
+    return None
+'''
+
+
+@pytest.fixture(scope="module")
+def retry_policy(tmp_path_factory):
+    """One object-valued constant (a primitive one is no graph node) whose one line four commits changed: the first
+    brought it, three tuned it."""
+    return _history_repo(tmp_path_factory.mktemp("scope"), "settings", [
+        ("settings.js", SETTINGS, "initial import")] + [
+        ("settings.js", SETTINGS.replace("limit: 3", f"limit: {n}"), f"tune: {n} tries") for n in (4, 5, 6)])
+
+
+def test_when_a_one_line_definition_was_introduced_is_its_oldest_commit(retry_policy):
+    # the newest three commits (D186's when-answer without a shared word) are its later edits
+    repo, shas = retry_policy
+    texts = _when(repo, "When was the retry policy introduced?")
+    assert any(shas[0][:10] in t for t in texts), texts
+
+
+def test_a_when_about_a_change_after_the_introduction_keeps_the_newest_commits(retry_policy):
+    repo, shas = retry_policy   # the review's case: the creation commit alone came back
+    texts = _when(repo, "When was the retry policy changed after it was added?")
+    assert any(shas[-1][:10] in t for t in texts), texts
+
+
+def test_when_a_function_was_given_a_behaviour_is_not_its_first_commit(tmp_path):
+    # the oldest commit of a function's lines is the function's birth, not the change asked about (backlog 22.7)
+    repo, shas = _history_repo(tmp_path, "fetcher", [
+        ("fetch.py", FETCH, "initial import"),
+        ("fetch.py", FETCH.replace("        return url", "        try:\n            return url\n"
+                                   "        except TimeoutError:\n            continue"),
+         "fetch: retry once more on a timeout")])
+    texts = _when(repo, "When was the retry on a timeout introduced?")
+    assert any(shas[1][:10] in t for t in texts) and not any(shas[0][:10] in t for t in texts), texts
+
+
+# -- the review's cases (each failed on 2129e7c, the first version of D190) -----------------------------------------
+
+SILENT = HERALD.replace("function deliver (text, item) {\n  say(text)",
+                       "function deliver (text, item) {\n  if (/\\[SUSKUN\\]/.test(text)) return\n  say(text)")
+WHY = QUESTION.split("?")[0] + "?"
+
+
+def _ask(repo: Path, question: str, plan: dict | None = None) -> dict:
+    st = open_store(repo)
+    try:
+        return analysis.analyze(st, repo, question, plan=plan) if plan else analysis.analyze(st, repo, question)
+    finally:
+        st.close()
+
+
+@pytest.fixture(scope="module")
+def since(tmp_path_factory):
+    """The talk.set line changed once, by a commit that states no reason; no [SUSKUN] case."""
+    return _history_repo(tmp_path_factory.mktemp("scope"), "since", [
+        (BOT, HERALD, "bot: chat brain"),
+        (BOT, HERALD.replace("talk.set(item.player, Date.now())", "talk.set(item.player, Date.now() + 0)"),
+         "bot: keep the player's reply time")])
+
+
+def test_a_lines_first_commit_is_a_lead_never_the_reason_of_a_why(since):
+    # the claim's own words ("changed since") and the path's folder "bot" once read as a reason the commit stated
+    repo, shas = since   # "write", not "call": no call path keeps it below met
+    res = _ask(repo, f"In {BOT}, why does relay() write talk.set for the player?")
+    assert _status(res, "q1") != "met"
+    whys = [u for u in res["unknowns"] if u.get("sub_question") == "q1" and "reason was not found" in u["why"]]
+    assert len(whys) == 1 and whys[0]["commits"][0].startswith(shas[0][:10]), whys
+
+
+@pytest.fixture(scope="module")
+def moved(tmp_path_factory):
+    """[SUSKUN] first, then the talk.set line, then the bot moved under MyGame/."""
+    repo = tmp_path_factory.mktemp("scope") / "moved"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _write(repo, "bot/herald.js", SILENT.replace("  if (item.player) talk.set(item.player, Date.now())\n", ""))
+    shas = [_commit(repo, "bot: silent replies are not said")]
+    _write(repo, "bot/herald.js", SILENT)
+    shas.append(_commit(repo, "bot: remember who talked"))
+    (repo / "MyGame").mkdir()
+    _git(repo, "mv", "bot", "MyGame/bot")
+    shas.append(_commit(repo, "move the bot under MyGame"))
+    return _scanned(repo), shas
+
+
+def test_a_case_older_than_the_line_stays_older_across_a_move(moved):
+    repo, shas = moved   # without following the rename the move was the case's first commit, "later" than the line
+    texts = [c["text"] for c in _ask(repo, WHY)["claims"] if "first appears" in c["text"]]
+    assert texts and all("earlier" in t and shas[0][:10] in t for t in texts), texts
+
+
+def test_another_part_of_the_message_keeps_its_own_subject(bot):
+    repo, _ = bot   # "its title" carries q1's subject; the window finder of the other folder still answers it
+    res = _ask(repo, f"Where is relay defined in {BOT}? And where is the game window found by its title?")
+    assert any("find_window" in c["text"] for c in _answers(res, "q2")), _answers(res, "q2")
+
+
+def test_a_part_about_another_file_is_answered_there(bot):
+    repo, _ = bot
+    window = _ask(repo, f"Where is relay defined in {BOT}? And where is the game window looked up by title?")
+    spell = _ask(repo, f"In {BOT}, where is relay defined? Where is the spell duration in seconds computed?")
+    assert any("find_window" in c["text"] for c in _answers(window, "q2")), _answers(window, "q2")
+    assert any("seconds" in c["text"] for c in _answers(spell, "q2")) and _status(spell, "q2") != "unmet"
+
+
+def test_a_host_plans_word_that_names_code_only_elsewhere_is_still_linked(bot):
+    repo, _ = bot
+    q = f"In {BOT}, why does relay() call talk.set? Where is the title lookup done?"
+    plan = {"schema": "verinoda.question_plan/1", "user_message": q, "language": "en",
+            "restated_goal": "why relay calls talk.set; where the title lookup is",
+            "restated_goal_user_lang": "why relay calls talk.set; where the title lookup is",
+            "sub_questions": [
+                {"id": "q1", "text": f"In {BOT}, why does relay() call talk.set?", "intent": "why",
+                 "mentions": ["m1", "m2"],
+                 "done_when": {"kind": "claim_exists", "subjects": ["m2"], "min_status": "strong_inference",
+                               "detail": "a commit or record that states the reason"}},
+                {"id": "q2", "text": "Where is the title lookup done?", "intent": "locate", "mentions": ["m3"],
+                 "done_when": {"kind": "location_verified", "subjects": ["m3"], "min_status": "statically_verified",
+                               "detail": "file:line of the lookup"}}],
+            # m3 leaves out "required" (so it is required): a plain word that names code only outside the named file
+            "mentions": [{"id": "m1", "text": BOT, "kind": "file"}, {"id": "m2", "text": "relay()", "kind": "symbol"},
+                         {"id": "m3", "text": "title", "kind": "domain_concept"}],
+            "on_ambiguity": "answer_all", "host": "claude_code"}
+    res = _ask(repo, q, plan)
+    assert not any("matches 'title" in (u.get("why") or "") for u in res["unknowns"]), res["unknowns"]
+    assert any("find_window" in c["text"] for c in _answers(res, "q2")), _answers(res, "q2")
+
+
+def test_the_file_named_in_the_same_sentence_is_where_to_look_not_the_subject(bot):
+    repo, _ = bot   # the path made the part "name code", and the capture helper was met
+    res = _ask(repo, f"In {BOT}, when was the 60 second conversation window introduced?")
+    texts = [c["text"] for c in _answers(res, "q1")]
+    assert texts and not any("find_window" in t or "fxrun" in t for t in texts), texts
+    assert _status(res, "q1") == "met_with_inference"
+
+
+@pytest.fixture(scope="module")
+def trimmed(tmp_path_factory):
+    """relay()'s message line changed twice after the bot came."""
+    return _history_repo(tmp_path_factory.mktemp("scope"), "trimmed", [
+        (BOT, HERALD, "bot: chat brain"),
+        (BOT, HERALD.replace("const text = item.message", "const text = item.message.trim()"), "relay: trim the message"),
+        (BOT, HERALD.replace("const text = item.message", "const text = String(item.message).trim()"),
+         "relay: accept numbers")])
+
+
+def test_a_name_written_with_parentheses_names_code(trimmed):
+    repo, _ = trimmed   # `relay()` is linked as a plain word; written with "()" it is the question's subject
+    assert _status(_ask(repo, "When was the message trimming in relay() added?"), "q1") == "met"
+
+
+def test_turkish_cue_words_are_not_words_of_the_subject(tmp_path):
+    # "zaman" and "eklendi" counted as words talk did not carry (a comment without them, as in the review's case)
+    plain = HERALD.replace(" // oyuncu -> son cevap zamani (60 sn sohbet pencere)", "")
+    repo, _ = _history_repo(tmp_path, "plain", [("bot/herald.js", plain, "bot: sohbet beyni"),
+                                                ("bot/herald.js", plain.replace("60000", "90000"), "bot: pencere 90 sn")])
+    assert _status(_ask(repo, "talk ne zaman eklendi?"), "q1") == "met"
+
+
+def test_the_passages_keep_the_searchs_own_lines():
+    lines = ["expanded: window->pencere", "## a.js:1-2 f", "1 function f () {", "## b.py:1-2 g", "1 def g():",
+             "(calls / called by: name@line)", "… 3 more candidates", "next: verinoda query"]
+    assert analysis._in_scope(lines, frozenset({"a.js"})) == [
+        "expanded: window->pencere", "## a.js:1-2 f", "1 function f () {", "(calls / called by: name@line)",
+        "… 3 more candidates", "next: verinoda query",
+        "(+1 passage(s) of other files than the question names left out: `verinoda query` gives them)"]

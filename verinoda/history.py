@@ -534,8 +534,12 @@ def oldest_appearance(repo: Path, text: str, *, regex: bool = False, path: str |
     if not t:
         raise ValueError("text: give the text to look for")
     spec, rel = _scope(repo, path)
+    # one file is followed across renames, as git log -L follows a line: a move would otherwise be the oldest commit
+    # under the new path, and a case older than the line would read as newer (the review's case, D190)
+    follow = bool(path) and _one_file(repo, path)
     pick = f"-G{t}" if regex else f"-S{t}"
-    listed = _run_git(repo, _LIT, "log", pick, "--format=%H%x1f%aI%x1f%an%x1f%s", *_DIFF_SAFE, *spec)
+    listed = _run_git(repo, _LIT, "log", pick, "--format=%H%x1f%aI%x1f%an%x1f%s",
+                      *(_DIFF_FOLLOW if follow else _DIFF_SAFE), *spec)
     if listed.timed_out:
         return {"timed_out": True}
     if listed.returncode != 0:

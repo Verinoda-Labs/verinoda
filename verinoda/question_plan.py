@@ -654,24 +654,21 @@ def _own_question(text: str, folded: str) -> set[str] | None:
     return None
 
 
-def _carry_dropped_subjects(sqs: list[dict], mentions: list[dict], dropped: dict[int, int] | None = None) -> None:
+def _carry_dropped_subjects(sqs: list[dict], mentions: list[dict]) -> None:
     """A later part that names no code asks about the code an earlier part named.
 
     Turkish drops the subject ("export.write nerede tanımlı, hem de hangi dosyaları okuyor?": which
     files does *it* read) and English can leave it out; a part with no code mention and at most one
     word of its own gets ``subject_from`` the nearest earlier part that names code. A part with its
-    own words ("... and how are orders saved?") keeps its own subject. ``dropped``: per part, the words
-    that name code only outside the file the message names (D190); they are its own words all the same
-    ("when was the 60 second conversation window introduced" does not ask about the earlier part's function)."""
+    own words ("... and how are orders saved?") keeps its own subject."""
     ms = {m["id"]: m for m in mentions}
-    dropped = dropped or {}
     names_code = [any(ms[x].get("kind") != "domain_concept" for x in sq["mentions"] if x in ms) for sq in sqs]
     for i in range(1, len(sqs)):
         sq = sqs[i]
         if sq.get("subject_from") or sq.get("depends_on") or names_code[i]:
             continue
         prev = next((j for j in range(i - 1, -1, -1) if names_code[j]), None)
-        if prev is not None and len([x for x in sq["mentions"] if x in ms]) + dropped.get(i, 0) <= 1:
+        if prev is not None and len([x for x in sq["mentions"] if x in ms]) <= 1:
             sq["subject_from"] = sqs[prev]["id"]
 
 
@@ -1334,7 +1331,7 @@ def spells_whole(g, site: str | None, text: str) -> bool:
     return bool(re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", lines[int(ln) - 1], re.I))
 
 
-def name_site(g, text: str, *, strict: bool = False) -> str | None:
+def name_site(g, text: str, *, strict: bool = False, scope: frozenset[str] | None = None) -> str | None:
     """Where the repository spells a code-shaped name outside import statements (``file:line``), or a
     file with that path; None when it spells it nowhere (then the name does not exist here).
 
@@ -1344,13 +1341,15 @@ def name_site(g, text: str, *, strict: bool = False) -> str | None:
     elsewhere (``OrderRepository.place_order``) is looked for inside that owner (:func:`_member_site`)
     and then as a whole, an attribute assignment, ``setattr`` or a data key elsewhere
     (:func:`_member_elsewhere`), not by its last part alone. Only a name found nowhere is reported as
-    not found; a lookup that runs past ``_SITE_SECONDS`` is UNCHECKED.
+    not found; a lookup that runs past ``_SITE_SECONDS`` is UNCHECKED. ``scope``: the files the message
+    names are read first (D190: `talk.set` was "`set` at DOGRULAMA.md:557", a document read before the
+    bot's file that spells the whole name).
     """
     ix = _index(g)
     path, name = split_code_name(text)
     if not (path or name):
         return None
-    key = f"{path}::{name}::{int(strict)}"
+    key = f"{path}::{name}::{int(strict)}::{','.join(sorted(scope or ()))}"
     if key in ix.sites:
         return ix.sites[key]
     if ix.repo_files is None:
@@ -1391,6 +1390,8 @@ def name_site(g, text: str, *, strict: bool = False) -> str | None:
         part = re.compile(rf"(?<![\w]){re.escape(last)}(?![\w])") if last and len(last) >= 3 else None
         pats = whole + ([part] if part else [])
         files = _files_to_scan(g, ix, [name] if strict or not last else [name, last])
+        if scope:
+            files = [f for f in files if f in scope] + [f for f in files if f not in scope]
         deadline = time.perf_counter() + _SITE_SECONDS - spent
         # the whole name is preferred to its last part (`repo.save` over `def save`), for a short while
         part_hit, part_deadline = None, None
@@ -1569,6 +1570,26 @@ def _candidate_strings(mention: dict, lexicon) -> list[tuple[str, str, float]]:
     return uniq
 
 
+def _lines_naming(g, files, forms: list[str]) -> list[str]:
+    """The symbols whose lines in ``files`` carry a word starting with one of ``forms`` (folded: "pencere" finds the
+    "penceresi" of a comment, a Turkish ending), in line order, at most 6; a line outside every symbol gives none. The
+    text index ties a comment to its unit, so a constant's comment was not found by it (D190)."""
+    if not forms:
+        return []
+    rx = re.compile(r"(?<![^\W_])(?:" + "|".join(re.escape(tn.fold_tr(f).lower()) for f in forms) + ")")
+    out: list[str] = []
+    for f in sorted(files):
+        data = _read_small(Path(g.root) / f)
+        for i, line in enumerate((data or "").splitlines(), 1):
+            if rx.search(tn.fold_tr(line).lower()):
+                n = g.symbol_at(f, i)
+                if n and n not in out:
+                    out.append(n)
+                    if len(out) >= 6:
+                        return out
+    return out
+
+
 def _text_hits(g, ix: _Index, words: list[str], lexicon) -> list[tuple[str, str]]:
     """Nodes whose comments/strings/body use one of the words (lexicon text index)."""
     out = []
@@ -1674,10 +1695,11 @@ def link_mention(mention: dict, graph, lexicon=None, *, with_hash: bool = True,
                  scope: frozenset[str] | None = None) -> dict:
     """Ground one mention in the graph (see the module docstring for tiers and statuses).
 
-    ``scope``: the files the message names (:func:`named_scope`). A plain word (a concept) is then read inside
-    them only, an English one also through the Turkish its seed dictionary gives it ("window" -> "pencere"); a
-    word that names code only elsewhere is unlinked, its best matches kept as ``out_of_scope`` (D190: "window"
-    linked a capture helper in another folder when the question named the bot's file)."""
+    ``scope``: the files the message names (:func:`named_scope`). A plain word (a concept) is linked in the whole
+    project as without one, and its candidates inside the named files (an English word's through the Turkish its
+    seed dictionary gives it too, "window" -> "pencere") are kept as ``in_scope`` / ``in_scope_at``; a name
+    written as code that names no symbol is looked for in the named files first. D190: "window" linked a capture
+    helper in another folder when the question named the bot's file."""
     g = graph
     lex = _lexicon_for(g, lexicon)
     ix = _index(g)
@@ -1701,35 +1723,39 @@ def link_mention(mention: dict, graph, lexicon=None, *, with_hash: bool = True,
     words = [w for w in (tn.fold_tr(x) for x in _surface_words(mention.get("text") or ""))]
     gloss_words = re.findall(r"[a-z0-9_]+", (mention.get("gloss_en") or "").lower())
     seed_words = [t for hit in lex.seed(words) for t in hit["targets"]]
-    scoped = bool(scope) and _is_concept(mention)
-    turkish: list[str] = []
-    if scoped:
-        from verinoda import lexicon as lexmod
-
-        turkish = [k for w in words for k in lexmod.seed_keys_for(w) if k not in words]
-    for n, w in _text_hits(g, ix, words + gloss_words + seed_words + turkish, lex):
+    for n, w in _text_hits(g, ix, words + gloss_words + seed_words, lex):
         info = scored.setdefault(n, {"score": 0.0, "matches": []})
         if not any(m["type"] == "text_hit" for m in info["matches"]):
             info["matches"].append({"type": "text_hit", "via": f"text:{w}", "score": TIER_SCORES["text_hit"]})
         info["score"] = max(info["score"], TIER_SCORES["text_hit"])
-    outside: list[str] = []
-    if scoped:
-        outside = sorted((n for n in scored if g.file(n) not in scope), key=lambda n: (-scored[n]["score"], n))
-        scored = {n: info for n, info in scored.items() if g.file(n) in scope}
+    inside: dict[str, float] = {}
+    if scope and _is_concept(mention):
+        # the same word's candidates inside the files the message names, and there an English word's Turkish too
+        # ("window" -> "pencere": the bot's comments are Turkish, the question English), kept beside the link the
+        # whole project gives, which stays as it was: the analysis weighs the two (D190)
+        from verinoda import lexicon as lexmod
+
+        inside = {n: info["score"] for n, info in scored.items() if g.file(n) in scope}
+        forms = [w.lower() for w in words if len(w) >= 3] + [
+            k for w in words for k in lexmod.seed_keys_for(w) if k not in words]
+        for n in _lines_naming(g, scope, forms):
+            inside[n] = max(inside.get(n, 0.0), TIER_SCORES["text_hit"])
     for info in scored.values():
         info["matches"].sort(key=lambda m: -m["score"])
     link: dict = {"mention": mention.get("id"), "text": mention.get("text"), "status": "unlinked",
                   "alternatives": [], "rejected_candidates": rejected, "nodes": []}
-    if scoped:
-        link["scope"] = sorted(scope)
-        if outside:
-            link["out_of_scope"] = [_at(g, n) for n in outside[:3]]
+    if inside:
+        best_inside = [n for n, _s in sorted(inside.items(), key=lambda kv: (-kv[1], kv[0]))][:3]
+        link["in_scope"], link["in_scope_at"] = best_inside, [_at(g, n) for n in best_inside]
     shape = code_shape(mention.get("text") or "")
     if shape and not _exact_name(scored):
         # A name written as code is never replaced by a similar one: without an exact name it is
         # either spelled somewhere in the repository (a key, a string, an external name: the link
         # below stays, at most weak) or it does not exist here.
-        site = name_site(g, mention.get("text") or "")
+        site = name_site(g, mention.get("text") or "", scope=scope)
+        here = {n: info for n, info in scored.items() if g.file(n) in (scope or ())}
+        if here:   # spelled only: then by what the named files have, not a text hit in another folder (D190)
+            scored = here
         if site is None:
             near = _member_near(g, ix, mention.get("text") or "")
             near += [x for x in _near_misses(ix, mention.get("text") or "") if x[0] not in {n for n, _ in near}]
@@ -1752,7 +1778,7 @@ def link_mention(mention: dict, graph, lexicon=None, *, with_hash: bool = True,
         link["set_aside"] = [f["best"] for f in fams if id(f) in aside][:5]
     link["entropy"] = _entropy([f["score"] for f in fams])
     if not fams or fams[0]["score"] < THRESHOLDS["weak"]:
-        near = [] if scoped else _near_misses(ix, mention.get("text") or "")
+        near = _near_misses(ix, mention.get("text") or "")
         if near:
             link["near_misses"] = [{"node": n, "label": g.label(n), "at": _at(g, n), "similarity": round(s, 1)}
                                    for n, s in near]
@@ -1815,7 +1841,8 @@ def named_scope(g, links: list[dict]) -> frozenset[str]:
 
 def link_mentions(plan: dict, graph, lexicon=None, *, repo=None) -> list[dict]:
     """Links for every mention of the plan (probing and merging ambiguous ones). The names written as code are
-    linked first: the files among them scope the plain words (:func:`named_scope`)."""
+    linked first: the files among them (:func:`named_scope`) give the plain words their ``in_scope`` candidates
+    and are read first for a name written as code that names no symbol (D190)."""
     lex = _lexicon_for(graph, lexicon)
     mentions = {m["id"]: m for m in plan.get("mentions") or [] if isinstance(m, dict) and "id" in m}
     uses: dict[str, list[dict]] = defaultdict(list)
@@ -1825,7 +1852,7 @@ def link_mentions(plan: dict, graph, lexicon=None, *, repo=None) -> list[dict]:
     by_id = {mid: link_mention(m, graph, lex) for mid, m in mentions.items() if not _is_concept(m)}
     scope = named_scope(graph, list(by_id.values()))
     for mid, m in mentions.items():
-        if mid not in by_id:
+        if mid not in by_id or (scope and (by_id[mid].get("occurs_at") or by_id[mid].get("existence"))):
             by_id[mid] = link_mention(m, graph, lex, scope=scope)
     links = [by_id[mid] for mid in mentions]
     answers = {a.get("clarification_id"): a for a in plan.get("answers") or []}
@@ -2390,6 +2417,8 @@ def compact_check(res: dict) -> dict:
             item["merged"] = len(lk["family_merged"])
         if lk.get("rejected_candidates"):
             item["rejected"] = [r["candidate"] for r in lk["rejected_candidates"]]
+        if lk.get("in_scope_at"):   # where the word is in the files the message names (D190)
+            item["in_scope_at"] = lk["in_scope_at"]
         links.append(item)
     return {"status": res.get("status"), "errors": res.get("errors") or [],
             "warnings": [{"code": w["code"], "msg": w["msg"]} for w in res.get("warnings") or []],
@@ -2535,12 +2564,11 @@ def draft(question: str, graph, lexicon=None) -> dict:
         for hit in lex.seed(folded_toks):
             if hit["n"] >= 2 and hit["targets"]:
                 phrase_at[hit["start"]] = (hit["n"], hit["targets"][0])
-    # the files the message names scope its plain words, as in the plan check (link_mentions)
+    # the files the message names give its plain words their candidates there, as in the plan check (link_mentions)
     scope = named_scope(graph, [link_mention({"id": "m0", "text": t["text"], "kind": "file"}, graph, lex,
                                              with_hash=False) for t in toks
                                 if _code_kind(tn.split_apostrophe(t["text"])[0]) == "file"]) \
         if graph is not None else frozenset()
-    dropped: dict[int, int] = defaultdict(int)   # per clause: words that name code only outside the scope
     pending: list[dict] = []
     skip_to = 0
     for ti, tok in enumerate(toks):
@@ -2604,7 +2632,6 @@ def draft(question: str, graph, lexicon=None) -> dict:
         if graph is not None and not p["required"]:
             lk = link_mention(m, graph, lex, with_hash=False, scope=scope)
             if lk["status"] == "unlinked":
-                dropped[p["clause"]] += bool(lk.get("out_of_scope"))
                 continue
         role = role_at(p.get("role_tok") or tok)
         if role:
@@ -2659,7 +2686,7 @@ def draft(question: str, graph, lexicon=None) -> dict:
         if not sq["references"]:
             del sq["references"]
         sqs.append(sq)
-    _carry_dropped_subjects(sqs, mentions, dropped)
+    _carry_dropped_subjects(sqs, mentions)
     plan = {"schema": SCHEMA_ID, "user_message": question, "language": lang if lang != "other" else "other",
             "restated_goal": _goal_en(sqs, mentions), "restated_goal_user_lang": _goal_user(sqs, mentions, lang),
             "sub_questions": sqs, "mentions": mentions, "references": references,
@@ -2995,7 +3022,7 @@ def is_persistence_word(text: str) -> bool:
 
 
 def retrieval_inputs(plan: dict, check_result: dict, sq: dict, lexicon=None, *,
-                     subject_nodes: dict[str, str] | None = None) -> dict:
+                     subject_nodes: dict[str, str] | None = None, scope_seeds: bool = True) -> dict:
     """Query text, seeds and expansions for one sub-question (the retrieval contract).
 
     * ``seeds``: nodes of mentions linked at a *name* tier (the user spelled
@@ -3023,14 +3050,14 @@ def retrieval_inputs(plan: dict, check_result: dict, sq: dict, lexicon=None, *,
                 seeds.setdefault(n, f"plan mention {mid} '{lk['text']}' linked ({lk.get('tier') or 'answer'})")
     for n, why in (subject_nodes or {}).items():
         seeds.setdefault(n, why)
-    if not seeds:
-        # a part that names no code: its words' links inside the file the message names seed it (D190), so the
-        # search does not take a same-named helper elsewhere for its subject
+    if scope_seeds and all(why.endswith("linked (path)") for why in seeds.values()):
+        # a part that names no code (a path names where to look, not a subject; ``scope_seeds`` is False for one
+        # that writes a name as code): its words' candidates in the file the message names seed it (D190), beside
+        # what the search finds elsewhere; the analysis takes the one that carries its words best
         for mid in sq.get("mentions") or []:
-            lk = links.get(mid)
-            if lk and lk.get("scope") and lk["status"] in ("linked", "weak", "ambiguous"):
-                for n in mention_nodes(lk)[:3]:
-                    seeds.setdefault(n, f"plan mention {mid} '{lk['text']}' in the named file ({lk.get('tier')})")
+            lk = links.get(mid) or {}
+            for n in (lk.get("in_scope") or [])[:3]:
+                seeds.setdefault(n, f"plan mention {mid} '{lk.get('text')}' in the file the message names")
     expansions: dict[str, list[str]] = {}
     text = sq.get("text") or ""
     user_text = sq.get("text_user_lang") or ""

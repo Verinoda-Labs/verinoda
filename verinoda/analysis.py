@@ -662,17 +662,18 @@ def _passages(g, question: str, scope: frozenset = frozenset()) -> list[str]:
 
 
 _BLOCK_RX = re.compile(r"^(?:## )?(\S+?):\d+-\d+(?: |$)")   # a passage's header, or an item listed on one line
+_LOOSE = ("(", "… ", "next: ", "expanded: ", "not indexed")   # the search's own lines: a legend, a "more", a next step
 
 
 def _in_scope(lines: list[str], scope: frozenset) -> list[str]:
     """The passage lines without the blocks of files outside ``scope``, when a block is inside it; their number on a
-    last line. The lines before the first block (expansions, filters) stay."""
+    last line. The search's own lines (before the first block, a legend, "... more", "next:") stay."""
     blocks: list[tuple[str | None, list[str]]] = []
     for ln in lines:
         m = _BLOCK_RX.match(ln)
         if m:
             blocks.append((m.group(1), [ln]))
-        elif blocks:
+        elif blocks and not ln.startswith(_LOOSE):
             blocks[-1][1].append(ln)
         else:
             blocks.append((None, [ln]))
@@ -1908,8 +1909,12 @@ def _apply_observations(ctx: _Ctx) -> None:
             break
 
 
+_PATH_TOKEN_RX = re.compile(r"\S+[/\\]\S+")   # a path the question names: where to look, not a word of its topic
+
+
 def _decision_terms(ctx: _Ctx, sub: _Sub) -> list[str]:
-    text = sub.sq.get("text_user_lang") or sub.sq.get("text") or ""
+    # without the paths it names: their folders matched a commit's "bot:" prefix as the topic of a why (D190)
+    text = _PATH_TOKEN_RX.sub(" ", sub.sq.get("text_user_lang") or sub.sq.get("text") or "")
     cue_words = {"why", "neden", "nicin", "niye", "reason", "rationale", "decision", "decided", "gerekce", "karar"}
     words = [w for w in _content_words(text) if w not in cue_words and w not in qp._GENERIC_EN and len(w) >= 3]
     exp = []
@@ -1949,6 +1954,10 @@ def _asks_added(question: str, term: str) -> bool:
 
 _ORIGIN_RX = re.compile(r"\bwhen\b[^?]*\b(?:added|introduced|created|born|first\s+(?:added|introduced|appeared|written))"
                         r"\b|\bne\s+zaman\b[^?]*\b(?:eklen|geldi|girdi|yazil|olustur)", re.IGNORECASE)
+# ... unless it asks about a later change ("when was relay() changed after it was added?", the review's case)
+_CHANGE_RX = re.compile(r"\b(?:change[sd]?|modified|updated|edited|fixed|rewritten|last|latest|recently|after|since|"
+                        r"degisti|degistirildi|guncellendi|duzeltildi)\b", re.IGNORECASE)
+ORIGIN_LINES = 3   # a subject this short (a constant, a key, one definition line) is what its lines' first commit brought
 # a code fragment a why names inside its subject: backticked, or a dotted name (`talk.set` in relay())
 _FRAGMENT_RX = re.compile(r"`([^`]+)`|(?<![\w./\\$])([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)(?![\w$/\\])")
 # "... even when the reply was [SUSKUN]": the case a why says its code does not spare
@@ -1957,10 +1966,12 @@ _CASE_RX = re.compile(r"`([^`]+)`|\[([A-Za-z_][\w-]*)\]|\"([^\"]{2,40})\"")
 
 
 def _asks_origin(question: str) -> bool:
-    """Does a when-question ask when something was introduced (added, created), not when it last changed? Then the
-    oldest commit of its lines is the answer (D190: "when was the 60 second conversation window introduced" was
-    answered by the newest commits)."""
-    return _ORIGIN_RX.search(tn.fold_tr(question or "")) is not None
+    """Does a when-question ask when something was introduced (added, created), and not about a change after it? For
+    a subject of at most ORIGIN_LINES lines the oldest commit of its lines is then the answer (D190: the newest
+    commits answered it); a function's oldest commit is its birth, which may predate the behaviour asked about by
+    years (backlog 22.7)."""
+    q = tn.fold_tr(question or "")
+    return _ORIGIN_RX.search(q) is not None and _CHANGE_RX.search(q) is None
 
 
 def _even_case(question: str) -> str | None:
@@ -1989,14 +2000,16 @@ def _fragments(question: str, own: str, case: str | None) -> list[str]:
     return out
 
 
-def _line_origin(ctx: _Ctx, sub: _Sub, it: dict, span: tuple[int, int], question: str) -> str | None:
+def _line_origin(ctx: _Ctx, sub: _Sub, it: dict, span: tuple[int, int], question: str,
+                 timed_out: list[str]) -> str | None:
     """A why about one line of its subject (a fragment it names, ``talk.set`` in relay()) whose commits state no
     reason: the commit that brought that line, and when the case the question says "even when" about first
     appears in the same file. A line older than that case was written before the case existed: that claim answers
-    the why as an inference (``spec["predates"]``; the gate keeps the verdict below met), the line's commit alone
-    is a lead. Returns the lead line (``sha date subject (...)``) for the why's unknown, None when nothing was
-    found. D190: on the agent's question the function's ten commits were read for a reason and the line's own
-    history was not."""
+    the why as an inference (``spec["predates"]``; the gate keeps the verdict below met); without it the claim is a
+    lead the gate sets aside (``spec["line"]``), never judged by its own wording. Returns the lead line (``sha date
+    subject (...)``) for the why's unknown, None when nothing was found; a git read past its time is added to
+    ``timed_out``. D190: on the agent's question the function's ten commits were read for a reason and the line's
+    own history was not."""
     repo = ctx.repo
     a, b = span
     case = _even_case(question)
@@ -2016,13 +2029,15 @@ def _line_origin(ctx: _Ctx, sub: _Sub, it: dict, span: tuple[int, int], question
     except ValueError:
         return None
     ctx.step("git_log_L", f"{it['file']}:{ln}")
+    if got.get("timed_out"):
+        timed_out.append(f"git log -L {it['file']}:{ln}")
     commits = got.get("commits") or []
     if not commits or got.get("more"):   # a history past the window: its oldest commit was not read
         return None
     origin = commits[-1]
     text = (f"`{frag}` at {it['file']}:{ln} (in `{it['symbol']}`): the line's history begins in {origin['commit'][:10]} "
             f"({origin['date'][:10]}): {origin['subject'][:90]}"
-            + (f" (changed since in {len(commits) - 1} commit(s))" if len(commits) > 1 else ""))
+            + (f" (changed later in {len(commits) - 1} commit(s))" if len(commits) > 1 else ""))
     lead = f"{origin['commit'][:10]} {origin['date'][:10]} {origin['subject'][:90]} (brought `{frag}` at line {ln})"
     evidence = [(origin["evidence"], "supports")]
     status, unc, spec = "primary_source_verified", [], {"line": f"{it['file']}:{ln}"}
@@ -2032,6 +2047,8 @@ def _line_origin(ctx: _Ctx, sub: _Sub, it: dict, span: tuple[int, int], question
         except ValueError:
             first = None
         ctx.step("git_log_S", f"{case} in {it['file']}")
+        if first and first.get("timed_out"):
+            timed_out.append(f"git log -S{case} -- {it['file']}")
         if first and first.get("sha") and first["sha"] != origin["commit"]:
             later = history.commit_before(repo, origin, {"commit": first["sha"], "date": first["date"]})
             text += (f"; `{case}` first appears in this file {'later' if later else 'earlier'}, in {first['sha'][:10]} "
@@ -2055,9 +2072,13 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
         return
     hv = ctx.view("history")
     ctx.step("history_view", f"{len(hv['decisions'])} decision docs, git={hv['is_git']}")
-    # a decision record must name what the question names (its links, seeds, carried subject), not any search hit:
-    # a hit in another folder brought a design note about an unrelated file (D190)
-    core = [i for i in sub.items if i["id"] in (sub.extra.get("anchored") or ())] or sub.items
+    # a decision record must name what the question names (its links, seeds, carried subject), not any search hit: a
+    # hit in another folder brought a design note about an unrelated file (D190); a part that names no code in a
+    # message that names a file took its subject by its words, and a record must name that subject
+    if ctx.scope and sub.extra.get("names_code") is False:
+        core = sub.prod[:1] or sub.items[:1]
+    else:
+        core = [i for i in sub.items if i["id"] in (sub.extra.get("anchored") or ())] or sub.items
     names = {i["symbol"].strip(".()") for i in core} | {Path(i["file"]).name for i in core}
     files = {i["file"] for i in core}
     terms = _decision_terms(ctx, sub)
@@ -2141,7 +2162,7 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
             # else the newest (the three newest were the whole answer until D186)
             answers = [c for c in commits if verdict_gate.shares_topic(topic, c["subject"], c.get("body") or "")] \
                 or commits
-            if commits and not got.get("more") and _asks_origin(question):
+            if commits and not got.get("more") and b - a < ORIGIN_LINES and _asks_origin(question):
                 # "when was it introduced": the oldest commit of the lines brought them (D190), beside the commits
                 # about the question's words - never the newest in their place; a cut history has not read the
                 # oldest, and the window is said
@@ -2158,7 +2179,7 @@ def _h_why(ctx: _Ctx, sub: _Sub) -> None:
                 continue
             leads.append(f"{c['commit'][:10]} {c['date'][:10]} {c['subject'][:90]}")
         if asks_why and not found and ctx.budget.ok:
-            origin_lead = _line_origin(ctx, sub, it, (a, b), question)
+            origin_lead = _line_origin(ctx, sub, it, (a, b), question, timed_out)
     # the path-free first appearance of a code term the question names is a lead, never the answer (D186): for a
     # why whose commits state no reason (the term may have been born in another file), and for "when was X added"
     # alone (on four of eight D185 when tasks the first appearance predates the change asked about by years)
@@ -2560,16 +2581,21 @@ def _filter_scope(items: list[dict], constraints: dict) -> list[dict]:
     return [i for i in items if ok(i.get("file") or "")]
 
 
-# the intents whose answer is about one subject: a part with one of them that names no code is read inside the file
-# the message names (D190)
-SCOPED_INTENTS = frozenset({"history", "why", "locate", "define"})
+# the intents whose answer is about one subject: in a message that names a file, a part with one of them that names no
+# code takes the subject that carries its words best (D190)
+SUBJECT_INTENTS = frozenset({"history", "why", "locate", "define"})
+_CALL_RX = re.compile(r"(?<![\w./\\$])[A-Za-z_$][\w$]*\(\)")   # `relay()` written in a question
 
 
-def _names_code(links: list[dict], mentions: dict) -> bool:
-    """Does a sub-question name code itself (a name written as code that links, or one that does not exist), not only
-    plain words?"""
-    return any(lk["status"] in ("linked", "weak", "ambiguous", "not_found")
-               and not qp._is_concept(mentions.get(lk["mention"], {})) for lk in links)
+def _names_code(links: list[dict], mentions: dict, text: str) -> bool:
+    """Does a sub-question name code itself - a mention written as code that links (or does not exist), or a name its
+    text writes as code (``relay()``, ``talk.set``, a backticked, snake_case or camelCase name) - not only plain
+    words? A path names where to look, not the subject (D190)."""
+    if any(lk["status"] in ("linked", "weak", "ambiguous", "not_found")
+           and not qp._is_concept(mentions.get(lk["mention"], {}))
+           and mentions.get(lk["mention"], {}).get("kind") != "file" for lk in links):
+        return True
+    return bool(_CALL_RX.search(text) or _code_terms(text) or _fragments(text, "", None))
 
 
 def _run_subquestion(ctx: _Ctx, sq: dict, share: int | None) -> dict:
@@ -2599,8 +2625,10 @@ def _run_subquestion(ctx: _Ctx, sq: dict, share: int | None) -> dict:
     ctx.rec.begin(sq["id"], share, plan_ref, extra_unc)
     subject_nodes = {}
     if sq.get("subject_from"):
-        subject_nodes = {n: f"subject from {sq['subject_from']} ({g.label(n)})"
-                         for n in list(ctx.located.get(sq["subject_from"], {}))[:3] if n in g.G}
+        # a part that took its subject by its words (D190) hands on that subject, not what it located beside it
+        carried = list(ctx.located.get(sq["subject_from"], {}))[
+            :1 if ctx.scope and ctx.names_code.get(sq["subject_from"]) is False else 3]
+        subject_nodes = {n: f"subject from {sq['subject_from']} ({g.label(n)})" for n in carried if n in g.G}
     sub = _Sub(sq=sq, links=links, items=[], prod=[], seeds={}, words=[], subject_nodes=subject_nodes)
     out = {"id": sq["id"], "intent": sq["intent"], "text": sq.get("text"),
            **({"text_user_lang": sq["text_user_lang"]} if sq.get("text_user_lang")
@@ -2653,7 +2681,11 @@ def _run_subquestion(ctx: _Ctx, sq: dict, share: int | None) -> dict:
             return _finish_sub(ctx, sub, out, "shader")
         sub.flags["unlinked"] = [lk["mention"] for lk in required_unlinked]
         return _finish_sub(ctx, sub, out, "none")
-    inputs = qp.retrieval_inputs(ctx.plan, ctx.check, sq, ctx.lex, subject_nodes=subject_nodes)
+    names_code = _names_code(links, mentions, sq.get("text_user_lang") or sq.get("text") or "") or bool(
+        sq.get("subject_from") and ctx.names_code.get(sq["subject_from"]))
+    ctx.names_code[sq["id"]] = sub.extra["names_code"] = names_code
+    inputs = qp.retrieval_inputs(ctx.plan, ctx.check, sq, ctx.lex, subject_nodes=subject_nodes,
+                                 scope_seeds=not names_code)
     sub.seeds = inputs["seeds"]
     sub.extra["expansions"] = inputs["expansions"]
     include_tests = (ctx.plan.get("constraints") or {}).get("include_tests", True)
@@ -2673,23 +2705,25 @@ def _run_subquestion(ctx: _Ctx, sq: dict, share: int | None) -> dict:
         score = _relevance(it, groups)
         if it["id"] in anchored or score >= RELEVANCE_MIN:
             rel.append(it)
-    names_code = _names_code(links, mentions) or bool(sq.get("subject_from")
-                                                       and ctx.names_code.get(sq["subject_from"]))
-    ctx.names_code[sq["id"]] = sub.extra["names_code"] = names_code
-    if ctx.scope and sq["intent"] in SCOPED_INTENTS and not names_code:
-        # a part that names no code is about the file the message names (D190): its subject is not a same-named
-        # helper in another folder ("window" -> a capture function, "second" -> a spell's seconds())
-        inside = [it for it in rel if it["file"] in ctx.scope]
-        if rel and not inside:
-            sub.flags["outside_scope"] = True
-            elsewhere = ", ".join(f"`{it['symbol']}` ({it['file']})" for it in rel[:3])
-            _unknown(ctx, sub, {"question": sq.get("text") or "",
-                                "why": f"the question names {', '.join(sorted(ctx.scope))}; nothing there matches "
-                                       f"this part's words: what matches them is elsewhere ({elsewhere})",
-                                "next_step": "name the variable or function you mean, or ask without the file to "
-                                             "search the whole project"})
-        rel = sorted(inside, key=lambda it: it["id"] not in anchored)
-        raw = [it for it in raw if it["file"] in ctx.scope]   # nor are the context claims about other files
+    if ctx.scope and sq["intent"] in SUBJECT_INTENTS and not names_code and len(rel) > 1:
+        # a part that names no code takes for its subject the item that carries most of its words (its name, its
+        # file's name, its lines; a word's English or Turkish counts), the file the message names deciding between
+        # equals (D190: "window" made a capture helper of another folder the "60 second conversation window" of the
+        # bot's file; "the game window looked up by title" in another part of that message is the helper)
+        words = verdict_gate.subject_words(sq.get("text") or "")
+        linked: dict[str, set[str]] = defaultdict(set)   # a word's candidates in the named file carry that word
+        for lk in links:
+            for n in lk.get("in_scope") or []:
+                linked[n] |= set(tn.words(lk.get("text") or "")) & set(words)
+
+        def weight(it: dict) -> tuple:
+            own = set(verdict_gate.carried_words(g, ctx.repo, words, it.get("symbol") or "", it["file"],
+                                                 it.get("excerpt") or "", inputs["expansions"]))
+            # the words it carries, those in its own name or line first, then the named file, a symbol before a file
+            return (-len(own | linked.get(it["id"], set())), -len(own), it["file"] not in ctx.scope,
+                    it["id"] in g.G and g.is_file_node(it["id"]))
+
+        rel = sorted(rel, key=weight)
     sub.items = rel
     # product items; and a test-code item whose name the question spells (a fixture in conftest.py) when no
     # product item of that name is relevant: "where is db_session defined?" is answered by the fixture
@@ -2704,7 +2738,7 @@ def _run_subquestion(ctx: _Ctx, sq: dict, share: int | None) -> dict:
     sub.words = list(dict.fromkeys(content + [t for v in inputs["expansions"].values() for t in v]
                                    + [p for n in subject_nodes for p in tn.split_identifier(qp._bare(g.label(n)))]))
     out["retrieval"] = {"items": len(raw), "relevant": len(rel)}
-    if not raw and not sub.flags.get("outside_scope"):
+    if not raw:
         _unknown(ctx, sub, {"question": sq.get("text") or "", "why": "no graph node or text matched the question terms",
                             "next_step": "rephrase with a symbol/file name (identifiers as written in the code), "
                                          "or run `verinoda map` to browse"})
@@ -2715,7 +2749,7 @@ def _run_subquestion(ctx: _Ctx, sq: dict, share: int | None) -> dict:
                                    "in this repository (code, comments or docs)",
                             "next_step": "use the names the code uses (see `verinoda map`), or research the "
                                          "external system the question is about"})
-    if raw and not rel and not sub.flags.get("outside_scope"):
+    if raw and not rel:
         sub.flags["irrelevant"] = True
         _unknown(ctx, sub, {"question": sq.get("text") or "",
                             "why": f"none of the {len(raw)} retrieved items carries the question's grounded words "
@@ -3699,7 +3733,7 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
     result = {**base, "status": status, "plan_check": qp.compact_check(check_res), "subquestions": subs,
               "claims": out_claims, "unknowns": unknowns, "critique": crit, "steps": steps}
     if question.strip():
-        from verinoda import facts
+        from verinoda import analysis_view, facts
 
         try:  # named facts the question names: leads with their status now, never evidence for these claims
             leads = facts.leads(store, question, repo=repo)
@@ -3707,7 +3741,9 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
             leads, result["facts_error"] = [], f"{type(exc).__name__}: {exc}"[:200]
         if leads:
             result["facts"] = leads
-        result["passages"] = _passages(g, question, ctx.scope)
+        # with a named file, the passages of other files are kept only where a part's answer is (D190)
+        result["passages"] = _passages(g, question, ctx.scope | analysis_view.answer_files(result) if ctx.scope
+                                       else frozenset())
         budget.chars += sum(len(ln) + 1 for ln in result["passages"])
     if refresh_info and refresh_info.get("error"):
         result["index_refresh_error"] = refresh_info["error"]
