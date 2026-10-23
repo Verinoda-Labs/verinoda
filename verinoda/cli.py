@@ -6147,7 +6147,8 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--project-dir")
         sp.add_argument("--dry-run", action="store_true")
         if name == "install":
-            sp.add_argument("--no-mcp", action="store_true", help="skill only, no MCP registration")
+            sp.add_argument("--no-mcp", action="store_true",
+                            help="no MCP registration: the skill only (and, at user scope, Claude Code's question rule)")
 
     sp = sub.add_parser("mcp", help="MCP server for coding agents")
     msub = sp.add_subparsers(dest="mcp_cmd", required=True)

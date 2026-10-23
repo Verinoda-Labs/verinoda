@@ -50,7 +50,7 @@ from verinoda.agents import _tomledit as te
 from verinoda.agents import more_agents as ma
 # NAME, the ownership marker, the skill folders and the manifest's place are shared with the rule that
 # keeps these files out of the project's own index (verinoda.selffiles, D68)
-from verinoda.selffiles import MANIFEST_DIR, MANIFEST_NAME, MARKER, MARKER_PREFIX, NAME, SKILL_DIRS
+from verinoda.selffiles import MANIFEST_DIR, MANIFEST_NAME, MARKER, MARKER_PREFIX, NAME, SKILL_DIRS, find_block
 
 AGENTS = ("claude", "codex")  # the agents that get the full skill
 # every agent install/uninstall knows: the others get an instructions file (verinoda.agents.more_agents)
@@ -60,6 +60,10 @@ MANIFEST_VERSION = 1
 TEMPLATES = Path(__file__).parent / "templates"
 CLI_PLACEHOLDER = "{{VERINODA_CLI}}"
 CLI_NOTE_PLACEHOLDER = "{{VERINODA_CLI_NOTE}}"
+# The question rule (D191): a marked block at the end of the person's ~/.claude/CLAUDE.md, which Claude Code loads in
+# every session of every project, so only a user-scope install writes it.
+ASKING_TEMPLATE = TEMPLATES / "claude_ASKING.md"
+CLAUDE_MD = (".claude", "CLAUDE.md")
 # Codex's default MCP start-up timeout is short; a Python server can be slower
 # to start on Windows (cold imports), so give it more room.
 CODEX_STARTUP_TIMEOUT = 30
@@ -493,6 +497,11 @@ def render_skill(agent: str, launcher: dict | None = None) -> bytes:
     return text.encode("utf-8")
 
 
+def render_asking() -> str:
+    """The question rule's text; the begin and end lines of its block carry the marker."""
+    return ASKING_TEMPLATE.read_text(encoding="utf-8").replace("\r\n", "\n")
+
+
 # -- manifest ---------------------------------------------------------------------------
 
 def _empty_manifest(t: Target) -> dict:
@@ -589,6 +598,34 @@ class Plan:
 
 def _plan_skill(plan: Plan, t: Target, prev_items: list[dict], launcher: dict | None = None) -> None:
     _plan_file(plan, t.root, t.skill, render_skill(t.agent, launcher), prev_items, "skill")
+
+
+def _plan_asking(plan: Plan, t: Target, prev_items: list[dict]) -> None:
+    """The question rule at the end of ``~/.claude/CLAUDE.md`` (D191). The file is the person's, so none of its
+    states stops the install: a block they edited is left as it is, one removed after install is not added again
+    (the manifest says it was there; removing it is the way to say no), and a file that is not UTF-8 text is not
+    touched."""
+    p = t.root.joinpath(*CLAUDE_MD)
+    prev = _prev(prev_items, "md_block", _rel(t.root, p))
+    try:
+        text = _read_text(p)[0] if p.exists() else None
+    except (OSError, UnicodeDecodeError) as exc:
+        plan.act("skip", "asking", p, "not UTF-8 text")
+        plan.warnings.append(f"{_loc(t, p)} is not readable UTF-8 text ({exc}); the question rule was not added to it.")
+        if prev:
+            plan.keep(prev)
+        return
+    block = find_block(text) if text is not None else None
+    if prev and block is None:
+        plan.act("skip", "asking", p, "removed after install; not added again")
+        plan.notes.append(f"The question rule was removed from {_loc(t, p)} after install, so it is not added again "
+                          f"(`verinoda uninstall --agent claude --scope user`, then install, brings it back).")
+        plan.keep(prev)
+        return
+    if block is None:
+        plan.notes.append(f"The question rule (when to ask before acting) goes in a Verinoda block at the end of "
+                          f"{_loc(t, p)}, which Claude Code loads in every session; uninstall removes it.")
+    ma._plan_block(plan, t, p, render_asking(), prev_items, "asking", edited="keep")
 
 
 def _plan_file(plan: Plan, root: Path, path: Path, data: bytes, prev_items: list[dict], role: str) -> None:
@@ -988,6 +1025,8 @@ def install(agent: str, scope: str, *, project_dir, home=None, with_mcp: bool = 
         ma.plan_rules(plan, t, prev_items, launcher)
     else:
         _plan_skill(plan, t, prev_items, launcher)
+        if agent == "claude" and scope == "user":
+            _plan_asking(plan, t, prev_items)
     cmd = None
     if with_mcp and t.mcp_kind:
         profile = mcp_profile(agent)
@@ -1012,7 +1051,7 @@ def install(agent: str, scope: str, *, project_dir, home=None, with_mcp: bool = 
         res["notes"].append("nothing was written.")
         return res
     res["notes"] = plan.notes + _usage_notes(t, with_mcp, cmd)
-    ops = {a["op"] for a in plan.actions} - {"manual"}
+    ops = {a["op"] for a in plan.actions} - {"manual", "keep", "skip"}  # keep, skip: the person's question rule
     res["result"] = ("unchanged" if ops <= {"unchanged"} else "updated" if "update" in ops else "installed")
     if dry_run:
         return res

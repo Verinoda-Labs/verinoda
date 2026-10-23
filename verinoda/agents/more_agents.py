@@ -221,7 +221,10 @@ def _plan_aider_conf(plan, t, prev_items: list[dict]) -> None:
                        else f"{aider_read(t.skill)}   # in {conf}")
 
 
-def _plan_block(plan, t, p: Path, body: str, prev_items: list[dict], role: str, comment: str = "") -> None:
+def _plan_block(plan, t, p: Path, body: str, prev_items: list[dict], role: str, comment: str = "",
+                edited: str = "refuse") -> None:
+    """``edited``: what a block edited after install does, ``"refuse"`` the install or ``"keep"`` the edit (a file the
+    person writes in, ~/.claude/CLAUDE.md: D191)."""
     from verinoda.agents import _jsonedit as je
     from verinoda.agents import _tomledit as te
     from verinoda.agents import installer as ins
@@ -255,6 +258,11 @@ def _plan_block(plan, t, p: Path, body: str, prev_items: list[dict], role: str, 
             plan.keep(item)
             return
         if prev and ins._sha(te.block_key(m.group(0))) != prev.get("sha256"):
+            if edited == "keep":
+                plan.act("keep", role, p, "Verinoda block edited after install; left as it is")
+                plan.warnings.append(f"the Verinoda block in {p} was edited after install; left as it is.")
+                plan.keep(prev)
+                return
             plan.refuse(role, p, f"the Verinoda block in {p} was edited after install; refusing to overwrite "
                         "it. Remove the block and re-run install.")
             return
