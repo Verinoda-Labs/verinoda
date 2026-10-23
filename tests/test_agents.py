@@ -372,7 +372,7 @@ def test_claude_user_scope_without_cli_writes_nothing_to_claude_json(env):
     assert r["manual"] and r["manual"][0].startswith("claude mcp add --scope user verinoda --")
     assert any(a["op"] == "manual" for a in r["actions"])
     kinds = {i["kind"] for i in manifest(env.home)["installs"]["claude"]["items"]}
-    assert "command" not in kinds and kinds == {"file", "md_block"}  # the skill and the question rule (D191)
+    assert kinds == {"file", "md_block"}  # the skill and the question rule (D191); no command: nothing ran
     assert agents.uninstall("claude", "user", project_dir=env.proj, home=env.home)["ok"]
     assert tree(env.home) == {}
 
@@ -580,12 +580,130 @@ def test_an_unreadable_claude_md_stops_only_the_rule(env):
     assert any("question rule" in w and "CLAUDE.md" in w for w in r["warnings"])
 
 
+def test_a_read_only_claude_md_stops_only_the_rule(env, monkeypatch):
+    fake = FakeClaude(env.home)
+    monkeypatch.setattr(ins, "_run", fake)
+    env.which["claude"] = str(env.bindir / "claude.exe")
+    p = claude_md(env.home)
+    p.parent.mkdir()
+    p.write_bytes(b"# mine\n")
+    os.chmod(p, 0o444)
+    try:
+        r = agents.install("claude", "user", project_dir=env.proj, home=env.home)
+        assert r["ok"] and len(fake.calls) == 1, r  # the server entry is still added
+        assert p.read_bytes() == b"# mine\n" and sorted(os.listdir(p.parent)) == ["CLAUDE.md", "skills"]
+        assert any("question rule" in w for w in r["warnings"])
+    finally:
+        os.chmod(p, 0o666)
+
+
+def test_a_failed_write_of_the_rule_is_a_warning_and_the_install_goes_on(env, monkeypatch):
+    fake = FakeClaude(env.home)
+    monkeypatch.setattr(ins, "_run", fake)
+    env.which["claude"] = str(env.bindir / "claude.exe")
+    write = ins._write_bytes
+
+    def failing(path, data):
+        if path.name == "CLAUDE.md":
+            raise PermissionError(13, "Access is denied", str(path))
+        write(path, data)
+
+    monkeypatch.setattr(ins, "_write_bytes", failing)
+    r = agents.install("claude", "user", project_dir=env.proj, home=env.home)
+    assert r["ok"] and len(fake.calls) == 1 and not claude_md(env.home).exists(), r
+    assert any("question rule" in w for w in r["warnings"])
+    assert {i["kind"] for i in manifest(env.home)["installs"]["claude"]["items"]} == {"file", "command"}
+
+
+@pytest.mark.parametrize("link", ["hard", "symbolic"])
+def test_a_linked_claude_md_is_not_replaced(env, link):
+    target = env.tmp / "dotfiles" / "CLAUDE.md"
+    target.parent.mkdir()
+    target.write_bytes(b"# shared\n")
+    p = claude_md(env.home)
+    p.parent.mkdir()
+    try:
+        (os.link if link == "hard" else os.symlink)(target, p)
+    except OSError as exc:  # a symbolic link needs a privilege Windows may not grant
+        pytest.skip(f"cannot make a {link} link here: {exc}")
+    r = agents.install("claude", "user", project_dir=env.proj, home=env.home)
+    assert r["ok"] and target.read_bytes() == b"# shared\n", r
+    assert p.is_symlink() if link == "symbolic" else os.stat(p).st_nlink == 2
+    assert any("link" in w and "question rule" in w for w in r["warnings"])
+
+
+@pytest.mark.parametrize("body", ["## Asking before acting\n\nAsk me first.\n", ""])
+def test_a_block_this_install_did_not_write_is_left_as_it_is(env, body):
+    # a CLAUDE.md copied or synced from another machine: the rule edited there, or emptied (the way to say no on
+    # every machine); this machine's manifest has no record of it
+    p = claude_md(env.home)
+    p.parent.mkdir()
+    p.write_text("# mine\n\n" + ins.ma.render_block(body), encoding="utf-8")
+    before = p.read_bytes()
+    r = agents.install("claude", "user", project_dir=env.proj, home=env.home)
+    assert r["ok"] and p.read_bytes() == before, r
+    assert any("left as it is" in w for w in r["warnings"])
+    assert {i["kind"] for i in manifest(env.home)["installs"]["claude"]["items"]} == {"file"}
+    assert agents.uninstall("claude", "user", project_dir=env.proj, home=env.home)["ok"]
+    assert p.read_bytes() == before  # not this install's to remove
+
+
+def test_a_dry_run_shows_the_question_rule_and_writes_nothing(env):
+    before = tree(env.tmp)
+    r = agents.install("claude", "user", project_dir=env.proj, home=env.home, dry_run=True)
+    assert r["ok"] and r["result"] == "installed" and tree(env.tmp) == before, r
+    assert any(a["what"] == "asking" and a["op"] == "create" for a in r["actions"])
+    assert any("~/.claude/CLAUDE.md" in n for n in r["notes"])
+
+
+def test_an_install_from_before_d191_gets_the_rule_and_uninstall_leaves_nothing(env, monkeypatch):
+    plan_asking = ins._plan_asking
+    monkeypatch.setattr(ins, "_plan_asking", lambda plan, t, prev_items: None)  # an install made before D191
+    assert agents.install("claude", "user", project_dir=env.proj, home=env.home)["ok"]
+    monkeypatch.setattr(ins, "_plan_asking", plan_asking)
+    r = agents.install("claude", "user", project_dir=env.proj, home=env.home)
+    assert r["ok"] and r["result"] == "installed", r
+    assert [i["kind"] for i in manifest(env.home)["installs"]["claude"]["items"]] == ["file", "md_block"]
+    assert agents.uninstall("claude", "user", project_dir=env.proj, home=env.home)["result"] == "uninstalled"
+    assert tree(env.home) == {}  # .claude, made by the first install, goes once both of its files are gone
+
+
+def test_a_later_text_of_the_rule_replaces_an_unedited_block_and_keeps_an_edited_one(env, monkeypatch):
+    assert agents.install("claude", "user", project_dir=env.proj, home=env.home)["ok"]
+    p = claude_md(env.home)
+    later = ins.render_asking().replace("Ask at decision points", "Ask at the decision points")
+    monkeypatch.setattr(ins, "render_asking", lambda: later)
+    r = agents.install("claude", "user", project_dir=env.proj, home=env.home)
+    assert r["result"] == "updated" and "Ask at the decision points" in p.read_text(encoding="utf-8"), r
+    p.write_bytes(p.read_bytes().replace(b"Ask at the decision points", b"Ask me"))
+    edited = p.read_bytes()
+    monkeypatch.setattr(ins, "render_asking", lambda: later + "- One line more.\n")
+    r = agents.install("claude", "user", project_dir=env.proj, home=env.home)
+    assert r["ok"] and p.read_bytes() == edited and any("left as it is" in w for w in r["warnings"]), r
+
+
+def test_a_project_install_in_the_home_folder_is_refused(env):
+    # it would share the user scope's manifest there, and drop that install's record of the rule
+    before = tree(env.tmp)
+    r = agents.install("claude", "project", project_dir=env.home, home=env.home)
+    assert not r["ok"] and "--scope user" in " ".join(r["errors"]) and tree(env.tmp) == before, r
+
+
+def test_claude_config_dir_is_named_beside_the_rule(env, monkeypatch):
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: env.home))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(env.tmp / "claude-config"))
+    r = agents.install("claude", "user", project_dir=env.proj)
+    assert r["ok"] and any("CLAUDE_CONFIG_DIR" in w for w in r["warnings"]), r
+
+
 def test_the_question_rule_is_short_and_says_when_to_ask():
     body = ins.render_asking()
     # every Claude Code session of the person reads it, in every project: its size is pinned
     assert len([ln for ln in body.splitlines() if ln.strip()]) <= 7 and len(body) <= 1100, len(body)
-    for words in ("decision points", "vague", "recommendation", "cannot ask", "what you assumed"):
+    for words in ("decision points", "vague", "recommendation", "nobody can answer", "what you assumed",
+                  "cannot be undone"):
         assert words in body, words
+    assert "refused" not in body  # a declined question is no leave to go on
     assert "verinoda" not in body.lower()  # the rule holds without Verinoda's tools
 
 # -- shared JSON config -----------------------------------------------------------------------------

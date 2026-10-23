@@ -33,6 +33,7 @@ whether the Copilot extension is enabled is not checked.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -257,12 +258,18 @@ def _plan_block(plan, t, p: Path, body: str, prev_items: list[dict], role: str, 
             plan.act("unchanged", role, p, "Verinoda block")
             plan.keep(item)
             return
-        if prev and ins._sha(te.block_key(m.group(0))) != prev.get("sha256"):
-            if edited == "keep":
-                plan.act("keep", role, p, "Verinoda block edited after install; left as it is")
-                plan.warnings.append(f"the Verinoda block in {p} was edited after install; left as it is.")
+        edited_here = bool(prev) and ins._sha(te.block_key(m.group(0))) != prev.get("sha256")
+        if edited == "keep" and (edited_here or not prev):
+            # not what this install wrote: edited here, or copied with the file from another machine (edited or
+            # emptied there); the person's text either way, so it is not taken over either
+            plan.act("keep", role, p, "Verinoda block this install did not write as it is; left as it is")
+            plan.warnings.append(f"the Verinoda block in {p} was edited after install; left as it is." if edited_here
+                                 else f"the Verinoda block in {p} was not written by this install as it is (copied "
+                                      "from another machine, edited or emptied there?); left as it is.")
+            if prev:
                 plan.keep(prev)
-                return
+            return
+        if edited_here:
             plan.refuse(role, p, f"the Verinoda block in {p} was edited after install; refusing to overwrite "
                         "it. Remove the block and re-run install.")
             return
@@ -291,6 +298,11 @@ def un_block(plan, t, item: dict, kept: list[dict]) -> None:
     if not p.exists():
         plan.act("missing", role, p, "file already gone")
         return
+    if ins._linked(p) or not os.access(p, os.W_OK):  # writing would cut the link, or fail (D191)
+        plan.act("keep", role, p, "a link or read-only")
+        plan.warnings.append(f"{p} is a link or read-only; left untouched - remove the Verinoda block by hand.")
+        kept.append(item)
+        return
     try:
         text, bom = ins._read_text(p)
     except (OSError, UnicodeDecodeError) as exc:
@@ -312,10 +324,10 @@ def un_block(plan, t, item: dict, kept: list[dict]) -> None:
     if item.get("created_file") and not new.strip():
         plan.act("remove", role, p, "file created by install; nothing else in it")
         dirs = ins._un_dirs(plan, t, item.get("created_dirs", []))
-        plan.ops.append((lambda: (p.unlink(), ins._rmdirs(dirs))[0], None))
+        plan.ops.append((lambda: (p.unlink(), ins._rmdirs(dirs))[0], item))  # item: kept if this fails
         return
     plan.act("remove", role, p, "Verinoda block; rest of file untouched")
-    plan.ops.append((lambda: ins._write_bytes(p, ins._encode(new, bom)), None))
+    plan.ops.append((lambda: ins._write_bytes(p, ins._encode(new, bom)), item))
 
 
 def usage(agent: str, scope: str, with_mcp: bool) -> str:

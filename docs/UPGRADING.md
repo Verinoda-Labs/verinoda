@@ -755,13 +755,19 @@ A user-scope Claude Code install appends a marked block to `~/.claude/CLAUDE.md`
 at decision points, not about every prompt (`docs/DESIGN.md` section 163). Upgrading the package alone adds nothing: run
 `verinoda install --agent claude --scope user` (or `verinoda setup --scope user`) again. Then:
 
-- **Every Claude Code session on the machine reads it** (234 tokens measured), headless runs under the home folder too, also
+- **Every Claude Code session on the machine reads it** (252 tokens measured), headless runs under the home folder too, also
   with `--setting-sources project,local`: compare a benchmark's tokens and behaviour with runs from before it knowingly.
-- **A project-scope install** (`verinoda setup`'s default) does not write it.
+- **A project-scope install** (`verinoda setup`'s default) does not write it, and `install --scope project` in the home
+  folder is now refused (it shared the user install's files and manifest).
 - **The rest of the file is not touched**, and `verinoda uninstall --agent claude --scope user` gives it back byte for byte
   (a file the install created is deleted).
-- **Your edits stay.** A block you edited is left as it is, with a warning, and the install goes on; a block you removed is
-  not added again (uninstall, then install, brings it back).
+- **Your text stays.** A block you edited, or one that came with the file from another machine, is left as it is, with a
+  warning, and the install goes on. A block you removed is not added again here (uninstall, then install, brings it back);
+  to say no on every machine that shares the file, empty the block and keep its two marker lines.
+- **Not written, with a warning:** a CLAUDE.md that is a link, read-only or not UTF-8 text, or that cannot be written; the
+  skill and the server entry are installed all the same.
+- **Shared block code:** removing a block (GEMINI.md and Copilot's file too) gives back a file of mixed line ends byte for
+  byte, and an uninstall that cannot remove a block keeps its record.
 
 ## Upgrading from 0.3.2 (D60-D136)
 

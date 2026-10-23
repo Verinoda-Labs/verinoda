@@ -654,9 +654,9 @@ verinoda setup . --agents all                     # every supported agent found 
 - **Claude Code**: `/verinoda how does checkout reach the database?`
 - **Codex**: mention `$verinoda` in the prompt. (Codex has no `/verinoda` command.)
 - **The question rule** (Claude Code, user scope only): a marked block at the end of `~/.claude/CLAUDE.md`, which every
-  session reads, on when to ask before acting: at decision points, not about every prompt (234 tokens). The rest of the
-  file is not touched and uninstall removes the block; one you edited stays as it is, one you removed is not added again
-  (`docs/DESIGN.md` section 163).
+  session reads, on when to ask before acting: at decision points, not about every prompt (252 tokens). The rest of the
+  file is not touched and uninstall removes the block; one you edited or emptied stays as it is, one you removed is not
+  added again, and a linked or read-only CLAUDE.md is left alone (`docs/DESIGN.md` section 163).
 
 The skills describe the working method; all logic lives in the CLI/MCP core.
 They read the CLI's plain text and add `--json` only for a field the text
