@@ -1,6 +1,6 @@
 ---
 name: verinoda
-description: Evidence-first answers about this codebase with Verinoda - how a feature works, where something is implemented, how calls or data flow between components (handler -> service -> storage), why a design decision was made, what a change would affect, whether an earlier conclusion still holds, or what the code says for a should-we or which-to-pick decision (the user decides; Verinoda never chooses). Every answer is a set of claims with file:line evidence and an explicit status (verified, inference, unknown). Use it before explaining unfamiliar code, when the user disputes an earlier answer, and after writing Python code to check that the modules, names and keyword arguments it uses exist.
+description: Evidence-first answers about this codebase with Verinoda's CLI - why something is the way it is, when it changed, what a change affects, where something is implemented - as claims with file:line evidence and a status (verified, inference, unknown). Verinoda's MCP tools, when connected, do the same.
 argument-hint: "[question about this codebase]"
 allowed-tools:
   - Bash(verinoda doctor *)
