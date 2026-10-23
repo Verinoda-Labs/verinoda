@@ -18565,7 +18565,8 @@ Measured first, on the person's five largest sessions on this machine (`docs/dra
 - Tests: `tests/test_cards.py` 10 passed; `test_cards`, `test_cli` and `test_docs` together 90 passed; the mod 102 pass, 0 fail
   in 6 files, `claude plugin validate` passed, `tsc --noEmit` clean; disabling the hook made four wiring tests fail. Paths with
   spaces and Turkish letters ("Büyük Patlama anı.jpeg", "Eski silahlar/tools/...") passed through a list-argv child
-  as `$.process.run` starts it come back byte for byte, their cards right.
+  as `$.process.run` starts it come back byte for byte, their cards right. The whole suite at a0d2807 (the Python side of
+  D189; the review's fix changed only the mod and this section): 5405 passed, 20 skipped, 3 deselected, 0 failed.
 - Not measured: an agent session over many compactions (whether summaries keep the cards, the re-reads they save, the cost);
   the auto-compact trigger with the hook (only `/compact` was run); how the 400k window changes answers.
 
