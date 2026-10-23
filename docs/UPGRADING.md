@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Since D186 the script deletes the upstream surface Verinoda removed, and the upstream tests of it, after the copy (`DELETED` in the script; `docs/UPSTREAM.md`, "Removed in D186"); the test files trimmed by hand must be trimmed again. Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D189)
+## Upgrading from 0.4.0 (D137-D190)
 
 ### D137: Trigram regex index
 
@@ -725,6 +725,27 @@ A long chat's summary keeps one line per file instead of the file's text; the me
   `autoCompactWindow` in `~/.claude/settings.json` (400000 halves the context a long session reads, for about three times the
   compactions), and a `## Compact Instructions` section in `~/.claude/CLAUDE.md` asking for a card per file instead of its
   contents.
+
+### D190: The file a question names
+
+`analyze` looks for a question's plain words in the file it names first; the case, the review and the measurements are in
+`docs/DESIGN.md` section 162. No new command, no schema change, nothing to migrate; answers change:
+
+- **A question that names a file** (`In bot/herald.js, ...`): its plain words keep their links in the whole project and get
+  their candidates in that file too, an English word also through the Turkish the seed dictionary gives it. A part that names
+  no code (a when, a where, a why) takes the subject that carries most of its words; the named file decides between equals,
+  so another part of the message about other code still finds it. Plan links, context lines and passages about files that are
+  neither named nor answering are counted, not printed (`--json` and `verinoda query` have them).
+- **A subject found by words is not met by one word of several.** When the question does not name its subject and no
+  answer's subject carries half of its words, the part is met_with_inference with an unknown saying which words found it.
+  Name the function, variable or file (`relay()` counts) to get a plain verdict. Analyses stored before are judged as before
+  by `plan audit`.
+- **A why about one line** (`why does relay() call talk.set even when ...`) gets the line's first commit as its first lead,
+  and for an "even when X" case a claim with when X first came into the file (followed across a move): a line older than the
+  case is said to be written before it existed (met_with_inference at most; a commit order is not a stated reason).
+- **"When was X introduced"** about a constant or a one-line definition answers with its oldest commit, not its last edits
+  (not when the question asks about a change after it).
+- A folder of a path is no longer searched for as a code term, nor counted as a word of a why's topic.
 
 ## Upgrading from 0.3.2 (D60-D136)
 
