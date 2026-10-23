@@ -34,12 +34,13 @@ what you need before changing it. The improvement checklist pane (D175) is descr
 |---|---|
 | `hooks/register.tsx` | the wiring: every `on(...)`, the session state (atoms), the module state (`live`, `cfg`), the tools-in-front hook and the call rule, where Verinoda runs from, the trust gate, the pane's drawing |
 | `hooks/improve.ts`, `hooks/improve-pane.tsx` | the improvement list: its pure part (`improve.test.ts` tests it and its wiring) and its pane and hooks; `register.tsx` calls a few lines of it |
+| `hooks/cards.ts` | the file cards of a compaction (D189): which files the conversation read or edited and what the summarizer is told (pure; `cards.test.ts` tests it and the `session.compact` wiring in `register.tsx`) |
 | `hooks/mascot.tsx` | a `Client` module: the animated mascot |
 | `types/index.d.ts` | the contract: `PluginState['verinoda-live']` (every `$.state` key) and `McpToolInputs` (the tools' arguments) |
 | `hooks/*.test.ts` | the tests, run by `claude plugin test` |
 
 A new feature follows `improve`: its logic that needs no `$` goes in a file of its own with its own tests, and `register.tsx`
-gets as little as wires it in. `register.tsx` is about 760 lines (1,270 before D186 cut the auto-context, assist and review
+gets as little as wires it in. `register.tsx` is about 820 lines (1,270 before D186 cut the auto-context, assist and review
 features); do not grow it by a feature's whole body.
 
 ## Checks: all three pass before you say it is done
@@ -48,7 +49,7 @@ Run from the repository root.
 
 ```
 claude plugin validate claude-mods/verinoda-live        # ends with "Validation passed"
-claude plugin test claude-mods/verinoda-live            # 86 pass, 0 fail in 5 files (125 in 6 before D186)
+claude plugin test claude-mods/verinoda-live            # 98 pass, 0 fail in 6 files (86 in 5 before D189)
 npx --yes -p typescript tsc -p claude-mods/verinoda-live --noEmit   # exit 0 and no output (without --noEmit it writes .js files beside the sources)
 ```
 
@@ -178,6 +179,12 @@ and never calls them itself.
     module reads and refuses the module at load otherwise, in `validate` and in every test.
 16. `$.process.run` has no `which`: a program is found by walking `$.env.get('PATH')` with `$.fs.stat` (`fromPath` in
     `register.tsx`), which runs nothing; `where` would itself be a program found by the child's own search.
+
+17. **The test engine's compaction carries no transcript**: `$.session.compact({ instructions })` from a test raises
+    `session.compact` with no `messages`, and passing that `e` on fails (`next() passed an argument with messages that
+    are not a list`); a test hands the conversation itself (`$.session.compact({ instructions, messages } as never)`),
+    and the hook beneath that answers for core must return at least one message. In a real session the hook fires on
+    `/compact` in a `-p` run too (D189 checked it with `VERINODA_USAGE_LOG`); the auto-compact trigger was not exercised.
 
 ## What you cannot check, and must say so
 

@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { CheckInfo, ImproveState, IndexKind, IndexState, Notice } from '../types'
+import { CARD_CHARS, CARD_TIMEOUT_MS, cardInstructions, touchedFiles } from './cards'
 import { IMPROVE_SPECS, initialImprove, reviewPrompt, undoSend } from './improve'
 import { COMMAND as IMPROVE_COMMAND, endOfTurn, improveSections, mod as improveMod, registerImprove } from './improve-pane'
 import { frameRows, MASCOT_HEIGHT, MASCOT_WIDTH } from './mascot'
@@ -65,7 +66,7 @@ const improve = atom({ plugin: 'verinoda-live', key: 'improve' } as const, initi
 // directory of every run: the user's home (a drive root without one), never the repository, because Windows searches a
 // child's working directory before PATH and whether $.process.run does is unverified; `--repo` names the project. The
 // settings' `python` went with the python probe (`verinoda graph-state`).
-const cfg = { cli: '', cwd: '', check: false, motion: true }
+const cfg = { cli: '', cwd: '', check: false, motion: true, cards: true }
 
 // Module state: a reload starts it over, which only forgets edits not yet indexed.
 const live = {
@@ -592,6 +593,7 @@ export const register: Register = (on, options) => {
     live.cwd = await $.session.cwd()
     cfg.check = options.check === true
     cfg.motion = options.motion !== false
+    cfg.cards = options.compactCards !== false
     const named = typeof options.root === 'string' ? options.root.trim() : ''
     live.root = await findRoot($, named, live.cwd)
     live.isAllowed = false
@@ -642,6 +644,24 @@ export const register: Register = (on, options) => {
     const sections = improveSections(out.sections)
     if (!isServerConnected(e.tools)) return sections === out.sections ? out : { sections }
     return { sections: [...sections, { id: RULE_SECTION, text: CALL_RULE, scope: 'session' as const }] }
+  })
+
+  // D189: the summary of a compaction keeps one card per file the conversation read or edited (Verinoda reads them
+  // from the files now) instead of the files' text. The main conversation only, under the trust gate; a CLI that is
+  // missing, older (no `card`), slow or failing leaves the compaction exactly as it would have run.
+  on('session.compact', async ($, e, next) => {
+    const root = live.root
+    if (e.agentId !== undefined || root === undefined || !live.isAllowed || !cfg.cards) return next(e)
+    const files = touchedFiles(e.messages, root)
+    if (files.length === 0) return next(e)
+    try {
+      const { exitCode, stdout } = await runCli($, ['card', '--repo', root, '--max-chars', String(CARD_CHARS), '--', ...files],
+        CARD_TIMEOUT_MS)
+      if (exitCode === 0 && stdout.trim() !== '') return next({ ...e, instructions: cardInstructions(e.instructions, stdout) })
+    } catch {
+      // no card: the compaction runs as Claude Code's own
+    }
+    return next(e)
   })
 
   on('tool.call', { tool: EDIT_TOOLS }, async ($, e, next) => {
