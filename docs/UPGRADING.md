@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Since D186 the script deletes the upstream surface Verinoda removed, and the upstream tests of it, after the copy (`DELETED` in the script; `docs/UPSTREAM.md`, "Removed in D186"); the test files trimmed by hand must be trimmed again. Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D188)
+## Upgrading from 0.4.0 (D137-D189)
 
 ### D137: Trigram regex index
 
@@ -706,6 +706,25 @@ project (below).
 - **Shorter skill description.** The Claude Code skill's description, which Claude Code lists in every request, is 300 characters
   (692 before). An installed skill keeps the old one until `verinoda install --agent claude --scope user` (or `--scope project`)
   refreshes it; `--dry-run` shows what would change.
+
+### D189: File cards for the compaction
+
+A long chat's summary keeps one line per file instead of the file's text; the measurements are in `docs/DESIGN.md` section
+161. No schema change, no new dependency.
+
+- **New command `verinoda card FILE...`**: one line per file - its path and length, what it is for, its top-level definitions
+  and its imports; an image's size, a binary's byte count. It reads the files as they are now and writes nothing; a path
+  outside the project is refused before the file system is asked. `--json` gives the cards as fields, `--max-chars` the
+  budget (8,000 by default).
+- **verinoda-live 0.8.0**: when Claude Code compacts the conversation (`/compact`, or its auto-compact window), the mod hands
+  the summarizer the cards of the files the conversation read or edited (at most 40) and asks it to keep the cards instead of
+  the files' text. It needs a `verinoda` CLI that has `card` (this release): an older one is skipped, and the compaction runs
+  as before. The setting `compactCards` (on by default) turns it off. Update the plugin
+  (`claude plugin marketplace update <marketplace>`, then `claude plugin update verinoda-live@<marketplace>`) and restart.
+- **Recommended Claude Code settings** for long chats (not Verinoda's; measured in section 161): an earlier auto-compaction,
+  `autoCompactWindow` in `~/.claude/settings.json` (400000 halves the context a long session reads, for about three times the
+  compactions), and a `## Compact Instructions` section in `~/.claude/CLAUDE.md` asking for a card per file instead of its
+  contents.
 
 ## Upgrading from 0.3.2 (D60-D136)
 

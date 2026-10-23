@@ -7,7 +7,7 @@ runs beside the agent in a session.
 ## Where things are
 
 - `docs/ARCHITECTURE.md`: how the package is laid out. `docs/DESIGN.md`: one numbered section per shipped decision
-  (`D1` ... `D188`), each with why, what was decided, what was measured and what was not done.
+  (`D1` ... `D189`), each with why, what was decided, what was measured and what was not done.
 - `docs/BACKLOG.md`: what is to do. `verinoda backlog 13.9` prints one item. Sections 22 and 23 are what the last redesign
   (D186, 2026-10-12; its final review and re-run 2026-10-13) left.
 - `docs/CALISMA-NOTLARI.md` (Turkish): how D186 was worked (test first, lint equality, worktrees, the final review, which
@@ -29,7 +29,7 @@ runs beside the agent in a session.
 - Python tests: `.venv/Scripts/python.exe -m pytest tests/test_<area>.py -q` for what you changed (`pytest tests` is the whole
   suite, about 35 minutes). No `.venv` in a fresh clone: `uv venv .venv -p 3.12` then
   `uv pip install --python .venv -e ".[mcp,precise]" pytest hypothesis ruff`. No test is known to fail (Windows 11, Python 3.12,
-  2026-10-23, D188: 5395 passed, 0 failed; 2026-10-22, D187): the whole suite gave 5388 passed and 0 failed, and in a second
+  2026-10-23, D189: 5405 passed, 0 failed; 2026-10-22, D187): the whole suite gave 5388 passed and 0 failed, and in a second
   run 1 failed, the handle test of `tests/test_fswatch.py`, whose cause was the test's and was fixed (20 of 20 runs alone
   since). The clean checkout before D187
   (fa9d556) had 4 failures, each fixed in D187 (`docs/DESIGN.md` 159). Two tests seen to fail once each in earlier whole-suite

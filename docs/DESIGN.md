@@ -18493,6 +18493,110 @@ install manifest exits 1 naming `verinoda scan`, makes no `atlas.db` and no grap
 and `workflow.update` itself answers `not_one_project`. `tests/test_agents.py`: the Claude skill's description is at most 300
 characters.
 
+## 161. Long chats: an earlier compaction, and file cards in its summary (D189, 2026-10-23)
+
+### 161.1 Why
+
+After D188 the person asked (in Turkish) to stop the default growth of a long chat, where the messages alone come to fill 70,
+80, 90 % of the context; asked which window, they chose 400k and proposed an idea of their own: keep in the context what a file
+is (its name, place, purpose and what it connects to) instead of its text, and read the file again in the turn that needs it.
+Measured first, on the person's five largest sessions on this machine (`docs/drafts/2026-10-23-d189/`):
+
+- **How big the context ran.** 4,088, 3,414, 1,919, 1,612 and 403 model calls; 2,190, 1,756, 1,068, 714 and 97 of them read
+  more than 500k tokens of context (the API's `input + cache writes + cache reads` of each call). Auto-compaction fired at
+  590k-970k tokens (`compact_boundary`, trigger `auto`; the window of a 1M model is about 967k), took 40-121 s each and left
+  82k-109k tokens.
+- **What filled it** (characters over each whole session): Bash results 15-28 %, the model's own Bash commands 9-24 %, the
+  contents it wrote with Write 5-13 %, Read results 4-10 %; attachments the engine adds: after each compaction the bodies of
+  the skills used (32k-69k characters), the deferred tools' names (21k-85k), recently read files (about 20k), beside a
+  summary of 17k-23k. (`prompt_snapshot` is the transcript's copy of the system prompt, not a message.)
+- **What would cut it.** Every call reads the whole history, so what grows the bill is the history's length; only a compaction
+  shortens it. From each session's recorded growth (`compact_sim2.py`; with the 967k window it reproduces 96-109 % of the
+  recorded context reads on the four big sessions, 149 % on the 403-call one, so nothing is claimed for short sessions), a
+  window of 400k makes the context reads 44-50 % of what they were and the mean context 236k-252k instead of 477k-550k, for
+  2.6-3.3 times the compactions; 300k: 35-39 %; 500k: 52-57 %. Cutting tool output at the source instead (above 8,000
+  characters to its first 2,000 and last 1,000, the rest in a file; `shrink_sim.py`) saves 22 % of the reads of tool results
+  (31 % above 4,000), which is about 2-3 % of all context reads.
+- **The idea.** Rewriting old messages on every turn would break the prompt cache from the first rewritten message on (a
+  cache write costs about twelve reads), so the place to swap a file's text for a card is the compaction, which the smaller
+  window runs about three times as often. A compaction cycle of these sessions touched 67 files at the median (93 at the 90th
+  percentile, 118 at most; under the 967k window); the most read kinds were `.png` (1,332 reads), `.java` (1,048), `.py`
+  (556), `.md` (257) and `.js` (84).
+
+### 161.2 Decisions
+
+1. **The person's Claude Code settings, chosen by them** (2026-10-23, not Verinoda's code; backups in
+   `~/.claude/backups/*.before-context-2026-10-23`): `autoCompactWindow: 400000` and `disableClaudeAiConnectors: true` in
+   `~/.claude/settings.json`, and a `## Compact Instructions` section in `~/.claude/CLAUDE.md` (177 tokens, which Claude
+   Code's summarizer prompt says it follows) asking for one card per file read or edited instead of its contents, the essence
+   of messages instead of their wording, and the commands, paths, hashes and errors still in use. The claude.ai-synced plugins
+   stay: the person's choice.
+2. **`verinoda card FILE...`** (`verinoda/cards.py`): one line per file, read from the file on disk now - its path and
+   length, what it is for (the first sentence of a module docstring, of the comment before its first definition, or a
+   Markdown title; a licence header and Javadoc tags skipped), its top-level definitions from its symbol facts
+   (`anchors.compute_facts`; a single top-level class: its members), its imports (Python's `ast`, JVM `import`s as their last
+   two segments, JS/TS `import` and `require`, C includes, C# `using`); an image is its pixel size (PNG, GIF and JPEG
+   headers), a binary its byte count, a file over 2 MB its size, a file gone says so. No index, graph or store, and nothing
+   written. A path is judged lexically before any file system call (`paths.escapes_lexically`: a UNC path is never stat'ed),
+   then contained (`paths.contained_path`); an absolute path under the project is made relative. Whole cards under a budget
+   (8,000 characters by default), the rest counted.
+3. **verinoda-live 0.8.0, `session.compact`**: on any compaction of the main conversation, the files the messages read or
+   edited (edited ones first, then the latest reads, at most 40, none under `.verinoda`) are carded by `verinoda card` (at
+   most 20 s; the CLI outside the folder, the home folder as the working directory, `--repo`) and the cards are appended to
+   the summarizer's instructions after any `/compact <focus>`, with the request to keep each file as its card. The files are
+   taken under the project the person allowed (the trust gate), else under the folder the session was opened in: a card
+   reads only files the conversation read already and needs no index, so a project the settings name elsewhere and a folder
+   with no `.verinoda` get cards too (the review found that the person's `root` setting, which names private-mod, kept
+   every private-bot session from them); never a home folder or a drive root, never with a CLI inside the folder. A missing, older (no `card`), slow or failing CLI, a subagent's
+   compaction, a project not opened or trusted, and the setting `compactCards: false` leave the compaction as Claude Code's
+   own; the messages are handed on untouched.
+
+### 161.3 Measured
+
+- `/context` after the settings: `23.4k / 400k` (sonnet) and `22.9k / 400k` (opus), the compaction reserve 33k, so a
+  compaction at about 367k; the MCP server instructions 1.2k -> 537 tokens and 161 tool names gone with the connectors.
+- 40 files of the busiest compaction cycle of a real private-mod session (Java and Markdown): carded in 0.67 s (the whole
+  CLI run), 7,834 characters, the purposes taken from the class Javadoc ("The merged Brigadier command tree.").
+- A throwaway headless session (sonnet, the working tree's mod and CLI, three files read, then `/compact`): the hook ran
+  `verinoda card` (one `card` row in `VERINODA_USAGE_LOG`, 0.04 s, 251 characters) and the summary wrote a section "Files and
+  Code Sections (cards, not contents)" with one line per file. The global Compact Instructions were in force as well, so which
+  of the two produced the section is not separated (the summary wrote `java.util.List` where the card says `util.List`): what
+  is shown is that the hook runs and hands the cards over. Four probe sessions in all cost about $1.30.
+- Tests: `tests/test_cards.py` 10 passed; `test_cards`, `test_cli` and `test_docs` together 90 passed; the mod 102 pass, 0 fail
+  in 6 files, `claude plugin validate` passed, `tsc --noEmit` clean; disabling the hook made four wiring tests fail. Paths with
+  spaces and Turkish letters ("Büyük Patlama anı.jpeg", "Eski silahlar/tools/...") passed through a list-argv child
+  as `$.process.run` starts it come back byte for byte, their cards right. The whole suite at a0d2807 (the Python side of
+  D189; the review's fix changed only the mod and this section): 5405 passed, 20 skipped, 3 deselected, 0 failed.
+- Not measured: an agent session over many compactions (whether summaries keep the cards, the re-reads they save, the cost);
+  the auto-compact trigger with the hook (only `/compact` was run); how the 400k window changes answers.
+
+### 161.4 Not done
+
+- **Cards in place of contents in the messages the summarizer reads.** A `session.compact` hook may rewrite them, which would
+  shrink the summarizer's input by the share of file text (Read results and Write contents: 12-25 % of these sessions'
+  characters); not measured, and the engine clears older tool outputs before summarizing (its documentation).
+- **"Used by" in a card**: the files that import a file need the graph, and loading `graph.json` of a large project takes
+  seconds.
+- **Cutting tool output at the source** in the mod: 2-3 % of the context reads (161.1).
+- **The synced plugins' listing** (skills about 9.9k and agents about 2.9k tokens a request on this machine): the person's.
+
+### 161.5 Tests
+
+`tests/test_cards.py`: a Java file with a licence header and a class Javadoc (the Javadoc's first sentence, the class and its
+members, imports by their last two segments, a static import by its class); a JS file with a shebang, a leading comment, a
+`require`, an ES import and a bare import; a Python module (docstring, top-level names, imports); a Markdown title and its
+sections; a PNG's size; a binary; a shell script's comment; paths outside the project (absolute, `..`, UNC, another drive, a
+stream suffix) refused with no stat of a UNC path; an absolute path under the project carded as relative; a deleted file;
+the budget keeping whole cards and counting the rest, one card for a path given three ways; a file over the size cap; the
+CLI printing text and JSON and writing no `.verinoda`; `import verinoda.cli` not loading the card code.
+`claude-mods/verinoda-live/hooks/cards.test.ts`: edited files before read ones, each newest first and once; only paths under
+the root (Windows spelling and case), none under `.verinoda` or climbing out; at most 40; the instructions keep the focus
+first; the wiring (the CLI run from the home folder with `--repo` and the relative paths, the summarizer's instructions, the
+messages handed on as they were); a card run that fails, throws or prints nothing; no file touched; a subagent's compaction;
+the setting off; an untrusted ancestor; no Verinoda on PATH outside the project; a project the settings name elsewhere (the
+session's own folder gets the cards); a folder with no index (cards, nothing else run); a session in the home folder (none);
+a `verinoda` inside the session's folder (never run).
+
 ## Sources
 
 - **Retrieval:**

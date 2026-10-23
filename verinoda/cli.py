@@ -1467,6 +1467,19 @@ def cmd_locate(args) -> int:
     return 0
 
 
+def cmd_card(args) -> int:
+    """File cards (D189): the mod hands them to Claude Code's compaction for the files a conversation read or edited,
+    so its summary keeps one line per file instead of the file's text."""
+    from verinoda import cards
+
+    repo = _repo(args)
+    if not repo.is_dir():
+        raise SystemExit(f"error: {repo} is not a directory")
+    res = cards.cards(repo, list(args.files), max_chars=max(200, args.max_chars))
+    _emit(args, res, lambda r: print(r["text"]))
+    return 0
+
+
 def cmd_coupled(args) -> int:
     """The files that change together with the given files (git history path-limited to each file, imports,
     includes, same-stem partners, same-name twins); the graph is not loaded."""
@@ -5156,6 +5169,10 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--max-files", type=int, default=8, help="files listed at most (default 8)")
     sp.add_argument("--no-history", action="store_true", help="do not read the git history")
     sp.add_argument("--no-daemon", action="store_true", help="compute the answer here even when a daemon runs (by default it is asked)")
+    sp = add("card", cmd_card, "one line per file: its path and length, what it is for, its top-level definitions "
+                               "and its imports, read from the files now; nothing is indexed or written (D189)")
+    sp.add_argument("files", nargs="+", metavar="FILE", help="repository-relative paths, or absolute ones under it")
+    sp.add_argument("--max-chars", type=int, default=8000, help="the character budget of the text (default 8000)")
     sp = add("trace", cmd_trace, "directed paths between two symbols/files with edge locations")
     sp.add_argument("source")
     sp.add_argument("target")
