@@ -409,8 +409,11 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     assert "--profile full" in text and "question_plan_draft" not in text
     # 1,303 before the one status rule (D186): the rule is 470 characters and takes the place of one clause in the
     # head and one in the tail; its last sentence then names the first call on a history question (the earlier way out
-    # was taken in 39 of 39 re-run sessions): 517 characters, the instructions 1,734, the limit up by 100
-    assert len(text) < len(instructions("full")) and len(text) < 1800
+    # was taken in 39 of 39 re-run sessions): 517 characters, the instructions 1,734, the limit up by 100. D188: the
+    # instructions ride every request of every session (548 tokens measured); the list of what the full profile adds
+    # and the error shape every error result shows itself went: 1,734 -> 1,533
+    assert len(text) < len(instructions("full")) and len(text) < 1600
+    assert "Errors:" not in text and "the debug ledger" not in text
     assert "decision_check" not in instructions("core", decisions=False)
     assert "decision_check" not in mcp_server.build_server(repo).verinoda_instructions
     rec = tmp_path / "with_records"
@@ -433,6 +436,53 @@ def test_the_default_profile_serves_the_core_tools_in_a_small_menu(repo, tmp_pat
     assert resolve_profile(tmp_path) == "core"
     with pytest.raises(ValueError, match="unknown MCP tool profile"):
         resolve_profile(proj, "everything")
+
+
+def test_a_core_server_outside_one_project_lists_no_tool(tmp_path, monkeypatch):
+    """D188: a user-scope server started in the home folder, a drive root or a workspace of projects can only refuse
+    (index_update never scans such a folder), yet its listed tools, its instructions and the mod's call rule were
+    about 1,700 tokens of every request in that session. It lists nothing and says why in one line; an index there
+    (built with --repo or by hand) is served as before, and so is a project."""
+    anyio = pytest.importorskip("anyio")
+    home = tmp_path / "home"
+    (home / ".verinoda").mkdir(parents=True)  # what a user-scope install leaves: its manifest, no index
+    (home / ".verinoda" / "install-manifest.json").write_text('{"version": 1}', encoding="utf-8")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+
+    def names(srv):
+        return sorted(t.name for t in anyio.run(srv.list_tools))
+
+    srv = mcp_server.build_server(home)
+    assert names(srv) == [] and mcp_server.listed_tools(home, "core") == ()
+    text = srv.verinoda_instructions
+    assert "\n" not in text and "a home folder, not one project" in text and "--repo" in text, text
+    # the server's log line says the same, not that index_update would build an index
+    assert mcp_server._state_line(home, "core") == "a home folder, not one project: no tool served (pass --repo)"
+    assert "index_update builds the index" in mcp_server._state_line(home, "full")
+    ws = tmp_path / "workspace"
+    for name in ("a", "b"):
+        (ws / name).mkdir(parents=True)
+        _git(ws / name, "init", "-q")
+    assert names(mcp_server.build_server(ws)) == []
+    assert names(mcp_server.build_server(ws, profile="full")) == sorted(TOOL_NAMES)  # asked for: served
+    proj = ws / "a"
+    (proj / "app.py").write_text("x = 1\n", encoding="utf-8")
+    assert len(names(mcp_server.build_server(proj))) == 5  # a project nobody scanned yet: index_update scans it
+
+
+def test_a_work_tree_holding_nested_clones_is_one_project(tmp_path):
+    """D188's review: a repository whose top holds submodules or nested clones (sub-folders with their own .git) is
+    one project, not a workspace of them: its menu is served and index_update scans it."""
+    proj = tmp_path / "proj"
+    for name in ("vendor_a", "vendor_b"):
+        (proj / name).mkdir(parents=True)
+        _git(proj / name, "init", "-q")
+    _git(proj, "init", "-q")
+    (proj / "app.py").write_text("def main():\n    return 1\n", encoding="utf-8")
+    assert mcp_server.not_one_project(proj) is None
+    assert len(mcp_server.listed_tools(proj, "core")) == 5
+    res = AtlasTools(proj).index_update()
+    assert "error" not in res and res["mode"] == "first_scan", res
 
 
 def test_instructions_carry_the_one_status_rule():
@@ -1620,6 +1670,19 @@ def test_index_update_never_scans_a_home_folder(tmp_path, monkeypatch):
     assert not (ws / ".verinoda").exists()
 
 
+def test_index_update_never_scans_a_home_folder_that_holds_the_install_manifest(tmp_path, monkeypatch):
+    # a user-scope install keeps its manifest in ~/.verinoda (agents/installer.py): the home folder then has a
+    # .verinoda without an index, and index_update scanned the whole home folder as a project (D188)
+    home = tmp_path / "home"
+    (home / ".verinoda").mkdir(parents=True)
+    (home / ".verinoda" / "install-manifest.json").write_text('{"version": 1, "scope": "user"}', encoding="utf-8")
+    (home / "notes.py").write_text("x = 1\n", encoding="utf-8")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    res = AtlasTools(home).index_update()
+    assert res["error"] == "not_initialised" and "--repo" in res["hint"], res
+    assert not (home / ".verinoda" / "atlas.db").exists() and mcp_server.index_state(home) == "initialised"
+
+
 def test_initialised_but_unindexed_repo(tmp_path):
     from verinoda import workflow
 
@@ -1637,6 +1700,41 @@ def test_initialised_but_unindexed_repo(tmp_path):
     assert up["mode"] == "full" and up["snapshot"]["file_count"] >= 1
     node = t.node_inspect("add")
     assert node["node"]["file"] == "calc.py" and any(i["from"] == "twice()" for i in node["in_edges"])
+
+
+def test_index_update_says_what_changed_without_the_cli_record(tmp_path):
+    """D188: index_update returned the CLI's update record, and the agent re-reads a tool result with every later
+    request: every changed path, the snapshot's folder, graph and tree hash, the derived indexes' statistics
+    (11,861 characters of one call in a real session, 10,186 of them the changed paths). It sends the snapshot's id,
+    commit and file count, the counts, the first paths of each kind (code before other files) marked when cut, the
+    stale claims, and every error and note; `verinoda update --json` keeps the whole record."""
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    (proj / "calc.py").write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
+    _git(proj, "init", "-q")
+    _git(proj, "add", ".")
+    _git(proj, "commit", "-qm", "init")
+    t = AtlasTools(proj)
+    first = t.index_update()
+    assert first["mode"] == "first_scan" and "derived" not in first and _size(first) < 600, first
+    for i in range(40):
+        (proj / f"asset{i:02d}.png").write_bytes(b"\x89PNG" + bytes(8))
+    (proj / "calc.py").write_text("def add(a, b):\n    return a + b + 0\n", encoding="utf-8")
+    (proj / "more.py").write_text("from calc import add\n", encoding="utf-8")
+    up = t.index_update()
+    assert up["mode"] == "incremental" and up["changed_count"] == 42 and up["changed"]["modified"] == ["calc.py"]
+    added = up["changed"]["added"]
+    assert added[0] == "more.py" and len(added) == mcp_server.CHANGED_SHOWN  # code first, then the rest
+    assert up["truncated"] is True and up["truncation"]["cut"]["changed.added"] == {"kept": len(added), "total": 41}
+    assert set(up["snapshot"]) == {"id", "commit", "dirty", "file_count"} and len(up["snapshot"]["commit"]) == 12
+    wire = json.dumps(up, ensure_ascii=False)
+    assert str(proj.name) not in wire and "graph.json" not in wire and "tree_hash" not in wire, wire
+    assert _size(up) < 900, _size(up)
+    # the view marks its own cuts, so the response cap passes it whole: a note's lists are cut by the same rule
+    many = mcp_server.update_view({"mode": "incremental", "facts": {"lowered": [f"fact{i}" for i in range(30)],
+                                                                    "seconds": 0.1}})
+    assert many["facts"] == {"lowered": [f"fact{i}" for i in range(mcp_server.CHANGED_SHOWN)], "seconds": 0.1}
+    assert many["truncation"]["cut"]["facts.lowered"] == {"kept": mcp_server.CHANGED_SHOWN, "total": 30}
 
 
 # -- response cap -------------------------------------------------------------------------

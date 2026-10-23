@@ -78,6 +78,7 @@ from verinoda.paths import (  # noqa: E402
     contained_path,
     evidence_root_allowed,
     graph_path,
+    not_one_project,
     receiver_calls_path,
 )
 
@@ -636,6 +637,62 @@ def index_state(repo: Path) -> str:
     if graph_path(repo).exists():
         return "indexed"
     return "initialised" if atlas_dir(repo).is_dir() else "not_scanned"
+
+
+CHANGED_SHOWN = 8   # paths of each list index_update shows (D188); `verinoda update --json` keeps every one
+STALE_TEXT = 120    # characters of a stale claim's text index_update shows
+
+
+def update_view(res: dict) -> dict:
+    """What index_update sends of an update or a scan record (D188). The record carried every changed path, the
+    snapshot's folder, graph path and tree hash, and the derived indexes' statistics, all re-read by the agent with
+    every later request (11,861 characters in one call of a real session). Kept: the snapshot's id, commit (12
+    hex), dirty and file count; the graph's counts; the first CHANGED_SHOWN paths of each list, code files first, a
+    cut one marked as the response cap marks it; the stale claims (id, clipped text, first changed files); every
+    error, hint and note; of the derived indexes only an error, of a background build whether it started."""
+    from verinoda import textnorm
+    from verinoda.claims import CODE_SUFFIXES
+
+    out: dict = {}
+    cut: dict[str, dict] = {}
+
+    def first(key: str, items: list) -> list:
+        if len(items) > CHANGED_SHOWN:
+            cut[key] = {"kept": CHANGED_SHOWN, "total": len(items)}
+        return items[:CHANGED_SHOWN]
+
+    for k, v in res.items():
+        if k == "snapshot" and isinstance(v, dict):
+            out[k] = {"id": v.get("id"), "commit": (v.get("commit_sha") or "")[:12] or None,
+                      "dirty": bool(v.get("dirty")), "file_count": v.get("file_count")}
+        elif k == "graph" and isinstance(v, dict):
+            out[k] = {x: v[x] for x in ("nodes", "edges") if x in v}
+        elif k == "changed" and isinstance(v, dict):
+            out[k] = {kind: first(f"changed.{kind}", sorted(paths, key=lambda p: not str(p).endswith(CODE_SUFFIXES)))
+                      for kind, paths in v.items() if isinstance(paths, list)}
+        elif k == "stale" and isinstance(v, list):
+            out[k] = first(k, [{"id": s.get("id"), "text": textnorm.clip(str(s.get("text") or ""), STALE_TEXT),
+                                **({"changed": s["changed"][:3]} if s.get("changed") else {})}
+                               if isinstance(s, dict) else s for s in v])
+        elif k == "derived" and isinstance(v, dict):
+            errors = {name: d["error"] for name, d in v.items() if isinstance(d, dict) and d.get("error")}
+            if errors:
+                out["derived_errors"] = errors
+        elif k == "background" and isinstance(v, dict):
+            out[k] = {x: v[x] for x in ("started", "why") if x in v}
+        elif k == "incremental":
+            continue  # how the graph build patched the graph: the CLI's record
+        elif isinstance(v, list):
+            out[k] = first(k, v)
+        elif isinstance(v, dict):  # a note (facts, busy, dropped references): its lists cut by the same rule, since
+            # the response cap passes a response that marks its own cuts
+            out[k] = {x: first(f"{k}.{x}", y) if isinstance(y, list) else y for x, y in v.items()}
+        else:
+            out[k] = v
+    if cut:
+        out["truncated"] = True
+        out["truncation"] = {"cut": cut, "hint": "`verinoda update --json` in a terminal prints the whole record"}
+    return out
 
 
 # -- the tools --------------------------------------------------------------------
@@ -2154,12 +2211,17 @@ class AtlasTools:
         def go():
             from verinoda import analysis, buildlock, workflow
 
+            if not graph_path(self.repo).exists():
+                # a .verinoda without an index is not proof of a project: a user-scope install keeps its manifest
+                # in ~/.verinoda, and this update would have scanned the whole home folder (D188)
+                self._refuse_outside_one_project()
             # a project whose last graph build was slow takes the changed files in now and rebuilds the
             # graph in the background (D44): the agent is not held for half a minute per edit
             last = buildlock.last_build_seconds(self.repo)
             fast = last is not None and last > analysis.REFRESH_INLINE_SECONDS
             with self._store() as st:
-                return workflow.update(st, self.repo, wait=MCP_BUILD_WAIT, purpose="index_update (MCP)", fast=fast)
+                return update_view(workflow.update(st, self.repo, wait=MCP_BUILD_WAIT, purpose="index_update (MCP)",
+                                                   fast=fast))
         return self._run("index_update", go)
 
     def _first_scan(self) -> dict:
@@ -2170,27 +2232,23 @@ class AtlasTools:
         def go():
             from verinoda import workflow
 
-            home = Path.home().resolve()
-            try:
-                projects = [d.name for d in self.repo.iterdir() if d.is_dir() and not d.name.startswith(".")
-                            and ((d / ".git").exists() or atlas_dir(d).is_dir())]
-            except OSError:
-                projects = []
-            why = ("a home folder" if self.repo == home else "a drive root" if self.repo.parent == self.repo
-                   else f"a workspace of {len(projects)} projects ({', '.join(sorted(projects)[:5])})"
-                   if len(projects) >= 2 else None)
-            if why:
-                raise ToolFailure(
-                    "not_initialised",
-                    f"{self.repo} is not scanned, and it is {why}, not one project",
-                    "start the server with --repo <project>, or run `verinoda scan <project>` in a terminal",
-                    repo=str(self.repo))
+            self._refuse_outside_one_project()
             workflow.init(self.repo)
             with self._store() as st:
                 res = workflow.scan(st, self.repo, wait=MCP_BUILD_WAIT, purpose="index_update (MCP, first scan)")
             res["mode"] = "first_scan"
-            return res
+            return update_view(res)
         return self._run("index_update", go, need="none")
+
+    def _refuse_outside_one_project(self) -> None:
+        """Raise ``not_initialised`` when the folder is not one project (:func:`not_one_project`)."""
+        why = not_one_project(self.repo)
+        if why:
+            raise ToolFailure(
+                "not_initialised",
+                f"{self.repo} is not scanned, and it is {why}, not one project",
+                "start the server with --repo <project>, or run `verinoda scan <project>` in a terminal",
+                repo=str(self.repo))
 
     # -- experiments and the debug ledger ----------------------------------------------
     def experiment_run(self, command: list[str], hypothesis: str, expect: str = "pass", timeout: float | None = None,
@@ -2430,13 +2488,14 @@ concern) and history_search (when a text appeared or disappeared: the commit is 
 _INSTRUCTIONS_CORE_DECISIONS = """ Through run_tool, dependency_ask before adding an import and
 decision_check(changed_only=true) before finishing - on VIOLATED fix the code or ask the user."""
 
+# The instructions ride every request of every session the server is connected to (548 tokens measured, D188): what
+# the full profile adds is the CLI's to list, and every error result carries its own hint (index_update included).
 _INSTRUCTIONS_CORE = """
-More tools (question plans, references, feedback, decision records and briefs, the debug ledger, experiments,
-runtime tracing): `verinoda mcp serve --profile full`, or the `verinoda` CLI."""
+More tools: `verinoda mcp serve --profile full`, or the `verinoda` CLI."""
 
 _INSTRUCTIONS_TAIL = """
 Rules: graph edges are extractions, never verification. Missing evidence -> 'unknown' plus a next step, never a
-guess. """ + STATUS_RULE + """ Errors: {{"error", "message", "hint"}}; not_initialised/no_index: call index_update."""
+guess. """ + STATUS_RULE
 
 
 def instructions(profile: str = DEFAULT_PROFILE, *, decisions: bool = True) -> str:
@@ -2446,6 +2505,12 @@ def instructions(profile: str = DEFAULT_PROFILE, *, decisions: bool = True) -> s
         return (_INSTRUCTIONS_CORE_HEAD + (_INSTRUCTIONS_CORE_DECISIONS if decisions else "") + _INSTRUCTIONS_CORE
                 + _INSTRUCTIONS_TAIL)
     return _INSTRUCTIONS_HEAD + (_INSTRUCTIONS_DECISIONS if decisions else "") + _INSTRUCTIONS_FULL + _INSTRUCTIONS_TAIL
+
+
+def idle_instructions(repo: Path) -> str:
+    """The one line of a core server that serves nothing (:func:`served_tools`: not one project, D188)."""
+    return (f"Verinoda serves no tool in this session: {repo} is {not_one_project(repo)}, not one project. Start the "
+            "session in a project's folder, or the server with --repo <project>.")
 
 
 def _has_decision_records(repo: Path) -> bool:
@@ -2465,6 +2530,10 @@ def served_tools(repo: Path, profile: str) -> tuple[str, ...]:
     leaves out decision_check and dependency_ask in a project without decision records (nothing to check; `--profile full`
     always lists it). The menu is read at startup: records added later show after a restart."""
     names = PROFILES[profile]
+    if profile == "core" and index_state(Path(repo)) != "indexed" and not_one_project(Path(repo)):
+        # every tool could only refuse (index_update never scans such a folder), and the menu, the instructions and
+        # the mod's call rule were about 1,700 tokens of every request (D188): nothing is served
+        return ()
     if profile == "core" and not _has_decision_records(Path(repo)):
         names = tuple(n for n in names if n not in ("decision_check", "dependency_ask"))
     if profile == "core":
@@ -2481,7 +2550,7 @@ def listed_tools(repo: Path, profile: str) -> tuple[str, ...]:
 
 def listed_of(served: tuple[str, ...], profile: str) -> tuple[str, ...]:
     """:func:`listed_tools` for a given set of served tools (a server over several projects serves their union)."""
-    if profile != "core":
+    if profile != "core" or not served:
         return served
     behind = [n for n in served if n not in CORE_DIRECT]
     return (*CORE_DIRECT, *((GATEWAY,) if behind else ()))
@@ -2898,7 +2967,8 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
         t = tools or AtlasTools(repo)
         profile = resolve_profile(t.repo, profile)
         served = set(served_tools(t.repo, profile))
-        text = instructions(profile, decisions="decision_check" in served).format(repo=t.repo)
+        text = (instructions(profile, decisions="decision_check" in served).format(repo=t.repo) if served
+                else idle_instructions(t.repo))
         listed = set(listed_tools(t.repo, profile))
     from verinoda import buildinfo
 
@@ -2919,7 +2989,7 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
     plan_check = "see question_plan_check" if "question_plan_check" in served else "from `verinoda plan check`"
 
     impl: dict[str, Callable] = {}   # every served tool's function: run_tool calls the ones not listed
-    slim = {"analyze", "code_check"} if profile == "core" else set()  # listed with fewer arguments (below)
+    slim = {"analyze", "code_check"} & listed if profile == "core" else set()  # listed with fewer arguments (below)
 
     def add(name: str, fn, description: str) -> None:
         if hub is not None:
@@ -3558,7 +3628,8 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
 
         add(GATEWAY, run_tool, gateway_description(behind))
 
-    _add_prompts(srv, listed, served)
+    if listed:  # the workflows walk through tools: a server that serves none has no workflow either
+        _add_prompts(srv, listed, served)
     _compact_schemas(srv)
     return srv
 
@@ -3743,7 +3814,9 @@ def repo_of_config(start: Path, rel: str) -> Path:
     return default_repo(here)
 
 
-def _state_line(repo: Path) -> str:
+def _state_line(repo: Path, profile: str = DEFAULT_PROFILE) -> str:
+    if not served_tools(repo, profile):  # D188
+        return f"{not_one_project(repo)}, not one project: no tool served (pass --repo)"
     return {"indexed": "indexed", "initialised": "initialised, not indexed - index_update builds the index",
             "not_scanned": "not scanned - index_update scans it"}[index_state(repo)]
 
@@ -3793,14 +3866,14 @@ def serve(repo: Path | None, profile: str | None = None, *, watch: bool = False,
     build = f"build {buildinfo.server_version()} ({sys.executable})"
     if hub is None:
         repo = roots[0][1]
-        print(f"verinoda mcp: serving {repo} over {transport} ({_state_line(repo)}; "
+        print(f"verinoda mcp: serving {repo} over {transport} ({_state_line(repo, served)}; "
               f"{len(listed_tools(repo, served))} tools, profile {served}); {build}", file=sys.stderr, flush=True)
     else:
         listed = listed_of(tuple(hub.menu_served()), served)
         print(f"verinoda mcp: serving {len(roots)} projects over {transport} ({len(listed)} tools, profile {served}; "
               f"graphs kept for {hub.max_loaded} at a time); {build}", file=sys.stderr, flush=True)
         for name, root in roots:
-            print(f"verinoda mcp:   {name}: {root} ({_state_line(root)}; profile {hub.profiles[name]})",
+            print(f"verinoda mcp:   {name}: {root} ({_state_line(root, hub.profiles[name])}; profile {hub.profiles[name]})",
                   file=sys.stderr, flush=True)
     for _name, root in roots:
         note = ignored_settings_note(root)

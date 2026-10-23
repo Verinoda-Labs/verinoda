@@ -147,6 +147,10 @@ def test_skill_templates_are_complete(env, agent):
     fm, body = frontmatter(text)
     assert fm["name"] == "verinoda"
     assert 100 < len(fm["description"]) <= 1536
+    if agent == "claude":
+        # D188: Claude Code lists a user skill's description in every request of every session, in every folder
+        # (about 240 tokens measured for the 650-character one); the body loads only when the skill is used
+        assert len(fm["description"]) <= 300, len(fm["description"])
     assert body.lstrip().startswith(agents.MARKER)
     assert "{{" not in text and "recorded at install time is `verinoda`" in text  # on PATH -> plain name
     # audit: the fallback must lead somewhere even when the recorded command is the bare name

@@ -133,6 +133,28 @@ def atlas_dir(repo: Path) -> Path:
     return Path(repo).resolve() / ATLAS_DIRNAME
 
 
+def not_one_project(repo: Path) -> str | None:
+    """Why ``repo`` is not one project, or None: a home folder, a drive root, or a workspace holding two or more
+    projects (sub-folders with their own .git or .verinoda) that is not itself a git work tree's top (its submodules
+    and nested clones are its own). Such a folder is a wrongly resolved project: no update builds its first index,
+    and a core MCP server over it serves nothing (D188). A dotfiles repository in the home folder is still the home
+    folder."""
+    repo = Path(repo).resolve()
+    if repo == Path.home().resolve():
+        return "a home folder"
+    if repo.parent == repo:
+        return "a drive root"
+    if (repo / ".git").exists():
+        return None
+    try:
+        projects = [d.name for d in repo.iterdir() if d.is_dir() and not d.name.startswith(".")
+                    and ((d / ".git").exists() or atlas_dir(d).is_dir())]
+    except OSError:
+        projects = []
+    return (f"a workspace of {len(projects)} projects ({', '.join(sorted(projects)[:5])})"
+            if len(projects) >= 2 else None)
+
+
 def db_path(repo: Path) -> Path:
     return atlas_dir(repo) / "atlas.db"
 

@@ -536,6 +536,33 @@ def test_update_rendering_and_error_exit(monkeypatch, capsys, tmp_path):
     assert json.loads(capsys.readouterr().out) == failed
 
 
+def test_update_never_builds_a_first_index_of_a_home_folder(monkeypatch, capsys, tmp_path):
+    """D188: a user-scope install keeps its manifest in ~/.verinoda, so `verinoda update` in the home folder, where a
+    terminal opens, found a project there and indexed every file under it. An update that would build the first index
+    of a folder that is not one project is refused before the store is made; the engine refuses it too (any caller),
+    and `verinoda scan <folder>` still indexes a folder on purpose."""
+    from verinoda import cli, workflow
+    from verinoda.paths import graph_path
+    from verinoda.store import Store
+
+    home = tmp_path / "home"
+    (home / ".verinoda").mkdir(parents=True)
+    (home / ".verinoda" / "install-manifest.json").write_text('{"version": 1}', encoding="utf-8")
+    (home / "notes.py").write_text("x = 1\n", encoding="utf-8")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    assert cli.main(["update", "--repo", str(home)]) == 1
+    cap = capsys.readouterr()
+    assert "a home folder, not one project" in cap.err and f"verinoda scan {home}" in cap.err, cap.err
+    assert not (home / ".verinoda" / "atlas.db").exists() and not graph_path(home).exists()
+    subprocess.run(["git", "init", "-q"], cwd=home, check=True)  # a dotfiles repository in ~ is still the home folder
+    assert cli.main(["update", "--repo", str(home), "--fast"]) == 1 and not graph_path(home).exists()
+    capsys.readouterr()
+    st = Store(tmp_path / "atlas.db")
+    res = workflow.update(st, home)
+    assert res["mode"] == "not_one_project" and "error" in res and not graph_path(home).exists(), res
+    st.close()
+
+
 def test_research_git_never_reads_stdin(monkeypatch):
     from verinoda import gitexec, research
 
