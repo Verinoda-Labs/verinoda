@@ -220,6 +220,14 @@ def run_env_for(env: Path) -> dict:
             "VIRTUAL_ENV": str(env), "PATH": f"{env / 'Scripts'}{os.pathsep}{os.environ.get('PATH', '')}"}
 
 
+def build_env_for(run_env: dict) -> dict:
+    """`run_env` for a compiled build: matplotlib before 3.6 builds its bundled freetype with msbuild on Windows, which a
+    Visual Studio Build Tools install keeps off PATH."""
+    vs = Path(os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)")) / "Microsoft Visual Studio"
+    found = sorted(vs.glob("*/*/MSBuild/Current/Bin/amd64"))
+    return {**run_env, "PATH": f"{run_env['PATH']}{os.pathsep}{found[-1]}"} if found else run_env
+
+
 def write_generated(src: Path, row: dict) -> None:
     """The files the project's own install generates and a checkout lacks. pytest's version module comes from setuptools_scm
     at install time; the copies have no tags and the envs no setuptools_scm, so without it `_pytest._version` is missing and
@@ -237,7 +245,7 @@ def run_install(src: Path, row: dict, spec: dict, py: Path, run_env: dict) -> in
     environment file, and the project's own install added what that file lacks (sphinx's sphinxcontrib packages, pytest's
     atomicwrites on Windows); pip leaves what is installed and satisfies the requirement alone. With build isolation unless the
     line turns it off: a project built by flit_core (sphinx 6 and later) or a compiled one needs its build requirements."""
-    fix_env(py.parent.parent, row["repo"])
+    fix_env(py.parent.parent, row["repo"], spec)
     env = {**run_env, "SETUPTOOLS_SCM_PRETEND_VERSION": f"{row['version']}.0"}
     rc = 0
     for line in spec["install"]:
@@ -251,16 +259,25 @@ def run_install(src: Path, row: dict, spec: dict, py: Path, run_env: dict) -> in
     return rc
 
 
-def fix_env(env: Path, repo: str) -> None:
+def fix_env(env: Path, repo: str, spec: dict) -> None:
     """Once per environment, and recorded in its marker: remove the packages that install on Windows without the system
-    library they load (xarray's tests then fail to collect instead of skipping), and add what the environment's pytest needs
-    on Windows to import (WINDOWS_DEPS). pytest's own checkout is installed with its dependencies (`run_install`) instead."""
+    library they load (xarray's tests then fail to collect instead of skipping), add what the environment's pytest needs
+    on Windows to import (WINDOWS_DEPS; pytest's own checkout is installed with its dependencies by `run_install` instead),
+    and give the image's pip where the install lines use an option today's pip no longer has (scikit-learn's
+    ``--no-use-pep517``, gone in pip 26)."""
     marker = env / "verinoda-env.json"
     info = json.loads(marker.read_text(encoding="utf-8"))
     remove = WINDOWS_BROKEN.get(repo) if "removed" not in info else None
-    if not remove and "windows_deps" in info:
+    legacy = bool(spec.get("pip")) and any("--no-use-pep517" in x for x in spec["install"]) and "legacy_pip" not in info
+    if not remove and not legacy and "windows_deps" in info:
         return
     py = str(venv_python(env))
+    if legacy:
+        options = subprocess.run([py, "-m", "pip", "install", "--help"], capture_output=True, text=True, check=False).stdout
+        replace = "--no-use-pep517" not in options
+        if replace:
+            subprocess.run([py, "-m", "pip", "install", "-q", f"pip=={spec['pip']}"], capture_output=True, check=False)
+        info["legacy_pip"] = spec["pip"] if replace else None
     if remove:
         subprocess.run([py, "-m", "pip", "uninstall", "-q", "-y", *remove], capture_output=True, check=False)
         info["removed"] = remove
@@ -294,7 +311,7 @@ def build_outputs(data: Path, row: dict, spec: dict, origin: Path | None) -> dic
     git("checkout", "-q", "-f", base, cwd=root)
     git("clean", "-fdxq", cwd=root)
     env = data / "envs" / env_key(spec)
-    rc = run_install(root, row, spec, venv_python(env), run_env_for(env))
+    rc = run_install(root, row, spec, venv_python(env), build_env_for(run_env_for(env)))
     git("checkout", "-q", "-f", base, "--", ".", cwd=root, check=False)  # the install's sed lines changed tracked files
     listed = git("ls-files", "--others", "--ignored", "--exclude-standard", cwd=root).stdout.decode("utf-8").splitlines()
     outputs = [p for p in listed if not p.startswith("build/") and "__pycache__" not in p]
@@ -316,7 +333,7 @@ def install_checkout(src: Path, row: dict, spec: dict, py: Path, run_env: dict, 
     """Make the checkout importable the way the image does: through PYTHONPATH, with the Dockerfile's install lines, or, for
     a compiled project (`build`, from `build_outputs`), with its build outputs copied in and imported through PYTHONPATH (a
     patch that changes compiled sources, `rebuild`, is built again in place)."""
-    fix_env(py.parent.parent, row["repo"])
+    fix_env(py.parent.parent, row["repo"], spec)
     write_generated(src, row)
     if row["repo"] in PYTHONPATH_REPOS:
         run_env["PYTHONPATH"] = str(src)
@@ -324,8 +341,8 @@ def install_checkout(src: Path, row: dict, spec: dict, py: Path, run_env: dict, 
         copy_outputs(build, src)
         if rebuild:  # in place: an editable install would point the shared environment at this patched checkout
             subprocess.run([str(py), "setup.py", "build_ext", "--inplace"], cwd=src, capture_output=True,
-                           env={**run_env, "SETUPTOOLS_SCM_PRETEND_VERSION": f"{row['version']}.0"}, timeout=3 * TIMEOUT,
-                           check=False)
+                           env={**build_env_for(run_env), "SETUPTOOLS_SCM_PRETEND_VERSION": f"{row['version']}.0"},
+                           timeout=3 * TIMEOUT, check=False)
         run_env["PYTHONPATH"] = str(src / COMPILED[row["repo"]])
     else:
         run_install(src, row, spec, py, run_env)

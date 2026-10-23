@@ -32,7 +32,7 @@ CONDA_TO_PIP = {"pytables": "tables", "pyqt": None, "matplotlib-base": "matplotl
 def parse(dockerfile: Path) -> dict:
     text = dockerfile.read_text(encoding="utf-8")
     env = re.search(r"cat <<'(EOF_\w+)' > /root/environment\.yml\n(.*?)\n\1", text, re.DOTALL)
-    python, conda, pip, tools = None, [], [], []
+    python, conda, pip, tools, pip_pin = None, [], [], [], None
     if env:
         section = None
         for line in env.group(2).splitlines():
@@ -58,6 +58,8 @@ def parse(dockerfile: Path) -> dict:
                     tools.append(f"{name}=={version}")  # kept out of the key: older envs got them after they were built
                 elif name == "python":
                     python = version
+                elif name == "pip":
+                    pip_pin = version or None
                 elif name not in SYSTEM:
                     mapped = CONDA_TO_PIP.get(name, name)
                     if mapped:
@@ -73,7 +75,8 @@ def parse(dockerfile: Path) -> dict:
                 if s and not s.startswith(("#", "echo ", "cd ", "git config", "git commit", "source ")):
                     install.append(s)
     pre = re.findall(r"^RUN (?!<<)(.*)$", text, re.MULTILINE)
-    return {"python": python, "packages": sorted(set(conda + pip)), "build_tools": tools, "install": install, "run_lines": pre}
+    return {"python": python, "packages": sorted(set(conda + pip)), "build_tools": tools, "install": install, "run_lines": pre,
+            "pip": pip_pin}
 
 
 def env_key(spec: dict) -> str:
