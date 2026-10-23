@@ -342,6 +342,14 @@ async function findRoot($: EngineInterface, named: string, cwd: string): Promise
   return undefined
 }
 
+// A home folder or a drive root: never a project (findRoot), never the folder a compaction's file cards are made in.
+async function isWide($: EngineInterface, dir: string): Promise<boolean> {
+  const d = norm(dir)
+  const profile = await $.env.get('USERPROFILE').catch(() => undefined)
+  const home = await $.env.get('HOME').catch(() => undefined)
+  return d === '' || /^[a-z]:$/.test(d) || [profile, home].some(h => h !== undefined && h !== '' && norm(h) === d)
+}
+
 // The user's home, where every run of the CLI starts; without one (neither variable set), the drive root, which is
 // outside any project the mod would take (findRoot refuses drive roots).
 async function homeFolder($: EngineInterface, root: string): Promise<string> {
@@ -604,6 +612,10 @@ export const register: Register = (on, options) => {
       // index can make the mod run nothing (D186 §4.6). Without a program outside the project not even the trust list
       // is read.
       live.isAllowed = live.missingCli === '' && (named !== '' || norm(live.root) === norm(live.cwd) || (await isTrusted($, live.root)))
+    } else if (!(await isWide($, live.cwd))) {
+      // no index anywhere: nothing is re-indexed or checked, but a compaction's file cards need none (D189), only the CLI,
+      // found as ever outside the folder the session was opened in
+      await resolveTools($, live.cwd, options)
     }
     await loadSettings($, e.isInteractive !== false)
     // the improvement list (D175): its command is always there, its tools only for a person and when a list is in play or offered
@@ -647,19 +659,26 @@ export const register: Register = (on, options) => {
   })
 
   // D189: the summary of a compaction keeps one card per file the conversation read or edited (Verinoda reads them
-  // from the files now) instead of the files' text. The main conversation only, under the trust gate; a CLI that is
-  // missing, older (no `card`), slow or failing leaves the compaction exactly as it would have run.
+  // from the files now) instead of the files' text; the main conversation only. The cards are made in the project the
+  // person allowed, else in the folder the session was opened in: a card reads only files the conversation read
+  // already and needs no index, so a project the settings name elsewhere, or a folder with no index, still gets them;
+  // never a home folder or a drive root, never with a CLI inside the folder. A CLI that is missing, older (no `card`),
+  // slow or failing leaves the compaction exactly as it would have run.
   on('session.compact', async ($, e, next) => {
-    const root = live.root
-    if (e.agentId !== undefined || root === undefined || !live.isAllowed || !cfg.cards) return next(e)
-    const files = touchedFiles(e.messages, root)
-    if (files.length === 0) return next(e)
-    try {
-      const { exitCode, stdout } = await runCli($, ['card', '--repo', root, '--max-chars', String(CARD_CHARS), '--', ...files],
-        CARD_TIMEOUT_MS)
-      if (exitCode === 0 && stdout.trim() !== '') return next({ ...e, instructions: cardInstructions(e.instructions, stdout) })
-    } catch {
-      // no card: the compaction runs as Claude Code's own
+    if (e.agentId !== undefined || !cfg.cards || cfg.cli === '') return next(e)
+    const bases = [live.isAllowed ? live.root : undefined, (await isWide($, live.cwd)) ? undefined : live.cwd]
+    for (const base of bases) {
+      if (base === undefined || isInside(cfg.cli, base)) continue
+      const files = touchedFiles(e.messages, base)
+      if (files.length === 0) continue
+      try {
+        const { exitCode, stdout } = await runCli($, ['card', '--repo', base, '--max-chars', String(CARD_CHARS), '--', ...files],
+          CARD_TIMEOUT_MS)
+        if (exitCode === 0 && stdout.trim() !== '') return next({ ...e, instructions: cardInstructions(e.instructions, stdout) })
+      } catch {
+        // no card: the compaction runs as Claude Code's own
+      }
+      return next(e)
     }
     return next(e)
   })

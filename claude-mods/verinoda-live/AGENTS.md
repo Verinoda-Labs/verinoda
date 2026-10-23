@@ -49,7 +49,7 @@ Run from the repository root.
 
 ```
 claude plugin validate claude-mods/verinoda-live        # ends with "Validation passed"
-claude plugin test claude-mods/verinoda-live            # 98 pass, 0 fail in 6 files (86 in 5 before D189)
+claude plugin test claude-mods/verinoda-live            # 102 pass, 0 fail in 6 files (86 in 5 before D189)
 npx --yes -p typescript tsc -p claude-mods/verinoda-live --noEmit   # exit 0 and no output (without --noEmit it writes .js files beside the sources)
 ```
 

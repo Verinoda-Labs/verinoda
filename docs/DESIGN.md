@@ -18540,11 +18540,14 @@ Measured first, on the person's five largest sessions on this machine (`docs/dra
    written. A path is judged lexically before any file system call (`paths.escapes_lexically`: a UNC path is never stat'ed),
    then contained (`paths.contained_path`); an absolute path under the project is made relative. Whole cards under a budget
    (8,000 characters by default), the rest counted.
-3. **verinoda-live 0.8.0, `session.compact`**: on any compaction of the main conversation, where the mod may run Verinoda
-   (the trust gate, the CLI outside the project, the home folder as the working directory, `--repo`), the files the messages
-   read or edited under the root (edited ones first, then the latest reads, at most 40, none under `.verinoda`) are carded by
-   `verinoda card` (at most 20 s) and the cards are appended to the summarizer's instructions after any `/compact <focus>`,
-   with the request to keep each file as its card. A missing, older (no `card`), slow or failing CLI, a subagent's
+3. **verinoda-live 0.8.0, `session.compact`**: on any compaction of the main conversation, the files the messages read or
+   edited (edited ones first, then the latest reads, at most 40, none under `.verinoda`) are carded by `verinoda card` (at
+   most 20 s; the CLI outside the folder, the home folder as the working directory, `--repo`) and the cards are appended to
+   the summarizer's instructions after any `/compact <focus>`, with the request to keep each file as its card. The files are
+   taken under the project the person allowed (the trust gate), else under the folder the session was opened in: a card
+   reads only files the conversation read already and needs no index, so a project the settings name elsewhere and a folder
+   with no `.verinoda` get cards too (the review found that the person's `root` setting, which names private-mod, kept
+   every private-bot session from them); never a home folder or a drive root, never with a CLI inside the folder. A missing, older (no `card`), slow or failing CLI, a subagent's
    compaction, a project not opened or trusted, and the setting `compactCards: false` leave the compaction as Claude Code's
    own; the messages are handed on untouched.
 
@@ -18556,9 +18559,13 @@ Measured first, on the person's five largest sessions on this machine (`docs/dra
   CLI run), 7,834 characters, the purposes taken from the class Javadoc ("The merged Brigadier command tree.").
 - A throwaway headless session (sonnet, the working tree's mod and CLI, three files read, then `/compact`): the hook ran
   `verinoda card` (one `card` row in `VERINODA_USAGE_LOG`, 0.04 s, 251 characters) and the summary wrote a section "Files and
-  Code Sections (cards, not contents)" with one line per file. Four probe sessions in all cost about $1.30.
-- Tests: `tests/test_cards.py` 10 passed; `test_cards`, `test_cli` and `test_docs` together 90 passed; the mod 98 pass, 0 fail
-  in 6 files, `claude plugin validate` passed, `tsc --noEmit` clean; disabling the hook made four wiring tests fail.
+  Code Sections (cards, not contents)" with one line per file. The global Compact Instructions were in force as well, so which
+  of the two produced the section is not separated (the summary wrote `java.util.List` where the card says `util.List`): what
+  is shown is that the hook runs and hands the cards over. Four probe sessions in all cost about $1.30.
+- Tests: `tests/test_cards.py` 10 passed; `test_cards`, `test_cli` and `test_docs` together 90 passed; the mod 102 pass, 0 fail
+  in 6 files, `claude plugin validate` passed, `tsc --noEmit` clean; disabling the hook made four wiring tests fail. Paths with
+  spaces and Turkish letters ("Büyük Patlama anı.jpeg", "Eski silahlar/tools/...") passed through a list-argv child
+  as `$.process.run` starts it come back byte for byte, their cards right.
 - Not measured: an agent session over many compactions (whether summaries keep the cards, the re-reads they save, the cost);
   the auto-compact trigger with the hook (only `/compact` was run); how the 400k window changes answers.
 
@@ -18585,7 +18592,9 @@ CLI printing text and JSON and writing no `.verinoda`; `import verinoda.cli` not
 the root (Windows spelling and case), none under `.verinoda` or climbing out; at most 40; the instructions keep the focus
 first; the wiring (the CLI run from the home folder with `--repo` and the relative paths, the summarizer's instructions, the
 messages handed on as they were); a card run that fails, throws or prints nothing; no file touched; a subagent's compaction;
-the setting off; an untrusted ancestor; no Verinoda on PATH outside the project.
+the setting off; an untrusted ancestor; no Verinoda on PATH outside the project; a project the settings name elsewhere (the
+session's own folder gets the cards); a folder with no index (cards, nothing else run); a session in the home folder (none);
+a `verinoda` inside the session's folder (never run).
 
 ## Sources
 

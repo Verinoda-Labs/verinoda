@@ -58,14 +58,15 @@ type Run = { argv: string[]; cwd: string | undefined }
 
 // The world beneath the plugin: a project with an index, Verinoda installed in the user's home (what PATH names), a
 // `verinoda card` that answers `card`, and the engine's compaction, which records what it was handed.
-function world(on: On, opts: { card?: { exitCode: number; stdout: string } | 'throws'; path?: string; cwd?: string } = {}) {
+function world(on: On, opts: { card?: { exitCode: number; stdout: string } | 'throws'; path?: string; cwd?: string;
+  existing?: string[] } = {}) {
   const runs: Run[] = []
   const compactions: { instructions?: string; messages?: unknown[] }[] = []
   const cwd = opts.cwd ?? ROOT
   on('session.start', () => ({ cwd }))
   on('session.cwd', () => ({ value: cwd }))
   mock.env(on, { USERPROFILE: 'C:\\Users\\dev', PATH: opts.path ?? 'C:\\Windows\\System32;C:\\Users\\dev\\.local\\bin', PATHEXT: '.EXE;.CMD' })
-  const existing = new Set([`${ROOT}/.verinoda`, CLI].map(p => p.toLowerCase()))
+  const existing = new Set((opts.existing ?? [`${ROOT}/.verinoda`, CLI]).map(p => p.toLowerCase()))
   on('fs.stat', ($, e) => (existing.has(e.path.replace(/\\/g, '/').toLowerCase())
     ? { value: { kind: 'file', size: 0, mtimeMs: 0, isLink: false } } : { deny: 'ENOENT' }) as never)
   on('command.register', ($, e) => ({ value: { command: e.name } }) as never)
@@ -166,6 +167,58 @@ describe('the cards reach the compaction', () => {
     await clock.settle()
     await compact($)
     expect(w.cards().length).toBe(0)
+    expect(w.compactions[0]?.instructions).toBe('keep the plan')
+  })
+})
+
+describe('which folder the cards are made in', () => {
+  const OTHER = 'C:/work/other-mod'
+
+  test('a project the settings name elsewhere: the folder the session was opened in gets the cards', { options: { root: OTHER } }, async ($, on) => {
+    const clock = mock.clock(on)
+    mock.store(on)
+    const w = world(on, { existing: [`${OTHER}/.verinoda`, `${ROOT}/.verinoda`, CLI] })
+    await $.session.start(START)
+    await clock.settle()
+    await compact($)
+    expect(w.cards().map(r => r.argv.slice(1, 4))).toEqual([['card', '--repo', ROOT]])
+    expect(w.compactions[0]?.instructions).toBe(`keep the plan
+
+${CARDS_HEAD}
+${CARDS}`)
+  })
+
+  test('a folder with no index at all gets the cards (they need none), with Verinoda found outside it', async ($, on) => {
+    const clock = mock.clock(on)
+    mock.store(on)
+    const w = world(on, { existing: [CLI] })
+    await $.session.start(START)
+    await clock.settle()
+    await compact($)
+    expect(w.cards()).toEqual([{ argv: [CLI, 'card', '--repo', ROOT, '--max-chars', String(CARD_CHARS), '--', 'src/Kale.java', 'art/wing.png'], cwd: HOME }])
+    expect(w.runs.filter(r => r.argv[1] === 'update' || r.argv[1] === 'graph-state').length).toBe(0) // no index: nothing else runs
+  })
+
+  test('a session opened in the home folder gets no cards', async ($, on) => {
+    const clock = mock.clock(on)
+    mock.store(on)
+    const w = world(on, { cwd: HOME, existing: [CLI] })
+    await $.session.start({ cwd: HOME, surface: 'terminal', isInteractive: true } as never)
+    await clock.settle()
+    await compact($, { messages: [said(use('Read', { file_path: `${HOME}/notes.txt` }))] })
+    expect(w.cards().length).toBe(0)
+    expect(w.compactions[0]?.instructions).toBe('keep the plan')
+  })
+
+  test('a verinoda inside the folder the session was opened in is never run', async ($, on) => {
+    const clock = mock.clock(on)
+    mock.store(on)
+    const inner = `${ROOT}/.venv/Scripts/verinoda.exe`
+    const w = world(on, { existing: [inner], path: 'C:\work\mod\.venv\Scripts;C:\Windows\System32' })
+    await $.session.start(START)
+    await clock.settle()
+    await compact($)
+    expect(w.runs.length).toBe(0)
     expect(w.compactions[0]?.instructions).toBe('keep the plan')
   })
 })
