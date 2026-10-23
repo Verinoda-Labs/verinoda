@@ -88,8 +88,12 @@ def share_copy(base: Path, dest: Path, commit: str) -> None:
     dest.mkdir(parents=True)
     rc, _, err, _ = run(["git", "init", "-q"], dest, env)
     (dest / ".git" / "objects" / "info").mkdir(parents=True, exist_ok=True)
+    # newline="\n": Git reads a CR that Windows text mode would add as part of the path
     (dest / ".git" / "objects" / "info" / "alternates").write_text((base / ".git" / "objects").as_posix() + "\n",
-                                                                   encoding="utf-8")
+                                                                   encoding="utf-8", newline="\n")
+    # a one-commit-deep base (D184's copies) lacks the base commit's parents: without its shallow list, git log fails
+    if (base / ".git" / "shallow").is_file():
+        shutil.copyfile(base / ".git" / "shallow", dest / ".git" / "shallow")
     for argv in (["git", "config", "core.longpaths", "true"], ["git", "config", "core.autocrlf", "false"],
                  ["git", "config", "core.eol", "lf"], ["git", "checkout", "-q", "--detach", commit]):
         rc, _, err, _ = run(argv, dest, env, timeout=1800)

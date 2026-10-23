@@ -4,6 +4,8 @@ copy of the base commit with the patch and the test patch applied, and SWE-bench
 
     python swebench_localeval.py build DATA [IDS...]
     python swebench_localeval.py eval DATA PREDICTIONS.jsonl OUT.jsonl [--only IDS] [--workers N] [--keep-logs DIR]
+        [--gold-report GOLD.jsonl[,MORE.jsonl]] [--copies DIR]
+    python swebench_localeval.py regrade DATA OUT.jsonl LOG_DIR GOLD.jsonl[,MORE.jsonl] NEW_OUT.jsonl
 
 DATA holds ``lite.parquet`` (SWE-bench_Lite test split with the task repo's columns), ``tasks/<id>/Dockerfile``,
 ``py36/tools/python.exe`` (a portable CPython 3.6) and gets ``envs/``, ``src/`` and ``logs/``. Run it with a Python that has
@@ -203,6 +205,41 @@ def grade(row: dict, log: str, broken: set[str]) -> dict:
     return out
 
 
+def run_env_for(env: Path) -> dict:
+    return {**{k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "PYTHON", "VIRTUAL_ENV"))},
+            "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
+            "VIRTUAL_ENV": str(env), "PATH": f"{env / 'Scripts'}{os.pathsep}{os.environ.get('PATH', '')}"}
+
+
+def write_generated(src: Path, row: dict) -> None:
+    """The files the project's own install generates and a checkout lacks. pytest's version module comes from setuptools_scm
+    at install time; the copies have no tags and the envs no setuptools_scm, so without it `_pytest._version` is missing and
+    no test imports (D184's four pytest instances)."""
+    if row["repo"] == "pytest-dev/pytest" and (src / "src" / "_pytest").is_dir():
+        version = f"{row['version']}.0"
+        parts = tuple(int(x) for x in version.split("."))
+        (src / "src" / "_pytest" / "_version.py").write_text(
+            f"version = __version__ = {version!r}\nversion_tuple = __version_tuple__ = {parts!r}\n", encoding="utf-8",
+            newline="\n")
+
+
+def install_checkout(src: Path, row: dict, spec: dict, py: Path, run_env: dict) -> None:
+    """Make the checkout importable the way the image does: through PYTHONPATH, or with the Dockerfile's install lines."""
+    write_generated(src, row)
+    if row["repo"] in PYTHONPATH_REPOS:
+        run_env["PYTHONPATH"] = str(src)
+        return
+    env = {**run_env, "SETUPTOOLS_SCM_PRETEND_VERSION": f"{row['version']}.0"}
+    for line in spec["install"]:
+        if line.startswith("sed -i "):
+            subprocess.run(["bash", "-c", line], cwd=src, capture_output=True, check=False)
+        elif "pip install" in line:
+            target = re.search(r"pip install (.*)$", line).group(1)
+            target = re.sub(r"--verbose|-v\b", "", target).split()
+            subprocess.run([str(py), "-m", "pip", "install", "-q", "--no-deps", "--no-build-isolation", *target],
+                           cwd=src, capture_output=True, env=env, timeout=TIMEOUT, check=False)
+
+
 def evaluate(data: Path, row: dict, patch_text: str, origin: Path | None, slot: str, broken: set[str],
              log_dir: Path | None) -> dict:
     iid, base = row["instance_id"], row["base_commit"]
@@ -217,20 +254,8 @@ def evaluate(data: Path, row: dict, patch_text: str, origin: Path | None, slot: 
     if not ok:
         res.update({"resolved": False, "seconds": round(time.perf_counter() - t0, 1)})
         return res
-    run_env = {**{k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "PYTHON", "VIRTUAL_ENV"))},
-               "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
-               "VIRTUAL_ENV": str(env), "PATH": f"{env / 'Scripts'}{os.pathsep}{os.environ.get('PATH', '')}"}
-    if row["repo"] in PYTHONPATH_REPOS:
-        run_env["PYTHONPATH"] = str(src)
-    else:
-        for line in spec["install"]:
-            if line.startswith("sed -i "):
-                subprocess.run(["bash", "-c", line], cwd=src, capture_output=True, check=False)
-            elif "pip install" in line:
-                target = re.search(r"pip install (.*)$", line).group(1)
-                target = re.sub(r"--verbose|-v\b", "", target).split()
-                subprocess.run([str(py), "-m", "pip", "install", "-q", "--no-deps", "--no-build-isolation", *target],
-                               cwd=src, capture_output=True, env=run_env, timeout=TIMEOUT, check=False)
+    run_env = run_env_for(env)
+    install_checkout(src, row, spec, py, run_env)
     files = test_files_of(row["eval_script"], base)
     if files:
         git("checkout", base, "--", *files, cwd=src, check=False)
@@ -279,6 +304,39 @@ def cmd_build(data: Path, ids: list[str]) -> int:
     return 0
 
 
+def load_broken(gold_report: Path | None) -> dict[str, set[str]]:
+    """The tests that fail here with the gold patch, per instance; ``gold_report`` may name several files (comma-separated),
+    a later row for an instance replacing an earlier one."""
+    broken: dict[str, set[str]] = {}
+    for path in str(gold_report or "").split(","):
+        if path and Path(path).exists():
+            for x in Path(path).read_text(encoding="utf-8").splitlines():
+                if x.strip():
+                    r = json.loads(x)
+                    broken[r["instance_id"]] = set(r.get("f2p_failed") or []) | set(r.get("p2p_failed") or [])
+    return broken
+
+
+def cmd_regrade(data: Path, results: Path, logs: Path, gold_report: Path, out: Path) -> int:
+    """Grade an evaluation again from its kept logs with a newer gold report (no test runs)."""
+    rows, broken = rows_of(data), load_broken(gold_report)
+    lines = []
+    for x in results.read_text(encoding="utf-8").splitlines():
+        if not x.strip():
+            continue
+        r = json.loads(x)
+        log = logs / f"{r['instance_id']}.log"
+        if r.get("patch_applied") and log.exists():
+            skip = broken.get(r["instance_id"], set())
+            g = grade(rows[r["instance_id"]], log.read_text(encoding="utf-8"), skip)
+            r.update({"resolved": g["strict"]["resolved"], "resolved_calibrated": g["calibrated"]["resolved"],
+                      "env_broken": sorted(skip)})
+        lines.append(json.dumps(r))
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    print(f"{len(lines)} rows regraded into {out}", flush=True)
+    return 0
+
+
 def cmd_eval(data: Path, preds_path: Path, out: Path, only: list[str], workers: int, log_dir: Path | None,
              gold_report: Path | None, copies: Path | None) -> int:
     rows = rows_of(data)
@@ -292,12 +350,7 @@ def cmd_eval(data: Path, preds_path: Path, out: Path, only: list[str], workers: 
     done = set()
     if out.exists():
         done = {json.loads(x)["instance_id"] for x in out.read_text(encoding="utf-8").splitlines() if x.strip()}
-    broken: dict[str, set[str]] = {}
-    if gold_report and gold_report.exists():
-        for x in gold_report.read_text(encoding="utf-8").splitlines():
-            if x.strip():
-                r = json.loads(x)
-                broken[r["instance_id"]] = set(r.get("f2p_failed", [])) | set(r.get("p2p_failed", []))
+    broken = load_broken(gold_report)
     todo = [i for i in preds if i not in done]
     locks: dict[str, threading.Lock] = {}
     write = threading.Lock()
@@ -332,6 +385,8 @@ def cmd_eval(data: Path, preds_path: Path, out: Path, only: list[str], workers: 
 def main(argv: list[str]) -> int:
     if len(argv) >= 2 and argv[0] == "build":
         return cmd_build(Path(argv[1]), argv[2:])
+    if len(argv) == 6 and argv[0] == "regrade":
+        return cmd_regrade(*(Path(a) for a in argv[1:]))
     if len(argv) >= 4 and argv[0] == "eval":
         data, preds, out = Path(argv[1]), Path(argv[2]), Path(argv[3])
         opts = argv[4:]

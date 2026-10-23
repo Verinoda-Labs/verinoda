@@ -73,6 +73,34 @@ exact McNemar on discordant pairs, cost (dollars, turns, seconds). A lever that 
 Verinoda's. Per instance that stays unresolved: the reason (the test's demand and whether the issue, the code or only the hints
 determine it).
 
+## Amendment 2 (2026-10-24, after C0's first plain-arm sessions, before any C1 session)
+
+- C0's copies. Resetting D184's copies in place was stopped. Each C0 repeat gets fresh copies instead
+  (`swebench_copies.py`), checked out at the base commit and borrowing D184's plain copies' objects through git alternates.
+  D184's copies stay as its sessions left them. Their object stores hold dangling blobs that D184's harness wrote (`git add
+  -A` before the diff). One is visible from a C0 copy (`git fsck --unreachable`). A session that ran `git fsck`,
+  `git cat-file --batch-all-objects` or a lost-found search could read D184's plain patch. The leak scan looks for these
+  commands; a session that ran one is reported and not counted.
+- C1's copies. No session ever works in the pool. Both arms' copies borrow from the fetched history copy, so neither arm can
+  reach the other's objects.
+- C1 where the environment works. An instance gets C1 (the environment and the reproduce-and-test prompt) only if the gold
+  patch resolves it locally in that environment (calibrated grade). Otherwise both arms' sessions get C0's prompt, which says
+  dependencies are not installed, and no environment. Results are reported split this way. A prompt that calls a broken
+  environment "ready" would only cost turns.
+- The Verinoda arm's C1 guide. GUIDE told the session to "work in this order" and ended at `code_check`. That is the shortcut in
+  D184's transcripts: analyze, edit, code_check, done. Next to C1's own order (reproduce, fix, run the script and the tests) it
+  would give two orders. GUIDE_C1 keeps GUIDE's three uses of Verinoda (load the tools, analyze before reading, code_check
+  after editing). It places them inside the C1 steps and says `code_check` does not replace the reproduction or the tests. This
+  is a change to the Verinoda arm's protocol made together with C1. It cannot be told apart from C1 without another run, and it
+  is reported that way.
+- Versions from setuptools_scm. The copies carry no tags. Sessions and the evaluator therefore get
+  `SETUPTOOLS_SCM_PRETEND_VERSION` set to the instance's version plus ".0". pytest's `src/_pytest/_version.py`, which its own
+  install would generate, is written into the checkout as an ignored file. Without it, every pytest test failed to import
+  locally: four of the five instances where the local and official plain-arm grades disagreed.
+- Grading. A local "unresolved" is graded again once on a quiet machine before it is counted, because sleep-based tests flake
+  under load (django-16379). Instances whose project needs a compiled build (scikit-learn, matplotlib, astropy) are graded
+  locally only once their gold patch passes here. Until then they are "official grading only": not measured locally.
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;

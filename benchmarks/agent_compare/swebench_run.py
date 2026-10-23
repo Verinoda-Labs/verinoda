@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -30,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from big_run import claude_version, isolated_plugin_store, run_by_arm, session_stats
 from guard_run import find_transcript, git_env, run
+from swebench_localeval import write_generated
 
 GUIDE = (
     "This repository has Verinoda installed and indexed. Work in this order. (1) Load its tools first: call ToolSearch with the "
@@ -39,7 +41,18 @@ GUIDE = (
     "code before you change it. (3) After you edit Python files, call `mcp__verinoda__code_check` on the files you changed, "
     "and fix what it reports as absent. You may use any other tool as well."
 )
-EXCLUDES = [":(exclude).verinoda", ":(exclude).claude", ":(exclude).mcp.json", ":(exclude).scratch"]
+# C1: the prompt already orders the work (reproduce, fix, run the script and the tests); GUIDE's own order ended at
+# code_check, the shortcut D184's transcripts show (analyze, edit, code_check, done), so here Verinoda joins those steps
+GUIDE_C1 = (
+    "This repository also has Verinoda installed and indexed; use it within the steps above, not instead of any of them. Load "
+    "its tools first: call ToolSearch with the query "
+    "`select:mcp__verinoda__analyze,mcp__verinoda__project_query,mcp__verinoda__code_check`. Before you use Grep, Glob or Read on "
+    "the code, call `mcp__verinoda__analyze` with the problem above (the symptom in your own words) to find the code that "
+    "matters, with file:line evidence; `mcp__verinoda__project_query` finds more. Its hits are leads, not proof: read the code "
+    "before you change it. After you edit Python files, call `mcp__verinoda__code_check` on the files you changed and fix what "
+    "it reports as absent; it does not replace running your reproduction script and the tests."
+)
+EXCLUDES =[":(exclude).verinoda", ":(exclude).claude", ":(exclude).mcp.json", ":(exclude).scratch"]
 # the repositories whose tests import the checkout through PYTHONPATH; the others get an editable install in a venv of their own
 PYTHONPATH_REPOS = {"django/django", "sympy/sympy", "psf/requests"}
 TEST_HINTS = {
@@ -60,7 +73,8 @@ def prompt_for(task: dict, copy: Path, arm: str, with_env: bool = False) -> str:
                 "dependencies installed, and the repository's code is importable. A user filed this issue:\n\n"
                 f"{task['problem_statement']}\n\n"
                 "Task: fix the issue by editing the repository's source code in place. Work in this order: reproduce the issue "
-                f"with a short script in {scratch}/ (create the folder); fix it; run your script again, then run the project's "
+                f"with a short script in {scratch}/ (create the folder) that fails (an assert, a non-zero exit) while the issue "
+                "is present and passes once it is fixed; fix it; run your script again, then run the project's "
                 f"existing tests for the code you changed and fix anything you broke. {hint} Do not modify or add test files "
                 "in the repository, do not use the network or look the issue up on the web or on GitHub, and work only in "
                 f"{copy.as_posix()}. When you are done, reply with one sentence on what you changed.")
@@ -71,7 +85,9 @@ def prompt_for(task: dict, copy: Path, arm: str, with_env: bool = False) -> str:
                 "Task: fix the issue by editing the repository's source code in place. Do not modify or add test files, do not "
                 "use the network or look the issue up on the web or on GitHub, and work only in "
                 f"{copy.as_posix()}. When you are done, reply with one sentence on what you changed.")
-    return f"{text}\n\n{GUIDE}" if arm == "verinoda_guided" else text
+    if arm != "verinoda_guided":
+        return text
+    return f"{text}\n\n{GUIDE_C1 if with_env else GUIDE}"
 
 
 def claude_exe(cfg: dict) -> str:
@@ -105,8 +121,6 @@ def session_argv(prompt: str, arm: str, copy: Path, cfg: dict) -> list[str]:
 
 
 def env_for(arm: str, cfg: dict, venv: Path | None = None, pythonpath: Path | None = None) -> dict:
-    import os
-
     env = git_env()
     drop = [d.lower().replace("/", "\\") for d in cfg.get("drop_path", [])]
     keep = [p for p in env.get("PATH", "").split(os.pathsep) if p.lower().replace("/", "\\").rstrip("\\") not in drop]
@@ -120,6 +134,10 @@ def env_for(arm: str, cfg: dict, venv: Path | None = None, pythonpath: Path | No
     if pythonpath is not None:
         env["PYTHONPATH"] = str(pythonpath)
     return env
+
+
+def scm_env(task: dict) -> dict:
+    return {"SETUPTOOLS_SCM_PRETEND_VERSION": f"{task['version']}.0"}
 
 
 def session_venv(task: dict, copy: Path, arm: str, data: Path) -> tuple[Path, Path | None]:
@@ -141,8 +159,9 @@ def session_venv(task: dict, copy: Path, arm: str, data: Path) -> tuple[Path, Pa
         skipped = json.loads((shared / "verinoda-env.json").read_text(encoding="utf-8")).get("skipped", [])
         pkgs = [p for p in spec["packages"] if p not in skipped] + spec.get("build_tools", [])
         subprocess.run(["uv", "pip", "install", "-q", "--python", py, "--no-deps", *pkgs], capture_output=True, check=False)
+        # a setuptools_scm project without tags would get version 0.1.devN (and pytest's own minversion check would fail)
         subprocess.run(["uv", "pip", "install", "-q", "--python", py, "--no-deps", "--no-build-isolation", "-e", str(copy)],
-                       capture_output=True, check=False)
+                       capture_output=True, check=False, env={**os.environ, **scm_env(task)})
         (own / "verinoda-env.json").write_text(json.dumps({"from": spec["python"], "packages": len(pkgs)}), encoding="utf-8")
     return own, None
 
@@ -206,17 +225,26 @@ def verinoda_tools(transcript: Path | None) -> dict:
 def one(cfg: dict, task: dict, arm: str) -> dict:
     copy = Path(cfg["work"]) / "copies" / task["id"] / arm
     with_env = bool(cfg.get("env_data"))
-    venv, pythonpath = session_venv(task, copy, arm, Path(cfg["env_data"])) if with_env else (None, None)
     if with_env:
+        write_generated(copy, task)
         with (copy / ".git" / "info" / "exclude").open("a", encoding="utf-8") as f:
-            f.write("\n.scratch/\n")
+            f.write("\n.scratch/\nsrc/_pytest/_version.py\n")
+    venv, pythonpath = session_venv(task, copy, arm, Path(cfg["env_data"])) if with_env else (None, None)
     argv = session_argv(prompt_for(task, copy, arm, with_env), arm, copy, cfg)
-    rc, out, err, secs = run(argv, copy, env_for(arm, cfg, venv, pythonpath), timeout=cfg.get("timeout_s", 2400))
+    env = env_for(arm, cfg, venv, pythonpath)
+    if with_env:  # a build the session starts itself gets the same version
+        env.update(scm_env(task))
+    rc, out, err, secs = run(argv, copy, env, timeout=cfg.get("timeout_s", 2400))
     try:
         rep = json.loads(out)
     except ValueError:
         rep = {"is_error": True, "result": (out or err)[-500:]}
     diff, touched_tests = patch_of(copy, task["base_commit"], task["test_files"])
+    if with_env and (copy / ".scratch").is_dir() and cfg.get("out"):
+        # the reproductions are kept: a selector among several attempts may run them (condition C3)
+        keep = Path(cfg["out"]) / "scratch" / f"{task['id']}--{arm}"
+        shutil.rmtree(keep, ignore_errors=True)
+        shutil.copytree(copy / ".scratch", keep, ignore=shutil.ignore_patterns("__pycache__"))
     st = session_stats(find_transcript(rep.get("session_id", "")))
     usage = rep.get("usage") or {}
     files = sorted(set(re.findall(r"^diff --git a/(\S+) b/", diff, re.MULTILINE)))
