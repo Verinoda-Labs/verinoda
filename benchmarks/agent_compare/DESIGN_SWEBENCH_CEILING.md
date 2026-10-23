@@ -52,14 +52,18 @@ to judge anything; its agreement is reported. Tests that fail locally with the g
 
 ## Conditions, in this order
 
-- C0, noise floor: D184's set-up unchanged, more sessions on the dev failures, both arms. What flips here is sampling, and no
+- C0, noise floor: D184's prompt and harness, more sessions on the dev failures, both arms. What flips here is sampling, and no
   change below is credited with it. Gives pass@k for the unchanged method (a diagnostic, never a resolved share: choosing among k
-  attempts with the hidden tests is not allowed).
-- C1, a working test environment in the session, both arms: the instance's venv on PATH, and the prompt says how to run the
-  project's tests and that the agent should reproduce the issue and run the related tests. Same prompt otherwise.
-- C2, Verinoda's own changes, Verinoda arm only: history up to the base commit in the checkout (Verinoda's history tools are blind
-  at depth 1), and engine changes that each name a defect seen in a dev-set transcript (first the six instances only the plain
-  arm resolved). No change names an instance.
+  attempts with the hidden tests is not allowed). Amended before any run (same day): the Verinoda installed now is a7e0c65
+  (D186-D190), not the code of 2026-10-10 that D184 ran; C0 uses it, so C0 against D184 mixes sampling with that change, and
+  C0's own repeats are the noise floor.
+- C1, the official image's working environment, both arms: the instance's venv on PATH with the checkout importable, the base
+  commit's whole history in the checkout (SWE-bench 5.x's images carry it; D184's copies were one commit deep, which also left
+  Verinoda's history tools blind), and the prompt says how to run the project's tests and that the agent should reproduce the
+  issue and run the related tests. Same prompt otherwise. Amended before any run: history was first planned for C2 and the
+  Verinoda arm only; given to one arm it would be credited to Verinoda.
+- C2, Verinoda's own changes, Verinoda arm only: engine and protocol changes that each name a defect seen in a dev-set
+  transcript (first the six instances only the plain arm resolved). No change names an instance.
 - C3, more attempts with a legitimate selector, both arms: k sessions per instance and a selector that sees only the issue, the
   candidate patches and the test environment (it may run existing tests and its own reproductions, never the hidden tests).
   k and the selector are fixed on the dev set before the held-out run.
