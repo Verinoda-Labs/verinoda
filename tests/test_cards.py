@@ -131,6 +131,16 @@ def test_a_python_card_takes_the_docstring_first_sentence_top_level_names_and_im
     assert c["imports"] == ["os", "pathlib", "verinoda.store"]
 
 
+def test_only_a_licence_header_is_skipped_not_a_purpose_that_mentions_one(repo):
+    # cards.py's own docstring says "a licence header is skipped": its card read "paths" from the first comment instead
+    (repo / "src" / "lic.py").write_text('"""File cards: what a file is; a licence header is skipped."""\n# -- paths --\n'
+                                         'x = 1\n', encoding="utf-8")
+    assert _one(repo, "src/lic.py")["purpose"] == "File cards: what a file is; a licence header is skipped."
+    (repo / "tools" / "spdx.js").write_text("// SPDX-License-Identifier: MIT\n// Copyright 2026 Somebody\n\n"
+                                            "/** Plays the wing animation. */\nfunction play() {}\n", encoding="utf-8")
+    assert _one(repo, "tools/spdx.js")["purpose"] == "Plays the wing animation."
+
+
 def test_markdown_images_binaries_and_scripts_get_cards_of_their_own(repo):
     md = _one(repo, "docs/PLAN.md")
     assert md["purpose"] == "Dünya 1:1 Planı - Lawrence, Kansas" and md["defines"] == ["Su", "Yol", "Arazi"]

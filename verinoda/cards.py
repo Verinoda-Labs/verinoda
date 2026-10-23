@@ -45,7 +45,9 @@ _JVM = {".java", ".kt", ".kts", ".scala", ".groovy"}
 _JS = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"}
 _C = {".c", ".h", ".cc", ".cpp", ".hpp"}
 
-_LICENCE = re.compile(r"(?i)\b(copyright|licen[cs]e[ds]?|spdx|all rights reserved)\b")
+# a licence header, as such headers open: not a purpose that merely mentions a licence
+_LICENCE = re.compile(r"(?i)^\W*(copyright\b|\(c\)\s*\d|©)|spdx-license-identifier|\blicensed (under|to)\b|"
+                      r"all rights reserved|permission is hereby granted|\b(apache|mit|bsd|gnu|mozilla) (public )?licen[cs]e\b")
 _JVM_IMPORT = re.compile(r"^[ \t]*import[ \t]+(static[ \t]+)?([\w.]+?)(\.\*)?[ \t]*(?:as[ \t]+\w+)?[ \t]*;?[ \t]*$",
                          re.MULTILINE)
 _JS_IMPORT = re.compile(r"""\bimport\s+(?:[^'";]*?\sfrom\s+)?['"]([^'"\n]+)['"]|\brequire\(\s*['"]([^'"\n]+)['"]\s*\)""")
