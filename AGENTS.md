@@ -29,13 +29,14 @@ runs beside the agent in a session.
 - Python tests: `.venv/Scripts/python.exe -m pytest tests/test_<area>.py -q` for what you changed (`pytest tests` is the whole
   suite, about 35 minutes). No `.venv` in a fresh clone: `uv venv .venv -p 3.12` then
   `uv pip install --python .venv -e ".[mcp,precise]" pytest hypothesis ruff`. No test is known to fail (Windows 11, Python 3.12,
-  2026-10-23, D190: 5423 passed, 1 failed, the timing flake below; D189: 5405 passed, 0 failed; 2026-10-22, D187): the whole
+  2026-10-23, D190: 5434 passed, 0 failed, and an earlier D190 commit 1 failed, the timing flake below; D189: 5405 passed,
+  0 failed; 2026-10-22, D187): the whole
   suite gave 5388 passed and 0 failed, and in a second run 1 failed, the handle test of `tests/test_fswatch.py`, whose cause
   was the test's and was fixed (20 of 20 runs alone since). The clean checkout before D187
   (fa9d556) had 4 failures, each fixed in D187 (`docs/DESIGN.md` 159). `tests/test_asof.py::test_recorded_time` is a timing
   flake: the store records a claim's transitions to the second (`store.now`), and the test fails when its last two land in the
-  same second, as in both D190 whole-suite runs; on D189's code it failed 1 of 12 and 1 of 16 runs in one warm process and
-  passed that day's whole suite. `tests/test_history.py::test_a_name_resolves_through_the_index_and_is_never_replaced` failed
+  same second, as in two of the three D190 whole-suite runs; on D189's code it failed 1 of 12 and 1 of 16 runs in one warm
+  process and passed that day's whole suite. `tests/test_history.py::test_a_name_resolves_through_the_index_and_is_never_replaced` failed
   once in an earlier whole-suite run and not since.
   `tests/test_tq_measured.py::test_an_edit_to_a_module_naming_imports_hides_measured` fails whenever you change an engine file
   of `tq` (the modules `tq.py` and `index.py` import, at any depth): run `verinoda benchmark tq-audit` (about 70 s) and commit

@@ -18637,7 +18637,8 @@ same, so the failure is the engine's, not chance:
 2. **A part that names no code takes the subject that carries its words** (`analysis.SUBJECT_INTENTS`: locate, define,
    history, why; only in a message that names a file). Its candidates in the named file seed its search beside what the
    search finds elsewhere (`retrieval_inputs(scope_seeds=)`: a path is a place, not a subject, so a part whose only seed is a
-   path gets them; a part that writes a name as code does not), and its items are ordered by how many of its words each
+   path gets them; a part that writes a name as code does not, nor a callers or impact part, which would take them for its
+   targets unchosen - the second review), and its items are ordered by how many of its words each
    carries (`verdict_gate.carried_words`: its name, its file's name, its defining line and the lines the search printed, a
    word's English or Turkish counted, and the word that found it in the named file); the words in its own name or line
    first, then the named file, a symbol before a file. "The 60 second conversation window" of the bot's file is its
@@ -18646,11 +18647,16 @@ same, so the failure is the engine's, not chance:
    (`relay()`, `talk.set`, a backticked, snake_case or camelCase name); a path does not count (the review: "In <file>,
    when was ..." was met with the helper). A part carried from such a part carries its chosen subject only.
 3. **A subject the question does not name is judged by the question's words** (`verdict_gate._found_by`). For a part that
-   names no code (and carries no subject from a part that does), when no answer's subject carries at least half of the
-   part's words (two or more, its cue words and paths left out, Turkish cue words too: "ne zaman eklendi", "nerede
-   tanımlı"), the verdict is at most met_with_inference, with an unknown that says which words found it and which it does
-   not carry ("`talk` was found by the word 'window' only; 'second', 'conversation' are not in its name or its line"). The
-   gate only lowers; an analysis stored before D190 has no `named_code` in its gate record and is judged as before.
+   names no code (and carries no subject from a part that does), when the answer's claims together carry at most a third
+   of the part's words (two or more; in their subjects' names, files and defining lines and in their own text, a commit's
+   message or a quoted line; the cue words, the words that only say how often or in what order - after, every, per, not -
+   and the files the question names left out, Turkish cue words too: "ne zaman eklendi", "nerede tanımlı"), the verdict is
+   at most met_with_inference, with an unknown that says which words found it and which it does not carry ("`talk` was
+   found by the word 'window' only; 'second', 'conversation' are not in its name or its line"). One word of three is
+   capped; two of five are not. The second review found the first form (each claim alone, without its text, against half
+   of the words) lowering 4 of 20 right answers on questions that name no file, and a file named by its basename counting
+   its stem as a word every symbol there carries (`strip_paths` drops file names and paths and keeps "None/dict"). The gate
+   only lowers; an analysis stored before D190 has no `named_code` in its gate record and is judged as before.
 4. **A why about one line says where the line came from** (`_line_origin`). When no commit or document states the reason, a
    fragment the question names inside its subject (backticked, or a dotted name such as `talk.set`) is looked for in the
    subject's lines, that one line's history is read (`git log -L n,n`; its oldest commit is where the line's history
@@ -18664,15 +18670,20 @@ same, so the failure is the engine's, not chance:
    with none (the paths are no topic words of a why now either). The line's commit is the first lead of the why's unknown;
    a git read past its time is said there.
 5. **"When was it introduced" about a small subject** (`_asks_origin`, `ORIGIN_LINES`: a subject of at most three lines, a
-   constant or a definition line) takes the oldest commit of its lines beside the commits about the question's words: the
-   newest commits of a one-line definition are its later edits. A larger subject keeps D186's rule (the commits about the
-   question's words, else the newest): the oldest commit of a function is its birth, which may predate the behaviour asked
-   about by years (backlog 22.7). A question about a change after it ("when was X changed after it was added", the review's
-   case) keeps D186's rule too.
-6. **Less noise.** A folder of a path is no code term (`_TERM_RX`); a decision record must name what the question links, and
-   for a part that took its subject by its words, that subject; when the message names a file, the text and MCP views leave
-   out the plan links, context claims and passages about files that are neither named nor hold an answer, and count them
-   (`--json` and `verinoda query` have them).
+   constant or a definition line) takes the oldest commit of its lines, beside the commits about the question's words or,
+   when none is, beside the newest: the newest commits of a one-line definition are its later edits, and a value the
+   question names may have come with one of them ("when was the retry limit of 6 introduced": the oldest commit alone was
+   met, the second review's case). A larger subject keeps D186's rule (the commits about the question's words, else the
+   newest): the oldest commit of a function is its birth, which may predate the behaviour asked about by years (backlog
+   22.7). A question about a change after it ("when was X changed after it was added", the first review's case) keeps
+   D186's rule too.
+6. **Less noise.** A folder of a path is no code term (`_TERM_RX`). In a message that names a file, a decision record must
+   name what the question links, and for a part that took its subject by its words, that subject (without a named file
+   the records are matched as before: the second review found a plain-word why losing its record); the text and MCP views
+   leave out the plan links, context claims and passages about files that are neither named nor hold an answer, and count
+   them (`--json` has the claims, `verinoda query` the passages); a link is printed where an answer is, else at its place
+   in the named file. Two named files share a word's candidates (each file's first three, in turn), and a Turkish
+   question word's stem finds the code's word.
 
 ### 162.3 Measured
 
@@ -18684,7 +18695,7 @@ same, so the failure is the engine's, not chance:
   (`git log -L462,462` gives the same three commits: bot-c1, bot-c2, bot-c3); no `MyGame` search. The
   when-part is met_with_inference with `talk` (herald.js:225, whose comment says "60 sn sohbet penceresi") and its first
   commit, bot-c3, the commit that brought the window, and the note that `talk` carries only 'window'; "what depends on
-  it" is unmet ("ask `what calls talk?`"). The MCP response (`lead_view`, compact JSON): 5,271 -> 4,109 characters, and it
+  it" is unmet ("ask `what calls talk?`"). The MCP response (`lead_view`, compact JSON): 5,271 -> 4,129 characters, and it
   names `herald.js` only (before: fxrun.py and two design notes as well).
 - **The review** of the first version (2129e7c; a fresh reviewer on the strong model, each finding reproduced on a small
   repository on 2ad768f and 2129e7c): one critical, one high and six important findings. (1) The line's claim made a why met
@@ -18700,22 +18711,36 @@ same, so the failure is the engine's, not chance:
   differ, all meant - the two English and the Turkish window questions now about `talk`, and "Compare <bot> and
   <fxrun.py>. When was the window lookup introduced?" at met_with_inference ('lookup' is not in `find_window`'s name) - and
   the other 33 are as on 2ad768f, the answers included.
-- **The verdict audit** (`verinoda benchmark verdict-audit --split all`, 39 cases): every verdict as on 2ad768f (wrong met 1,
-  controls kept 15 of 22, as before); one case's unknowns went from three to one ("Which functions in orders/service.py are
-  not called by the HTTP handlers?", not_supported either way: a repeated "no call edge into it" is gone). A first version
-  capped "Where is an order written to the database?" (a control) through the definition of `load_settings()`, a side
-  claim; the cap now looks at every answer.
-- **tq**: `tq-audit` rerun after each version, into `benchmarks/results/tq-audit-2026-10-23-d190/` and `-d190b/`
-  (question_plan, verdict_gate, history and lexicon are in its engine hash): every cell and count as on D188's run, only the
-  commit and the engine sha changed (its exit 1 is the two wrong answers at statically_verified, 154 of 156, as before).
-- **The whole suite** at c7bbe36: 5423 passed, 1 failed, 20 skipped, 3 deselected (33 min); at 88bd302, the first version,
-  5411 passed and the same 1 failed. It is `tests/test_asof.py::test_recorded_time`, a timing flake: the store records a
+- **The second review** of the review round (718c7d2; another fresh reviewer on the strong model, the same way): two paths
+  to a wrong met and two lowered answers. (1) A callers or impact part was seeded with the named file's candidates and
+  took them for its targets ("what calls the game window capture" met with `relay()` calls `deliver()`). (2) "When was
+  the retry limit of 6 introduced" was met with the subject's first commit alone. (3) The cap lowered 4 of 20 right answers
+  on the orders example (questions that name no file). (4) A basename ("In fxrun.py, ...") made its stem a word every
+  symbol there carries. Minors: the text view printed a link at the named file while another part was answered elsewhere,
+  a why listed the line's commit twice, two named files did not share a word's candidates, a followed move lost the case's
+  place, and the decision-record rule had changed whys that name no file. Security: no finding; the line scan cost about
+  0.05 s a word on a 925 KB named file. Each finding has a test (162.5). Its scenarios on the fix: the 20 orders
+  questions, the callers (12), value (6) and slash (4) cases as on 2ad768f; of its 5 basename questions, the bot named
+  three ways is answered by `talk` and the helper named two ways is capped (one word of three). The first review's 37:
+  four differ from 2ad768f as above (the three window questions now met: the fixture's commit says "conversation window").
+- **The verdict audit** (`verinoda benchmark verdict-audit --split all`, 39 cases): every verdict and every unknown as on
+  2ad768f (wrong met 1, controls kept 15 of 22, as before). The earlier versions changed unknowns of two not_supported
+  cases (a callers part seeded from the named file; "not" counted as a word of the subject); a first version capped "Where
+  is an order written to the database?" (a control) through the definition of `load_settings()`, a side claim.
+- **tq**: `tq-audit` rerun after each version, into `benchmarks/results/tq-audit-2026-10-23-d190/`, `-d190b/` and
+  `-d190c/` (question_plan, verdict_gate, history and lexicon are in its engine hash): every cell and count as on D188's
+  run, only the commit and the engine sha changed (its exit 1 is the two wrong answers at statically_verified, 154 of 156,
+  as before).
+- **The whole suite** at 634d0ed (the code as merged): 5434 passed, 0 failed, 20 skipped, 3 deselected (37 min). At
+  c7bbe36 it gave 5423 passed and 1 failed, at 88bd302 5411 passed and the same 1 failed:
+  `tests/test_asof.py::test_recorded_time`, a timing flake: the store records a
   claim's transitions to the second, and the test fails when its last two land in the same second. On 2ad768f the same day
   it failed 1 of 12 and 1 of 16 runs in one warm process (0 of 12 at c7bbe36), and the whole suite there passed it (5406
   passed); the test files before it in the suite's order, run twice on each commit, passed it every time.
 - Not measured: an agent session on the fixed version (whether it calls Verinoda more, or trusts it); a message that names
-  two files or a file and a folder on a real repository; a shared basename (the review declined to judge it); the time of
-  the new git reads and of the line scan of a named file.
+  two files or a file and a folder on a real repository; a shared basename (the first review declined to judge it); the
+  time of the two new git reads of a why; a third review of the second round's fixes (each has a test and both reviews'
+  scenarios were run again, above).
 
 ### 162.4 Not done
 
@@ -18733,17 +18758,22 @@ same, so the failure is the engine's, not chance:
 `tests/test_question_scope.py`, on a bot whose window comment is Turkish (as in the case) beside a capture helper and a spell in
 other folders, and on small repositories for the review's cases. The case: a folder of a path is no code term; the plain words
 keep their project-wide links and get their in-file candidates ("window" through "pencere"); the when-part is answered by the
-window's `talk` and its first commit (met_with_inference), not the helper; the why's claim gives the line's first commit and
-`SUSKUN`'s later one, the line's commit first among the leads, no search for the folder; the text view prints no other file
+window's `talk` and its first commit (met: that commit says "conversation window"), not the helper; the why's claim gives
+the line's first commit and `SUSKUN`'s later one, the line's commit first among the leads, no search for the folder; the text
+view prints no other file
 before the passages; with only the helper, "when was the 60 second conversation window introduced" is met_with_inference with
 a note naming 'window', and "when was find_window added" stays met; a constant's introduction is its oldest commit and a
 function's added behaviour is not its first commit. The review: a line's first commit never meets a why ("write talk.set",
 one "reason not found" unknown); a case older than the line stays older across a move; another part keeps its own subject
 (an anaphor, "looked up by title", "the spell duration in seconds"); a host plan's word linked only elsewhere is no false
 unknown; the one-sentence form is not answered by the helper; "changed after it was added" keeps the newest commits;
-`relay()` names code; Turkish cue words are no words of the subject; the passages keep the search's own lines. Each test
-failed before its fix: those of the first version on 2ad768f, those of the review and of the narrowed introduction rule on
-2129e7c.
+`relay()` names code; Turkish cue words are no words of the subject; the passages keep the search's own lines. The second
+review: a callers part takes no seed from the named file; a when about a value keeps the newest commits beside the first; a
+file named by its basename does not meet a one-word subject; a plan link is printed where the answer is; two named files share
+a word's candidates; the cap lets three right answers of the orders example stay met; a why that names no file keeps its
+record, and "None/dict" is no path; a why lists the line's commit once, and a case seen before a move keeps its place. Each
+test failed before its fix: those of the first version on 2ad768f, those of the first review and of the narrowed
+introduction rule on 2129e7c, those of the second review on 718c7d2.
 
 ## Sources
 
