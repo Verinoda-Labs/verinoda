@@ -12,7 +12,8 @@ Optional (DESIGN_SWEBENCH_CEILING.md): "tasks": tasks.json elsewhere and "out": 
 outside the sessions' folder tree; "env_data": swebench_localeval's DATA folder, which gives every session, in both arms, the
 instance's Python environment (its venv first on PATH, the checkout importable) and the prompt that asks it to reproduce the
 issue and run the related tests (condition C1); "env_only": [instance ids], when given, limits that to the instances whose gold
-patch passes in the local environment, the others getting the plain prompt (amendment 2).
+patch passes in the local environment, the others getting the plain prompt (amendment 2); "env_link": a junction to
+``env_data/envs`` outside the data folder, the path sessions are given for a shared environment.
 """
 
 from __future__ import annotations
@@ -143,23 +144,26 @@ def scm_env(task: dict) -> dict:
     return {"SETUPTOOLS_SCM_PRETEND_VERSION": f"{task['version']}.0"}
 
 
-def session_venv(task: dict, copy: Path, arm: str, data: Path) -> tuple[Path, Path]:
+def session_venv(task: dict, copy: Path, arm: str, data: Path, link: Path | None = None) -> tuple[Path, Path]:
     """The venv a session runs the project's code with, and its PYTHONPATH (the checkout's import folder): the instance's
-    shared environment, or a venv of the session's own made from it (uv's cache makes it quick)."""
+    shared environment, or a venv of the session's own made from it (uv's cache makes it quick). `link`, a junction to
+    ``DATA/envs`` outside the data folder, is the path a session sees for a shared environment: the data folder (dataset,
+    eval scripts, the evaluator's checkouts) then shows in none of its paths or tracebacks."""
     from swebench_envspec import env_key, parse
 
     spec = parse(data / "tasks" / task["id"] / "Dockerfile")
     shared = data / "envs" / env_key(spec)
+    seen = link / env_key(spec) if link is not None else shared
     if task["repo"] in COMPILED:
         # the evaluator's build of this instance's base commit (swebench_localeval.build_outputs): its outputs make the copy
         # importable without a build of its own, which takes minutes
         marker = data / "build" / f"{task['id']}.json"
         if marker.exists():
             copy_outputs({**json.loads(marker.read_text(encoding="utf-8")), "root": data / "build" / task["id"]}, copy)
-        return shared, copy / COMPILED[task["repo"]]
+        return seen, copy / COMPILED[task["repo"]]
     root = copy / "src" if task["repo"] in SRC_LAYOUT else copy
     if task["repo"] in PYTHONPATH_REPOS or spec["python"].startswith("3.6"):
-        return shared, root
+        return seen, root
     # the evaluator installs this project into the shared environment, whose editable install then points at its checkout
     # (with a patch and the test patch while it runs): a session gets a venv of its own instead, holding the shared one's
     # packages as the gold patch's evaluation left them (the project's own dependencies included) and no install of the project
@@ -244,7 +248,8 @@ def one(cfg: dict, task: dict, arm: str) -> dict:
         write_generated(copy, task)
         with (copy / ".git" / "info" / "exclude").open("a", encoding="utf-8") as f:
             f.write("\n.scratch/\nsrc/_pytest/_version.py\n")
-    venv, pythonpath = session_venv(task, copy, arm, Path(cfg["env_data"])) if with_env else (None, None)
+    link = Path(cfg["env_link"]) if cfg.get("env_link") else None
+    venv, pythonpath = session_venv(task, copy, arm, Path(cfg["env_data"]), link) if with_env else (None, None)
     argv = session_argv(prompt_for(task, copy, arm, with_env), arm, copy, cfg)
     env = env_for(arm, cfg, venv, pythonpath)
     if with_env:  # a build the session starts itself gets the same version

@@ -24,7 +24,7 @@ SUSPECT = re.compile(
     r"swebench-run/work/|\.\./\.\.|git (fetch|pull|log --all|fsck|cat-file|verify-pack|show-index|rev-list --all)|"
     r"lost-found|unreachable|dangling|objects/info/alternates|curl |wget |pip install|github\.com|WebFetch|WebSearch",
     re.IGNORECASE)
-ENV_PATH = re.compile(r"swebench-data/(envs|py36)/", re.IGNORECASE)
+ENV_PATH = re.compile(r"swebench-(data|run)/(envs|py36)/", re.IGNORECASE)
 # a drive path with two segments at least ("C:/Users/..."); not "else:\n" or "http://" in a quoted line of code
 PATH = re.compile(r"(?<![\w.])[A-Za-z]:/(?!/)[^\"' ;|&)/]+/[^\"' ;|&)]*|(?<![\w.])/c/[^\"' ;|&)]+")
 

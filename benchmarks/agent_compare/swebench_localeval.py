@@ -41,6 +41,9 @@ PYTHONPATH_REPOS = {"django/django", "sympy/sympy", "psf/requests"}
 COMPILED = {"scikit-learn/scikit-learn": ".", "matplotlib/matplotlib": "lib", "astropy/astropy": "."}
 # installed from the environment file but unusable on Windows: eccodes needs its C library, which conda would have provided
 WINDOWS_BROKEN = {"pydata/xarray": ["cfgrib", "eccodes"]}
+# what pytest requires on Windows only (sys_platform == "win32"), so the image's Linux freeze lacks it: a pytest before 7.2
+# does not import without atomicwrites
+WINDOWS_DEPS = ("atomicwrites", "colorama")
 REBUILD = re.compile(r"^diff --git a/(\S+\.(?:pyx|pxd|pxi|c|cpp|cc|h|hpp)|\S*setup\.py|\S*pyproject\.toml) ", re.MULTILINE)
 APPLY =[["git", "apply", "--verbose"], ["git", "apply", "--verbose", "--reject"],
          ["patch", "--batch", "--fuzz=5", "-p1", "-i"]]
@@ -249,15 +252,29 @@ def run_install(src: Path, row: dict, spec: dict, py: Path, run_env: dict) -> in
 
 
 def fix_env(env: Path, repo: str) -> None:
-    """Remove, once per environment, the packages that install on Windows without the system library they load (xarray's
-    tests then fail to collect instead of skipping)."""
+    """Once per environment, and recorded in its marker: remove the packages that install on Windows without the system
+    library they load (xarray's tests then fail to collect instead of skipping), and add what the environment's pytest needs
+    on Windows to import (WINDOWS_DEPS). pytest's own checkout is installed with its dependencies (`run_install`) instead."""
     marker = env / "verinoda-env.json"
     info = json.loads(marker.read_text(encoding="utf-8"))
-    if "removed" in info or not WINDOWS_BROKEN.get(repo):
+    remove = WINDOWS_BROKEN.get(repo) if "removed" not in info else None
+    if not remove and "windows_deps" in info:
         return
-    subprocess.run([str(venv_python(env)), "-m", "pip", "uninstall", "-q", "-y", *WINDOWS_BROKEN[repo]],
-                   capture_output=True, check=False)
-    info["removed"] = WINDOWS_BROKEN[repo]
+    py = str(venv_python(env))
+    if remove:
+        subprocess.run([py, "-m", "pip", "uninstall", "-q", "-y", *remove], capture_output=True, check=False)
+        info["removed"] = remove
+    if "windows_deps" not in info:
+        added = []
+        for _ in WINDOWS_DEPS:
+            p = subprocess.run([py, "-c", "import pytest"], capture_output=True, text=True, check=False)
+            missing = re.search(r"No module named '(\w+)'", p.stderr)
+            if p.returncode == 0 or not missing or missing.group(1) not in WINDOWS_DEPS:
+                break
+            subprocess.run([py, "-m", "pip", "install", "-q", "--no-deps", missing.group(1)], capture_output=True,
+                           check=False)
+            added.append(missing.group(1))
+        info["windows_deps"] = added
     marker.write_text(json.dumps(info, indent=1), encoding="utf-8")
 
 
@@ -299,6 +316,7 @@ def install_checkout(src: Path, row: dict, spec: dict, py: Path, run_env: dict, 
     """Make the checkout importable the way the image does: through PYTHONPATH, with the Dockerfile's install lines, or, for
     a compiled project (`build`, from `build_outputs`), with its build outputs copied in and imported through PYTHONPATH (a
     patch that changes compiled sources, `rebuild`, is built again in place)."""
+    fix_env(py.parent.parent, row["repo"])
     write_generated(src, row)
     if row["repo"] in PYTHONPATH_REPOS:
         run_env["PYTHONPATH"] = str(src)
