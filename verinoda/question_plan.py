@@ -654,21 +654,24 @@ def _own_question(text: str, folded: str) -> set[str] | None:
     return None
 
 
-def _carry_dropped_subjects(sqs: list[dict], mentions: list[dict]) -> None:
+def _carry_dropped_subjects(sqs: list[dict], mentions: list[dict], dropped: dict[int, int] | None = None) -> None:
     """A later part that names no code asks about the code an earlier part named.
 
     Turkish drops the subject ("export.write nerede tanımlı, hem de hangi dosyaları okuyor?": which
     files does *it* read) and English can leave it out; a part with no code mention and at most one
     word of its own gets ``subject_from`` the nearest earlier part that names code. A part with its
-    own words ("... and how are orders saved?") keeps its own subject."""
+    own words ("... and how are orders saved?") keeps its own subject. ``dropped``: per part, the words
+    that name code only outside the file the message names (D190); they are its own words all the same
+    ("when was the 60 second conversation window introduced" does not ask about the earlier part's function)."""
     ms = {m["id"]: m for m in mentions}
+    dropped = dropped or {}
     names_code = [any(ms[x].get("kind") != "domain_concept" for x in sq["mentions"] if x in ms) for sq in sqs]
     for i in range(1, len(sqs)):
         sq = sqs[i]
         if sq.get("subject_from") or sq.get("depends_on") or names_code[i]:
             continue
         prev = next((j for j in range(i - 1, -1, -1) if names_code[j]), None)
-        if prev is not None and len([x for x in sq["mentions"] if x in ms]) <= 1:
+        if prev is not None and len([x for x in sq["mentions"] if x in ms]) + dropped.get(i, 0) <= 1:
             sq["subject_from"] = sqs[prev]["id"]
 
 
@@ -1667,8 +1670,14 @@ def _entropy(scores: list[float]) -> float:
     return round(h / math.log(len(s)), 3)
 
 
-def link_mention(mention: dict, graph, lexicon=None, *, with_hash: bool = True) -> dict:
-    """Ground one mention in the graph (see the module docstring for tiers and statuses)."""
+def link_mention(mention: dict, graph, lexicon=None, *, with_hash: bool = True,
+                 scope: frozenset[str] | None = None) -> dict:
+    """Ground one mention in the graph (see the module docstring for tiers and statuses).
+
+    ``scope``: the files the message names (:func:`named_scope`). A plain word (a concept) is then read inside
+    them only, an English one also through the Turkish its seed dictionary gives it ("window" -> "pencere"); a
+    word that names code only elsewhere is unlinked, its best matches kept as ``out_of_scope`` (D190: "window"
+    linked a capture helper in another folder when the question named the bot's file)."""
     g = graph
     lex = _lexicon_for(g, lexicon)
     ix = _index(g)
@@ -1692,15 +1701,29 @@ def link_mention(mention: dict, graph, lexicon=None, *, with_hash: bool = True) 
     words = [w for w in (tn.fold_tr(x) for x in _surface_words(mention.get("text") or ""))]
     gloss_words = re.findall(r"[a-z0-9_]+", (mention.get("gloss_en") or "").lower())
     seed_words = [t for hit in lex.seed(words) for t in hit["targets"]]
-    for n, w in _text_hits(g, ix, words + gloss_words + seed_words, lex):
+    scoped = bool(scope) and _is_concept(mention)
+    turkish: list[str] = []
+    if scoped:
+        from verinoda import lexicon as lexmod
+
+        turkish = [k for w in words for k in lexmod.seed_keys_for(w) if k not in words]
+    for n, w in _text_hits(g, ix, words + gloss_words + seed_words + turkish, lex):
         info = scored.setdefault(n, {"score": 0.0, "matches": []})
         if not any(m["type"] == "text_hit" for m in info["matches"]):
             info["matches"].append({"type": "text_hit", "via": f"text:{w}", "score": TIER_SCORES["text_hit"]})
         info["score"] = max(info["score"], TIER_SCORES["text_hit"])
+    outside: list[str] = []
+    if scoped:
+        outside = sorted((n for n in scored if g.file(n) not in scope), key=lambda n: (-scored[n]["score"], n))
+        scored = {n: info for n, info in scored.items() if g.file(n) in scope}
     for info in scored.values():
         info["matches"].sort(key=lambda m: -m["score"])
     link: dict = {"mention": mention.get("id"), "text": mention.get("text"), "status": "unlinked",
                   "alternatives": [], "rejected_candidates": rejected, "nodes": []}
+    if scoped:
+        link["scope"] = sorted(scope)
+        if outside:
+            link["out_of_scope"] = [_at(g, n) for n in outside[:3]]
     shape = code_shape(mention.get("text") or "")
     if shape and not _exact_name(scored):
         # A name written as code is never replaced by a similar one: without an exact name it is
@@ -1729,7 +1752,7 @@ def link_mention(mention: dict, graph, lexicon=None, *, with_hash: bool = True) 
         link["set_aside"] = [f["best"] for f in fams if id(f) in aside][:5]
     link["entropy"] = _entropy([f["score"] for f in fams])
     if not fams or fams[0]["score"] < THRESHOLDS["weak"]:
-        near = _near_misses(ix, mention.get("text") or "")
+        near = [] if scoped else _near_misses(ix, mention.get("text") or "")
         if near:
             link["near_misses"] = [{"node": n, "label": g.label(n), "at": _at(g, n), "similarity": round(s, 1)}
                                    for n, s in near]
@@ -1780,20 +1803,31 @@ def _is_concept(mention: dict) -> bool:
         mention.get("derived_by", "").startswith(DRAFT_RULES) and mention.get("kind") not in ENTITY_KINDS)
 
 
+def named_scope(g, links: list[dict]) -> frozenset[str]:
+    """The files a message names by a path that links one file (``bot/herald.js``): its plain words are read
+    inside them (D190). A folder, or a name two files share, is no scope."""
+    out: set[str] = set()
+    for lk in links:
+        if lk.get("tier") == "path" and lk.get("status") == "linked":
+            out |= {g.file(n) for n in lk.get("nodes") or [] if n in g.G and g.file(n)}
+    return frozenset(out)
+
+
 def link_mentions(plan: dict, graph, lexicon=None, *, repo=None) -> list[dict]:
-    """Links for every mention of the plan (probing and merging ambiguous ones)."""
+    """Links for every mention of the plan (probing and merging ambiguous ones). The names written as code are
+    linked first: the files among them scope the plain words (:func:`named_scope`)."""
     lex = _lexicon_for(graph, lexicon)
     mentions = {m["id"]: m for m in plan.get("mentions") or [] if isinstance(m, dict) and "id" in m}
     uses: dict[str, list[dict]] = defaultdict(list)
     for sq in plan.get("sub_questions") or []:
         for mid in sq.get("mentions") or []:
             uses[mid].append(sq)
-    links = []
-    by_id = {}
+    by_id = {mid: link_mention(m, graph, lex) for mid, m in mentions.items() if not _is_concept(m)}
+    scope = named_scope(graph, list(by_id.values()))
     for mid, m in mentions.items():
-        lk = link_mention(m, graph, lex)
-        by_id[mid] = lk
-        links.append(lk)
+        if mid not in by_id:
+            by_id[mid] = link_mention(m, graph, lex, scope=scope)
+    links = [by_id[mid] for mid in mentions]
     answers = {a.get("clarification_id"): a for a in plan.get("answers") or []}
     for mid, lk in by_id.items():
         m = mentions[mid]
@@ -2501,6 +2535,12 @@ def draft(question: str, graph, lexicon=None) -> dict:
         for hit in lex.seed(folded_toks):
             if hit["n"] >= 2 and hit["targets"]:
                 phrase_at[hit["start"]] = (hit["n"], hit["targets"][0])
+    # the files the message names scope its plain words, as in the plan check (link_mentions)
+    scope = named_scope(graph, [link_mention({"id": "m0", "text": t["text"], "kind": "file"}, graph, lex,
+                                             with_hash=False) for t in toks
+                                if _code_kind(tn.split_apostrophe(t["text"])[0]) == "file"]) \
+        if graph is not None else frozenset()
+    dropped: dict[int, int] = defaultdict(int)   # per clause: words that name code only outside the scope
     pending: list[dict] = []
     skip_to = 0
     for ti, tok in enumerate(toks):
@@ -2542,12 +2582,13 @@ def draft(question: str, graph, lexicon=None) -> dict:
                 and cur["clause"] == nxt["clause"]
                 and not question[cur["tok"]["end"]:nxt["tok"]["start"]].strip(" -")):
             phrase = question[cur["tok"]["start"]:nxt["tok"]["end"]]
-            lk = link_mention({"id": "m0", "text": phrase, "kind": "domain_concept"}, graph, lex, with_hash=False)
+            lk = link_mention({"id": "m0", "text": phrase, "kind": "domain_concept"}, graph, lex, with_hash=False,
+                              scope=scope)
             best_label = _bare((lk.get("best") or {}).get("label", ""))
             if lk["status"] == "linked" and lk.get("tier") in NAME_TIERS | {"identifier_parts"} \
                     and len(tn.split_identifier(best_label)) >= 2:
                 single = link_mention({"id": "m0", "text": cur["tok"]["text"], "kind": "domain_concept"}, graph, lex,
-                                      with_hash=False)
+                                      with_hash=False, scope=scope)
                 if len(single.get("nodes") or []) != 1 or single["nodes"] != lk["nodes"]:
                     tok = {"text": phrase, "start": cur["tok"]["start"], "end": nxt["tok"]["end"]}
                     merged.append({**cur, "tok": tok})
@@ -2561,8 +2602,9 @@ def draft(question: str, graph, lexicon=None) -> dict:
              "kind": p["kind"], "required": p["required"], "derived_by": f"{DRAFT_RULES}:"
              + ("code_token" if p["required"] else "content_word")}
         if graph is not None and not p["required"]:
-            lk = link_mention(m, graph, lex, with_hash=False)
+            lk = link_mention(m, graph, lex, with_hash=False, scope=scope)
             if lk["status"] == "unlinked":
+                dropped[p["clause"]] += bool(lk.get("out_of_scope"))
                 continue
         role = role_at(p.get("role_tok") or tok)
         if role:
@@ -2617,7 +2659,7 @@ def draft(question: str, graph, lexicon=None) -> dict:
         if not sq["references"]:
             del sq["references"]
         sqs.append(sq)
-    _carry_dropped_subjects(sqs, mentions)
+    _carry_dropped_subjects(sqs, mentions, dropped)
     plan = {"schema": SCHEMA_ID, "user_message": question, "language": lang if lang != "other" else "other",
             "restated_goal": _goal_en(sqs, mentions), "restated_goal_user_lang": _goal_user(sqs, mentions, lang),
             "sub_questions": sqs, "mentions": mentions, "references": references,
@@ -2981,6 +3023,14 @@ def retrieval_inputs(plan: dict, check_result: dict, sq: dict, lexicon=None, *,
                 seeds.setdefault(n, f"plan mention {mid} '{lk['text']}' linked ({lk.get('tier') or 'answer'})")
     for n, why in (subject_nodes or {}).items():
         seeds.setdefault(n, why)
+    if not seeds:
+        # a part that names no code: its words' links inside the file the message names seed it (D190), so the
+        # search does not take a same-named helper elsewhere for its subject
+        for mid in sq.get("mentions") or []:
+            lk = links.get(mid)
+            if lk and lk.get("scope") and lk["status"] in ("linked", "weak", "ambiguous"):
+                for n in mention_nodes(lk)[:3]:
+                    seeds.setdefault(n, f"plan mention {mid} '{lk['text']}' in the named file ({lk.get('tier')})")
     expansions: dict[str, list[str]] = {}
     text = sq.get("text") or ""
     user_text = sq.get("text_user_lang") or ""

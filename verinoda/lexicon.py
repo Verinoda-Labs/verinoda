@@ -664,6 +664,11 @@ def _seed_keys_by_english() -> dict[str, tuple[str, ...]]:
     return {k: tuple(v) for k, v in out.items()}
 
 
+def seed_keys_for(english: str) -> tuple[str, ...]:
+    """The one-word Turkish seed keys that translate to an English word (``window`` -> ``pencere``)."""
+    return _seed_keys_by_english().get(tn.en_stem(english.lower()), ())
+
+
 def seed_translates(part: str, english: str) -> bool:
     """Is the identifier part ``part`` (``baslat``) a seed key, maybe inflected, for ``english`` (``start``)?"""
     p = tn.fold_tr(part).lower()
