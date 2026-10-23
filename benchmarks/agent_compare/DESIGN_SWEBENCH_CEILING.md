@@ -100,6 +100,22 @@ determine it).
 - Grading. A local "unresolved" is graded again once on a quiet machine before it is counted, because sleep-based tests flake
   under load (django-16379). Instances whose project needs a compiled build (scikit-learn, matplotlib, astropy) are graded
   locally only once their gold patch passes here. Until then they are "official grading only": not measured locally.
+- The environment, as built before C1 (same day).
+  - The project's install runs with its dependencies, as in the image. The environment file lacks what the project's own
+    install adds there: sphinx's sphinxcontrib packages, and pytest's atomicwrites and colorama on Windows.
+  - On Windows, packages that load a missing system library are removed (xarray: cfgrib, eccodes).
+  - Where numpy 1.19.2 and scipy 1.5.2 have no Windows wheel for Python 3.9, numpy 1.19.5 and scipy 1.5.4 are installed
+    instead. Each environment's marker file records this.
+  - A compiled project is built once per instance at its base commit with MSVC (`build_outputs`). Its build outputs are
+    copied into each checkout of that instance and imported through PYTHONPATH. A patch that touches compiled sources is
+    built again in place.
+  - A session never gets an editable install of its checkout. The evaluator's editable install in a shared environment
+    points at the evaluator's checkout, which holds a patch and the test patch while it runs, and the evaluator now resets that
+    checkout after each run. A session imports its own checkout through PYTHONPATH (from `src/` for pytest and flask), in one of
+    two venvs:
+    - the shared environment (django, sympy, requests, Python 3.6, compiled projects), which holds no such install of a
+      patched checkout;
+    - otherwise a venv of its own with the same packages as the shared one, as the gold patch's evaluation left it.
 
 ## Limits fixed now
 

@@ -36,7 +36,13 @@ from swebench_envspec import env_key, parse
 # repos whose tests import the checkout through PYTHONPATH; the others get `pip install -e .` into their environment,
 # so their instances run one at a time per environment
 PYTHONPATH_REPOS = {"django/django", "sympy/sympy", "psf/requests"}
-APPLY = [["git", "apply", "--verbose"], ["git", "apply", "--verbose", "--reject"],
+# projects with compiled extensions, and the folder they are imported from: built once per instance, their build outputs then
+# copied into each checkout of it (a build per evaluation would take minutes each)
+COMPILED = {"scikit-learn/scikit-learn": ".", "matplotlib/matplotlib": "lib", "astropy/astropy": "."}
+# installed from the environment file but unusable on Windows: eccodes needs its C library, which conda would have provided
+WINDOWS_BROKEN = {"pydata/xarray": ["cfgrib", "eccodes"]}
+REBUILD = re.compile(r"^diff --git a/(\S+\.(?:pyx|pxd|pxi|c|cpp|cc|h|hpp)|\S*setup\.py|\S*pyproject\.toml) ", re.MULTILINE)
+APPLY =[["git", "apply", "--verbose"], ["git", "apply", "--verbose", "--reject"],
          ["patch", "--batch", "--fuzz=5", "-p1", "-i"]]
 TIMEOUT = 1800
 
@@ -223,21 +229,88 @@ def write_generated(src: Path, row: dict) -> None:
             newline="\n")
 
 
-def install_checkout(src: Path, row: dict, spec: dict, py: Path, run_env: dict) -> None:
-    """Make the checkout importable the way the image does: through PYTHONPATH, or with the Dockerfile's install lines."""
-    write_generated(src, row)
-    if row["repo"] in PYTHONPATH_REPOS:
-        run_env["PYTHONPATH"] = str(src)
-        return
+def run_install(src: Path, row: dict, spec: dict, py: Path, run_env: dict) -> int:
+    """The Dockerfile's install lines in `src`, as the image runs them. With dependencies: the venv holds the image's
+    environment file, and the project's own install added what that file lacks (sphinx's sphinxcontrib packages, pytest's
+    atomicwrites on Windows); pip leaves what is installed and satisfies the requirement alone. With build isolation unless the
+    line turns it off: a project built by flit_core (sphinx 6 and later) or a compiled one needs its build requirements."""
+    fix_env(py.parent.parent, row["repo"])
     env = {**run_env, "SETUPTOOLS_SCM_PRETEND_VERSION": f"{row['version']}.0"}
+    rc = 0
     for line in spec["install"]:
         if line.startswith("sed -i "):
             subprocess.run(["bash", "-c", line], cwd=src, capture_output=True, check=False)
         elif "pip install" in line:
             target = re.search(r"pip install (.*)$", line).group(1)
             target = re.sub(r"--verbose|-v\b", "", target).split()
-            subprocess.run([str(py), "-m", "pip", "install", "-q", "--no-deps", "--no-build-isolation", *target],
-                           cwd=src, capture_output=True, env=env, timeout=TIMEOUT, check=False)
+            rc = subprocess.run([str(py), "-m", "pip", "install", "-q", *target], cwd=src, capture_output=True, env=env,
+                                timeout=3 * TIMEOUT, check=False).returncode
+    return rc
+
+
+def fix_env(env: Path, repo: str) -> None:
+    """Remove, once per environment, the packages that install on Windows without the system library they load (xarray's
+    tests then fail to collect instead of skipping)."""
+    marker = env / "verinoda-env.json"
+    info = json.loads(marker.read_text(encoding="utf-8"))
+    if "removed" in info or not WINDOWS_BROKEN.get(repo):
+        return
+    subprocess.run([str(venv_python(env)), "-m", "pip", "uninstall", "-q", "-y", *WINDOWS_BROKEN[repo]],
+                   capture_output=True, check=False)
+    info["removed"] = WINDOWS_BROKEN[repo]
+    marker.write_text(json.dumps(info, indent=1), encoding="utf-8")
+
+
+def build_outputs(data: Path, row: dict, spec: dict, origin: Path | None) -> dict:
+    """A compiled project's build at the base commit, made once per instance in ``DATA/build/<id>``: the ignored files the
+    build leaves there (extension modules, generated sources, the version file) are its outputs."""
+    iid, base = row["instance_id"], row["base_commit"]
+    root, marker = data / "build" / iid, data / "build" / f"{iid}.json"
+    if marker.exists():
+        return {**json.loads(marker.read_text(encoding="utf-8")), "root": root}
+    t0 = time.perf_counter()
+    if not (root / ".git").exists():
+        if origin is None:
+            raise FileNotFoundError(f"no checkout to build {iid} from")
+        root.parent.mkdir(parents=True, exist_ok=True)
+        git("clone", "-q", "--no-checkout", str(origin), str(root))
+    git("checkout", "-q", "-f", base, cwd=root)
+    git("clean", "-fdxq", cwd=root)
+    env = data / "envs" / env_key(spec)
+    rc = run_install(root, row, spec, venv_python(env), run_env_for(env))
+    git("checkout", "-q", "-f", base, "--", ".", cwd=root, check=False)  # the install's sed lines changed tracked files
+    listed = git("ls-files", "--others", "--ignored", "--exclude-standard", cwd=root).stdout.decode("utf-8").splitlines()
+    outputs = [p for p in listed if not p.startswith("build/") and "__pycache__" not in p]
+    info = {"rc": rc, "ok": any(p.endswith((".pyd", ".so")) for p in outputs), "outputs": outputs,
+            "seconds": round(time.perf_counter() - t0, 1)}
+    marker.write_text(json.dumps(info, indent=1), encoding="utf-8")
+    return {**info, "root": root}
+
+
+def copy_outputs(build: dict, dest: Path) -> None:
+    for rel in build["outputs"]:
+        target = dest / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(build["root"] / rel, target)
+
+
+def install_checkout(src: Path, row: dict, spec: dict, py: Path, run_env: dict, build: dict | None = None,
+                     rebuild: bool = False) -> None:
+    """Make the checkout importable the way the image does: through PYTHONPATH, with the Dockerfile's install lines, or, for
+    a compiled project (`build`, from `build_outputs`), with its build outputs copied in and imported through PYTHONPATH (a
+    patch that changes compiled sources, `rebuild`, is built again in place)."""
+    write_generated(src, row)
+    if row["repo"] in PYTHONPATH_REPOS:
+        run_env["PYTHONPATH"] = str(src)
+    elif row["repo"] in COMPILED and build is not None:
+        copy_outputs(build, src)
+        if rebuild:  # in place: an editable install would point the shared environment at this patched checkout
+            subprocess.run([str(py), "setup.py", "build_ext", "--inplace"], cwd=src, capture_output=True,
+                           env={**run_env, "SETUPTOOLS_SCM_PRETEND_VERSION": f"{row['version']}.0"}, timeout=3 * TIMEOUT,
+                           check=False)
+        run_env["PYTHONPATH"] = str(src / COMPILED[row["repo"]])
+    else:
+        run_install(src, row, spec, py, run_env)
 
 
 def evaluate(data: Path, row: dict, patch_text: str, origin: Path | None, slot: str, broken: set[str],
@@ -255,7 +328,10 @@ def evaluate(data: Path, row: dict, patch_text: str, origin: Path | None, slot: 
         res.update({"resolved": False, "seconds": round(time.perf_counter() - t0, 1)})
         return res
     run_env = run_env_for(env)
-    install_checkout(src, row, spec, py, run_env)
+    build = build_outputs(data, row, spec, origin) if row["repo"] in COMPILED else None
+    if build is not None:
+        res["build_ok"] = build["ok"]
+    install_checkout(src, row, spec, py, run_env, build, rebuild=bool(REBUILD.search(patch_text)))
     files = test_files_of(row["eval_script"], base)
     if files:
         git("checkout", base, "--", *files, cwd=src, check=False)
@@ -272,6 +348,9 @@ def evaluate(data: Path, row: dict, patch_text: str, origin: Path | None, slot: 
     if log_dir is not None:
         log_dir.mkdir(parents=True, exist_ok=True)
         (log_dir / f"{iid}.log").write_text(log, encoding="utf-8")
+    # the shared environment's editable install points here: the patch and the test patch do not stay on disk after the run
+    git("reset", "-q", "--hard", base, cwd=src, check=False)
+    git("clean", "-fdxq", cwd=src, check=False)
     g = grade(row, log, broken)
     res.update({"resolved": g["strict"]["resolved"], "resolved_calibrated": g["calibrated"]["resolved"],
                 "f2p_failed": g["strict"]["f2p_failed"], "p2p_failed": g["strict"]["p2p_failed"],

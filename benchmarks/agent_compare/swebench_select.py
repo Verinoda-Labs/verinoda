@@ -25,8 +25,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from swebench_envspec import env_key, parse
 from swebench_localeval import (
+    COMPILED,
     PYTHONPATH_REPOS,
+    REBUILD,
     apply_patch,
+    build_outputs,
     git,
     install_checkout,
     run_env_for,
@@ -66,12 +69,15 @@ def select_one(data: Path, task: dict, arm: str, cands: list[dict], scripts: lis
     env = data / "envs" / env_key(spec)
     py = venv_python(env)
 
+    row = {**task, "instance_id": task["id"]}
+    build = build_outputs(data, row, spec, origin) if task["repo"] in COMPILED else None
+
     def checkout(patch: str | None) -> tuple[bool, Path, dict]:
         src = source_for(data, task["id"], task["base_commit"], origin, f"select{slot}")
         ok = apply_patch(src, patch, "candidate")[0] if patch is not None else True
         run_env = run_env_for(env)
         if ok:
-            install_checkout(src, task, spec, py, run_env)
+            install_checkout(src, row, spec, py, run_env, build, rebuild=bool(patch and REBUILD.search(patch)))
         return ok, src, run_env
 
     # a reproduction must fail on the base commit

@@ -11,7 +11,8 @@ Resumable: an instance and arm already in ``results.jsonl`` is skipped. Writes `
 Optional (DESIGN_SWEBENCH_CEILING.md): "tasks": tasks.json elsewhere and "out": the folder for results and predictions, both
 outside the sessions' folder tree; "env_data": swebench_localeval's DATA folder, which gives every session, in both arms, the
 instance's Python environment (its venv first on PATH, the checkout importable) and the prompt that asks it to reproduce the
-issue and run the related tests (condition C1).
+issue and run the related tests (condition C1); "env_only": [instance ids], when given, limits that to the instances whose gold
+patch passes in the local environment, the others getting the plain prompt (amendment 2).
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from big_run import claude_version, isolated_plugin_store, run_by_arm, session_stats
 from guard_run import find_transcript, git_env, run
-from swebench_localeval import write_generated
+from swebench_localeval import COMPILED, copy_outputs, write_generated
 
 GUIDE = (
     "This repository has Verinoda installed and indexed. Work in this order. (1) Load its tools first: call ToolSearch with the "
@@ -53,8 +54,10 @@ GUIDE_C1 = (
     "it reports as absent; it does not replace running your reproduction script and the tests."
 )
 EXCLUDES =[":(exclude).verinoda", ":(exclude).claude", ":(exclude).mcp.json", ":(exclude).scratch"]
-# the repositories whose tests import the checkout through PYTHONPATH; the others get an editable install in a venv of their own
+# the repositories whose tests import the checkout through PYTHONPATH in the evaluator too; every session imports its
+# checkout through PYTHONPATH, from src/ in a src-layout project
 PYTHONPATH_REPOS = {"django/django", "sympy/sympy", "psf/requests"}
+SRC_LAYOUT = {"pytest-dev/pytest", "pallets/flask"}
 TEST_HINTS = {
     "django/django": "Run Django's tests from the repository root with `python tests/runtests.py <app_label or test module> "
                      "--settings=test_sqlite --parallel 1` (for example `python tests/runtests.py admin_checks "
@@ -140,15 +143,26 @@ def scm_env(task: dict) -> dict:
     return {"SETUPTOOLS_SCM_PRETEND_VERSION": f"{task['version']}.0"}
 
 
-def session_venv(task: dict, copy: Path, arm: str, data: Path) -> tuple[Path, Path | None]:
-    """The venv a session runs the project's code with, and its PYTHONPATH: the instance's shared environment with the checkout
-    on PYTHONPATH, or a venv of the session's own with an editable install of the checkout (uv's cache makes it quick)."""
+def session_venv(task: dict, copy: Path, arm: str, data: Path) -> tuple[Path, Path]:
+    """The venv a session runs the project's code with, and its PYTHONPATH (the checkout's import folder): the instance's
+    shared environment, or a venv of the session's own made from it (uv's cache makes it quick)."""
     from swebench_envspec import env_key, parse
 
     spec = parse(data / "tasks" / task["id"] / "Dockerfile")
     shared = data / "envs" / env_key(spec)
+    if task["repo"] in COMPILED:
+        # the evaluator's build of this instance's base commit (swebench_localeval.build_outputs): its outputs make the copy
+        # importable without a build of its own, which takes minutes
+        marker = data / "build" / f"{task['id']}.json"
+        if marker.exists():
+            copy_outputs({**json.loads(marker.read_text(encoding="utf-8")), "root": data / "build" / task["id"]}, copy)
+        return shared, copy / COMPILED[task["repo"]]
+    root = copy / "src" if task["repo"] in SRC_LAYOUT else copy
     if task["repo"] in PYTHONPATH_REPOS or spec["python"].startswith("3.6"):
-        return shared, copy
+        return shared, root
+    # the evaluator installs this project into the shared environment, whose editable install then points at its checkout
+    # (with a patch and the test patch while it runs): a session gets a venv of its own instead, holding the shared one's
+    # packages as the gold patch's evaluation left them (the project's own dependencies included) and no install of the project
     own = copy.parent / f"env-{arm}"
     if not (own / "verinoda-env.json").exists():
         if own.exists():
@@ -156,14 +170,15 @@ def session_venv(task: dict, copy: Path, arm: str, data: Path) -> tuple[Path, Pa
         mm = ".".join(spec["python"].split(".")[:2])
         subprocess.run(["uv", "venv", "-q", "--seed", "-p", mm, str(own)], check=True, capture_output=True)
         py = str(own / "Scripts" / "python.exe")
-        skipped = json.loads((shared / "verinoda-env.json").read_text(encoding="utf-8")).get("skipped", [])
-        pkgs = [p for p in spec["packages"] if p not in skipped] + spec.get("build_tools", [])
-        subprocess.run(["uv", "pip", "install", "-q", "--python", py, "--no-deps", *pkgs], capture_output=True, check=False)
-        # a setuptools_scm project without tags would get version 0.1.devN (and pytest's own minversion check would fail)
-        subprocess.run(["uv", "pip", "install", "-q", "--python", py, "--no-deps", "--no-build-isolation", "-e", str(copy)],
-                       capture_output=True, check=False, env={**os.environ, **scm_env(task)})
-        (own / "verinoda-env.json").write_text(json.dumps({"from": spec["python"], "packages": len(pkgs)}), encoding="utf-8")
-    return own, None
+        frozen = subprocess.run(["uv", "pip", "freeze", "-q", "--exclude-editable", "--python",
+                                 str(shared / "Scripts" / "python.exe")], capture_output=True, check=True).stdout
+        reqs = own / "requirements.txt"
+        reqs.write_bytes(frozen)
+        subprocess.run(["uv", "pip", "install", "-q", "--python", py, "--no-deps", "-r", str(reqs)], capture_output=True,
+                       check=False)
+        (own / "verinoda-env.json").write_text(json.dumps({"from": str(shared), "packages": frozen.count(b"\n")}),
+                                               encoding="utf-8")
+    return own, root
 
 
 def patch_of(copy: Path, base: str, test_files: list[str]) -> tuple[str, list[str]]:
@@ -224,7 +239,7 @@ def verinoda_tools(transcript: Path | None) -> dict:
 
 def one(cfg: dict, task: dict, arm: str) -> dict:
     copy = Path(cfg["work"]) / "copies" / task["id"] / arm
-    with_env = bool(cfg.get("env_data"))
+    with_env = bool(cfg.get("env_data")) and ("env_only" not in cfg or task["id"] in cfg["env_only"])
     if with_env:
         write_generated(copy, task)
         with (copy / ".git" / "info" / "exclude").open("a", encoding="utf-8") as f:
@@ -249,7 +264,8 @@ def one(cfg: dict, task: dict, arm: str) -> dict:
     usage = rep.get("usage") or {}
     files = sorted(set(re.findall(r"^diff --git a/(\S+) b/", diff, re.MULTILINE)))
     gold = set(task["gold_files"])
-    return {"id": task["id"], "arm": arm, "model": cfg["model"], "claude": claude_version(), "exit": rc, "seconds": secs,
+    return {"id": task["id"], "arm": arm, "env": with_env, "model": cfg["model"], "claude": claude_version(), "exit": rc,
+            "seconds": secs,
             "patch": diff, "patch_files": files, "patch_lines": diff.count("\n"), "touched_tests": touched_tests,
             "gold_files": sorted(gold), "overlap": len(gold & set(files)), "covers_gold": bool(gold) and gold <= set(files),
             "extra_files": len(set(files) - gold), "is_error": rep.get("is_error"), "subtype": rep.get("subtype"),
