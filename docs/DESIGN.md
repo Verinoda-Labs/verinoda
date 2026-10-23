@@ -18818,8 +18818,10 @@ is installed.
      question before starting: what was understood, then options with the recommendation first.
    - A clear request gets no question.
    - Whoever asks says what they assumed.
-   - With nobody to answer (a scripted run), the agent goes on with what can be undone, says what it assumed, and leaves to
-     the person any step that cannot be undone or that reaches outside.
+   - At a decision point with nobody to answer (a scripted run), the agent takes the reading it would recommend and says
+     what it assumed. It holds back only a step that this open choice decides and that cannot be undone or reaches
+     outside. What the request asks for explicitly is still done, so a headless task or a benchmark arm that asks for a
+     push or a paid call is not held back.
    - A refused question is not named: declining is no leave to go on.
    - The text names no Verinoda command: the installer cannot know whether the verinoda-live mod (`/verinoda-improve`) is
      there.
@@ -18837,10 +18839,10 @@ is installed.
 
 ### 163.3 Measured
 
-- **The block's cost.** 252 tokens, 968 characters with this machine's CRLF line ends; the first version's text was 234 and
-  913. The count is the free `/context` count of `docs/drafts/2026-10-23-d188/tokcount.py`, with the per-file wrapper
-  subtracted. The person's `~/.claude/CLAUDE.md` goes from 265 to 518 tokens, and every request of every Claude Code
-  session on the machine carries the difference.
+- **The block's cost.** 276 tokens, 1,062 characters with this machine's CRLF line ends. The first version's text was 234
+  tokens and 913 characters, and the review round's 252 and 968. The count is the free `/context` count of
+  `docs/drafts/2026-10-23-d188/tokcount.py`, with the per-file wrapper subtracted. The person's `~/.claude/CLAUDE.md` goes
+  from 265 to 542 tokens, and every request of every Claude Code session on the machine carries the difference.
 - **Headless runs read it too.** `claude -p "/context"` was run from a folder under the home folder. By default it listed
   `~/.claude/CLAUDE.md` as the User memory file (273 tokens with the wrapper). With `--setting-sources project,local`, the
   agent_compare harnesses' isolation, it listed the same file as a Project memory file: the home folder is an ancestor of
@@ -18880,6 +18882,11 @@ A fresh reviewer on the strong model read f8e19d3 and reproduced each finding bu
 
 Each is fixed (decisions 3 to 6) and has a test. The reviewer's check that the machine's own pre-D191 manifest upgrades in
 order (skill, block, server entry) was kept as a test of its own. No second review of these fixes was run.
+
+A last check before the install found the fourth finding's first fix too wide: "with nobody to answer, hold back a step that
+cannot be undone or reaches outside" bound every scripted run on the machine, including one that asks for a push or a
+capped paid call. The bullet now holds only at a decision point, and only for the step the open choice decides. What the
+request asks for explicitly is still done.
 
 ### 163.5 Not done
 

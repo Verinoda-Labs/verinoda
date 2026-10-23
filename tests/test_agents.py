@@ -700,8 +700,8 @@ def test_the_question_rule_is_short_and_says_when_to_ask():
     body = ins.render_asking()
     # every Claude Code session of the person reads it, in every project: its size is pinned
     assert len([ln for ln in body.splitlines() if ln.strip()]) <= 7 and len(body) <= 1100, len(body)
-    for words in ("decision points", "vague", "recommendation", "nobody can answer", "what you assumed",
-                  "cannot be undone"):
+    for words in ("decision points", "vague", "recommendation", "nobody to answer", "what you assumed",
+                  "cannot be undone", "asks for explicitly is still done"):  # a scripted run's own task is not held back
         assert words in body, words
     assert "refused" not in body  # a declined question is no leave to go on
     assert "verinoda" not in body.lower()  # the rule holds without Verinoda's tools

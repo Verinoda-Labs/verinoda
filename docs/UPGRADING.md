@@ -755,7 +755,7 @@ A user-scope Claude Code install appends a marked block to `~/.claude/CLAUDE.md`
 at decision points, not about every prompt (`docs/DESIGN.md` section 163). Upgrading the package alone adds nothing: run
 `verinoda install --agent claude --scope user` (or `verinoda setup --scope user`) again. Then:
 
-- **Every Claude Code session on the machine reads it** (252 tokens measured), headless runs under the home folder too, also
+- **Every Claude Code session on the machine reads it** (276 tokens measured), headless runs under the home folder too, also
   with `--setting-sources project,local`: compare a benchmark's tokens and behaviour with runs from before it knowingly.
 - **A project-scope install** (`verinoda setup`'s default) does not write it, and `install --scope project` in the home
   folder is now refused (it shared the user install's files and manifest).
