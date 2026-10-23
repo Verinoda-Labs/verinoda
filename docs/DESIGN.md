@@ -18367,6 +18367,115 @@ The tests AGENTS.md listed as failing on a clean checkout pass: `test_grep_ast.p
 `test_query_language.py::test_budgets_cut_the_answer_and_say_so`, `test_consolidate.py::test_the_later_verification_is_kept`,
 `test_tq_measured.py::test_an_edit_to_a_module_naming_imports_hides_measured` (after each tq-audit rerun).
 
+## 160. What a session carries: no tools where Verinoda cannot serve, index_update's short view, shorter fixed text (D188, 2026-10-23)
+
+### 160.1 Why
+
+The user asked (in Turkish) to go on lowering the input tokens of a chat by keeping its context from swelling. A tool result
+stays in the session and is read again with every later request; the fixed text (the tools listed in front, the server's
+instructions, the mod's call rule, the skill's line in the listing) rides every request of every session the server is
+connected to, and the server is registered at user scope, so that is every session on the machine. Measured before any change:
+
+- **Claude Code's own count.** `claude -p "/context"` (print mode) prints what a session carries, counted with the API's
+  tokenizer, and calls no model; a rule file's row (`.claude/rules/*.md`) is the file's exact count plus 8 tokens (100 tokens for
+  "the " a hundred times, 257 for 400 hex digits), so any text can be counted the same way (`docs/drafts/2026-10-23-d188/`). With
+  the installed server: 859 tokens of tools in front (analyze 249, project_query 246, run_tool 364; code_check's 362 and
+  index_update's 74 are behind ToolSearch), 562 of instructions, about 200 of the mod's rule (194 counted alone), the skill's
+  description 207.
+- **The D186 re-run's transcripts** (`benchmarks/results/claims-rerun-2026-10-13/`, 39 Verinoda-arm sessions, 3.26 model calls
+  each): the Verinoda arm's first request is 2,068 tokens larger than the plain arm's of the same task (median of 30 pairs,
+  2,065-2,082). Per session that is 6,734 token-reads of fixed text against 2,619 of analyze's results (37 results, 1,328 tokens
+  on average, counted exactly).
+- **The person's own sessions on this machine.** Of 104 transcripts with a Verinoda call outside the benchmark copies, 103 are
+  SWE-bench run copies; in the one session of the person's own work (1,612 model calls) `index_update` returned 11,861 characters
+  (6,577 tokens; 10,186 characters of them the changed paths, assets and lock files included), read again by the 33 calls after
+  it, `change_review` 11,962 (cut at the 12,000 cap), `code_check` 2,517. Of the last 60 sessions (2026-09-26 to 2026-10-23), 10
+  opened in the home folder and 2 in the desktop folder that holds several projects: folders where every tool can only refuse.
+- **A defect on the way.** A user-scope install keeps its manifest in `~/.verinoda`, so the home folder counts as initialised,
+  and `index_update` there took the update path instead of the first scan's refusal: on a copy (a `.verinoda` with the manifest,
+  two git projects and a file) it built an index of every file under the folder. In the real home folder that is a scan of
+  everything under it.
+
+### 160.2 Decisions
+
+1. **`index_update` refuses a folder that is not one project while it has no index**, a `.verinoda` there or not:
+   `not_one_project` (a home folder, a drive root, a workspace of two or more sub-folders with their own `.git` or `.verinoda`) is
+   the rule the first scan had, now checked on the update path too when there is no graph.
+2. **A core server over such a folder without an index serves no tool.** `served_tools` returns nothing, so the menu lists
+   nothing, the workflows (MCP prompts) are not registered, the instructions are one line saying why and what to do (70 tokens)
+   and the log line says `no tool served (pass --repo)`. With no Verinoda tool in the request the mod adds no call rule and pins
+   nothing. `--profile full` (asked for) and an index made there with `--repo` or by hand are served as before; so is a project
+   nobody scanned yet (`index_update` scans it on demand).
+3. **`index_update` sends a view of the record** (`update_view`, for an update and a first scan): the snapshot's id, commit (12
+   hex), dirty and file count; the graph's counts; the first 8 paths of each list, code files first, a cut list marked
+   `truncated` with `kept`/`total` as the response cap marks one; the stale claims as id, text clipped to 120 characters and
+   their first 3 changed files; every error, hint and note. Of `derived` only an error is kept (`derived_errors`), of
+   `background` only whether it started and why not; the graph build's `incremental` statistics go. `verinoda update --json`
+   keeps the whole record.
+4. **The core instructions lose two sentences** no call depends on: the list of what `--profile full` adds (the pointer stays)
+   and the error shape (every error result carries its own hint, `not_initialised` and `no_index` naming `index_update`):
+   1,734 -> 1,533 characters. The call rule's three statements are not touched (160.4).
+5. **The Claude skill's description is 300 characters** (692): Claude Code lists a user skill's description in every request of
+   every session, and in the person's 60 sessions on this machine the model loaded the skill on its own in none (the person
+   typed `/verinoda` in 2: the command names the skill, its description plays no part). The description now says it is the CLI
+   and that the MCP tools do the same. The body is unchanged; the codex template keeps its description (its listing was not
+   measured).
+
+### 160.3 Measured
+
+Tokens counted by `/context` (installed 318fa0b against this branch, the same machine and session settings):
+
+| | before | D188 |
+|---|---|---|
+| Verinoda in a session opened in the home folder (tools in front, instructions, the mod's rule) | about 1,600 (859 + 546 + about 200) | 70 |
+| the instructions in a project's session | 562 | 493 |
+| the skill's description (listed in every session) | 207 | 94 |
+| the real session's `index_update` record, as sent | 6,577 | 703 |
+
+- The home-folder session's total equals a session without the server (22.2k on this machine, both rounded by `/context`).
+- The real record's view: 11,570 -> 1,378 characters (the old record had been cut at the 12,000 cap already, so its lists held
+  114 added and 29 modified of 2,909 changed paths).
+- analyze rendered as text instead of compact JSON, the same selected content, over the 37 recorded results: 0.939 of the JSON's
+  tokens (per result 0.872-0.984); with an answer claim repeated under a second sub-question named by its id and the snapshot
+  commit at 12 hex, 0.912 (0.746-0.980); the two trims alone in JSON, 0.972. The tokenizer reads compact JSON's keys cheaply; the
+  cost is the content: paths, claim texts, ids and hashes (hex at about 1.5 characters a token).
+- Tests: the nine files that touch these parts (`test_mcp.py`, `test_mcp_projects.py`, `test_mcp_prompts.py`, `test_depcheck.py`,
+  `test_repo_group.py`, `test_tq.py`, `test_update_fast.py`, `test_agents.py`, `test_more_agents.py`) 316 passed, 1 skipped;
+  `test_tq_measured.py` 16 passed (the server is not in tq's engine). Lint finding sets unchanged per file.
+- Not measured: an agent session with these changes (cost, model calls, accuracy); a billed count (every count here is the
+  tokenizer's through `/context`); whether the shorter description changes when the skill is loaded.
+
+### 160.4 Not done
+
+- **analyze as text**: 6 % fewer tokens is not worth a change of the format the D186 sessions were measured with.
+- **The call rule's three statements** (STATUS_RULE in the instructions, analyze's "start here" description, the mod's
+  CALL_RULE, whose second half restates the status rule: about 70 tokens): D186's probes moved the first call 3 of 6 -> 5 of 6
+  with all three; a cut needs `benchmarks/agent_compare/probe_rule.py` on the six tasks again, which costs model calls.
+- **`change_review` and `code_check` over MCP.** The real session's review was 11,962 characters, cut at the cap; of them
+  `differential` 746 (a method paragraph), `decisions` 692 (limit sentences), `budget` 662 (the read-first list's own
+  accounting), `tests` 644 and `graph` 412; `code_check` repeats "not found in module X in the standard library of ..." on every
+  site and names the interpreter's path. Which method and limit statements the agent must see is a decision of its own
+  (the response cap keeps such statements whole on purpose).
+- **A project nobody scanned** (this repository on this machine among them) still lists the tools: `index_update` builds the
+  index on demand there, and a tool that appears later is not placed in front by the mod (its AGENTS.md, fact 1).
+- **The installed skill** on this machine is the 2026-09-26 copy (18.8 KB, 0.3.0); `verinoda install --agent claude --scope user`
+  refreshes it (its dry run: would update the managed copy, the MCP entry unchanged). The person's call, with the tool's
+  reinstall.
+- **The other plugins' listing** on this machine, skills 9.9k and agents 2.9k tokens in every request, is the person's
+  configuration, not Verinoda's.
+- A `run_tool` call with the wrong argument names (`tool`/`args` for `name`/`arguments`) in the real session cost a call and an
+  error; accepting aliases would add schema tokens to every request. Not changed.
+
+### 160.5 Tests
+
+`tests/test_mcp.py`: a home folder holding an install manifest (a `.verinoda` without an index) is refused by `index_update`
+and gets no `atlas.db`; a core server over a home folder or a workspace of two projects lists no tool, its instructions are one
+line saying why, its log line says no tool is served, `--profile full` lists every tool and a project nobody scanned lists the
+five; `index_update`'s first scan and update carry no `derived`, the update's lists keep code first and mark the cut with
+`kept`/`total`, the snapshot has its four keys and a 12-character commit, no folder, graph path or tree hash is sent, and the
+response stays under 900 characters with 42 changed files; the core instructions are under 1,600 characters without the error
+shape or the full profile's list. `tests/test_agents.py`: the Claude skill's description is at most 300 characters.
+
 ## Sources
 
 - **Retrieval:**

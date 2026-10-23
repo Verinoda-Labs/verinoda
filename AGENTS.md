@@ -7,7 +7,7 @@ runs beside the agent in a session.
 ## Where things are
 
 - `docs/ARCHITECTURE.md`: how the package is laid out. `docs/DESIGN.md`: one numbered section per shipped decision
-  (`D1` ... `D187`), each with why, what was decided, what was measured and what was not done.
+  (`D1` ... `D188`), each with why, what was decided, what was measured and what was not done.
 - `docs/BACKLOG.md`: what is to do. `verinoda backlog 13.9` prints one item. Sections 22 and 23 are what the last redesign
   (D186, 2026-10-12; its final review and re-run 2026-10-13) left.
 - `docs/CALISMA-NOTLARI.md` (Turkish): how D186 was worked (test first, lint equality, worktrees, the final review, which
