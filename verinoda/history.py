@@ -519,21 +519,27 @@ def _event(c: dict) -> dict:
                        **({"removed_at": f["removed_at"]} if f["removed"] else {})} for f in c["files"]]}
 
 
-def oldest_appearance(repo: Path, text: str, *, regex: bool = False) -> dict | None:
+def oldest_appearance(repo: Path, text: str, *, regex: bool = False, path: str | None = None) -> dict | None:
     """The oldest commit of HEAD's history that changed how often ``text`` occurs (``-S``; with ``regex``, the
     oldest whose changed lines match it, ``-G``), read path-free and oldest first: ``git log`` lists every such
     commit (no ``-n``: the newest-first cut of :func:`text_history` drops the oldest, the one wanted here), the
     last line is the oldest, and ``git show -U0`` of that one commit gives the file and line it added the text at
-    (0.2 to 2.7 s on the ten study clones, D186). ``{"sha", "date", "author", "subject", "path", "line", "text"}``,
-    the last three None when that commit only removed it; None when no commit changed it; ``{"timed_out": True}``
-    when git took over :data:`GIT_TIMEOUT` s. In a sub-project only the project's folder is read."""
+    (0.2 to 2.7 s on the ten study clones, D186). ``{"sha", "date", "author", "subject", "path", "line", "text",
+    "evidence"}``, path, line and text None when that commit only removed it; None when no commit changed it;
+    ``{"timed_out": True}`` when git took over :data:`GIT_TIMEOUT` s. In a sub-project only the project's folder is
+    read; with ``path`` (a file or folder of the project) only that path (when a case first appears in the file a
+    why asks about, D190)."""
     repo = Path(repo)
     t = _word(text, "text")
     if not t:
         raise ValueError("text: give the text to look for")
-    spec, rel = _scope(repo, None)
+    spec, rel = _scope(repo, path)
+    # one file is followed across renames, as git log -L follows a line: a move would otherwise be the oldest commit
+    # under the new path, and a case older than the line would read as newer (the review's case, D190)
+    follow = bool(path) and _one_file(repo, path)
     pick = f"-G{t}" if regex else f"-S{t}"
-    listed = _run_git(repo, _LIT, "log", pick, "--format=%H%x1f%aI%x1f%an%x1f%s", *_DIFF_SAFE, *spec)
+    listed = _run_git(repo, _LIT, "log", pick, "--format=%H%x1f%aI%x1f%an%x1f%s",
+                      *(_DIFF_FOLLOW if follow else _DIFF_SAFE), *spec)
     if listed.timed_out:
         return {"timed_out": True}
     if listed.returncode != 0:
@@ -543,18 +549,34 @@ def oldest_appearance(repo: Path, text: str, *, regex: bool = False) -> dict | N
         return None
     sha, date, author, subject = (lines[-1].split("\x1f", 3) + [""] * 4)[:4]
     out = {"sha": sha, "date": date, "author": author, "subject": subject, "path": None, "line": None, "text": None}
-    # the diff option goes before --end-of-options: after it, git read --relative as a revision and the show failed,
-    # so a sub-project's first appearance was never corrected (the final review)
-    shown = _run_git(repo, _LIT, "show", "-U0", *_DIFF_SAFE, _FMT, *rel, "--end-of-options", sha, *spec)
-    if shown.timed_out:
+    def added_in(pathspec: list[str]) -> dict | str | None:
+        # the diff option goes before --end-of-options: after it, git read --relative as a revision and the show
+        # failed, so a sub-project's first appearance was never corrected (the final review)
+        shown = _run_git(repo, _LIT, "show", "-U0", *_DIFF_SAFE, _FMT, *rel, "--end-of-options", sha, *pathspec)
+        if shown.timed_out:
+            return "timed_out"
+        if shown.returncode != 0:
+            return None
+        return next((f for c in _parse_patches(shown.stdout, _counter(t, bool(regex))) for f in c["files"]
+                     if f["added"]), None)
+
+    added = added_in(spec)
+    if added is None and follow:   # before a move the file had another path: the commit under the project's folder
+        added = added_in(_scope(repo, None)[0])
+    if added == "timed_out":
         return {"timed_out": True}
-    if shown.returncode == 0:
-        for c in _parse_patches(shown.stdout, _counter(t, bool(regex))):
-            for f in c["files"]:
-                if f["added"]:
-                    out.update(path=f["path"], line=f["added_at"], text=f["added_line"])
-                    return out
+    if added:
+        out.update(path=added["path"], line=added["added_at"], text=added["added_line"])
+    out["evidence"] = _ev({"commit": sha, "date": date, "author": author, "subject": subject}, path=out["path"],
+                          line=out["line"], excerpt=out["text"])
     return out
+
+
+def commit_before(repo: Path, older: dict, newer: dict) -> bool:
+    """Did commit ``older`` come before commit ``newer`` (each ``{"commit", "date"}``, git's own output)? The same
+    rule as :func:`_older`: ancestry first, the author dates for two lines of history (D190)."""
+    return _older(Path(repo), {"sha": older["commit"], "date": older["date"]},
+                  {"commit": newer["commit"], "date": newer["date"]})
 
 
 def _older(repo: Path, oldest: dict, first: dict) -> bool:

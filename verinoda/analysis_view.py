@@ -77,6 +77,44 @@ def _evidence(c: dict) -> list[str]:
     return out
 
 
+def _scope_files(res: dict) -> set[str]:
+    """The files the question names by a path that linked one file (question_plan.named_scope)."""
+    return {str(lk["at"]).rsplit(":", 1)[0] for lk in (res.get("plan_check") or {}).get("links") or []
+            if lk.get("tier") == "path" and lk.get("status") == "linked" and lk.get("at")}
+
+
+def _claim_files(c: dict) -> set[str]:
+    """The files a claim cites, in its evidence and its text."""
+    out = set()
+    for e in c.get("evidence") or []:
+        where = e.partition(":")[2].partition(":")[2]
+        m = _COMMIT_PATH_RX.match(where)
+        if m:
+            out.add(m.group(1))
+        out |= {loc.rsplit(":", 1)[0] for loc in _LOC_RX.findall(where)}
+    return out | {loc.rsplit(":", 1)[0] for loc in _LOC_RX.findall(c.get("text") or "")}
+
+
+def answer_files(res: dict) -> set[str]:
+    """The files the claims that answer the sub-questions cite."""
+    by_id = {c["id"]: c for c in res.get("claims") or []}
+    return {f for s in res.get("subquestions") or [] for cid in s.get("answer_claim_ids") or [] if cid in by_id
+            for f in _claim_files(by_id[cid])}
+
+
+def _kept_files(res: dict) -> set[str]:
+    """With a file the question names: that file and the files an answer is about (empty when it names none)."""
+    scope = _scope_files(res)
+    return scope | answer_files(res) if scope else set()
+
+
+def _elsewhere(c: dict, keep: set[str]) -> bool:
+    """Is a context claim about other files than the ones the question names or an answer is about (D190: a
+    same-named helper in another folder, found on the way, is not context for a question about the bot's file)?"""
+    files = _claim_files(c)
+    return bool(keep) and bool(files) and not files & keep
+
+
 def _confidence(c: dict) -> float | None:
     conf = c.get("confidence")
     if conf is None or CONFIDENCE_CAP.get(c.get("status")) == conf:
@@ -465,6 +503,11 @@ def lead_view(res: dict, *, budget: int = LEAD_BUDGET, show: str | None = None,
     facts = list(res.get("facts") or [])
     # context the critique refuted on the way is not part of the answer (render_text leaves it out too)
     context = [c for c in claims if c["id"] not in answering and not (answering and c.get("status") == "contradicted")]
+    keep = _kept_files(res)
+    # nor is context about a file the question does not name and no answer is about (D190): counted with the rest
+    elsewhere = sum(1 for c in context if answering and _elsewhere(c, keep))
+    if elsewhere:
+        context = [c for c in context if not _elsewhere(c, keep)]
     shown = min(len(context), CONTEXT_LINES)
     dropped = 0
     notes: list[str] = []
@@ -479,7 +522,7 @@ def lead_view(res: dict, *, budget: int = LEAD_BUDGET, show: str | None = None,
             out["facts"] = facts
         if shown:
             out["context"] = [f"{c['id']} {c['status']} {tn.clip(c['text'], ECHO_CHARS)}" for c in context[:shown]]
-        out["coverage"] = _coverage(res, hidden=len(context) - shown, dropped=dropped, notes=notes)
+        out["coverage"] = _coverage(res, hidden=len(context) - shown + elsewhere, dropped=dropped, notes=notes)
         return out
 
     def fit() -> dict:
@@ -623,12 +666,20 @@ def render_text(res: dict) -> str:
     if res.get("plan_source") == "host":
         out.append(f"plan {res.get('plan_id')}: {pc.get('status') or status}")
     linked: dict[tuple, list[str]] = {}  # (at, status) -> the words that resolved there
+    keep = _kept_files(res)
     for lk in pc.get("links") or []:
         if lk.get("status") == "not_found":
             out.append("plan check: " + _link(lk))
         elif lk.get("status") != "weak":
-            linked.setdefault((lk.get("at"), lk.get("status")), []).append(str(lk.get("text")))
-    if linked:  # where the question's words resolved in the code (the MCP view lists the same links)
+            # with a named file: the link where it is in a file named or answering, else the word's place in the
+            # named file; one that is in neither is left out (D190)
+            at = lk.get("at")
+            if keep and (not at or str(at).rsplit(":", 1)[0] not in keep):
+                at = (lk.get("in_scope_at") or [None])[0]
+                if at is None:
+                    continue
+            linked.setdefault((at, lk.get("status")), []).append(str(lk.get("text")))
+    if linked:  # where the question's words resolved in the code (the MCP view lists the links as the check made them)
         out.append("plan links: " + "; ".join(_link({"text": ", ".join(words), "at": at, "status": st},
                                                     untagged="linked") for (at, st), words in linked.items()))
     if res.get("index_refresh_error"):
@@ -665,8 +716,10 @@ def render_text(res: dict) -> str:
     rest = [c for c in claims.values() if c["id"] not in printed and c["id"] not in hidden]
     # context the critique refuted on the way is not part of the answer: counted, not printed (nor its critique)
     refuted = {c["id"] for c in rest if c.get("status") == "contradicted"} if printed else set()
-    rest = [c for c in rest if c["id"] not in refuted]
-    if rest or hidden or refuted:
+    # nor is context about a file the question does not name and no answer is about (D190): counted, not printed
+    other = {c["id"] for c in rest if _elsewhere(c, keep)} if printed else set()
+    rest = [c for c in rest if c["id"] not in refuted and c["id"] not in other]
+    if rest or hidden or refuted or other:
         out.append("context (found on the way; not what answers):" if printed else "claims:")
         shown = rest if not printed else rest[:CONTEXT_SHOWN]
         out += ["  " + claim_line(c) for c in shown]
@@ -674,13 +727,16 @@ def render_text(res: dict) -> str:
             out.append(f"  +{len(rest) - len(shown)} more context claim(s) (--json lists them)")
         if refuted:
             out.append(f"  +{len(refuted)} context claim(s) the critique refuted (--json lists them)")
+        if other:
+            out.append(f"  +{len(other)} context claim(s) about other files, neither named nor answering (--json "
+                       "lists them)")
         if hidden:
             out.append(f"  +{len(hidden)} verified claim(s) about lines the passages below print (--json lists them)")
     loose = [u for u in unknowns if not u.get("sub_question")]
     if loose:
         out += [_unknown(u) for u in loose]
     for c in res.get("critique") or []:
-        if c.get("claim") in refuted:
+        if c.get("claim") in refuted or c.get("claim") in other:
             continue
         out.append(f"critique {c['claim']}: {c['before']} -> {c['after']}  "
                    + "; ".join((c.get("fails") or []) + (c.get("warns") or []))[:CRITIQUE_CHARS])

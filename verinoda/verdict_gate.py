@@ -527,6 +527,109 @@ def _node_of(g, file: str, symbol: str) -> str | None:
     return None
 
 
+SUBJECT_KINDS = frozenset({"location", "history"})   # claims about the subject itself: where it is, when it changed
+# the cue words of a where / when question, not words that describe its subject (Turkish folded: "ne zaman eklendi",
+# "nerede tanımlı")
+_SUBJECT_CUES = frozenset({"when", "where", "introduced", "introduce", "added", "add", "created", "create", "born",
+                           "first", "appeared", "appear", "came", "written", "defined", "define", "declared", "declare",
+                           "located", "locate", "lives", "zaman", "nerede", "nerde", "hangi", "eklendi", "eklenmis",
+                           "eklenen", "eklenmisti", "geldi", "girdi", "olusturuldu", "yazildi", "tanimli", "tanimlandi",
+                           "tanimlanmis", "tanimlanir"})
+# words that say how often or in what order, not what (the review: "after every insert", "items per order")
+_FUNCTION_WORDS = frozenset({"after", "before", "each", "every", "per", "start", "started", "starting", "all", "any",
+                             "some", "other", "only", "also", "then", "than", "into", "onto", "upon", "over", "again",
+                             "still", "just", "even", "much", "many", "more", "most", "such", "same", "both", "whether",
+                             "while", "during", "since", "until", "unless", "not", "never", "without", "nor",
+                             "neither"})
+_EDGE_PUNCT = ",.;:!?()[]{}\"'`"
+
+
+def strip_paths(text: str) -> str:
+    """``text`` without the file paths and file names it names (`bot/herald.js`, `fxrun.py`): they say where to look,
+    not what the subject is (D190; the review: a basename's stem counted as a word every symbol of that file carries).
+    A token with a slash that names no file ("None/dict", "read/write") stays."""
+    from verinoda import question_plan as qp
+
+    def is_file(tok: str) -> bool:
+        stem, dot, ext = tok.strip(_EDGE_PUNCT).rpartition(".")
+        return bool(dot) and ext.lower() in qp._CODE_EXTS and re.search(r"[A-Za-z]", stem) is not None
+
+    return " ".join(t for t in (text or "").split() if not is_file(t))
+
+
+def subject_words(text: str) -> list[str]:
+    """The words a question describes its subject with: its content words without the intent's cue words, the words
+    that only say how often or in what order, and the paths it names."""
+    from verinoda import question_plan as qp
+
+    return [w for w in dict.fromkeys(tn.words(strip_paths(text))) if w not in _WHY_CUES and w not in _SUBJECT_CUES
+            and w not in _FUNCTION_WORDS and w not in qp._GENERIC_EN and w not in tn.TR_QUESTION_WORDS and len(w) >= 3
+            and not w.isdigit()]
+
+
+def _carried(word: str, parts: list[str], expansions: dict) -> bool:
+    """Is a question word (or the English the run expanded it to, or its seed dictionary's word either way) among a
+    subject's ``parts``? "indirim ... uygulanıyor" is carried by `apply_discount`, "window" by a "pencere" comment."""
+    from verinoda import lexicon
+
+    return word_in(word, parts) or any(word_in(e, parts) for e in expansions.get(word) or []) \
+        or any(lexicon.seed_translates(word, p) or lexicon.seed_translates(p, word) for p in parts if len(p) >= 3)
+
+
+def _line_words(g, repo: Path, file: str, symbol: str) -> list[str]:
+    """The words (and identifier parts) of the line that defines ``symbol``, its comment included; only for a file
+    the index has."""
+    n = _node_of(g, file, symbol) if file else None
+    ln = g.line(n) if n else None
+    if not ln:
+        return []
+    try:
+        with open(Path(repo) / file, encoding="utf-8", errors="replace") as fh:
+            for i, line in enumerate(fh, 1):
+                if i == ln:
+                    words = tn.words(line)
+                    return words + ident_parts(*words)
+    except OSError:
+        pass
+    return []
+
+
+def carried_words(g, repo: Path, words: list[str], symbol: str, file: str, text: str = "",
+                  expansions: dict | None = None) -> list[str]:
+    """The question ``words`` a subject carries: in its name, its file's name, the line that defines it or ``text``
+    (lines of it, a claim's own words), through the English the run expanded a word to or the seed dictionary's
+    word either way (D190: how a part that names no code chooses its subject and how the gate judges it)."""
+    parts = ident_parts(qp_bare(symbol), PurePosixPath(file).stem) if symbol else ident_parts(PurePosixPath(file).stem)
+    if symbol:
+        parts += _line_words(g, repo, file, symbol)
+    own = tn.words(text)
+    parts += own + ident_parts(*own)
+    return [w for w in words if _carried(w, parts, expansions or {})]
+
+
+def _found_by(g, repo: Path, text: str, claims: list[dict], expansions: dict | None = None
+              ) -> tuple[str, list[str], list[str]] | None:
+    """For an answer whose subject the question does not name: ``(the first claim's subject, the question's words the
+    answer carries, the others)`` when its claims together carry at most a third of two or more such words - in their
+    subjects' names, files and defining lines, and in their own text (a commit's message, a quoted line); None
+    otherwise. D190: "window" found `find_window()` for "the 60 second conversation window" (one word of three); the
+    second review: claims judged one by one, without their own text, against half of the words, lowered correct
+    answers (`validate_items` carries two of "maximum number of items per order")."""
+    words = subject_words(text)
+    if len(words) < 2 or not claims:
+        return None
+    carried: set[str] = set()
+    name = None
+    for c in claims:
+        sym, file = _claim_symbol(c), _claim_file(c)
+        carried |= set(carried_words(g, repo, words, sym, file, c.get("text") or "", expansions))
+        if name is None:
+            name = (qp_bare(sym) + ("()" if sym.endswith(")") else "")) if sym else (file or "the line")
+    if 3 * len(carried) > len(words):
+        return None
+    return name or "the answer", [w for w in words if w in carried], [w for w in words if w not in carried]
+
+
 def _uses_subject(g, node: str | None, subjects: set[str]) -> bool:
     if node is None or node not in g.G:
         return False
@@ -615,6 +718,17 @@ def apply(ctx, sq: dict, rows: list[dict], flags: dict, s: dict, res: dict, gate
                 if not any(word_in(w, parts) for w in words):
                     weak[c["id"]] = "config"
         elif kind == "history" and intent == "why":
+            spec = c.get("spec") or {}
+            if spec.get("predates"):
+                # the line the why names is older than the case it asks about (analysis._line_origin, D190): an
+                # answer by inference - an order of commits, not a stated reason
+                capped.append("why: the line predates the case; no reason stated")
+                continue
+            if spec.get("line"):
+                # the line's first commit alone is a lead, judged by no wording: its text is Verinoda's ("changed
+                # since" once read as a reason, the review's case), and the run said the reason was not found
+                weak[c["id"]] = "line"
+                continue
             subj_line = (c.get("text") or "").rpartition("): ")[2]
             quoted = " ".join(str(e.get("excerpt") or "") for e in evidence(c["id"]) if isinstance(e, dict))
             # the run's topic words (the question's, without the subject's own name) judge the stored analysis too
@@ -622,8 +736,24 @@ def apply(ctx, sq: dict, rows: list[dict], flags: dict, s: dict, res: dict, gate
             if not states_reason(topic, subj_line, quoted):
                 weak[c["id"]] = "commit"
 
+    # a subject the question does not name (its words found it, D190): an answer that carries at most a third of the
+    # question's words is an inference
+    notes: list[dict] = []
+    if gate.get("named_code", True) is False:
+        kept = [c for c in answers if c["id"] not in weak]
+        found_by = _found_by(g, repo, en_text, kept, gate.get("expansions")) \
+            if any(c.get("kind") in SUBJECT_KINDS for c in kept) else None
+        if found_by:
+            name, hits, missing = found_by
+            capped.append("subject: found by its words")
+            said = (f"`{name}` was found by the word{'s' if len(hits) > 1 else ''} {', '.join(map(repr, hits))} only; "
+                    if hits else f"`{name}` was found by the question's words, but ")
+            notes.append({"question": sq.get("text") or "",
+                          "why": f"{said}{', '.join(map(repr, missing))} {'is' if len(missing) == 1 else 'are'} not in "
+                                 "its name or its line: it may not be what was asked",
+                          "next_step": "name the function, variable or file you mean"})
+
     strong = [c for c in answers if c["id"] not in weak]
-    notes = []
     if copied and not strong:
         notes.append({"question": sq.get("text") or "",
                       "why": f"the claims that answer it cite only {', '.join(sorted(set(copied)))}: a reference tree, "
