@@ -7,6 +7,11 @@ CONFIG: {"work": swebench_prepare's WORK_DIR, "model": "claude-sonnet-5-5", "plu
 "verinoda_bin": [dirs put on PATH in the verinoda arm], "drop_path": [dirs taken off PATH], "arms": ["none", "verinoda_guided"],
 "arm_workers": {arm: n}, "timeout_s": s, "max_turns": n, "max_budget_usd": per session, "only": [instance ids] (optional)}.
 Resumable: an instance and arm already in ``results.jsonl`` is skipped. Writes ``predictions-<arm>.jsonl`` (SWE-bench format).
+
+Optional (DESIGN_SWEBENCH_CEILING.md): "tasks": tasks.json elsewhere and "out": the folder for results and predictions, both
+outside the sessions' folder tree; "env_data": swebench_localeval's DATA folder, which gives every session, in both arms, the
+instance's Python environment (its venv first on PATH, the checkout importable) and the prompt that asks it to reproduce the
+issue and run the related tests (condition C1).
 """
 
 from __future__ import annotations
@@ -14,6 +19,7 @@ from __future__ import annotations
 import contextlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -33,16 +39,38 @@ GUIDE = (
     "code before you change it. (3) After you edit Python files, call `mcp__verinoda__code_check` on the files you changed, "
     "and fix what it reports as absent. You may use any other tool as well."
 )
-EXCLUDES = [":(exclude).verinoda", ":(exclude).claude", ":(exclude).mcp.json"]
+EXCLUDES = [":(exclude).verinoda", ":(exclude).claude", ":(exclude).mcp.json", ":(exclude).scratch"]
+# the repositories whose tests import the checkout through PYTHONPATH; the others get an editable install in a venv of their own
+PYTHONPATH_REPOS = {"django/django", "sympy/sympy", "psf/requests"}
+TEST_HINTS = {
+    "django/django": "Run Django's tests from the repository root with `python tests/runtests.py <app_label or test module> "
+                     "--settings=test_sqlite --parallel 1` (for example `python tests/runtests.py admin_checks "
+                     "--settings=test_sqlite --parallel 1`).",
+    "sympy/sympy": "Run a test file from the repository root with `python bin/test <path to test file>` (add `-k <name>` to pick "
+                   "tests).",
+}
 
 
-def prompt_for(task: dict, copy: Path, arm: str) -> str:
-    text = (f"You are working in the {task['repo']} repository at {copy.as_posix()} (a git checkout; its dependencies are not "
-            "installed, so the project's tests may not run). A user filed this issue:\n\n"
-            f"{task['problem_statement']}\n\n"
-            "Task: fix the issue by editing the repository's source code in place. Do not modify or add test files, do not use "
-            "the network or look the issue up on the web or on GitHub, and work only in "
-            f"{copy.as_posix()}. When you are done, reply with one sentence on what you changed.")
+def prompt_for(task: dict, copy: Path, arm: str, with_env: bool = False) -> str:
+    if with_env:
+        hint = TEST_HINTS.get(task["repo"], "Run tests from the repository root with `python -m pytest <path> -q`.")
+        scratch = (copy / ".scratch").as_posix()
+        text = (f"You are working in the {task['repo']} repository at {copy.as_posix()} (a git checkout of the project at this "
+                "point of its history). Its Python environment is ready: `python` is the project's interpreter with its "
+                "dependencies installed, and the repository's code is importable. A user filed this issue:\n\n"
+                f"{task['problem_statement']}\n\n"
+                "Task: fix the issue by editing the repository's source code in place. Work in this order: reproduce the issue "
+                f"with a short script in {scratch}/ (create the folder); fix it; run your script again, then run the project's "
+                f"existing tests for the code you changed and fix anything you broke. {hint} Do not modify or add test files "
+                "in the repository, do not use the network or look the issue up on the web or on GitHub, and work only in "
+                f"{copy.as_posix()}. When you are done, reply with one sentence on what you changed.")
+    else:
+        text = (f"You are working in the {task['repo']} repository at {copy.as_posix()} (a git checkout; its dependencies are "
+                "not installed, so the project's tests may not run). A user filed this issue:\n\n"
+                f"{task['problem_statement']}\n\n"
+                "Task: fix the issue by editing the repository's source code in place. Do not modify or add test files, do not "
+                "use the network or look the issue up on the web or on GitHub, and work only in "
+                f"{copy.as_posix()}. When you are done, reply with one sentence on what you changed.")
     return f"{text}\n\n{GUIDE}" if arm == "verinoda_guided" else text
 
 
@@ -76,14 +104,47 @@ def session_argv(prompt: str, arm: str, copy: Path, cfg: dict) -> list[str]:
     return argv
 
 
-def env_for(arm: str, cfg: dict) -> dict:
+def env_for(arm: str, cfg: dict, venv: Path | None = None, pythonpath: Path | None = None) -> dict:
     import os
 
     env = git_env()
     drop = [d.lower().replace("/", "\\") for d in cfg.get("drop_path", [])]
     keep = [p for p in env.get("PATH", "").split(os.pathsep) if p.lower().replace("/", "\\").rstrip("\\") not in drop]
-    env["PATH"] = os.pathsep.join([*(cfg.get("verinoda_bin", []) if arm == "verinoda_guided" else []), *keep])
+    # the project's venv comes first, so that `python` is the project's interpreter and not Verinoda's (also on PATH)
+    first = [str(venv / "Scripts")] if venv is not None else []
+    env["PATH"] = os.pathsep.join([*first, *(cfg.get("verinoda_bin", []) if arm == "verinoda_guided" else []), *keep])
+    for k in ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV"):
+        env.pop(k, None)
+    if venv is not None:
+        env.update({"VIRTUAL_ENV": str(venv), "PYTHONIOENCODING": "utf-8"})
+    if pythonpath is not None:
+        env["PYTHONPATH"] = str(pythonpath)
     return env
+
+
+def session_venv(task: dict, copy: Path, arm: str, data: Path) -> tuple[Path, Path | None]:
+    """The venv a session runs the project's code with, and its PYTHONPATH: the instance's shared environment with the checkout
+    on PYTHONPATH, or a venv of the session's own with an editable install of the checkout (uv's cache makes it quick)."""
+    from swebench_envspec import env_key, parse
+
+    spec = parse(data / "tasks" / task["id"] / "Dockerfile")
+    shared = data / "envs" / env_key(spec)
+    if task["repo"] in PYTHONPATH_REPOS or spec["python"].startswith("3.6"):
+        return shared, copy
+    own = copy.parent / f"env-{arm}"
+    if not (own / "verinoda-env.json").exists():
+        if own.exists():
+            shutil.rmtree(own, ignore_errors=True)
+        mm = ".".join(spec["python"].split(".")[:2])
+        subprocess.run(["uv", "venv", "-q", "--seed", "-p", mm, str(own)], check=True, capture_output=True)
+        py = str(own / "Scripts" / "python.exe")
+        skipped = json.loads((shared / "verinoda-env.json").read_text(encoding="utf-8")).get("skipped", [])
+        pkgs = [p for p in spec["packages"] if p not in skipped] + spec.get("build_tools", [])
+        subprocess.run(["uv", "pip", "install", "-q", "--python", py, "--no-deps", *pkgs], capture_output=True, check=False)
+        subprocess.run(["uv", "pip", "install", "-q", "--python", py, "--no-deps", "--no-build-isolation", "-e", str(copy)],
+                       capture_output=True, check=False)
+        (own / "verinoda-env.json").write_text(json.dumps({"from": spec["python"], "packages": len(pkgs)}), encoding="utf-8")
+    return own, None
 
 
 def patch_of(copy: Path, base: str, test_files: list[str]) -> tuple[str, list[str]]:
@@ -144,8 +205,13 @@ def verinoda_tools(transcript: Path | None) -> dict:
 
 def one(cfg: dict, task: dict, arm: str) -> dict:
     copy = Path(cfg["work"]) / "copies" / task["id"] / arm
-    argv = session_argv(prompt_for(task, copy, arm), arm, copy, cfg)
-    rc, out, err, secs = run(argv, copy, env_for(arm, cfg), timeout=cfg.get("timeout_s", 2400))
+    with_env = bool(cfg.get("env_data"))
+    venv, pythonpath = session_venv(task, copy, arm, Path(cfg["env_data"])) if with_env else (None, None)
+    if with_env:
+        with (copy / ".git" / "info" / "exclude").open("a", encoding="utf-8") as f:
+            f.write("\n.scratch/\n")
+    argv = session_argv(prompt_for(task, copy, arm, with_env), arm, copy, cfg)
+    rc, out, err, secs = run(argv, copy, env_for(arm, cfg, venv, pythonpath), timeout=cfg.get("timeout_s", 2400))
     try:
         rep = json.loads(out)
     except ValueError:
@@ -171,10 +237,12 @@ def one(cfg: dict, task: dict, arm: str) -> dict:
 def main() -> int:
     cfg = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     work = Path(cfg["work"])
-    tasks = json.loads((work / "tasks.json").read_text(encoding="utf-8"))["tasks"]
+    tasks = json.loads(Path(cfg.get("tasks") or work / "tasks.json").read_text(encoding="utf-8"))["tasks"]
     if cfg.get("only"):
         tasks = [t for t in tasks if t["id"] in cfg["only"]]
-    out = work / "results.jsonl"
+    out_dir = Path(cfg.get("out") or work)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / "results.jsonl"
     done = set()
     if out.exists():
         done = {(r["id"], r["arm"]) for r in map(json.loads, out.read_text(encoding="utf-8").splitlines()) if r}
@@ -200,7 +268,7 @@ def main() -> int:
         return 1
     for arm in cfg["arms"]:
         rows = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines() if x]
-        with (work / f"predictions-{arm}.jsonl").open("w", encoding="utf-8", newline="\n") as f:
+        with (out_dir / f"predictions-{arm}.jsonl").open("w", encoding="utf-8", newline="\n") as f:
             for r in rows:
                 if r["arm"] == arm:
                     f.write(json.dumps({"instance_id": r["id"], "model_name_or_path": f"claude-code-{arm}",
