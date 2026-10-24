@@ -191,6 +191,15 @@ the method). None came from the survey; each names its own evidence.
 | 23.5 | **Stale lines in the docs** | `docs/OZELLIKLER-RAPORU.md`'s intro says 148 sections, and it has no lines for D187 and D188 (DESIGN 159 and 160); `docs/ARCHITECTURE.md` line 9 says D1-D40; `docs/BENCHMARKS.md` has no D186 section (the 2026-10-13 results folders are in their READMEs, DESIGN 158.3, BENCHMARK-BULGULARI 5.2-5.4 and OZELLIKLER 158, not there); `docs/UPSTREAM.md` says 38 upstream failures after D186 where `pytest tests_upstream` gives 37 (2026-10-22, the same 37 on fa9d556; 3,813 collected, as it records); `verinoda/scip_reader.py`'s docstring names the deleted `project_index/scip_ingest.py`; the local import block of `map_view` in `verinoda/mcp/server.py` carries a ruff I001 older than D186 (the per-file lint rule compares counts and let a second one through until the handover commit formatted it: compare the finding set against the branch base, not the count against HEAD). The test baseline part shipped in D187 (AGENTS.md) | the final review and the docs task of D186 (2026-10-13) | each line corrected against the tree |
 | 23.6 | **Known gaps carried from D186** | A removed Verinoda-own file still counts as a change for the index (the marker check runs on a missing file); `paths.escapes_lexically` rejects every `:` in a relative path, so a file with a colon in its name (legal on Linux and macOS) is dropped from the loaded graph and cannot be cited as evidence; the locate-daemon tests need the worktree's package on the child's path to run from a `git worktree` | `docs/DESIGN.md` 158.4 (the first two); the session ledger, the wave-1 minors (the third) | the own-file check reads the snapshot, not the file; the colon rule narrowed to Windows stream suffixes, with a test; the daemon tests green from a worktree |
 
+## 24 - From the SWE-bench ceiling study (2026-10-24)
+
+What the study's sessions showed of Verinoda itself (`benchmarks/agent_compare/DESIGN_SWEBENCH_CEILING.md`, amendment 4);
+none came from the survey. The study runs a frozen Verinoda, so an item here changes no study result.
+
+| id | feature | what | seen in | done when |
+|---|---|---|---|---|
+| 24.1 | **The MCP server's own import path** | `verinoda setup` writes a `.mcp.json` that starts the server with `python -P -m verinoda mcp serve`, and the server inherits the agent session's environment: with `PYTHONPATH` set to the project (the study's sessions import their checkout that way), Verinoda's own imports search the project before Verinoda's environment, and a top-level package of the project named like one of Verinoda's dependencies would shadow it. Not seen in a session (psf/requests-1963's server worked; Verinoda imports no `requests`). To weigh: `-I` (it also drops `PYTHONIOENCODING` and the other `PYTHON*` variables the server may need) or the server dropping `PYTHONPATH` from its own `sys.path` at start | `docs/DESIGN.md` 164.4 (D192) | a test where the project holds a package named like a Verinoda dependency and the server still starts and answers |
+
 ## Out of scope
 
 Not built, with the reason; listed so they are not proposed again without a new reason.
