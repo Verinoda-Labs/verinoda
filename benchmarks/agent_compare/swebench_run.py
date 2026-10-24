@@ -196,10 +196,30 @@ def env_print(venv: Path) -> dict:
     return {p.name: p.stat().st_size for p in site.iterdir() if p.name != "__pycache__"} if site.is_dir() else {}
 
 
-def patch_of(copy: Path, base: str, test_files: list[str]) -> tuple[str, list[str]]:
+def restore_lf(copy: Path, base: str, env: dict) -> None:
+    """Give LF back to the files a session changed or added with CRLF where the base commit has none: rewriting a file
+    through Python's text mode, as sessions do from Bash, writes CRLF on Windows and LF on the image's Linux (C0's
+    django-11019: a 37-line change became a 2163-line diff)."""
+    def names(*args: str) -> list[str]:
+        out = subprocess.run(["git", "-C", str(copy), *args, "--", ".", *EXCLUDES], env=env, capture_output=True, check=False)
+        return out.stdout.decode("utf-8", errors="replace").splitlines()
+
+    for rel in names("diff", "--name-only", base) + names("ls-files", "--others", "--exclude-standard"):
+        p = copy / rel
+        data = p.read_bytes() if p.is_file() else b""
+        if b"\r\n" not in data or b"\0" in data:
+            continue
+        old = subprocess.run(["git", "-C", str(copy), "show", f"{base}:{rel}"], env=env, capture_output=True, check=False)
+        if b"\r" not in old.stdout:
+            p.write_bytes(data.replace(b"\r\n", b"\n"))
+
+
+def patch_of(copy: Path, base: str, test_files: list[str], lf: bool = False) -> tuple[str, list[str]]:
     """The session's change as one diff against the base commit: new files included, Verinoda's own files and the files the
-    instance's test patch changes left out (the evaluation applies that patch over the model's)."""
+    instance's test patch changes left out (the evaluation applies that patch over the model's). `lf`: `restore_lf` first."""
     env = git_env()
+    if lf:
+        restore_lf(copy, base, env)
     skip = [f":(exclude){f}" for f in test_files]
     subprocess.run(["git", "-C", str(copy), "add", "-A", "--", ".", *EXCLUDES, *skip], env=env, check=False,
                    capture_output=True)
@@ -273,7 +293,7 @@ def one(cfg: dict, task: dict, arm: str) -> dict:
         rep = json.loads(out)
     except ValueError:
         rep = {"is_error": True, "result": (out or err)[-500:]}
-    diff, touched_tests = patch_of(copy, task["base_commit"], task["test_files"])
+    diff, touched_tests = patch_of(copy, task["base_commit"], task["test_files"], lf=with_env)
     if with_env and (copy / ".scratch").is_dir() and cfg.get("out"):
         # the reproductions are kept: a selector among several attempts may run them (condition C3)
         keep = Path(cfg["out"]) / "scratch" / f"{task['id']}--{arm}"
