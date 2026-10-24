@@ -192,6 +192,33 @@ determine it).
   hours (`runs/leak-review.md`). They read no file a later session sees and change no result; the harness stays as it is for
   every run of this study, so C3's attempts and the held-out run use the harness C1 and C4 use.
 
+## Amendment 6 (2026-10-24, 06:55; C4's first sessions started at 06:20, none of them graded or read before this)
+
+- What was seen. In C1's first run 11 sessions (6 of 100 plain, 5 of 47 guided so far) had a Bash tool that found no
+  command: `ls`, `mkdir`, `python`, "command not found". The cause, read in Claude Code 2.1.296's own code: on Windows a
+  session's shell snapshot takes its PATH from a login shell (`bash -lc 'echo "$PATH"'`, a 10-second limit); when that
+  fails or times out, the snapshot exports the process's PATH in its Windows form, which bash cannot search, and every
+  command outside bash itself fails for the rest of the session. On this machine, under the study's load, a login shell
+  took 4.4 to 13.2 s (5 timings, 06:33), and 3.7 to 7.1 s (5 timings, 06:40) once the held-out gold evaluation was stopped
+  and the dev guided setup's priority lowered. C0's first repeat has 1 of 34 sessions per arm. D184 has 0 of 200, but only
+  15 of its 100 sessions per arm used Bash at all (C1: 99 of 100 plain), so its rate says little.
+- The rule. A session is flagged when a Bash tool result in its transcript says that one of a fixed set of commands is not
+  found (`swebench_shellcheck.py`, its pattern fixed now: Git's own tools, git and python, each on every session's PATH
+  when the PATH is right). It is flagged whether or not it resolved and whether or not it recovered (PowerShell, a PATH set
+  by hand; the PowerShell tool was itself refused or timed out in 12 of the 55 calls the flagged C1 sessions made). A
+  flagged session's lane is reset and the session run again with the same run's configuration (run `<run>-r1`, then
+  `<run>-r2` when that one is flagged too); the last session counts, whichever way it is graded, and after two re-runs the
+  last counts even when flagged, reported as such. The resolved flagged sessions are re-run too (6 of the 7 graded in C1 so
+  far resolved): re-running only the failures would lift every condition that has more of them.
+- Scope: every run of this study (C0, C1, C4, C3, the diagnostics, the held-out run). Each run reports its flagged count
+  per arm and one sensitivity line with the flagged sessions left out. The C4 model choice uses the grades after the
+  re-runs.
+- The arms so far (5 of 47 guided, 6 of 100 plain) may differ because the guided setup loads the machine and the Verinoda
+  server starts with a guided session; the rule takes that out of the comparison.
+- Not changed: the sessions' environment (no PATH and no time limit given to Claude Code), so C1 and C4 stay one condition.
+  The machine's load is cut instead: the held-out gold evaluation and the held-out guided setup wait until the dev runs
+  leave room, and the dev guided setup runs at below-normal priority. Neither changes what a session sees.
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;
