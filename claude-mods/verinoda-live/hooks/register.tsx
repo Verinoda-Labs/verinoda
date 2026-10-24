@@ -74,6 +74,7 @@ const live = {
   cwd: '',
   missingCli: '', // the name PATH had no program for outside the project; '' once one is found (or the settings name one)
   isAllowed: false, // a program was found, and the root is the session's folder, the settings' one, or trusted with `verinoda trust`
+  isInteractive: true, // false in a scripted session (claude -p, the SDK): nothing is started that its end would wait for (D193)
   pending: new Set<string>(),
   isChecking: true, // the session-start look at the graph has not answered yet
   isRunning: false,
@@ -442,7 +443,10 @@ async function reindex($: EngineInterface): Promise<Outcome> {
   if (pending.size === 0 && live.isGraphBehind) {
     return { code: 'graph-fresh', n: 0, text: 'text index fresh; the graph is still being rebuilt' }
   }
-  if (pending.size === 0 && live.stalledBehind === 0 && live.failed === null && !live.noGraph) return { code: 'fresh', n: 0, text: 'index already fresh' }
+  if (pending.size === 0 && live.stalledBehind === 0 && live.failed === null && !live.noGraph) {
+    // a scripted session never looked at the graph (D193): what it knows is only that none of its edits waits
+    return { code: 'fresh', n: 0, text: live.isInteractive ? 'index already fresh' : 'no edit of this session waits to be indexed' }
+  }
   if (live.isGraphBehind) {
     // the background build holds the lock; `update` would wait for it, so the files wait instead
     publish($)
@@ -473,7 +477,8 @@ async function reindex($: EngineInterface): Promise<Outcome> {
       return { code: 'failed', n: count, text: `update failed (exit ${exitCode}): ${stderr.slice(0, 300)}` }
     }
     live.isRunning = false
-    background(watchGraph($, root, count))
+    if (live.isInteractive) background(watchGraph($, root, count))
+    else live.isUnknown = true // nothing watches the build in a scripted session (D193)
     return { code: 'updated', n: count, text: `text index updated (${plural(count)}); the graph is rebuilt in the background` }
   } catch (err) {
     fail(String(err).slice(0, 160))
@@ -617,9 +622,10 @@ export const register: Register = (on, options) => {
       // found as ever outside the folder the session was opened in
       await resolveTools($, live.cwd, options)
     }
-    await loadSettings($, e.isInteractive !== false)
+    live.isInteractive = e.isInteractive !== false
+    await loadSettings($, live.isInteractive)
     // the improvement list (D175): its command is always there, its tools only for a person and when a list is in play or offered
-    improveMod.interactive = e.isInteractive !== false
+    improveMod.interactive = live.isInteractive
     improveMod.offered = options.improveOffer === true
     await $.command.register(IMPROVE_COMMAND)
     if (improveMod.interactive && (improveMod.offered || (await read($, improve)).phase !== 'idle')) await registerImproveTools($)
@@ -627,8 +633,11 @@ export const register: Register = (on, options) => {
     await $.command.register({ name: 'verinoda-check', description: 'Check each edit of Python/Java/Kotlin code for names that do not exist: on, off, or toggle.' })
     // not plain `verinoda`: the Verinoda agent skill of that name takes `/verinoda` first
     await $.command.register({ name: 'verinoda-panel', description: 'Open the Verinoda pane: index state and the check setting.' })
+    // the look at the graph is the pane's, and a scripted session has none (D193): its state is unknown, never fresh
+    live.isChecking = live.isInteractive
+    live.isUnknown = !live.isInteractive
     publish($)
-    background(checkGraph($))
+    if (live.isInteractive) background(checkGraph($))
     return next(e)
   })
 
@@ -699,7 +708,11 @@ export const register: Register = (on, options) => {
     return note === undefined ? ran : { ...ran, context: [...(ran.context ?? []), note] }
   })
 
-  // One re-index per turn, not per edit; left running so the turn ends at once.
+  // One re-index per turn, not per edit; left running so the turn ends at once. Not in a scripted session (D193): its
+  // end waits for a process the mod still runs. In the D193 bench the server closed and the process exited only once this
+  // update had ended, 4.8 s after the last message at the median against 0.4 s without it; in the own-repository study's
+  // Part B, on a loaded machine, a median 68.3 s. Nobody reads the pane there, and an analyze refreshes a changed tree
+  // itself, at once or in the background. /verinoda-update still runs.
   on('turn.complete', async ($, e, next) => {
     const improving = await read($, improve)
     if (e.agentId === undefined && improving.turn !== null && e.turnId === improving.turn) await update($, improve, endOfTurn)
@@ -709,7 +722,7 @@ export const register: Register = (on, options) => {
       const failed = () => update($, improve, (s: ImproveState) => (s.expect === 'review' ? undoSend(s, 'review') : s))
       background($.prompt.submit({ text: reviewPrompt(improving.subject), asUser: true }).then(r => (r.drop === undefined ? undefined : failed()), failed))
     }
-    if (e.agentId === undefined && live.pending.size > 0 && !live.isRunning) background(reindex($))
+    if (e.agentId === undefined && live.isInteractive && live.pending.size > 0 && !live.isRunning) background(reindex($))
     return next(e)
   })
 

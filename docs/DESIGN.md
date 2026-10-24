@@ -18984,6 +18984,148 @@ before the change (d610991's `codecheck_env.py`: kind `verinoda`, 2026-10-24).
 activated environment's site-packages, then read again; another `VIRTUAL_ENV` gives another answer without a restart. It
 fails on 3696b46's `codecheck.py` (the same environment after the install).
 
+## 165. A scripted session ends with its answer: no re-index for its exit to wait on (D193, 2026-10-24)
+
+### 165.1 Why
+
+Part B of the own-repository study (`benchmarks/agent_compare/DESIGN_OWNREPO.md` on the study's branch, 2026-10-24) ran
+6 fix tasks of the user's Minecraft mod in 2 arms, with Sonnet 5.5. Both arms resolved all 12 sessions. The guided
+sessions took 50.6 s longer on average (215.0 against 164.4 s).
+
+- **48.4 s of the gap lay outside the transcripts.** A session's process time minus its transcript's span had a median of
+  68.3 s guided and 1.9 s plain.
+- **The usage logs put that excess at the exit.** The Verinoda server started 0.1 to 0.5 s before a session's first
+  entry.
+  - In 5 of the 6 sessions it ended 10.0 to 60.0 s after the last message; in three of those, at 60.0 s exactly.
+  - The sixth session's server wrote no end line. A process that is killed writes none.
+- **The edits the mod saw line up with the long waits.** The 5 guided sessions whose edits the mod saw (through Edit or
+  Write) ended 12.7, 67.9, 68.7, 72.3 and 81.9 s after their last message. The one that wrote through Bash ended 19.6 s
+  after.
+
+At the end of the main loop's turn the mod starts a re-index:
+
+1. It runs `update --fast` (8 to 44 s in those sessions).
+2. That update starts a detached graph build.
+3. The mod then watches the graph.
+
+In a scripted session that turn is the session's last. Nobody reads the pane, and an index refreshed then answers no
+question of the session.
+
+### 165.2 Decisions
+
+1. **A scripted session starts nothing it would wait for at its end.** When `isInteractive` is false (`claude -p`, the
+   Agent SDK), the mod starts none of these:
+   - a re-index at a turn's end;
+   - a graph watch after an update;
+   - a look at the graph at session start, which is the pane's.
+
+   Edits are still collected. `/verinoda-update` still runs `update --fast`, without the watch.
+2. **It never calls the index fresh, because it never looked.** Its published state is "graph state unknown", never
+   "fresh" or "checking…". A `/verinoda-update` with no edit pending answers "no edit of this session waits to be indexed"
+   instead of "index already fresh".
+3. **Interactive sessions are unchanged.**
+
+### 165.3 Measured
+
+**The probe** (`exit_probe.py`, 2026-10-24 23:18 to 23:23, a quiet machine).
+
+- **Setup:** one scripted session per arm and round, on a copy of Part B's clone at task 1fb707da's parent, launched as
+  Part B launched its sessions. A guided session started only once the setup's own background build had released the
+  index lock. The arm order rotated over 3 rounds.
+- **The prompt:** one Read, one Edit (a comment line after the package line of `Atlilar.java`), and the word "done".
+
+| Arm | From the last entry to the process's end | The server's end, after the last entry | The mod's `update --fast` |
+|---|---|---|---|
+| Plain | 0.9, 0.9, 0.9 s | no server | none |
+| Old mod (main 0673474, as Part B ran) | 3.6, 3.7, 3.7 s | 3.0, 3.0, 3.0 s | from 0.1 to 3.0 s, each round |
+| New mod (D193) | 0.7, 1.0, 0.8 s | 0.0, 0.0, 0.0 s | none |
+
+- **Every session did the task:** Read then Edit, one line added, the reply "done". Start-up (from the process start to
+  the first entry) was 0.8 to 0.9 s in every arm.
+- **The old mod's sessions ended 0.6 s after its `update --fast` did.** That was before the graph watch's first poll was
+  due; it waits 1 s between polls.
+
+**The bench** (`bench_d193.py`, 2026-10-24 23:37 to 23:50). It ran Part B's six pilot tasks with the old mod and with the
+new one, both guided, in two lanes at once, as Part B ran its two arms.
+
+- **The runner:** Part B's own, unchanged (`own_fix_run.session_with_reruns`: the copy at the parent, setup, prompt and
+  argv). Each session started right after its setup, as Part B's did.
+- **Not graded:** nothing the model reads differs between the two mods. The call rule is a constant, and the turn-end
+  work starts after the last message.
+- **Calls:** no session called a Verinoda tool.
+- **The process samplers:** two ran beside it.
+  - The one built on WMI stalled for 9.6 s over the first two sessions' ends.
+  - A second one, without WMI (`sidecar2.py`: a kernel process snapshot every 0.25 s), covered the last three pairs.
+
+| Task | Old mod: exit | Old mod: server end | Old mod: `update --fast` | New mod: exit | New mod: server end |
+|---|---|---|---|---|---|
+| 1fb707da | 5.2 s | 4.8 s | 0.7 to 4.7 s | 0.5 s | 0.0 s |
+| 21006374 | 0.5 s | 0.0 s | none: its edits went through Bash | 0.4 s | 0.0 s |
+| 267f00c6 | 13.7 s | 13.2 s | 7.0 to 13.2 s | 7.0 s | 6.5 s |
+| 38b9bd58 | 7.5 s | 7.1 s | 0.1 to 7.1 s | 0.4 s | 0.0 s |
+| a9a760e2 | 4.3 s | 3.8 s | 0.1 to 3.8 s | 0.4 s | 0.0 s |
+| f8cdfbf7 | 4.5 s | 4.0 s | 0.1 to 4.0 s | 0.4 s | 0.0 s |
+
+The exit runs from the transcript's last entry to the runner's end; the other times are counted from that same entry.
+
+- **Medians.** Exit: 4.8 s with the old mod, 0.4 s with the new one. Part B's measure (process time minus transcript
+  span, which also counts the start-up): 5.8 s against 1.4 s. In Part B itself it was 68.3 s guided and 1.9 s plain.
+- **The old mod's server ended when its `update --fast` did, in each of the 5 sessions that ran one.** The second sampler
+  shows the order in three of them:
+  - the update ran from 0.34 to 4.57 s, 0.11 to 3.76 s and 0.03 to 7.04 s;
+  - the server was gone at 4.84, 3.76 and 7.04 s;
+  - `claude.exe` was gone at 5.10, 4.02 and 7.30 s.
+
+  The detached build ran on to 8.83, 7.43 and 11.23 s. In the new mod's three, `claude.exe` was gone 0.18 to 0.39 s
+  after the last entry.
+- **No server ended at 60 s.** The machine was quieter than in Part B: setups took 32 to 103 s, against 137 to 411 s.
+- **One slow session with the new mod: 267f00c6 at 7.0 s.** Its server ended at 6.5 s, and none of its Verinoda processes
+  ran then. The old mod's re-index in the same task started only at 7.0 s. That pair ended while the WMI sampler stalled,
+  so what Claude Code did in those seconds was not seen.
+
+**The Verinoda server's own exit, in isolation** (`server_exit.py`, 2026-10-24 23:15, a quiet machine). The server was
+started as the study's `.mcp.json` starts it, on a set-up copy of the study's clone. It was answered `initialize`, given
+one `analyze` call or none, then its stdin was closed:
+
+| | From stdin closed to process exit | Runs |
+|---|---|---|
+| Idle (no tool call) | 0.10 to 0.11 s | 3 |
+| After one `analyze` | 0.30 to 0.35 s | 3 |
+
+The server answered `initialize` 0.86 to 0.90 s after it started. Each `analyze` was its process's first call: 2.72 to
+3.93 s.
+
+The scripts are in the session's scratch folder, and their data is in `ownrepo-data/` beside the study's (neither is in
+the repository). The study keeps the mod its runs started with (main 0673474). No study result is credited to this
+change.
+
+### 165.4 Not done
+
+- **The index is not refreshed after a scripted session's edits.**
+  - **When the next `analyze` refreshes it first:** the project has fewer than 300 files, or at most 200 files changed and
+    the rebuild is estimated at 15 s or less (`analysis.REFRESH_*`).
+  - **Otherwise:** `analyze` answers from the old index, says so, and starts a background update for the next question
+    (`AtlasTools.analyze`).
+  - **What a stale index cost before:** on large projects the stale-index study measured 1.23x input tokens [1.13-1.34],
+    with 57 to 217 files behind (`benchmarks/results/agent-compare-stale-2026-10-02/`).
+  - **What a scripted session leaves behind:** a few files. That cost was not measured.
+  - **A multi-turn SDK session** loses the refresh between its turns the same way.
+- **The alternative that keeps the refresh without holding the exit.** At a turn's end, start only the detached build
+  (`workflow.start_background_update`) instead of the awaited `update --fast` and the watch. Neither the probe nor the
+  bench saw the exit wait for a detached build. No CLI entry starts it alone. Not built.
+- **Part B's 60.0 s server ends and the 7.0 s session were not explained.** What held them was not established.
+
+### 165.5 Tests
+
+`claude-mods/verinoda-live/hooks/features.test.ts`, "a scripted session starts no re-index and no graph watch; its edits
+wait for /verinoda-update". It checks three things:
+
+- no `update` and no `graph-state` runs after an edit and the turn's end;
+- the state reads "graph state unknown";
+- `/verinoda-update` runs one `update` and no watch.
+
+It fails on 0673474's `register.tsx`: an update ran at the turn's end (expected 0, received 1).
+
 ## Sources
 
 - **Retrieval:**
