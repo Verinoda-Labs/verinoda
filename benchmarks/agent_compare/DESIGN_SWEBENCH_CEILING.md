@@ -328,6 +328,26 @@ determine it).
   time: two sessions more than C3's four (at 13:50, with four: commit 40.7 of 47.1 GB, login shell about 1 s). Nothing a
   C3 session sees changes.
 
+## Amendment 11 (2026-10-24, 18:08; C3 running, about 80 of its 404 sessions left; no grade of C3's third attempt read)
+
+- **The held-out run is cancelled.**
+  - At about 17:40 the user asked that no work be done that does not pay for its time. If these runs keep taking very
+    long without a finding, tests on their own repositories replace them.
+  - The held-out run (instances 101-200, 3 attempts × 2 arms, about 600 Opus sessions and 15 hours) controls for tuning
+    on the dev set, not for memory. Its instances come from the same public repositories. The dev runs already show
+    Verinoda's arm level with the plain arm for every model, so the held-out run could not change what this study says
+    about Verinoda.
+  - Its setup (the guided copies) was stopped at 17:41. No held-out session ran.
+  - The study's numbers rest on the dev set alone. As "Limits fixed now" says, a tuned dev set supports no claim of a
+    gain; this study makes none, and the report says so.
+- **C3 runs to its end as pre-registered (k = 3).**
+  - About 80 sessions, under an hour, were left.
+  - The third attempt cannot be stopped alone without an orchestrator restart. The restart's first round takes about 27
+    minutes, and it would also delay the second attempt's pending re-runs.
+- **The recall-free test moves to the user's own repository.** This study ends on the need for one ("Limits": a claim
+  free of recall needs tasks the models cannot have seen). It is pre-registered as `DESIGN_OWNREPO.md` on the branch
+  `ownrepo-2026-10-24`.
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;
