@@ -261,6 +261,19 @@ determine it).
   repositories and the same benchmark. A claim free of recall needs tasks fixed after the models' training data; this
   study has none, and its write-up says so.
 
+## Amendment 8 (2026-10-24, 09:36; 37 sessions of C4's Fable run so far, none of them graded)
+
+- C4's rule, how it counts, fixed before any Fable grade (it left open what a row without a grade adds). Each model's
+  resolved rows over its own 200 lanes (instance and arm), each lane's last session after amendment 6's re-runs and
+  amendment 2's regrade. A row with no grade adds nothing: calibration cannot grade it (django-13658 in C1's and C4's Opus
+  plain arms: the admin_scripts tests fail with the gold patch in this environment too, so `resolved_calibrated` is null),
+  or the leak review does not count it. Reported beside it, never in its place: the same count over the lanes graded for
+  both models. The rule is computed once no lane of either model waits for a session, a re-run, a grade or the regrade.
+- Scheduling. The held-out guided setup started at 09:07, when the dev guided setup ended (100 snapshots), from a waiter
+  whose background task Claude Code had stopped for low memory at about 07:45 while the waiter's own process lived on. It
+  was stopped at 09:11 with one copy made and recorded (`h1/builds.json`; a half-made copy is made again), and resumes from
+  there once memory allows.
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;
