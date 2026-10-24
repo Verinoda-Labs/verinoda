@@ -18775,6 +18775,63 @@ record, and "None/dict" is no path; a why lists the line's commit once, and a ca
 test failed before its fix: those of the first version on 2ad768f, those of the first review and of the narrowed
 introduction rule on 2129e7c, those of the second review on 718c7d2.
 
+## 164. The name check's environment: the activated one when the project holds none (D192, 2026-10-24)
+
+### 164.1 Why
+
+In the SWE-bench ceiling study's condition C1 (`benchmarks/agent_compare/DESIGN_SWEBENCH_CEILING.md`, amendments 3 and 4) a
+session runs the project's code in the instance's virtual environment: activated (`VIRTUAL_ENV` set, its `Scripts` first on
+PATH) and outside the checkout (the instance's shared environment, or a venv of the session's own beside the copy). In every
+Verinoda-arm session of the first run, `code_check` judged against Verinoda's own interpreter, standard library only (its
+answer's `python`; django-16873 first): `auto` looked inside the project only (`.venv`, `venv`, `env`), so the environment the
+agent ran the code with was never the one the check read.
+
+### 164.2 Decisions
+
+1. **`auto` takes the activated environment when the project holds none** (`codecheck_env._active_env`): after `--env` and
+   the project's own folders, before Verinoda's interpreter. The variable comes from whoever started the process (the agent's
+   shell, the MCP client), not from the files checked.
+2. **The rule of `auto` holds for it**: the program started is the environment's base interpreter (from `pyvenv.cfg`), which
+   must be a Python installation the system knows and lie outside the project; the environment's own interpreter is never
+   started. Otherwise a note names `VIRTUAL_ENV` and why it was not used, and the check falls back as before.
+3. **Verinoda's own environment is never taken for the project's** (`VIRTUAL_ENV` naming `sys.prefix`): Verinoda run from
+   its own activated venv would otherwise check the project against Verinoda's dependencies.
+4. A project venv still comes first; `--env PATH` and `none` are unchanged; the MCP server (`trusted=False`) gives the same
+   answer, the variable not being the caller's input. The tests no longer see the shell's `VIRTUAL_ENV` (`tests/conftest.py`).
+5. **The environment a check reuses is read again after an install into the activated one** (`codecheck._env_stamp`): the
+   MCP server lives as long as the session, which may install into its environment, and the stamp covered only the
+   project's folders and an explicit `--env`. It now holds the activated environment's `pyvenv.cfg`, site-packages and
+   `.pth` files, and the variable itself.
+
+### 164.3 Measured
+
+- django-16873's Verinoda-arm copy with the session's `VIRTUAL_ENV`, on the file the session changed: the project's
+  environment (Python 3.11.15) is chosen, and the verdicts are those of the standard library only: 250 sites, 89 unknown,
+  0 absent. The unknowns there come from `**kwargs` and parameters, not from the environment: on this copy the change gives
+  the check the right environment and changes no verdict.
+- The study keeps the Verinoda its runs started with (the engine of a7e0c65): no study result is credited to this change.
+- Not measured: a session with the change (that the MCP server a session starts inherits its `VIRTUAL_ENV` was not checked in
+  one); a copy whose changed code uses third-party attributes the environment would decide.
+
+### 164.4 Not done
+
+- **The MCP server's import path.** The study's `.mcp.json` starts the server with `-P`, and the server inherits the session's
+  `PYTHONPATH` (the checkout, or its `src/`): Verinoda's own imports then search the checkout before its environment, and a
+  top-level package of the project named like one of Verinoda's dependencies would shadow it. Not seen (psf/requests-1963's
+  Verinoda-arm session used `analyze` and `code_check`; Verinoda imports no `requests`); `-I`, or a server environment without
+  `PYTHONPATH`, is to be weighed (`-I` also drops the other `PYTHON*` variables).
+
+### 164.5 Tests
+
+`tests/test_codecheck.py::test_the_active_environment_is_used_when_the_project_holds_none`: a project without a venv and an
+activated one outside it give kind `active`, a third-party name found there `exists` and a missing one `absent`;
+`trusted=False` gives `active` too; `VIRTUAL_ENV` naming Verinoda's own environment gives `verinoda`; a base interpreter inside
+the project gives `verinoda` with a note naming `VIRTUAL_ENV`; a project `.venv` still comes first. It fails on the code
+before the change (d610991's `codecheck_env.py`: kind `verinoda`, 2026-10-24).
+`test_the_active_environment_is_read_again_after_an_install`: the environment is reused until a module is added to the
+activated environment's site-packages, then read again; another `VIRTUAL_ENV` gives another answer without a restart. It
+fails on 3696b46's `codecheck.py` (the same environment after the install).
+
 ## Sources
 
 - **Retrieval:**

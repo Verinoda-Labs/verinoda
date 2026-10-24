@@ -632,6 +632,25 @@ def test_the_active_environment_is_used_when_the_project_holds_none(tmp_path, mo
     codecheck.reset_caches()
 
 
+def test_the_active_environment_is_read_again_after_an_install(tmp_path, monkeypatch):
+    """D192: the MCP server lives as long as the session, and the session may install into its activated environment;
+    the environment a check reuses must notice, as it does for a project venv."""
+    codecheck.reset_caches()
+    proj = tmp_path / "proj"
+    venv = _make_venv(tmp_path / "beside")
+    _write(proj, "app.py", "import newlib\n")
+    monkeypatch.setenv("VIRTUAL_ENV", str(venv))
+    first = codecheck.get_env(proj, "auto")
+    assert first.kind == "active" and codecheck.get_env(proj, "auto") is first
+    site = venv / "Lib" / "site-packages" if os.name == "nt" else min((venv / "lib").glob("python*/site-packages"))
+    _write(site, "newlib.py", "def f():\n    return 1\n")
+    assert codecheck.get_env(proj, "auto") is not first
+    # another activated environment is another answer, with no restart
+    monkeypatch.setenv("VIRTUAL_ENV", sys.prefix)
+    assert codecheck.get_env(proj, "auto").kind == "verinoda"
+    codecheck.reset_caches()
+
+
 def test_environment_choice_fallbacks(tmp_path):
     (tmp_path / ".venv").mkdir()
     (tmp_path / ".venv" / "pyvenv.cfg").write_text("home = /nowhere\n", encoding="utf-8")
