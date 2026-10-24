@@ -117,6 +117,37 @@ determine it).
       patched checkout;
     - otherwise a venv of its own with the same packages as the shared one, as the gold patch's evaluation left it.
 
+## Amendment 3 (2026-10-24, before C1's first session)
+
+- The environment, made to pass every gold patch it can. The gold patch now resolves locally on 99 of the 100 dev
+  instances (calibrated grade). The exception is django-13658, whose FAIL_TO_PASS test fails here with the gold patch, so
+  it is not graded locally. What it took, beyond amendment 2:
+  - pytest before 7.2 needs atomicwrites on Windows, which the image's Linux freeze lacks; it is added where `import
+    pytest` asks for it (every scikit-learn test failed to collect without it);
+  - the image's pip (24.2) where scikit-learn's install line uses `--no-use-pep517`, which pip 26 dropped;
+  - Visual Studio's msbuild on PATH for a compiled build (matplotlib before 3.6 builds its freetype with it);
+  - `MPLBACKEND=Agg`, for the evaluator and C1 sessions: the image has no display, and matplotlib's Tk backend failed
+    seaborn-2848's tests here;
+  - a compiled build no longer leaves its editable install in the shared environment (it pointed every user of the
+    environment at the build folder and showed sessions the data folder); for matplotlib before 3.7, a `.pth` puts
+    `mpl_toolkits` in `sys.modules` from the checkout on PYTHONPATH without running its `__init__.py`, as the image's
+    develop-mode `-nspkg.pth` does (otherwise pkg_resources' deprecation warning, an error under pytest.ini, stopped
+    every test of matplotlib 22835, 23964 and 25442).
+- The evaluator's agreement with the official grade of D184's 200 patches, with every gold report: calibrated 99 of
+  100 in the plain arm and 98 of 100 in the Verinoda arm (strict: 93 and 91). Every difference: django-13658 in both arms
+  (not gradable locally), and django-16379 in the Verinoda arm, resolved here and not officially (its test sleeps; see
+  amendment 2's re-grading).
+- C1's harness. A file a session changes or adds with CRLF where the base commit has no CR gets LF back before the patch
+  is taken: rewriting a file through Python's text mode from Bash writes CRLF on Windows and LF on the image's Linux (a
+  37-line change of C0's django-11019 became a 2163-line diff). C0 keeps D184's harness. A session's row records what
+  changed at the top of a shared environment's site-packages while it ran, and a session's PATH names the shared
+  environment through a junction outside the data folder.
+- The leak scan also flags the other arm's copy of the same instance (it sits beside the session's copy and holds that
+  arm's patch), by an absolute or a relative path, and a `cd ..`.
+- C1's order. The plain arm's sessions start while the Verinoda arm's 100 copies are being set up (about five minutes
+  each). The compiled instances run after the environment check of their sessions (`mpl_toolkits` above was found
+  there, after the plain arm's first non-compiled sessions and before any matplotlib session).
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;
