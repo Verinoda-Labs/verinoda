@@ -219,6 +219,48 @@ determine it).
   The machine's load is cut instead: the held-out gold evaluation and the held-out guided setup wait until the dev runs
   leave room, and the dev guided setup runs at below-normal priority. Neither changes what a session sees.
 
+## Amendment 7 (2026-10-24, 08:30; before any session of C4's Fable run, C3, the diagnostics or the held-out run)
+
+- What was seen (exploratory: the measure below was defined after reading C4's Opus grades, 53 of them at 08:18). Opus
+  writes the upstream fix verbatim far more often than Sonnet does. On the 53 dev instances graded in both C1's plain arm
+  (Sonnet) and C4's Opus plain arm, the share of the gold patch's lines (those the issue does not give) that the patch also
+  writes is 0.39 for Sonnet and 0.63 for Opus on average, with 12 and 27 patches at 0.9 or more. On the 40 instances both
+  resolved, where correctness cannot explain it, it is 0.48 and 0.71 (12 and 24 at 0.9 or more). In django-16816, whose
+  tests demand an error id and message the issue does not give (OpenAI's false_negative annotation 3), Opus's patch is the
+  gold patch character for character; in sympy-19254, whose tests assert the numbers of the gold's own variant of the bound
+  (false_negative 3), Opus's patch carries the gold's docstring line "The Knuth-Cohen variant of Mignotte bound"; in
+  django-14730 it writes the gold's warning with its "e.g.", the one word C1's Sonnet patch missed (amendment 4). The
+  models may have seen these fixes in training (the limits below); the strongest model shows it the most.
+- The measure, fixed now: `swebench_recall.py`. The gold patch's added lines in non-test files, whitespace removed, 8
+  characters or more, leaving out those the problem statement holds; recall is the share of them a patch adds (none left:
+  not measured); a patch is "verbatim" at 0.9 or more. Confirmatory from here on (C4's Fable run, C3, the diagnostics, the
+  held-out run). Reported per run and arm: mean recall among the resolved and the verbatim count; paired with C1's Sonnet
+  sessions on the instances both resolved; and a sensitivity line, the resolved count leaving out verbatim patches on
+  instances whose false_negative annotation is 2 or more (tests that demand what the issue may not determine). The C4 rule
+  does not change: the model with the higher resolved count summed over both arms; the sensitivity line stands beside it
+  and never replaces it.
+- The closed-book probe (outside the benchmark's rules, labelled, never graded and never a resolved share):
+  `swebench_closedbook.py`. For each of the 100 dev instances, one call per model (Sonnet 5.5, Opus 5.5, Fable 5.1) given
+  only the repository, the base commit and the issue: no tool (`--tools ""`), no MCP server, no plugin, settings from an
+  empty folder only, one turn, a short system prompt in place of Claude Code's; one call at a time at below-normal
+  priority. Measured: recall per model, paired over the instances. What a model writes of the upstream fix with no file
+  to read can only come from memory. One call (Sonnet, psf__requests-2674, 08:17) was made to test the mechanics: $0.017,
+  12 s, a diff came back; its recall was not computed. Closed-book diffs are not graded (they seldom apply).
+- C2 for C1 so far (77 of 100 guided sessions): no transcript shows a Verinoda defect that changed an outcome, so no C2
+  run. Of the two instances only the plain arm resolved, sympy-21627's session got a `statically_verified` claim about a
+  different `is_zero` (sympy/polys/agca/homomorphisms.py) and wrote "Not helpful; go direct" before fixing the right file
+  its own way; django-11564's `analyze` spent its 60-second budget unanswered, and its patch prefixes absolute URLs, which
+  the hidden test rejects. In C1's guided sessions so far, 21 of 76 `analyze` calls ended unanswered (14 with the budget
+  spent). Both defects go to the product's backlog, not to this study.
+- Scheduling (amendment 6 has the held-out gold evaluation wait until the dev runs leave room): at 08:08 it was let into
+  the orchestrator's evaluation queue, which runs one evaluation at a time at below-normal priority, so it adds no
+  evaluation beside the dev ones. Login shell at 08:10: 488, 520 and 629 ms (the limit is 10 s). A gold patch that fails
+  under this load is evaluated again on a quiet machine before the held-out env_only is fixed. The held-out guided setup
+  still waits for the dev guided setup to end.
+- The held-out run controls for tuning on the dev set, not for memory: instances 101-200 come from the same public
+  repositories and the same benchmark. A claim free of recall needs tasks fixed after the models' training data; this
+  study has none, and its write-up says so.
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;
