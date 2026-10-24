@@ -310,9 +310,9 @@ determine it).
 - The held-out run waits for the user's decision after C3 (their answer about 11:15: decide after C4 and C3), with its disk
   (about 40 GB for the guided copies) and the plan's weekly usage before them.
 
-## Amendment 10 (2026-10-24, 14:35; C3 running, about 45 of its 404 sessions done; no diagnostic session yet)
+## Amendment 10 (2026-10-24, 15:38; C3 running, 145 of its 404 sessions done; no diagnostic session yet)
 
-- The diagnostics start before C3 ends: the user asked (about 14:30) for the remaining work to go on beside the runs.
+- The diagnostics start before C3 ends: the user asked (about 15:30) for the remaining work to go on beside the runs.
   Amendment 5's lists are taken from what is graded now, before the regrade: the instances that no session of C1, of either
   C4 model or of C3 so far resolves in either arm. Hints stage: sympy-11870, sympy-13146, sympy-14308. Tests stage:
   sympy-14317, sympy-16988 and sphinx-7686 (no hints), and each hints instance that its hints sessions leave unresolved in
