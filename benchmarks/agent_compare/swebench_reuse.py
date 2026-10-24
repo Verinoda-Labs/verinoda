@@ -110,6 +110,9 @@ def main(argv: list[str]) -> int:
             return f"{t['id']}:{arm}: {snapshot(copy, t['base_commit'], snaps / t['id'])}"
         return f"{t['id']}:{arm}: {reset(copy, t['base_commit'], snaps / t['id'] if arm == 'verinoda_guided' else None)}"
 
+    if cmd == "snapshot":  # a copy still being set up has half an index: only those whose setup finished (builds.json)
+        built = json.loads((work / "builds.json").read_text(encoding="utf-8")) if (work / "builds.json").exists() else {}
+        tasks = [t for t in tasks if f"{t['id']}:verinoda_guided" in built]
     items = [(t, a) for t in tasks for a in (["verinoda_guided"] if cmd == "snapshot" else arms)]
     bad = 0
     with ThreadPoolExecutor(3) as pool:
