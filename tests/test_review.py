@@ -435,6 +435,26 @@ def test_config_file_key_with_its_reader(tmp_path):
     assert f["at"] == "settings.yml:2" and f["readers"] == ["src/Conf.java:5"]
 
 
+def test_a_config_key_read_on_a_later_changed_line_is_not_reported_gone(tmp_path):
+    # a change of several lines: its first changed line is not the key's statement, which still reads the key; a Part B
+    # patch of the own-repository study got "config key ... is no longer read" this way, as the real commit would (D195)
+    repo = tmp_path / "cfgmove"
+    (repo / "src").mkdir(parents=True)
+    (repo / "settings.yml").write_text("boss-health: 16\n", encoding="utf-8", newline="\n")
+    (repo / "src" / "Spawn.java").write_text(
+        "package c;\n\nclass Spawn {\n    void spawn(M m, boolean prens) {\n        Object yer = m.yer();\n"
+        "        if (yer == null) {\n            return;\n        }\n"
+        "        m.oz(m.cift(\"boss-health\", 16) * (prens ? 2.5 : 1.0));\n    }\n}\n", encoding="utf-8", newline="\n")
+    _scan(repo)
+    _edit(repo, "src/Spawn.java", "m.yer();", "m.yerBul();")
+    _edit(repo, "src/Spawn.java", " * (prens ? 2.5 : 1.0));", ");")
+    assert [f for f in _by(_review(repo), "config") if "no longer read" in f["finding"]] == []
+    # a key that does leave the changed lines is still reported
+    _edit(repo, "src/Spawn.java", "m.oz(m.cift(\"boss-health\", 16));", "m.oz(16);")
+    [f] = [f for f in _by(_review(repo), "config") if "no longer read" in f["finding"]]
+    assert f["key"] == "boss-health" and "(base line 9)" in f["finding"]
+
+
 def test_data_files_are_listed_not_read_as_config_and_a_new_config_file_is_one_change(orders):
     # found by reviewing Verinoda's own branch: every key of new JSON result files became a "config key"
     (orders / "results.json").write_text('{"a": {"b": 1, "c": 2}}\n', encoding="utf-8")

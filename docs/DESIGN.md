@@ -19195,6 +19195,96 @@ and on an edited one. The count is of `snapshot.current_state` as the server and
 reading during a refresh is not counted. It fails on 76cc774's code: 2 readings on the unchanged tree, where it expects
 1.
 
+## 167. What a review says after an edit task, and two defects it showed (D195, 2026-10-25)
+
+### 167.1 Why
+
+In the own-repository study's Part B and the D193 bench, the model called Verinoda in 0 of 18 edit-task sessions. The
+direction chosen next was for Verinoda to act without being called: after a session's edits, a check that speaks only
+when it finds something.
+
+The mod engine can do that at the Stop event: `classic.Stop` returning `{ block: reason }` hands the model the reason
+and one more step, and the input's `stop_hook_active` keeps it from asking twice. The check it would run is
+`verinoda review`.
+
+Before building the hook, `verinoda review` was replayed on Part B's 12 pilot patches:
+
+- one copy per task at the task's parent, Verinoda set up there as the guided session had it;
+- each arm's patch applied, reviewed and taken back;
+- the script and its outputs are in the session's scratch folder, not in the repository.
+
+The decision rule was written down before any review was read. Build the hook only if all three hold:
+
+- (a) at least one review names a concrete defect, confirmed by hand: a caller left unchanged after a signature
+  change, a removed or renamed symbol still used, or a reference to something that does not exist;
+- (b) at most 1 of the 12 patches gets a finding that looks concrete and is not a defect;
+- (c) a review takes 5 s or less at the median.
+
+All 12 patches had passed their commit's game tests, so the replay could show a cost or a defect those tests do not
+cover, never a gain in resolved tasks.
+
+### 167.2 Measured
+
+The replay ran on 2026-10-25 from 00:06 to 00:13, with main 0673474's Verinoda. Nothing else ran but the SWE-bench
+selector's start.
+
+| Task | Seconds (none, guided) | Exit | What the review said |
+|---|---|---|---|
+| 1fb707da | 2.3, 2.1 | 3, 3 | an entry point reaches the changed method; no test reaches it statically |
+| 21006374 | 4.1, 4.0 | 3, 1 | none: no finding, 3 unknowns; guided: crashed, printed only `error: base_at` |
+| 267f00c6 | 2.3, 2.3 | 3, 3 | no finding; 15 compatible API additions; 3 unknowns |
+| 38b9bd58 | 5.0, 4.7 | 3, 3 | 3 exit guards gone or changed (`statically_verified`); 2 config keys "no longer read" |
+| a9a760e2 | 2.7, 2.7 | 3, 3 | 4 config keys on a changed line |
+| f8cdfbf7 | 3.7, 3.5 | 3, 3 | 2 persistence sinks reached, a command entry point, a code-health drop |
+
+- **(c) holds.** The reviews took 2.1 to 5.0 s, about 3.1 s at the median. `review` reads the last snapshot's graph
+  and refreshes nothing.
+- **(a) fails.** No review names a concrete defect. The defect classes of (a) are compile errors in Java, and all 12
+  patches compiled.
+- **(b) fails.** 2 of the 12 patches, both arms of 38b9bd58, got findings that look concrete and are not defects:
+  - The commit itself (38b9bd58) removed the same exit guards. They are the change the task asked for.
+  - The config findings are false. The patched line still reads both keys (`cift("boss-health", 16)`), as the commit's
+    does.
+- **Exit 3 in all 11 reviews that completed.** Exit 3 means a strong finding, an unknown or an uncovered strong change.
+  Every Java review carries the unknown that the Gradle tests were not run, so a hook keyed on the exit code would
+  always speak.
+- **The arms differ only in layout** (order and line numbers): the same findings.
+
+### 167.3 Decisions
+
+1. **No Stop hook.** The rule set before the replay fails on (a) and (b).
+2. **A preexisting finding without a matched base finding is rendered.**
+   - `_split_delta` labels a finding preexisting when its own rule saw the operation in the base version (`base_had`).
+     It sets `base_at` only when a base finding paired with it.
+   - The text renderer read `base_at` unconditionally, so one such finding made `verinoda review` print nothing but
+     `error: base_at`.
+   - It now prints `(base: line not found)`. The JSON was already right, and the MCP server does not render it.
+   - Run again on that patch with the fix: the review prints, with one preexisting finding (an IO call in a loop
+     that the parent already made).
+3. **"No longer read on the changed line" only when no changed line reads the key.**
+   - The config rule looked for the key on the first changed line of the new version only.
+   - A change of several lines whose key read is not on its first line was reported as no longer reading the key.
+   - It now looks on every changed line of the new version, for the key in quotes.
+   - Run again on both arms of 38b9bd58 with the fix: the two config findings are gone, and the three guard
+     findings remain.
+
+### 167.4 Not done
+
+- **A Stop hook in a Python project.** Not measured. There, a removed name still used is no compile error.
+  - The SWE-bench C3 attempts are a replay set: Python patches, each with tests that decide it.
+- **The exit code.** Every Java review still exits 3 for the Gradle unknown. Not changed: it is the CLI's contract for a
+  gate.
+- **Why the base side made no finding for 21006374's preexisting one.** It is a performance `io-in-loop` finding in
+  `Boss.tick`. The parent already called `state.degisti()` in that loop (its line 686), so "preexisting" is
+  right. The rules run on the base version (the two versions swapped) made no finding for it, so it had no base line.
+  Why that run makes none was not traced.
+
+### 167.5 Tests
+
+- `tests/test_review_delta.py::test_a_preexisting_finding_without_a_matched_base_finding_is_rendered`
+- `tests/test_review.py::test_a_config_key_read_on_a_later_changed_line_is_not_reported_gone`: the key read on a later
+  changed line is not reported; a key that leaves the changed lines still is.
+
 ## Sources
 
 - **Retrieval:**

@@ -80,6 +80,18 @@ def test_findings_all_lists_the_preexisting_ones_labelled(tmp_path):
     assert ", preexisting]" in rv.render_text(res)
 
 
+def test_a_preexisting_finding_without_a_matched_base_finding_is_rendered(tmp_path):
+    # its own rule saw the operation in the base (base_had), but no base finding paired with it, so it carries no
+    # base_at; the text review of a Part B patch of the own-repository study printed only "error: base_at" (D195)
+    repo = _project(tmp_path, "delta", FILES)
+    _change(repo)
+    res = _review(repo)
+    [pre] = [f for f in res["differential"]["preexisting_findings"] if f["rule"] == "op-on-changed-line"]
+    del pre["base_at"]
+    text = rv.render_text(res)
+    assert f"preexisting [{pre['status']}] {pre['finding']}  at {pre['at']} (base: line not found)" in text
+
+
 def test_only_preexisting_findings_leave_the_concern_empty(tmp_path):
     repo = _project(tmp_path, "delta", FILES)
     _edit(repo, "app/store.py", "    return subprocess.run(cmd, shell=True)\n",
