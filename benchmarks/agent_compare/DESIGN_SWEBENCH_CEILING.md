@@ -310,6 +310,24 @@ determine it).
 - The held-out run waits for the user's decision after C3 (their answer about 11:15: decide after C4 and C3), with its disk
   (about 40 GB for the guided copies) and the plan's weekly usage before them.
 
+## Amendment 10 (2026-10-24, 14:35; C3 running, about 45 of its 404 sessions done; no diagnostic session yet)
+
+- The diagnostics start before C3 ends: the user asked (about 14:30) for the remaining work to go on beside the runs.
+  Amendment 5's lists are taken from what is graded now, before the regrade: the instances that no session of C1, of either
+  C4 model or of C3 so far resolves in either arm. Hints stage: sympy-11870, sympy-13146, sympy-14308. Tests stage:
+  sympy-14317, sympy-16988 and sphinx-7686 (no hints), and each hints instance that its hints sessions leave unresolved in
+  both arms. django-13658 is on the hints list by the letter of amendment 5, but no grade is possible for it (amendment 8:
+  its admin_scripts tests fail with the gold patch here), so a diagnostic session of it could show nothing; none is run.
+- The lists are taken again once C3, every re-run and amendment 2's regrade are done. An instance a later session resolves
+  leaves them, and its diagnostic sessions are reported apart and counted nowhere. An instance can also enter: when a re-run
+  replaces the only session that resolved it (amendment 6: the last session counts). Its diagnostic sessions run then. The
+  lists live in a file the orchestrator reads every round (`diag-ids.json`).
+- Order in a copy. A lane runs its diagnostic sessions only after its C3 attempts and their re-runs (the orchestrator runs a
+  lane's runs in order: C3's, the re-runs, then the diagnostics), so no C3 session works in a copy after a diagnostic
+  session did. C3's batches take those lanes first. The diagnostics get one runner per arm of their own, one session at a
+  time: two sessions more than C3's four (at 13:50, with four: commit 40.7 of 47.1 GB, login shell about 1 s). Nothing a
+  C3 session sees changes.
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;
