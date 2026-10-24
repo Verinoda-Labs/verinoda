@@ -140,8 +140,11 @@ def env_for(arm: str, cfg: dict, venv: Path | None = None, pythonpath: Path | No
     return env
 
 
-def scm_env(task: dict) -> dict:
-    return {"SETUPTOOLS_SCM_PRETEND_VERSION": f"{task['version']}.0"}
+def image_env(task: dict) -> dict:
+    """What the image's environment gives and Windows does not, as swebench_localeval.run_env_for gives it: a version for
+    setuptools_scm (the copies carry no tags; a build the session starts itself gets the evaluator's) and matplotlib's
+    headless backend (the image has no display; here matplotlib opens Tk, whose Tcl failed seaborn-2848's tests)."""
+    return {"SETUPTOOLS_SCM_PRETEND_VERSION": f"{task['version']}.0", "MPLBACKEND": "Agg"}
 
 
 def session_venv(task: dict, copy: Path, arm: str, data: Path, link: Path | None = None) -> tuple[Path, Path]:
@@ -183,6 +186,14 @@ def session_venv(task: dict, copy: Path, arm: str, data: Path, link: Path | None
         (own / "verinoda-env.json").write_text(json.dumps({"from": str(shared), "packages": frozen.count(b"\n")}),
                                                encoding="utf-8")
     return own, root
+
+
+def env_print(venv: Path) -> dict:
+    """The top level of a venv's site-packages, where an install adds or changes something (a package, a .pth, an .egg-link,
+    an editable finder): a session that installs into a shared environment changes it for the sessions and evaluations
+    that use it too, and its row says so."""
+    site = venv / "Lib" / "site-packages"
+    return {p.name: p.stat().st_size for p in site.iterdir() if p.name != "__pycache__"} if site.is_dir() else {}
 
 
 def patch_of(copy: Path, base: str, test_files: list[str]) -> tuple[str, list[str]]:
@@ -252,9 +263,12 @@ def one(cfg: dict, task: dict, arm: str) -> dict:
     venv, pythonpath = session_venv(task, copy, arm, Path(cfg["env_data"]), link) if with_env else (None, None)
     argv = session_argv(prompt_for(task, copy, arm, with_env), arm, copy, cfg)
     env = env_for(arm, cfg, venv, pythonpath)
-    if with_env:  # a build the session starts itself gets the same version
-        env.update(scm_env(task))
+    if with_env:
+        env.update(image_env(task))
+    shared = venv is not None and venv.parent != copy.parent
+    before = env_print(venv) if shared else {}
     rc, out, err, secs = run(argv, copy, env, timeout=cfg.get("timeout_s", 2400))
+    env_changed = sorted({k for k, _ in set(before.items()) ^ set(env_print(venv).items())}) if shared else []
     try:
         rep = json.loads(out)
     except ValueError:
@@ -269,7 +283,8 @@ def one(cfg: dict, task: dict, arm: str) -> dict:
     usage = rep.get("usage") or {}
     files = sorted(set(re.findall(r"^diff --git a/(\S+) b/", diff, re.MULTILINE)))
     gold = set(task["gold_files"])
-    return {"id": task["id"], "arm": arm, "env": with_env, "model": cfg["model"], "claude": claude_version(), "exit": rc,
+    return {"id": task["id"], "arm": arm, "env": with_env, "shared_env_changed": env_changed, "model": cfg["model"],
+            "claude": claude_version(), "exit": rc,
             "seconds": secs,
             "patch": diff, "patch_files": files, "patch_lines": diff.count("\n"), "touched_tests": touched_tests,
             "gold_files": sorted(gold), "overlap": len(gold & set(files)), "covers_gold": bool(gold) and gold <= set(files),

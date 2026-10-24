@@ -39,6 +39,7 @@ PYTHONPATH_REPOS = {"django/django", "sympy/sympy", "psf/requests"}
 # projects with compiled extensions, and the folder they are imported from: built once per instance, their build outputs then
 # copied into each checkout of it (a build per evaluation would take minutes each)
 COMPILED = {"scikit-learn/scikit-learn": ".", "matplotlib/matplotlib": "lib", "astropy/astropy": "."}
+COMPILED_DIST = {"scikit-learn/scikit-learn": "scikit-learn", "matplotlib/matplotlib": "matplotlib", "astropy/astropy": "astropy"}
 # installed from the environment file but unusable on Windows: eccodes needs its C library, which conda would have provided
 WINDOWS_BROKEN = {"pydata/xarray": ["cfgrib", "eccodes"]}
 # what pytest requires on Windows only (sys_platform == "win32"), so the image's Linux freeze lacks it: a pytest before 7.2
@@ -215,8 +216,10 @@ def grade(row: dict, log: str, broken: set[str]) -> dict:
 
 
 def run_env_for(env: Path) -> dict:
+    # MPLBACKEND: the image has no display, so matplotlib draws with Agg there; here it would open Tk, whose Tcl failed
+    # seaborn-2848's tests ("Can't find a usable init.tcl")
     return {**{k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "PYTHON", "VIRTUAL_ENV"))},
-            "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
+            "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "MPLBACKEND": "Agg",
             "VIRTUAL_ENV": str(env), "PATH": f"{env / 'Scripts'}{os.pathsep}{os.environ.get('PATH', '')}"}
 
 
@@ -312,6 +315,7 @@ def build_outputs(data: Path, row: dict, spec: dict, origin: Path | None) -> dic
     git("clean", "-fdxq", cwd=root)
     env = data / "envs" / env_key(spec)
     rc = run_install(root, row, spec, venv_python(env), build_env_for(run_env_for(env)))
+    drop_install(env, row["repo"])
     git("checkout", "-q", "-f", base, "--", ".", cwd=root, check=False)  # the install's sed lines changed tracked files
     listed = git("ls-files", "--others", "--ignored", "--exclude-standard", cwd=root).stdout.decode("utf-8").splitlines()
     outputs = [p for p in listed if not p.startswith("build/") and "__pycache__" not in p]
@@ -319,6 +323,14 @@ def build_outputs(data: Path, row: dict, spec: dict, origin: Path | None) -> dic
             "seconds": round(time.perf_counter() - t0, 1)}
     marker.write_text(json.dumps(info, indent=1), encoding="utf-8")
     return {**info, "root": root}
+
+
+def drop_install(env: Path, repo: str) -> None:
+    """Remove the editable install a compiled build leaves in the shared environment: checkouts are imported through
+    PYTHONPATH, and an install pointing at the build folder won over it for a namespace package (matplotlib's mpl_toolkits:
+    pytest's ImportPathMismatchError) and showed a session the data folder."""
+    subprocess.run([str(venv_python(env)), "-m", "pip", "uninstall", "-q", "-y", COMPILED_DIST[repo]], capture_output=True,
+                   check=False)
 
 
 def copy_outputs(build: dict, dest: Path) -> None:
