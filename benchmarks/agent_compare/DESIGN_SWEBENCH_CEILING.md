@@ -274,7 +274,7 @@ determine it).
   was stopped at 09:11 with one copy made and recorded (`h1/builds.json`; a half-made copy is made again), and resumes from
   there once memory allows.
 
-## Amendment 9 (2026-10-24, 13:35; before any grade of C4's Fable run is read and before any session of C3)
+## Amendment 9 (2026-10-24, 13:16; before any grade of C4's Fable run is read and before any session of C3)
 
 - The model, the user's decision (about 12:30, on cost): C3, the diagnostics and the held-out run use Opus 5.5. Claude
   Code's own cost per session (`total_cost_usd`, mean): Fable 0.87 dollars plain and 1.03 guided, Opus 0.20 and 0.28,
@@ -300,7 +300,7 @@ determine it).
 - Scheduling, so the limit ends no more sessions (it changes nothing a session sees). Before it starts a runner, the
   orchestrator reads Claude Code's own `/usage`, and starts none while the 5-hour window's share is 85 % or more, while the
   week's (all models) is at its ceiling or above (default 75 %, the file `chain-week-max.txt`), or when the reading fails.
-  A runner gets at most 10 lanes at a time. Usage-limit rows are moved once no runner of their run is alive. At 13:20 the
+  A runner gets at most 10 lanes at a time. Usage-limit rows are moved once no runner of their run is alive. At 13:14 the
   week stood at 43 % (it resets 2026-10-28 02:00) and the 5-hour window at 2 %. C3 runs one runner per arm (two sessions
   each, as before); the guided arm takes the plain arm's runner once the plain arm has nothing left.
 - Reporting. Fable's guided arm is reported on its 38 instances only, paired with Opus's guided arm and Fable's plain arm
