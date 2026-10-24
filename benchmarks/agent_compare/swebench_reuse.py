@@ -14,13 +14,16 @@ Verinoda's state); the objects nothing reaches pruned from the copy's own store,
 back (the pool its objects borrow from is not touched); then checked: the copy's own store must hold no object at all
 (``git count-objects -v``: everything it needs is the pool's). The session's own venv beside the copy is removed
 (`swebench_run.session_venv` makes it again from the shared
-one). A ``verinoda_guided`` copy then gets its snapshot back. The study's results, transcripts and kept reproductions are
-outside the copies and are not touched.
+one). A ``verinoda_guided`` copy then gets its snapshot back. Claude Code's memory folder for the copy's path is emptied:
+a session started there later would be given what an earlier one wrote into it, with no tool call the leak scan could
+see (the transcripts beside it are kept; a new session does not read them). The study's results, transcripts and kept
+reproductions are outside the copies and are not touched.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -40,6 +43,12 @@ def git(copy: Path, *args: str) -> tuple[int, str]:
 
 def pristine(copy: Path, base: str) -> bool:
     return git(copy, "rev-parse", "HEAD")[1].strip() == base and not git(copy, "status", "--porcelain")[1].strip()
+
+
+def claude_memory(copy: Path) -> Path:
+    """Claude Code's auto-memory folder for sessions started in ``copy`` (its project folder is the path with every
+    character but a letter or a digit made a dash)."""
+    return Path.home() / ".claude" / "projects" / re.sub(r"[^A-Za-z0-9]", "-", str(copy)) / "memory"
 
 
 def copy_tree(src: Path, dest: Path) -> None:
@@ -89,10 +98,15 @@ def reset(copy: Path, base: str, snap: Path | None) -> str:
     venv = copy.parent / f"env-{copy.name}"
     if venv.exists():
         shutil.rmtree(venv, onerror=_force_remove)
+    memory = claude_memory(copy)
+    remembered = sorted(p.name for p in memory.iterdir()) if memory.is_dir() else []
+    if memory.is_dir():
+        shutil.rmtree(memory, onerror=_force_remove)
     if snap is not None:
         for name in VERINODA_FILES:
             copy_tree(snap / name, copy / name)
-    return "reset" + (" and restored" if snap is not None else "")
+    return "reset" + (" and restored" if snap is not None else "") + \
+        (f"; Claude Code's memory held {remembered[:5]} (emptied)" if remembered else "")
 
 
 def main(argv: list[str]) -> int:
