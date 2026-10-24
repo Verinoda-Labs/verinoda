@@ -219,7 +219,7 @@ determine it).
   The machine's load is cut instead: the held-out gold evaluation and the held-out guided setup wait until the dev runs
   leave room, and the dev guided setup runs at below-normal priority. Neither changes what a session sees.
 
-## Amendment 7 (2026-10-24, 08:30; before any session of C4's Fable run, C3, the diagnostics or the held-out run)
+## Amendment 7 (2026-10-24, 08:19; before any session of C4's Fable run, C3, the diagnostics or the held-out run)
 
 - What was seen (exploratory: the measure below was defined after reading C4's Opus grades, 53 of them at 08:18). Opus
   writes the upstream fix verbatim far more often than Sonnet does. On the 53 dev instances graded in both C1's plain arm
