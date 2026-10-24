@@ -177,6 +177,21 @@ determine it).
   their environments, builds and gold validation (env_only) are made the same way as for the dev set.
 - C0's second repeat is run last, if at all: C3's repeats of C1 give that condition's noise floor.
 
+## Amendment 5 (2026-10-24, during C1's first run, before any session of C4, C3, the diagnostics or the held-out run)
+
+- The diagnostics' instance lists, fixed now. "Resolved" is the local calibrated grade after amendment 2's quiet-machine
+  regrade. The hints stage takes the dev instances that no attempt resolves in either arm (C1, both C4 models, C3) and that
+  have hints (77 of the 100 dev instances do). The tests stage takes the instances that no attempt and no hints session
+  resolves in either arm, the 23 without hints among them (they skip the hints stage). Each stage runs one session per arm
+  with the model C4 chooses (`swebench_run_diag.py`: "hints", "tests"), its prompt otherwise C1's.
+- The held-out run's copies: `swebench-run/h1/copies/<id>/<arm>`, borrowing the objects of a pool made with the projects'
+  history up to each base commit (`swebench_prepare.py --history`, as for the dev pool). Its 36 environments (19 not
+  needed by the dev set) were built with 0 failures; gold validation and env_only follow the dev set's rule (the gold patch
+  resolves locally, calibrated). Its guided copies are set up after the dev set's, with the same Verinoda.
+- Sessions can leave processes running after they end: three `find /` searches started by C0 sessions outlived them by
+  hours (`runs/leak-review.md`). They read no file a later session sees and change no result; the harness stays as it is for
+  every run of this study, so C3's attempts and the held-out run use the harness C1 and C4 use.
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;
