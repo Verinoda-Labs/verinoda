@@ -274,6 +274,42 @@ determine it).
   was stopped at 09:11 with one copy made and recorded (`h1/builds.json`; a half-made copy is made again), and resumes from
   there once memory allows.
 
+## Amendment 9 (2026-10-24, 13:35; before any grade of C4's Fable run is read and before any session of C3)
+
+- The model, the user's decision (about 12:30, on cost): C3, the diagnostics and the held-out run use Opus 5.5. Claude
+  Code's own cost per session (`total_cost_usd`, mean): Fable 0.87 dollars plain and 1.03 guided, Opus 0.20 and 0.28,
+  Sonnet (C1) 0.09 and 0.12. C4's rule (amendments 4 and 8) is still computed and reported; it no longer chooses. Fable's
+  guided arm stops with the sessions it has, and none of its lanes runs again. When the user decided, the grades of
+  Fable's plain arm existed (`c4-fable/eval-none.jsonl`); no Fable grade had been read, and none was before this
+  amendment. At 12:03 the evaluation log's last four lines were displayed: four instances' grades, without their run.
+- What stopped Fable's guided arm. At 12:33:39 the subscription's usage limit for its 5-hour window was reached; until it
+  reset at 13:00 every session ended at once with "You've hit your session limit · resets 1pm (Europe/Istanbul)" as its
+  result. The Fable guided runner went through its remaining lanes that way and ended at 12:46:18, before the stop (12:49)
+  looked for it. Fable's guided arm has 38 sessions, the first 38 instances of the dev set's hash order, none flagged by
+  amendment 6; 2 more were cut mid-way by the limit (sympy-16281 after 12 turns, sympy-19254 after 18) and 60 never began.
+  The limit also took 3 of c1-s1-r1's guided sessions (sympy-15678 cut after 7 turns) and 1 of c4-opus-r1's.
+- The rule, for every run of this study. A session whose result is the account's usage-limit message (`is_error`, and the
+  result matches `you.ve hit your (\w+ )?limit`, case ignored) is not a session of the study, whether it ended at once or
+  was cut mid-way, whatever its patch and its grade. Its row, its grade rows, its kept reproductions and its evaluation
+  log move beside the run's own (`results-limit.jsonl`, `eval-<arm>-limit.jsonl`, `scratch-limit/`,
+  `logs/<run>-<arm>-limit/`), and its lane runs again in the same run once the limit has reset (the lane reset first, the
+  same configuration), as amendment 6's re-runs do. The 66 rows above move now. None of their grades has been read: this
+  session's commands since 12:00 were checked, and the one look at the evaluation log after they were graded (13:01)
+  showed queue counts only. Fable's guided lanes do not run again (the decision above). The closed-book probe's 300 calls
+  ended by 11:11, none with that message.
+- Scheduling, so the limit ends no more sessions (it changes nothing a session sees). Before it starts a runner, the
+  orchestrator reads Claude Code's own `/usage`, and starts none while the 5-hour window's share is 85 % or more, while the
+  week's (all models) is at its ceiling or above (default 75 %, the file `chain-week-max.txt`), or when the reading fails.
+  A runner gets at most 10 lanes at a time. Usage-limit rows are moved once no runner of their run is alive. At 13:20 the
+  week stood at 43 % (it resets 2026-10-28 02:00) and the 5-hour window at 2 %. C3 runs one runner per arm (two sessions
+  each, as before); the guided arm takes the plain arm's runner once the plain arm has nothing left.
+- Reporting. Fable's guided arm is reported on its 38 instances only, paired with Opus's guided arm and Fable's plain arm
+  on the same 38, exploratory. C4's rule is computed over the plain arms' 100 lanes each, and over the 138 lanes Fable has
+  (100 plain, the 38 guided) for both models, beside amendment 8's count over the lanes graded for both; reported, never
+  choosing.
+- The held-out run waits for the user's decision after C3 (their answer about 11:15: decide after C4 and C3), with its disk
+  (about 40 GB for the guided copies) and the plan's weekly usage before them.
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;
