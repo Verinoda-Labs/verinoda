@@ -192,7 +192,7 @@ determine it).
   hours (`runs/leak-review.md`). They read no file a later session sees and change no result; the harness stays as it is for
   every run of this study, so C3's attempts and the held-out run use the harness C1 and C4 use.
 
-## Amendment 6 (2026-10-24, 06:55; C4's first sessions started at 06:20, none of them graded or read before this)
+## Amendment 6 (2026-10-24, 06:45; C4's first sessions started at 06:20, none of them graded or read before this)
 
 - What was seen. In C1's first run 11 sessions (6 of 100 plain, 5 of 47 guided so far) had a Bash tool that found no
   command: `ls`, `mkdir`, `python`, "command not found". The cause, read in Claude Code 2.1.296's own code: on Windows a
