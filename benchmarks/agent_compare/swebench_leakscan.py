@@ -5,13 +5,14 @@
 
 For every tool call in each session's transcript (``~/.claude/projects/*/<session_id>.jsonl``), it flags:
 - a path outside the session's copy, except the project's environment (``envs/<key>`` and ``py36/`` under the data folder
-  or through its junction, and the session's own venv beside its copy) and the output of the session's own background
-  commands (Claude Code's temporary folder for its session id: ``.../Temp/claude/<project>/<session id>/tasks/``);
+  or through its junction, and the session's own venv beside its copy) and the session's own output kept by Claude Code
+  (its background commands, ``.../Temp/claude/<project>/<session id>/tasks/``, and its long tool results,
+  ``~/.claude/projects/<project>/<session id>/tool-results/``);
 - the other arm's copy of the same instance, also by a relative path, and a ``cd ..`` (from the copy's root it leads there);
 - the run's own files and the dataset;
 - git commands that read the object store past the history (fsck, cat-file, lost-found and the like), because the alternates
   pool may hold an earlier session's blobs;
-- network use.
+- network use (also a package download: ``pip download``, a wheel).
 Every hit is printed. A session with a hit is reviewed by hand, and one that reached withheld information is not counted.
 """
 
@@ -25,7 +26,8 @@ from pathlib import Path
 SUSPECT = re.compile(
     r"tasks(-dev)?\.json|results\.jsonl|predictions-|lite\.parquet|gold-|eval\.sh|swebench-data/(?!envs/|py36/)|"
     r"swebench-run/work/|\.\./\.\.|git (fetch|pull|log --all|fsck|cat-file|verify-pack|show-index|rev-list --all)|"
-    r"lost-found|unreachable|dangling|objects/info/alternates|curl |wget |pip install|github\.com|WebFetch|WebSearch|"
+    r"lost-found|unreachable|dangling|objects/info/alternates|curl |wget |pip3? (install|download)|-m pip |uv pip|"
+    r"\.whl\b|Invoke-(WebRequest|RestMethod)|github\.com|WebFetch|WebSearch|"
     r"copies/|verinoda_guided\b|\.\./+none\b|\bcd \.\.(?![\w/.-])",
     re.IGNORECASE)
 ENV_PATH = re.compile(r"swebench-(data|run)/(envs|py36)/", re.IGNORECASE)
@@ -46,6 +48,7 @@ def scan(results: Path) -> int:
         copy = f"copies/{r['id']}/{r['arm']}".lower()
         venv = f"copies/{r['id']}/env-{r['arm']}".lower()  # swebench_run.session_venv's own venv of the session
         tasks = f"/{sid}/tasks/".lower()  # where Claude Code keeps this session's background command output
+        saved = f"/{sid}/tool-results/".lower()  # and the long tool results it saved for this session
         own = re.compile(r"(?:[A-Za-z]:|/c)/[^\"' ]*?copies/" + re.escape(r["id"]) + r"/(?:env-)?" + re.escape(r["arm"]),
                          re.IGNORECASE)
         for line in found[0].read_text(encoding="utf-8", errors="replace").splitlines():
@@ -61,7 +64,8 @@ def scan(results: Path) -> int:
                 text = json.dumps(x.get("input") or {}).replace("\\\\", "/")
                 outside = [p for p in PATH.findall(text)
                            if copy not in p.lower() and venv not in p.lower() and not ENV_PATH.search(p)
-                           and not ("/temp/claude/" in p.lower() and tasks in p.lower())]
+                           and not ("/temp/claude/" in p.lower() and tasks in p.lower())
+                           and not ("/.claude/projects/" in p.lower() and saved in p.lower())]
                 if SUSPECT.search(own.sub("<copy>", text)) or outside:
                     hits.append((r["id"], r["arm"], x.get("name"), text[:240], outside[:3]))
     print(f"{len(rows)} sessions, {missing} transcripts not found, {len(hits)} tool calls flagged, "
