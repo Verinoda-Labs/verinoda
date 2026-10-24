@@ -18775,6 +18775,158 @@ record, and "None/dict" is no path; a why lists the line's commit once, and a ca
 test failed before its fix: those of the first version on 2ad768f, those of the first review and of the narrowed
 introduction rule on 2129e7c, those of the second review on 718c7d2.
 
+## 163. The question rule: a user-scope install puts it in ~/.claude/CLAUDE.md (D191, 2026-10-23)
+
+### 163.1 Why
+
+The person asked whether Claude should ask about every prompt to understand it. The advice drew on their own local
+transcripts (interactive sessions only). Claude had asked them 95 multiple-choice questions in 21 sessions. In the 54 that
+offered a recommendation, the person took it 27 times; in 25 of the 95 they wrote an answer of their own, several of which
+corrected what Claude had assumed. Their 514 prompts in 42 sessions had a median of 82 characters, and 4 opened with an
+explicit correction (a crude pattern, a lower bound). The advice was to ask at decision points, not about every prompt, and
+to keep that rule in `~/.claude/CLAUDE.md`. The person then asked for the rule to be added there automatically when the tool
+is installed.
+
+### 163.2 Decisions
+
+1. **Where.** The rule is a marked block at the end of `~/.claude/CLAUDE.md`, the file Claude Code loads in every session of
+   every project (`installer._plan_asking`; the text is `agents/templates/claude_ASKING.md`). It is written by
+   `more_agents._plan_block`, as the GEMINI.md block is (D140), and `more_agents.un_block` removes exactly it. The rest of
+   the file comes back byte for byte, and a file the install created is deleted when nothing else is left in it.
+2. **When.** A user-scope Claude Code install only: `verinoda install --agent claude --scope user`, or `verinoda setup
+   --scope user`. A project-scope install, `verinoda setup`'s default, does not write it. Its manifest lives in the
+   project, so two projects would each own one block of the person's home file, and the first uninstall would take the
+   rule from the other.
+3. **The file is the person's, so none of its states stops the install, and none is overwritten.**
+   - **A block this install did not write as it is** is left as it is, with a warning (`_plan_block(edited="keep")`). It
+     was edited here after install, or it came with a file copied or synced from another machine, edited there or
+     emptied. A block with no record is not taken over either, so uninstall leaves it. Emptying the block (its two marker
+     lines kept) is the way to say no on every machine that shares the file.
+   - **The GEMINI.md and Copilot blocks still refuse** the install when edited, as
+     `test_an_edited_block_is_left_in_place_on_uninstall` pins: those blocks are Verinoda's instructions, this one is a
+     preference the person may reword.
+   - **A block removed after install** is not added again on this machine. The manifest says it was there, and removing it
+     is a way to say no; whether the person or another tool removed it is not known. Uninstall, then install, brings it
+     back.
+   - **Files that are not written.** A link (symbolic, or a hard link: replacing it would cut it from the file it shares), a
+     read-only file and a file that is not UTF-8 text are not touched, and a write that fails anyway (`_warned`) is a
+     warning too. The skill and the server entry are still installed in each case. With `CLAUDE_CONFIG_DIR` set, a
+     warning says that Claude Code may read its CLAUDE.md there.
+4. **The text.**
+   - A vague request gets a short list of concrete changes to choose from.
+   - Large, hard-to-reverse or outward-facing work whose request leaves open a choice that would change the result gets one
+     question before starting: what was understood, then options with the recommendation first.
+   - A clear request gets no question.
+   - Whoever asks says what they assumed.
+   - At a decision point with nobody to answer (a scripted run), the agent takes the reading it would recommend and says
+     what it assumed. It holds back only a step that this open choice decides and that cannot be undone or reaches
+     outside. What the request asks for explicitly is still done, so a headless task or a benchmark arm that asks for a
+     push or a paid call is not held back.
+   - A refused question is not named: declining is no leave to go on.
+   - The text names no Verinoda command: the installer cannot know whether the verinoda-live mod (`/verinoda-improve`) is
+     there.
+   - A test pins its size: at most 7 lines and 1,100 characters.
+5. **A project-scope install in the home folder is refused** (`install --scope project` there; `setup` already refused the
+   home folder without `--allow-home`). It writes the same files and the same manifest as a user-scope install, and it
+   replaced that install's record, the rule's included, so a later user uninstall left the block behind.
+6. **The shared block code, where the review found it short.**
+   - `_tomledit.remove_block` gives back a file of mixed line ends byte for byte: the separator it strips may follow a bare
+     `\n`.
+   - Uninstall keeps the record of an item whose removal failed. It leaves a linked or read-only file untouched, with a
+     warning.
+   - It removes a folder two items share (`~/.claude`) once both are gone.
+   - `_write_bytes` leaves no temporary copy beside a file it could not replace.
+
+### 163.3 Measured
+
+- **The block's cost.** 276 tokens, 1,062 characters with this machine's CRLF line ends. The first version's text was 234
+  tokens and 913 characters, and the review round's 252 and 968. The count is the free `/context` count of
+  `docs/drafts/2026-10-23-d188/tokcount.py`, with the per-file wrapper subtracted. The person's `~/.claude/CLAUDE.md` goes
+  from 265 to 542 tokens, and every request of every Claude Code session on the machine carries the difference.
+- **Headless runs read it too.** `claude -p "/context"` was run from a folder under the home folder. By default it listed
+  `~/.claude/CLAUDE.md` as the User memory file (273 tokens with the wrapper). With `--setting-sources project,local`, the
+  agent_compare harnesses' isolation, it listed the same file as a Project memory file: the home folder is an ancestor of
+  the run's folder, and its `.claude/CLAUDE.md` is that folder's project memory.
+  - So once the block is installed, every benchmark run on this machine from a folder under the home folder carries it. Its
+    tokens and behaviour then cannot be compared with runs from before D191 without saying so; `benchmarks/results` is
+    unchanged.
+  - `benchmarks/agent_compare/guard_run.py` starts `claude -p` without `--setting-sources` at all.
+- **Tests.** `tests/test_agents.py`: 96 passed and 1 skipped, the symbolic link, which this Windows account may not make.
+  22 of the 97 are new (75 on a7e0c65). With `test_more_agents` (two new cases), `test_setup`, `test_selffiles`,
+  `test_doctor` and `test_docs`: 203 passed, 2 skipped.
+  - The first version's tests failed on a7e0c65, except the guard that a project install writes no CLAUDE.md.
+  - The review's tests failed on f8e19d3, 11 of them. Two passed there, the dry run's and a later text's, which pin what
+    the review found right. The symbolic link's was skipped.
+  - Each changed file's ruff findings are the same as on a7e0c65.
+- **Not measured.**
+  - Whether the rule changes how often, or how well, Claude asks: no session was run with it.
+  - A symbolic link here: the test is skipped; the hard link was run.
+  - The rule in Codex or the other agents: not written for them.
+
+### 163.4 Review
+
+A fresh reviewer on the strong model read f8e19d3 and reproduced each finding but the rule text's in temporary folders.
+
+1. **High.** A read-only CLAUDE.md made every user-scope install fail. The replace failed, and the server entry was never
+   added. On uninstall, the manifest was dropped with the block still in the file.
+2. **Medium.** A linked CLAUDE.md became a file of its own; the hard link was reproduced, the symbolic link judged.
+3. **Medium.** A block with no record was overwritten, edited or emptied. A "no" did not survive a file synced between
+   machines.
+4. **Medium, judgement.** The text told an agent with nobody to answer to go on with exactly the steps that should be
+   confirmed, read a refused question as leave to go on, and let "small" and "vague" clash.
+5. **Low.** A project-scope install in the home folder dropped the user install's record.
+6. **Low.** A file of mixed line ends came back with an extra line end.
+7. **Low.** An empty `~/.claude` was left after an upgrade from before D191 and an uninstall.
+8. **Low.** The docs claimed what 1 to 3 and 6 broke. The install note named "every session" with `CLAUDE_CONFIG_DIR`
+   set.
+
+Each is fixed (decisions 3 to 6) and has a test. The reviewer's check that the machine's own pre-D191 manifest upgrades in
+order (skill, block, server entry) was kept as a test of its own. No second review of these fixes was run.
+
+A last check before the install found the fourth finding's first fix too wide: "with nobody to answer, hold back a step that
+cannot be undone or reaches outside" bound every scripted run on the machine, including one that asks for a push or a
+capped paid call. The bullet now holds only at a decision point, and only for the step the open choice decides. What the
+request asks for explicitly is still done.
+
+### 163.5 Not done
+
+- **`CLAUDE_CONFIG_DIR`.** The block goes to `~/.claude/CLAUDE.md`, as the user-scope skill goes to `~/.claude/skills`; a
+  moved config folder is not followed for either, and a warning names it.
+- **Doctor.** `verinoda doctor` does not report the block.
+- **Project scope.** It gets no rule (decision 2).
+- **Other agents.** No rule for Codex (`~/.codex/AGENTS.md`) or the agents of D140. Their install still replaces a linked
+  GEMINI.md or Copilot file; only uninstall checks for a link.
+- **Opting out from the start.** No flag: the rule comes with the user-scope install, and removing or emptying the block is
+  the way to say no.
+
+### 163.6 Tests
+
+`tests/test_agents.py`, in a temporary home:
+
+- **Appending and removal.** An existing CLAUDE.md, LF or CRLF, with or without a final line end, gets the block appended.
+  Nothing before the block changes, and the block uses the file's line ends. A second install leaves the tree unchanged,
+  and uninstall gives the file back byte for byte.
+- **No CLAUDE.md.** The install creates one holding only the block, and uninstall leaves the home as it was.
+- **Project scope.** A project install writes no CLAUDE.md, in the home or in the project. A project install in the home
+  folder is refused and writes nothing.
+- **An edited block** stays as it is: the install still writes the skill, warns, and is "unchanged" next time. Uninstall
+  leaves the edited block and removes the rest.
+- **A block this install did not write.** One that came with a file from another machine, edited or emptied, is left as it
+  is, is not recorded, and stays at uninstall.
+- **A removed block.** A block, or a whole file, removed after install is not added again. The notes say so, uninstall then
+  works, and a fresh install brings the block back.
+- **Files that are not written.** A CLAUDE.md that is not UTF-8 text, a read-only one, a hard link (and a symbolic link
+  where it can be made), and a write that fails: each stops only the rule. The server entry is still added, and no
+  temporary copy is left.
+- **Dry runs and versions.** A dry run shows the block and writes nothing. An install from before D191 gets the block, and
+  its uninstall leaves the home empty. A later text replaces an unedited block and keeps an edited one.
+- **`CLAUDE_CONFIG_DIR`** gets its warning.
+- **The text** says when to ask, names no refused question and no Verinoda command, and stays within its size.
+
+`test_claude_user_scope_without_cli_writes_nothing_to_claude_json` now finds the skill and the block in the manifest and no
+command. `tests/test_more_agents.py`: two files of mixed line ends come back byte for byte; its check that the block uses the
+file's line end now reads only what was added.
+
 ## Sources
 
 - **Retrieval:**

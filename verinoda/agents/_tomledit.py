@@ -93,7 +93,8 @@ def remove_block(text: str, m: re.Match, nl: str, *, added_eol: bool, added_sep:
     start, end = m.span()
     at_end = end == len(text)
     new = text[:start] + text[end:]
-    if at_end and added_sep and new.endswith(nl + nl):
+    # the separator is the one ``nl`` after a line end, which may be a bare "\n" in a file of mixed line ends (D191)
+    if at_end and added_sep and new.endswith(nl) and new[: -len(nl)].endswith("\n"):
         new = new[: -len(nl)]
     if at_end and added_eol and new.endswith(nl):
         new = new[: -len(nl)]

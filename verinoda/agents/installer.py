@@ -50,7 +50,7 @@ from verinoda.agents import _tomledit as te
 from verinoda.agents import more_agents as ma
 # NAME, the ownership marker, the skill folders and the manifest's place are shared with the rule that
 # keeps these files out of the project's own index (verinoda.selffiles, D68)
-from verinoda.selffiles import MANIFEST_DIR, MANIFEST_NAME, MARKER, MARKER_PREFIX, NAME, SKILL_DIRS
+from verinoda.selffiles import MANIFEST_DIR, MANIFEST_NAME, MARKER, MARKER_PREFIX, NAME, SKILL_DIRS, find_block
 
 AGENTS = ("claude", "codex")  # the agents that get the full skill
 # every agent install/uninstall knows: the others get an instructions file (verinoda.agents.more_agents)
@@ -60,6 +60,10 @@ MANIFEST_VERSION = 1
 TEMPLATES = Path(__file__).parent / "templates"
 CLI_PLACEHOLDER = "{{VERINODA_CLI}}"
 CLI_NOTE_PLACEHOLDER = "{{VERINODA_CLI_NOTE}}"
+# The question rule (D191): a marked block at the end of the person's ~/.claude/CLAUDE.md, which Claude Code loads in
+# every session of every project, so only a user-scope install writes it.
+ASKING_TEMPLATE = TEMPLATES / "claude_ASKING.md"
+CLAUDE_MD = (".claude", "CLAUDE.md")
 # Codex's default MCP start-up timeout is short; a Python server can be slower
 # to start on Windows (cold imports), so give it more room.
 CODEX_STARTUP_TIMEOUT = 30
@@ -143,7 +147,11 @@ def _write_bytes(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.verinoda-tmp")
     tmp.write_bytes(data)
-    os.replace(tmp, path)
+    try:
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)  # a read-only or locked target: no copy is left beside it
+        raise
 
 
 def _display(argv: list[str]) -> str:
@@ -493,6 +501,11 @@ def render_skill(agent: str, launcher: dict | None = None) -> bytes:
     return text.encode("utf-8")
 
 
+def render_asking() -> str:
+    """The question rule's text; the begin and end lines of its block carry the marker."""
+    return ASKING_TEMPLATE.read_text(encoding="utf-8").replace("\r\n", "\n")
+
+
 # -- manifest ---------------------------------------------------------------------------
 
 def _empty_manifest(t: Target) -> dict:
@@ -589,6 +602,70 @@ class Plan:
 
 def _plan_skill(plan: Plan, t: Target, prev_items: list[dict], launcher: dict | None = None) -> None:
     _plan_file(plan, t.root, t.skill, render_skill(t.agent, launcher), prev_items, "skill")
+
+
+def _linked(p: Path) -> bool:
+    """A symbolic or hard link: writing it (``_write_bytes`` replaces the file) would cut it from what it shares."""
+    try:
+        return p.is_symlink() or (p.exists() and p.stat().st_nlink > 1)
+    except OSError:
+        return False
+
+
+def _warned(plan: Plan, t: Target, p: Path, fn: Callable[[], dict | None], prev: dict | None):
+    """``fn`` with an OSError turned into a warning (the earlier record kept): the rule never stops the install."""
+    def run() -> dict | None:
+        try:
+            return fn()
+        except OSError as exc:
+            plan.warnings.append(f"{_loc(t, p)} could not be written ({exc}); the question rule was not added to it.")
+            return prev
+    return run
+
+
+def _plan_asking(plan: Plan, t: Target, prev_items: list[dict]) -> None:
+    """The question rule at the end of ``~/.claude/CLAUDE.md`` (D191). The file is the person's, so none of its
+    states stops the install and none is overwritten. A block that differs from what this install wrote (edited
+    here; copied from another machine, edited or emptied there: emptying it is the way to say no where the file is
+    shared) is left as it is; one removed after install is not added again (the manifest says it was there); a
+    link, a read-only file, a file that is not UTF-8 text and a write that fails are each a warning."""
+    p = t.root.joinpath(*CLAUDE_MD)
+    prev = _prev(prev_items, "md_block", _rel(t.root, p))
+    text, why = None, None
+    if _linked(p):
+        why = "is a link, which writing would replace with a file of its own"
+    elif p.exists() and not os.access(p, os.W_OK):
+        why = "is read-only"
+    elif p.exists():
+        try:
+            text = _read_text(p)[0]
+        except (OSError, UnicodeDecodeError) as exc:
+            why = f"is not readable UTF-8 text ({exc})"
+    if why:
+        plan.act("skip", "asking", p, why)
+        plan.warnings.append(f"{_loc(t, p)} {why}; the question rule was not added to it.")
+        if prev:
+            plan.keep(prev)
+        return
+    block = find_block(text) if text is not None else None
+    if prev and block is None:
+        plan.act("skip", "asking", p, "removed after install; not added again")
+        plan.notes.append(f"The question rule was removed from {_loc(t, p)} after install, so it is not added again "
+                          f"(`verinoda uninstall --agent claude --scope user`, then install, brings it back).")
+        plan.keep(prev)
+        return
+    if block is None:
+        plan.notes.append(f"The question rule (when to ask before acting) goes in a Verinoda block at the end of "
+                          f"{_loc(t, p)}, which Claude Code loads in every session; uninstall removes it.")
+    if not t.explicit_home and os.environ.get("CLAUDE_CONFIG_DIR"):
+        plan.warnings.append(f"CLAUDE_CONFIG_DIR is set ({os.environ['CLAUDE_CONFIG_DIR']}): Claude Code may read its "
+                             f"CLAUDE.md there, not {_loc(t, p)}, which has the question rule (the skill is under "
+                             "~/.claude too).")
+    n = len(plan.ops)
+    ma._plan_block(plan, t, p, render_asking(), prev_items, "asking", edited="keep")
+    for i in range(n, len(plan.ops)):
+        fn, item = plan.ops[i]
+        plan.ops[i] = (_warned(plan, t, p, fn, prev), item)
 
 
 def _plan_file(plan: Plan, root: Path, path: Path, data: bytes, prev_items: list[dict], role: str) -> None:
@@ -969,6 +1046,10 @@ def install(agent: str, scope: str, *, project_dir, home=None, with_mcp: bool = 
     res = _base("install", agent, scope, project_dir, home, dry_run)
     if not _check_args(res, agent, scope, project_dir, home):
         return res
+    if scope == "project" and _norm(project_dir) == _norm(home):
+        # the same files and manifest as a user-scope install, whose record (the question rule's: D191) it would drop
+        return _fail(res, f"{project_dir} is the home folder, where a user-scope install keeps its files and its "
+                          "manifest; install with --scope user")
     t = _target(agent, scope, project_dir, home, explicit_home)
     res.update(skill=str(t.skill) if t.skill else None,
                mcp_config=str(t.mcp_path) if with_mcp and t.mcp_path else None, manifest=str(t.manifest))
@@ -988,6 +1069,8 @@ def install(agent: str, scope: str, *, project_dir, home=None, with_mcp: bool = 
         ma.plan_rules(plan, t, prev_items, launcher)
     else:
         _plan_skill(plan, t, prev_items, launcher)
+        if agent == "claude" and scope == "user":
+            _plan_asking(plan, t, prev_items)
     cmd = None
     if with_mcp and t.mcp_kind:
         profile = mcp_profile(agent)
@@ -1012,7 +1095,7 @@ def install(agent: str, scope: str, *, project_dir, home=None, with_mcp: bool = 
         res["notes"].append("nothing was written.")
         return res
     res["notes"] = plan.notes + _usage_notes(t, with_mcp, cmd)
-    ops = {a["op"] for a in plan.actions} - {"manual"}
+    ops = {a["op"] for a in plan.actions} - {"manual", "keep", "skip"}  # keep, skip: the person's question rule
     res["result"] = ("unchanged" if ops <= {"unchanged"} else "updated" if "update" in ops else "installed")
     if dry_run:
         return res
@@ -1242,11 +1325,15 @@ def uninstall(agent: str, scope: str, *, project_dir, home=None, dry_run: bool =
                      else "uninstalled")
     if dry_run:
         return res
-    for fn, _ in plan.ops:
+    for fn, item in plan.ops:
         try:
             fn()
         except OSError as exc:
             plan.errors.append(f"removal failed: {exc}")
+            if item is not None:
+                kept.append(item)  # its record stays, for the next uninstall
+    # a folder two items share (~/.claude: the skill's, and CLAUDE.md's since D191) is empty only once both are gone
+    _rmdirs(sorted({Path(a["path"]) for a in plan.actions if a["what"] == "dir"}, key=lambda d: len(d.parts)))
     try:
         if kept:
             entry["items"] = kept

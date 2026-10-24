@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Since D186 the script deletes the upstream surface Verinoda removed, and the upstream tests of it, after the copy (`DELETED` in the script; `docs/UPSTREAM.md`, "Removed in D186"); the test files trimmed by hand must be trimmed again. Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D190)
+## Upgrading from 0.4.0 (D137-D191)
 
 ### D137: Trigram regex index
 
@@ -748,6 +748,26 @@ in `docs/DESIGN.md` section 162. No new command, no schema change, nothing to mi
   edits (not when the question asks about a change after it).
 - A path or file name is no longer searched for as a code term, nor counted as a word of the question's subject or of a
   why's topic.
+
+### D191: The question rule in ~/.claude/CLAUDE.md
+
+A user-scope Claude Code install appends a marked block to `~/.claude/CLAUDE.md` with a rule on when to ask before acting:
+at decision points, not about every prompt (`docs/DESIGN.md` section 163). Upgrading the package alone adds nothing: run
+`verinoda install --agent claude --scope user` (or `verinoda setup --scope user`) again. Then:
+
+- **Every Claude Code session on the machine reads it** (276 tokens measured), headless runs under the home folder too, also
+  with `--setting-sources project,local`: compare a benchmark's tokens and behaviour with runs from before it knowingly.
+- **A project-scope install** (`verinoda setup`'s default) does not write it, and `install --scope project` in the home
+  folder is now refused (it shared the user install's files and manifest).
+- **The rest of the file is not touched**, and `verinoda uninstall --agent claude --scope user` gives it back byte for byte
+  (a file the install created is deleted).
+- **Your text stays.** A block you edited, or one that came with the file from another machine, is left as it is, with a
+  warning, and the install goes on. A block you removed is not added again here (uninstall, then install, brings it back);
+  to say no on every machine that shares the file, empty the block and keep its two marker lines.
+- **Not written, with a warning:** a CLAUDE.md that is a link, read-only or not UTF-8 text, or that cannot be written; the
+  skill and the server entry are installed all the same.
+- **Shared block code:** removing a block (GEMINI.md and Copilot's file too) gives back a file of mixed line ends byte for
+  byte, and an uninstall that cannot remove a block keeps its record.
 
 ## Upgrading from 0.3.2 (D60-D136)
 

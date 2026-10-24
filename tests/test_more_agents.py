@@ -179,15 +179,16 @@ def test_shared_json_configs_keep_every_other_byte(env, nl):
     assert not (env.proj / ".cursor/rules").exists() and not (env.proj / ".github").exists()
 
 
-@pytest.mark.parametrize("text", ["# Project notes\n\nUse tabs.\n", "# Notes\r\nno final newline", "", "x\n\n"])
+@pytest.mark.parametrize("text", ["# Project notes\n\nUse tabs.\n", "# Notes\r\nno final newline", "", "x\n\n",
+                                  "# notes\r\nline two\nlast line\n", "a\r\nb\r\nc\n"])  # mixed line ends (D191)
 def test_markdown_block_is_appended_and_removed_byte_for_byte(env, text):
     original = text.encode("utf-8")
     (env.proj / "GEMINI.md").write_bytes(original)
     assert install(env, "gemini", with_mcp=False)["ok"]
     after = (env.proj / "GEMINI.md").read_bytes()
     assert after.startswith(original) and after.count(ma.BLOCK_BEGIN.encode()) == 1
-    if "\r\n" in text:
-        assert b"\n" not in after.replace(b"\r\n", b"")  # the file's own line ending is used
+    if "\r\n" in text:  # the file's own line ending is used for what is added
+        assert b"\n" not in after[len(original):].replace(b"\r\n", b"")
     assert install(env, "gemini", with_mcp=False)["result"] == "unchanged"
     assert uninstall(env, "gemini")["result"] == "uninstalled"
     assert (env.proj / "GEMINI.md").read_bytes() == original  # kept: the file was the user's
