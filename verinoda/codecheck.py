@@ -3593,8 +3593,12 @@ _ENVS: dict[tuple, tuple] = {}
 
 def _env_stamp(repo: Path, env: str | None) -> tuple:
     """What changes when a package is installed or removed: pyvenv.cfg, the site-packages directories and
-    their .pth files - of the project's own environments and of an explicit --env."""
+    their .pth files - of the project's own environments, of an explicit --env and, for auto, of the activated
+    one (D192: the MCP server lives as long as the session, which may install into it)."""
     roots = [Path(repo) / d for d in cenv.VENV_DIRS]
+    active = os.environ.get("VIRTUAL_ENV", "").strip() if env in (None, "auto") else ""
+    if active:
+        roots.append(Path(active))
     if env and env not in ("auto", "none"):
         p = cenv.explicit_env_path(Path(repo).resolve(), env)
         roots.append(cenv.venv_of(p) or p)
@@ -3611,7 +3615,7 @@ def _env_stamp(repo: Path, env: str | None) -> tuple:
             except OSError:
                 pths = []
             out += [cf.stat_key(site / e) for e in pths]
-    return (env, tuple(out))
+    return (env, active, tuple(out))
 
 
 def check_source(ck: Checker | None, rel: str, abs_path: Path, source: str, only: set[int] | None = None,

@@ -769,6 +769,15 @@ at decision points, not about every prompt (`docs/DESIGN.md` section 163). Upgra
 - **Shared block code:** removing a block (GEMINI.md and Copilot's file too) gives back a file of mixed line ends byte for
   byte, and an uninstall that cannot remove a block keeps its record.
 
+### D192: The activated environment for the name check
+
+`verinoda check`, `verinoda api` and MCP `code_check` / `api_members` with `env` `auto` (the default) now use the activated
+virtual environment (`VIRTUAL_ENV`) when the project holds no `.venv`, `venv` or `env`, under the rule of a project venv: its
+base interpreter must be a known Python installation outside the project, and Verinoda's own environment is never used. A
+long-lived MCP server reads it again after an install into it. Nothing to migrate. A check run from a shell or an agent
+session with a venv activated may now judge third-party names it reported `not_installed` before; deactivate the venv, or
+pass `--env none`, for the old answer. Section 164 of `docs/DESIGN.md`.
+
 ## Upgrading from 0.3.2 (D60-D136)
 
 ### D63: Running a project's own tests safely
