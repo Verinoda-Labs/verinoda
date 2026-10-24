@@ -6059,8 +6059,8 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--max-edges", type=int, default=100, help="edges checked at most (default 100)")
     c.add_argument("--timeout", type=float, metavar="SECONDS", help="seconds per question (default 30)")
 
-    env_help = ("auto (the project's .venv, venv or env; else the standard library only), a virtual environment "
-                "or interpreter path, or none (standard library only)")
+    env_help = ("auto (the project's .venv, venv or env; else the activated one, VIRTUAL_ENV; else the standard "
+                "library only), a virtual environment or interpreter path, or none (standard library only)")
     sp = add("check", cmd_check, "Python, Java and Kotlin: check that the modules, names, keyword arguments and "
                                  "dict keys Python code uses exist in the project's environment, and the classes, "
                                  "methods (Java: with their number of arguments), fields, properties and Mixin "

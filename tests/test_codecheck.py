@@ -602,6 +602,36 @@ def test_installed_plugin_stores_and_lock_mismatch_exit_reason(tmp_path):
     codecheck.reset_caches()
 
 
+def test_the_active_environment_is_used_when_the_project_holds_none(tmp_path, monkeypatch):
+    """D192: an agent's session ran the project's code in an activated environment beside the checkout (SWE-bench C1:
+    the instance's venv, VIRTUAL_ENV set), and code_check judged against the standard library only (89 of 250 sites
+    unknown in one session)."""
+    proj = tmp_path / "proj"
+    venv = _make_venv(tmp_path / "beside")
+    _write(proj, "app.py", "import fancylib\n\nfancylib.real_fn(1)\nfancylib.fake_fn(1)\n")
+    monkeypatch.setenv("VIRTUAL_ENV", str(venv))
+    res = codecheck.check(proj, ["app.py"], include_exists=True, use_cache=False)
+    by = {s["expr"]: s["verdict"] for s in res["sites"]}
+    assert res["env"]["kind"] == "active" and res["env"]["third_party_checked"]
+    assert by["fancylib.real_fn"] == "exists" and by["fancylib.fake_fn"] == "absent"
+    # the MCP server's rule is the same: the base interpreter is a known installation, outside the project
+    assert cenv.select_env(proj, "auto", trusted=False).kind == "active"
+    # Verinoda's own environment is not the project's
+    monkeypatch.setenv("VIRTUAL_ENV", sys.prefix)
+    assert cenv.select_env(proj, "auto").kind == "verinoda"
+    # a base interpreter inside the project is not started
+    _write(proj, "fakebase/python.exe" if os.name == "nt" else "fakebase/python3", "not an interpreter\n")
+    _write(tmp_path, "inside/pyvenv.cfg", f"home = {proj / 'fakebase'}\nversion = 3.12.0\n")
+    monkeypatch.setenv("VIRTUAL_ENV", str(tmp_path / "inside"))
+    env = cenv.select_env(proj, "auto")
+    assert env.kind == "verinoda" and "VIRTUAL_ENV" in env.note
+    # the project's own environment still comes first
+    monkeypatch.setenv("VIRTUAL_ENV", str(venv))
+    _make_venv(proj)
+    assert cenv.select_env(proj, "auto").kind == "project"
+    codecheck.reset_caches()
+
+
 def test_environment_choice_fallbacks(tmp_path):
     (tmp_path / ".venv").mkdir()
     (tmp_path / ".venv" / "pyvenv.cfg").write_text("home = /nowhere\n", encoding="utf-8")

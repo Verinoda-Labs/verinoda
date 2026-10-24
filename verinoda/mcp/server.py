@@ -3244,8 +3244,9 @@ def build_server(repo: Path | str | None, tools: AtlasTools | None = None, *, pr
     ) -> dict[str, Any]:
         return emit(t.resolve_call(path, line, target, target_path=target_path, target_line=target_line))
 
-    EnvArg = Annotated[OptStr, Field(description="'auto' (the project's .venv, venv or env), a venv outside the "
-                                                 "project, or 'none' (standard library only).")]
+    EnvArg = Annotated[OptStr, Field(description="'auto' (the project's .venv, venv or env, else the activated "
+                                                 "VIRTUAL_ENV), a venv outside the project, or 'none' (standard "
+                                                 "library only).")]
 
     @register("code_check")
     def code_check(

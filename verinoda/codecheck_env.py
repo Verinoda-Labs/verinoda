@@ -1,8 +1,9 @@
 """The Python environment a name check runs against (docs/DESIGN.md D32).
 
 :func:`select_env` picks the project's own environment - ``--env PATH``, else
-``<project>/.venv``, ``venv`` or ``env`` (a directory with ``pyvenv.cfg``) -
-and falls back to Verinoda's own interpreter for the standard library only.
+``<project>/.venv``, ``venv`` or ``env`` (a directory with ``pyvenv.cfg``), else
+the activated one (``VIRTUAL_ENV``, D192) - and falls back to Verinoda's own
+interpreter for the standard library only.
 Without a project environment, third-party names are never judged: they come
 back ``not_installed`` ("no project environment"), never ``absent``.
 
@@ -682,8 +683,33 @@ def _untrusted_refusal(repo: Path, p: Path, venv: Path | None, base: Path | None
     return None
 
 
+def _active_env(repo: Path, notes: list[str]) -> EnvInfo | None:
+    """The virtual environment this process runs in by activation (``VIRTUAL_ENV``), when the project holds none
+    (D192): an agent's session runs the project's code there (SWE-bench C1: the instance's venv beside the
+    checkout). The variable comes from whoever started the process, not from the checked files, and the rule of
+    ``auto`` still holds: the program started is the base interpreter, a known installation outside the project.
+    Verinoda's own environment is never the project's."""
+    raw = os.environ.get("VIRTUAL_ENV", "").strip()
+    venv = Path(raw) if raw else None
+    if venv is None or not (venv / "pyvenv.cfg").is_file() or _same_file(venv, sys.prefix):
+        return None
+    base = base_interpreter(venv)
+    how = known_interpreter(base) if base is not None and not _real_under(base, repo) else None
+    if base is None or how is None:
+        notes.append(f"the active environment {venv} (VIRTUAL_ENV) was not used: its base interpreter "
+                     f"{base or '(none that exists)'} is not a Python installation this system knows outside the "
+                     "project")
+        return None
+    try:
+        return _venv_env(venv, base, "active", repo, how)
+    except Exception as exc:  # noqa: BLE001
+        notes.append(f"the active environment {venv} (VIRTUAL_ENV) was not used ({type(exc).__name__}: {exc})")
+        return None
+
+
 def select_env(repo: Path, env: str | None = "auto", *, trusted: bool = True) -> EnvInfo:
-    """The environment to check against: ``auto`` (project venv, else stdlib only), a path, or ``none``.
+    """The environment to check against: ``auto`` (project venv, else the active one, else stdlib only), a path,
+    or ``none``.
     ``trusted=False`` (the MCP server): a path is used only when it is a virtual environment whose base
     interpreter passes the rule of ``auto``; nothing else it names is started (ValueError)."""
     repo = Path(repo).resolve()
@@ -740,8 +766,11 @@ def select_env(repo: Path, env: str | None = "auto", *, trusted: bool = True) ->
             return _venv_env(venv, base, "project", repo, how)
         except Exception as exc:  # noqa: BLE001
             notes.append(f"{d}/ was found but not used ({type(exc).__name__}: {exc})")
-    why = "; ".join(notes) or ("no project environment found (.venv, venv or env with pyvenv.cfg); "
-                               "pass --env PATH")
+    active = _active_env(repo, notes)
+    if active is not None:
+        return active
+    why = "; ".join(notes) or ("no project environment found (.venv, venv or env with pyvenv.cfg, or an active "
+                               "VIRTUAL_ENV); pass --env PATH")
     return own_env(why + ": third-party names are not checked")
 
 
