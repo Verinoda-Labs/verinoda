@@ -51,17 +51,28 @@ def main(argv: list[str]) -> int:
         share_copy(source / t["id"] / "none", dest, t["base_commit"])
         if arm == "none":
             return f"{key}: ready"
-        info = setup_verinoda(dest)
+        # a setup can fail for want of memory when several run beside sessions (sympy-23262: the indexer's exception
+        # had no message, as a MemoryError has none): once more, then the copy is reported and the others go on
+        for attempt in (1, 2):
+            try:
+                info = setup_verinoda(dest)
+                break
+            except RuntimeError as exc:
+                if attempt == 2:
+                    return f"{key}: FAILED {str(exc)[-200:]}"
         with lock:
             builds[key] = info
             builds_path.write_text(json.dumps(builds, indent=1), encoding="utf-8")
         return f"{key}: set up ({info['setup_seconds']} s)"
 
     with ThreadPoolExecutor(workers) as pool:
+        lines = []
         for line in pool.map(make, [(t, a) for t in tasks for a in arms]):
             print(line, flush=True)
-    print("made", len(tasks), "instances", flush=True)
-    return 0
+            lines.append(line)
+    failed = sum(": FAILED " in x for x in lines)
+    print("made", len(tasks), "instances", f"({failed} copies failed: run again)" if failed else "", flush=True)
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

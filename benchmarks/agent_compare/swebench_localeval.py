@@ -45,6 +45,16 @@ WINDOWS_BROKEN = {"pydata/xarray": ["cfgrib", "eccodes"]}
 # what pytest requires on Windows only (sys_platform == "win32"), so the image's Linux freeze lacks it: a pytest before 7.2
 # does not import without atomicwrites
 WINDOWS_DEPS = ("atomicwrites", "colorama")
+# The image's editable install of matplotlib before 3.7 leaves setuptools' develop-mode -nspkg.pth: at start-up it puts
+# mpl_toolkits in sys.modules from the checkout without running its __init__.py, which calls pkg_resources (deprecated,
+# and pytest.ini turns the warning into an error). A build here leaves no install (drop_install), so this line does the
+# same for the checkout on PYTHONPATH, the evaluator's or a session's, where that __init__.py exists (before 3.7).
+MPL_NSPKG = (
+    "import os, sys; exec(\"lib = os.environ.get('PYTHONPATH', '').split(os.pathsep)[0]\\n"
+    "if lib and os.path.isfile(os.path.join(lib, 'mpl_toolkits', '__init__.py')) and 'mpl_toolkits' not in sys.modules:\\n"
+    " import importlib.util, importlib.machinery\\n"
+    " sys.modules['mpl_toolkits'] = importlib.util.module_from_spec("
+    "importlib.machinery.PathFinder.find_spec('mpl_toolkits', [lib]))\")\n")
 REBUILD = re.compile(r"^diff --git a/(\S+\.(?:pyx|pxd|pxi|c|cpp|cc|h|hpp)|\S*setup\.py|\S*pyproject\.toml) ", re.MULTILINE)
 APPLY =[["git", "apply", "--verbose"], ["git", "apply", "--verbose", "--reject"],
          ["patch", "--batch", "--fuzz=5", "-p1", "-i"]]
@@ -272,9 +282,13 @@ def fix_env(env: Path, repo: str, spec: dict) -> None:
     info = json.loads(marker.read_text(encoding="utf-8"))
     remove = WINDOWS_BROKEN.get(repo) if "removed" not in info else None
     legacy = bool(spec.get("pip")) and any("--no-use-pep517" in x for x in spec["install"]) and "legacy_pip" not in info
-    if not remove and not legacy and "windows_deps" in info:
+    nspkg = repo == "matplotlib/matplotlib" and "nspkg" not in info
+    if not remove and not legacy and not nspkg and "windows_deps" in info:
         return
     py = str(venv_python(env))
+    if nspkg:
+        (env / "Lib" / "site-packages" / "verinoda-mpl_toolkits-nspkg.pth").write_text(MPL_NSPKG, encoding="utf-8")
+        info["nspkg"] = "mpl_toolkits"
     if legacy:
         options = subprocess.run([py, "-m", "pip", "install", "--help"], capture_output=True, text=True, check=False).stdout
         replace = "--no-use-pep517" not in options
