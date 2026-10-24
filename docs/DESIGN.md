@@ -19126,6 +19126,75 @@ wait for /verinoda-update". It checks three things:
 
 It fails on 0673474's `register.tsx`: an update ran at the turn's end (expected 0, received 1).
 
+## 166. One reading of the working tree per analyze (D194, 2026-10-24)
+
+### 166.1 Why
+
+The own-repository study's Part A guided sessions called `analyze` once each. One MCP `analyze` call on the study's
+clone was profiled (2026-10-24, cProfile; the profile is in the session's scratch folder, not in the repository). It read
+the working tree's state twice:
+
+1. once in `AtlasTools._graph_for_analysis`, to decide whether the kept graph could be handed over;
+2. once at the start of `analysis.analyze`, to decide whether to refresh.
+
+On the stale path it read it three times: `_stale_graph` read it too.
+
+Each reading walks and stats the whole project (`snapshot.current_state`: `list_files` and `hash_files`). With two
+readings that came to 18,334 `stat` calls, 1.2 s of the call's 6.25 s under the profiler.
+
+### 166.2 Decisions
+
+1. **The server reads the tree once per analyze** (`AtlasTools._tree_state`). It hands that reading to the graph choice,
+   to the stale-graph estimate, and to `analysis.analyze` (its new `state` parameter).
+2. **`analysis.analyze` reads it itself when no reading is handed in.** That covers the CLI and the benchmarks. It also
+   covers the server when its own reading failed: analyze then meets the same error and reports it as before.
+3. **`decision_check` uses the same helper.**
+
+### 166.3 Measured
+
+A timing script ran on 2026-10-24 from 23:32 to 23:35, with nothing else running on the machine (the script is in the
+session's scratch folder, not in the repository). It used a clean copy of the study's clone with a fresh index, so it
+measured the fresh path: two readings before, one after. The stale path (three readings before) was not timed.
+
+Each process answered the same six questions of the Part A profiles, each once and then again. Base (76cc774's
+`verinoda/`) and D194 alternated over 3 rounds. q1's first call is its process's cold one (import, graph load).
+
+| Question (kind) | First call, base | First call, D194 | Again, base | Again, D194 |
+|---|---|---|---|---|
+| q1 (when) | 3.22 s | 2.89 s | 1.19 s | 0.94 s |
+| q2 (when) | 1.55 s | 1.12 s | 1.26 s | 0.83 s |
+| q3 (impact) | 2.71 s | 2.38 s | 1.84 s | 1.48 s |
+| q4 (impact) | 1.70 s | 1.33 s | 1.69 s | 1.36 s |
+| q5 (when) | 1.22 s | 0.93 s | 1.17 s | 0.77 s |
+| q6 (references) | 1.47 s | 1.22 s | 1.30 s | 0.94 s |
+
+Medians of 3 runs each.
+
+- **D194 was faster in 35 of 36 paired calls.** The median difference was -0.33 s per call (range -1.78 to +2.12 s). The
+  one slower call took 3.81 s, against 1.36 and 1.11 s in the other two rounds.
+- **Totals:** first calls 36.9 s against 29.9 s (-19 %), repeated calls 25.9 s against 21.4 s (-17 %).
+- **The answers:** every one was "answered", and each question's answer had the same length in all six of its runs (three
+  base, three D194). Their text was not compared.
+
+### 166.4 Not done
+
+- **The store's commits:** one per stored row (24 commits of 6.6 ms in q1, 108 in another question). Batching them would
+  have two costs:
+  - it changes `store.py`, which is in `tq`'s import closure (a tq-audit);
+  - it holds SQLite's write lock through an analyze, and a background build waits on that lock.
+
+  Not done.
+- **A refresh's own update** reads the tree again inside `workflow`.
+- **The question's plan** (`question_plan.draft`: 1.6 s of q1 under the profiler, in `link_mention`) is the largest part
+  left. It is engine semantics and was not touched.
+
+### 166.5 Tests
+
+`tests/test_mcp.py::test_analyze_reads_the_working_tree_once_per_call` checks one reading per call, on an unchanged tree
+and on an edited one. The count is of `snapshot.current_state` as the server and `analysis` call it; workflow's own
+reading during a refresh is not counted. It fails on 76cc774's code: 2 readings on the unchanged tree, where it expects
+1.
+
 ## Sources
 
 - **Retrieval:**

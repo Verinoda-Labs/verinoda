@@ -1064,6 +1064,31 @@ def test_analyze_reuses_the_kept_graph_when_the_tree_is_unchanged(fresh_repo, mo
     assert t._graph_cache[1].G.number_of_nodes() == g.G.number_of_nodes()
 
 
+def test_analyze_reads_the_working_tree_once_per_call(fresh_repo, monkeypatch):
+    # the tree's state decides which graph the server hands over and whether analyze refreshes first: one walk and stat
+    # of the project serves both (D194; with two, one call on the own-repository study's clone made 18,334 stat calls).
+    # A refresh's own update reads the tree again inside workflow, which this does not count.
+    from verinoda import analysis as core_analysis
+    from verinoda import snapshot
+
+    t = AtlasTools(fresh_repo)
+    reads = []
+    real = snapshot.current_state
+
+    def counted(*a, **k):
+        reads.append(1)
+        return real(*a, **k)
+
+    monkeypatch.setattr(snapshot, "current_state", counted)
+    monkeypatch.setattr(core_analysis, "current_state", counted)
+    assert t.analyze("where is compute_total defined?")["status"] == "answered"
+    assert len(reads) == 1
+    _edit(fresh_repo / "orders" / "pricing.py", '"""Pricing rules."""', '"""Pricing rules (edited)."""')
+    reads.clear()
+    res = t.analyze("where is compute_total defined?")
+    assert res["status"] == "answered" and len(reads) == 1
+
+
 def test_analyze_with_a_host_plan(repo, tools):
     from verinoda import question_plan as qp
 

@@ -882,17 +882,15 @@ class AtlasTools:
             self._lex_cache = None
             self._query_memo.clear()
 
-    def _stale_graph(self, st):
+    def _stale_graph(self, st, state):
         """The kept (or loaded) graph for an analysis that will not refresh the index first: None when a
-        refresh is expected (analyze then loads the new graph itself)."""
+        refresh is expected (analyze then loads the new graph itself). ``state``: ``_tree_state``'s."""
         from verinoda import analysis
-        from verinoda.snapshot import current_state
 
         snap = st.latest_snapshot()
-        if snap is None or not graph_path(self.repo).exists():
+        if snap is None or state is None or not graph_path(self.repo).exists():
             return None
         try:
-            state = current_state(self.repo, store=st)
             est, changed, rebuild = analysis._refresh_estimate(self.repo, st, snap, state, g=self._graph())
         except Exception:  # noqa: BLE001 - let analyze decide
             return None
@@ -933,21 +931,26 @@ class AtlasTools:
         except Exception as exc:  # noqa: BLE001 - a failed check is said, never taken for "fresh"
             return {"checked": False, "why": f"{type(exc).__name__}: {exc}"[:200], "count": 0, "files": []}
 
-    def _graph_for_analysis(self, st):
-        """The kept graph when it describes the current working tree, else None.
+    def _tree_state(self, st) -> dict | None:
+        """The working tree's state (``snapshot.current_state``: a walk and stat of the project), or None when it
+        cannot be read; analyze then reads it itself and reports why. One reading serves an analyze call whole: the
+        graph handed over and analyze's own refresh (D194)."""
+        from verinoda.snapshot import current_state
+
+        try:
+            return current_state(self.repo, store=st)
+        except Exception:  # noqa: BLE001 - let analyze decide and report
+            return None
+
+    def _graph_for_analysis(self, st, state):
+        """The kept graph when it describes the working tree ``state`` (``_tree_state``), else None.
 
         ``analyze`` re-indexes first when the tree changed since the last
         snapshot and must then load the new graph itself, so the kept one is
         only handed over when no refresh will happen.
         """
-        from verinoda.snapshot import current_state
-
         snap = st.latest_snapshot()
-        if snap is None:
-            return None
-        try:
-            state = current_state(self.repo, store=st)
-        except Exception:  # noqa: BLE001 - let analyze decide and report
+        if snap is None or state is None:
             return None
         return self._graph() if state.get("tree_hash") == snap.get("tree_hash") else None
 
@@ -1616,10 +1619,11 @@ class AtlasTools:
                                 tool_calls=_clamp(budget_calls, 1, 200, "budget_calls"),
                                 context_tokens=6000)  # same default as `verinoda analyze`
             with self._store() as st:
-                g = self._graph_for_analysis(st)
+                state = self._tree_state(st)
+                g = self._graph_for_analysis(st, state)
                 res = analysis.analyze(st, self.repo, q, plan=plan, budget=b, run_tests=bool(run_tests),
-                                       challenge=True, graph=g if g is not None else self._stale_graph(st),
-                                       observe=bool(observe), intent=want)
+                                       challenge=True, graph=g if g is not None else self._stale_graph(st, state),
+                                       observe=bool(observe), intent=want, state=state)
             ref = res.get("index_refresh") or {}
             if ref.get("skipped") and not ref.get("busy") and ref.get("stale_count"):
                 # too slow to run inside the answer: refresh in the background for the next question
@@ -2108,7 +2112,7 @@ class AtlasTools:
             if any(d.enforced and g.get("kind") in dm.EDGE_KINDS and g.get("status") == "accepted"
                    for d in recs for g in d.guards):
                 with self._store() as st:
-                    graph = self._graph_for_analysis(st)
+                    graph = self._graph_for_analysis(st, self._tree_state(st))
                     if graph is None and refresh:
                         from verinoda import buildlock, workflow
 

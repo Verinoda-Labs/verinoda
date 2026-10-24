@@ -3483,14 +3483,17 @@ def graph_path_exists(repo: Path) -> bool:
 @one_look()  # each (root, path) is resolved once per analysis
 def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budget | None = None,
             run_tests: bool = False, challenge: bool = True, max_claims: int = 12, graph=None,
-            observe: bool = False, refresh: str = "auto", intent: str | None = None) -> dict:
+            observe: bool = False, refresh: str = "auto", intent: str | None = None,
+            state: dict | None = None) -> dict:
     """Answer ``question`` (or ``plan``: a dict, JSON text or a plan file) with claims and unknowns.
 
     ``refresh``: ``auto`` refreshes a stale index first unless that would be slow (then the answer
     uses the previous index and says which files are stale), ``inline`` always refreshes, ``skip``
     never does. ``intent``: what the host read the question as (a key of ``question_plan.DEFAULT_DONE``),
     weighed against the rule reading (:func:`question_plan.host_intent`); the result's ``intent_check``
-    says whether it was used. Not with ``plan``, whose sub-questions carry their own intents."""
+    says whether it was used. Not with ``plan``, whose sub-questions carry their own intents. ``state``:
+    the working tree's ``current_state`` when the caller has just read it (the MCP server does, to choose
+    the graph it hands over: D194); read here otherwise."""
     from verinoda import critique, workflow
 
     if intent is not None and intent not in qp.INTENTS:
@@ -3524,7 +3527,8 @@ def analyze(store: Store, repo: Path, question: str, *, plan=None, budget: Budge
     #    longer than REFRESH_INLINE_SECONDS, or many files changed) or that another build is running
     #    is not waited for: the answer comes from the previous index and says which files are stale.
     snap = store.latest_snapshot()
-    state = current_state(repo, store=store)  # stat-cached hashes; passed once to critique
+    if state is None:
+        state = current_state(repo, store=store)  # stat-cached hashes; passed once to critique
     extra_unc: list[str] = []
     refresh_info: dict | None = None
     stale_all: set[str] = set()

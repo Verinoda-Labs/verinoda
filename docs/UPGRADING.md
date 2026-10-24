@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Since D186 the script deletes the upstream surface Verinoda removed, and the upstream tests of it, after the copy (`DELETED` in the script; `docs/UPSTREAM.md`, "Removed in D186"); the test files trimmed by hand must be trimmed again. Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D193)
+## Upgrading from 0.4.0 (D137-D194)
 
 ### D137: Trigram regex index
 
@@ -793,6 +793,11 @@ A pipeline may have run scripted sessions one after another on one checkout and 
 between them. Its next `analyze` now refreshes first. It answers from the old index instead, and says so, in a project of
 300 files or more when more than 200 files changed or the rebuild is estimated at over 15 s; it then refreshes in the
 background for the next question. Section 165 of `docs/DESIGN.md`.
+
+### D194: One reading of the working tree per analyze
+
+Nothing to do. `analysis.analyze` takes an optional `state` (the working tree's `snapshot.current_state`); the MCP server
+passes the reading it made to choose the graph. Section 166 of `docs/DESIGN.md`.
 
 ## Upgrading from 0.3.2 (D60-D136)
 
