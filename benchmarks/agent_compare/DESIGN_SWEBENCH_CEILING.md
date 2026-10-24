@@ -148,6 +148,35 @@ determine it).
   each). The compiled instances run after the environment check of their sessions (`mpl_toolkits` above was found
   there, after the plain arm's first non-compiled sessions and before any matplotlib session).
 
+## Amendment 4 (2026-10-24, during C1's first run, before any session of the conditions it adds)
+
+- What C1's first sessions show (local calibrated grades, 39 plain-arm and 10 Verinoda-arm sessions): every unresolved one
+  misses a FAIL_TO_PASS test, and only two also break an existing test. In django-14730 both arms wrote the same patch,
+  character for character, and it fails on one word of the warning the hidden test demands ("i.e." where the test has
+  "e.g."). In the Verinoda arm, Verinoda's part is one `analyze` and one `code_check` per session. What is left to move the
+  number: the model, more attempts, and information the benchmark withholds.
+- C1's first run (`c1-s1`) runs the code of commit d610991 of the study's branch (Verinoda's engine and the mod as in
+  a7e0c65). Every later run below uses the same Verinoda.
+- C2. One defect is seen in C1's transcripts so far: `code_check` checked against Verinoda's interpreter, standard library
+  only, in every Verinoda-arm session, because it ignored the activated environment (`VIRTUAL_ENV`). It is fixed in the
+  product (docs/DESIGN.md D192). On the copy where it was seen, the check with the fix gives the same verdicts (250 sites,
+  89 unknown, 0 absent). The study keeps the frozen Verinoda, so no result is credited to the fix. A C2 run is added (by a
+  new amendment) only if a transcript shows a defect that changed an outcome.
+- C4, the model. Both arms, all 100 dev instances, one session each, C1's environment and prompt, with Opus 5.5 and with
+  Fable 5.1 in place of Sonnet 5.5. A session's spending cap scales with the model's price (Sonnet 3, Opus 6, Fable 15
+  dollars; the turn cap stays 100). The model with the higher resolved count summed over both arms (local, calibrated)
+  is used for C3 and the held-out run; a tie goes to the cheaper one. A lift both arms share is the model's, not
+  Verinoda's.
+- C3. k = 3 sessions per instance and arm with the chosen model (its C4 session is the first). The selector is
+  `swebench_select.py` (amendment 2). pass@3 by the hidden tests is reported as a diagnostic only.
+- Outside the benchmark's rules (labelled, never reported as a SWE-bench result or as Verinoda's score). On the dev
+  instances that no C3 attempt resolves in either arm: one session per arm with the issue's hints (`hints_text`: the
+  issue's comments before the fix) added to the prompt. On those still unresolved: one session per arm with the test patch
+  applied to the copy and the FAIL_TO_PASS tests named in the prompt. They show what the remaining instances need.
+- The held-out run: the configuration fixed after C3 (model, k = 3, the selector), both arms, on instances 101-200, after
+  their environments, builds and gold validation (env_only) are made the same way as for the dev set.
+- C0's second repeat is run last, if at all: C3's repeats of C1 give that condition's noise floor.
+
 ## Limits fixed now
 
 The model may have seen SWE-bench fixes in training (both arms share it). The dev set is no longer a fair test once tuned on;
