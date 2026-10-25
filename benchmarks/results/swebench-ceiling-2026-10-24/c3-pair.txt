@@ -1,0 +1,3 @@
+C3 selected, guided - plain: n 99: 82 vs 86 (discordant 2/6), difference +0.040 [-0.010, +0.101], McNemar p 0.289
+  guided only: ['django__django-11564', 'django__django-13158', 'django__django-16816', 'pydata__xarray-3364', 'scikit-learn__scikit-learn-10949', 'sphinx-doc__sphinx-8282']
+  plain only: ['sympy__sympy-13146', 'sympy__sympy-16281']

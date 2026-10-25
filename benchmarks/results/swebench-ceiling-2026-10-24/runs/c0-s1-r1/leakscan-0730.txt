@@ -1,0 +1,2 @@
+2 sessions, 0 transcripts not found, 1 tool calls flagged, 1 sessions with a flag
+('sympy__sympy-18087', 'verinoda_guided', 'Bash', '{"command": "pip download mpmath 2>&1 | tail -1; python -c \\"import sys;print(sys.version)\\"; find / -name \\"mpmath*\\" -maxdepth 6 2>/dev/null | head"}', [])

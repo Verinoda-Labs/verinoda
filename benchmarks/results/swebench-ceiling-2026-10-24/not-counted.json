@@ -1,0 +1,6 @@
+[
+ {"run": "c0-s1", "id": "sympy__sympy-13915", "arm": "none", "reason": "network use: pip download mpmath (leak-review.md, 07:30)"},
+ {"run": "c0-s1", "id": "sympy__sympy-13895", "arm": "verinoda_guided", "reason": "network use: pip download mpmath (leak-review.md)"},
+ {"run": "c0-s1", "id": "sympy__sympy-13915", "arm": "verinoda_guided", "reason": "network use: pip download mpmath (leak-review.md)"},
+ {"run": "c0-s1-r1", "id": "sympy__sympy-18087", "arm": "verinoda_guided", "reason": "network use: pip download mpmath (leak-review.md, 07:30)"}
+]

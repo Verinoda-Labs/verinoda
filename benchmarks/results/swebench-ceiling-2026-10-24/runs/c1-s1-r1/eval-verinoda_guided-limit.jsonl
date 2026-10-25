@@ -1,0 +1,3 @@
+{"instance_id": "sympy__sympy-15678", "patch_applied": true, "apply": "git apply --verbose", "test_patch_applied": true, "exit": 0, "resolved": true, "resolved_calibrated": true, "f2p_failed": [], "p2p_failed": [], "env_broken": [], "seconds": 8.9}
+{"instance_id": "sympy__sympy-14317", "patch_applied": false, "apply": "empty patch", "resolved": false, "seconds": 0.1}
+{"instance_id": "django__django-13028", "patch_applied": false, "apply": "empty patch", "resolved": false, "seconds": 0.5}

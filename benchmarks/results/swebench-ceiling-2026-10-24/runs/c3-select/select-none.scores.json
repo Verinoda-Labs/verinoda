@@ -1,0 +1,3728 @@
+[
+ {
+  "instance_id": "astropy__astropy-14182",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "astropy__astropy-14182--none/repro.py",
+     "astropy__astropy-14182--none/repro.py",
+     "astropy__astropy-14182--none/repro.py"
+    ],
+    "agreement": 1.9151194696468985
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "astropy__astropy-14182--none/repro.py",
+     "astropy__astropy-14182--none/repro.py",
+     "astropy__astropy-14182--none/repro.py"
+    ],
+    "agreement": 1.850522667561071
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "astropy__astropy-14182--none/repro.py",
+     "astropy__astropy-14182--none/repro.py",
+     "astropy__astropy-14182--none/repro.py"
+    ],
+    "agreement": 1.1090536621704312
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11019",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11019--none/repro.py",
+     "django__django-11019--none/repro.py",
+     "django__django-11019--none/repro.py"
+    ],
+    "agreement": 0.8003288172977654
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11019--none/repro.py",
+     "django__django-11019--none/repro.py",
+     "django__django-11019--none/repro.py"
+    ],
+    "agreement": 0.7827431183842132
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11019--none/repro.py",
+     "django__django-11019--none/repro.py",
+     "django__django-11019--none/repro.py"
+    ],
+    "agreement": 0.38020693658079063
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11039",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11039--none/repro.py",
+     "django__django-11039--none/repro.py",
+     "django__django-11039--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11039--none/repro.py",
+     "django__django-11039--none/repro.py",
+     "django__django-11039--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11039--none/repro.py",
+     "django__django-11039--none/repro.py",
+     "django__django-11039--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11564",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11564--none/repro.py",
+     "django__django-11564--none/repro.py",
+     "django__django-11564--none/repro.py"
+    ],
+    "agreement": 1.282037960276782
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11564--none/repro.py",
+     "django__django-11564--none/repro.py"
+    ],
+    "agreement": 1.4895941674253748
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11564--none/repro.py",
+     "django__django-11564--none/repro.py"
+    ],
+    "agreement": 1.4750167159645962
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11620",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11620--none/repro.py",
+     "django__django-11620--none/repro.py",
+     "django__django-11620--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11620--none/repro.py",
+     "django__django-11620--none/repro.py",
+     "django__django-11620--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11620--none/repro.py",
+     "django__django-11620--none/repro.py",
+     "django__django-11620--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11630",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11630--none/repro.py",
+     "django__django-11630--none/repro.py",
+     "django__django-11630--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11630--none/repro.py",
+     "django__django-11630--none/repro.py",
+     "django__django-11630--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11630--none/repro.py",
+     "django__django-11630--none/repro.py",
+     "django__django-11630--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11815",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11815--none/repro.py",
+     "django__django-11815--none/repro.py",
+     "django__django-11815--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11815--none/repro.py",
+     "django__django-11815--none/repro.py",
+     "django__django-11815--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11815--none/repro.py",
+     "django__django-11815--none/repro.py",
+     "django__django-11815--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-12286",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-12286--none/repro.py",
+     "django__django-12286--none/repro.py",
+     "django__django-12286--none/repro.py"
+    ],
+    "agreement": 1.7132459970887919
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-12286--none/repro.py",
+     "django__django-12286--none/repro.py",
+     "django__django-12286--none/repro.py"
+    ],
+    "agreement": 1.7132459970887919
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-12286--none/repro.py",
+     "django__django-12286--none/repro.py",
+     "django__django-12286--none/repro.py"
+    ],
+    "agreement": 1.455604075691412
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-12856",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-12856--none/repro.py",
+     "django__django-12856--none/repro.py",
+     "django__django-12856--none/repro.py"
+    ],
+    "agreement": 1.1199538638985005
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-12856--none/repro.py",
+     "django__django-12856--none/repro.py",
+     "django__django-12856--none/repro.py"
+    ],
+    "agreement": 1.1199538638985005
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-12856--none/repro.py",
+     "django__django-12856--none/repro.py",
+     "django__django-12856--none/repro.py"
+    ],
+    "agreement": 0.7427912341407151
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-12983",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-12983--none/repro.py",
+     "django__django-12983--none/repro.py",
+     "django__django-12983--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-12983--none/repro.py",
+     "django__django-12983--none/repro.py",
+     "django__django-12983--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-12983--none/repro.py",
+     "django__django-12983--none/repro.py",
+     "django__django-12983--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13028",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13028--none/repro.py",
+     "django__django-13028--none/repro.py",
+     "django__django-13028--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13028--none/repro.py",
+     "django__django-13028--none/repro.py",
+     "django__django-13028--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13028--none/repro.py",
+     "django__django-13028--none/repro.py",
+     "django__django-13028--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13158",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13158--none/repro.py",
+     "django__django-13158--none/repro.py",
+     "django__django-13158--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13158--none/repro.py",
+     "django__django-13158--none/repro.py",
+     "django__django-13158--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13158--none/repro.py",
+     "django__django-13158--none/repro.py",
+     "django__django-13158--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13315",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13315--none/repro.py",
+     "django__django-13315--none/repro.py",
+     "django__django-13315--none/repro.py"
+    ],
+    "agreement": 1.7636632200886262
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13315--none/repro.py",
+     "django__django-13315--none/repro.py",
+     "django__django-13315--none/repro.py"
+    ],
+    "agreement": 1.7636632200886262
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13315--none/repro.py",
+     "django__django-13315--none/repro.py",
+     "django__django-13315--none/repro.py"
+    ],
+    "agreement": 1.7163958641063515
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13401",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13401--none/repro.py",
+     "django__django-13401--none/repro.py",
+     "django__django-13401--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13401--none/repro.py",
+     "django__django-13401--none/repro.py",
+     "django__django-13401--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13401--none/repro.py",
+     "django__django-13401--none/repro.py",
+     "django__django-13401--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13658",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 0,
+  "reproductions": 0,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13768",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13768--none/repro.py",
+     "django__django-13768--none/repro.py",
+     "django__django-13768--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13768--none/repro.py",
+     "django__django-13768--none/repro.py",
+     "django__django-13768--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13768--none/repro.py",
+     "django__django-13768--none/repro.py",
+     "django__django-13768--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13925",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [],
+    "agreement": 1.294820717131474
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [],
+    "agreement": 1.294820717131474
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [],
+    "agreement": 0.20717131474103587
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14016",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14016--none/repro.py",
+     "django__django-14016--none/repro.py",
+     "django__django-14016--none/repro.py"
+    ],
+    "agreement": 0.8078795684780722
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14016--none/repro.py",
+     "django__django-14016--none/repro.py",
+     "django__django-14016--none/repro.py"
+    ],
+    "agreement": 0.785694895415781
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14016--none/repro.py",
+     "django__django-14016--none/repro.py",
+     "django__django-14016--none/repro.py"
+    ],
+    "agreement": 0.1584177189365374
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14608",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14608--none/repro.py",
+     "django__django-14608--none/repro.py",
+     "django__django-14608--none/repro.py"
+    ],
+    "agreement": 1.7675409502560484
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14608--none/repro.py",
+     "django__django-14608--none/repro.py",
+     "django__django-14608--none/repro.py"
+    ],
+    "agreement": 1.7498085304254272
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14608--none/repro.py",
+     "django__django-14608--none/repro.py",
+     "django__django-14608--none/repro.py"
+    ],
+    "agreement": 1.6020105215937361
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14667",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14667--none/repro.py",
+     "django__django-14667--none/repro.py",
+     "django__django-14667--none/repro.py"
+    ],
+    "agreement": 1.4164118330258932
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14667--none/repro.py",
+     "django__django-14667--none/repro.py",
+     "django__django-14667--none/repro.py"
+    ],
+    "agreement": 1.3141755685324978
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14667--none/repro.py",
+     "django__django-14667--none/repro.py",
+     "django__django-14667--none/repro.py"
+    ],
+    "agreement": 0.7642276422764227
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14730",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14730--none/repro.py",
+     "django__django-14730--none/repro.py",
+     "django__django-14730--none/repro.py"
+    ],
+    "agreement": 1.8338081671415005
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14730--none/repro.py",
+     "django__django-14730--none/repro.py",
+     "django__django-14730--none/repro.py"
+    ],
+    "agreement": 1.8338081671415005
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14730--none/repro.py",
+     "django__django-14730--none/repro.py",
+     "django__django-14730--none/repro.py"
+    ],
+    "agreement": 1.6144349477682811
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14752",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14752--none/repro.py",
+     "django__django-14752--none/repro.py",
+     "django__django-14752--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14752--none/repro.py",
+     "django__django-14752--none/repro.py",
+     "django__django-14752--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14752--none/repro.py",
+     "django__django-14752--none/repro.py",
+     "django__django-14752--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14855",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14855--none/repro.py",
+     "django__django-14855--none/repro.py",
+     "django__django-14855--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14855--none/repro.py",
+     "django__django-14855--none/repro.py",
+     "django__django-14855--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14855--none/repro.py",
+     "django__django-14855--none/repro.py",
+     "django__django-14855--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14915",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14915--none/repro.py",
+     "django__django-14915--none/repro.py",
+     "django__django-14915--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14915--none/repro.py",
+     "django__django-14915--none/repro.py",
+     "django__django-14915--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14915--none/repro.py",
+     "django__django-14915--none/repro.py",
+     "django__django-14915--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14997",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14997--none/repro.py",
+     "django__django-14997--none/repro.py",
+     "django__django-14997--none/repro.py"
+    ],
+    "agreement": 1.070745526798534
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14997--none/repro.py",
+     "django__django-14997--none/repro.py",
+     "django__django-14997--none/repro.py"
+    ],
+    "agreement": 1.0693401244318363
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14997--none/repro.py",
+     "django__django-14997--none/repro.py",
+     "django__django-14997--none/repro.py"
+    ],
+    "agreement": 0.4273758327009023
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14999",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14999--none/repro.py",
+     "django__django-14999--none/repro.py",
+     "django__django-14999--none/repro.py"
+    ],
+    "agreement": 1.6510344827586207
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14999--none/repro.py",
+     "django__django-14999--none/repro.py",
+     "django__django-14999--none/repro.py"
+    ],
+    "agreement": 1.6510344827586207
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14999--none/repro.py",
+     "django__django-14999--none/repro.py",
+     "django__django-14999--none/repro.py"
+    ],
+    "agreement": 1.3020689655172413
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-15789",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-15789--none/repro.py",
+     "django__django-15789--none/repro.py",
+     "django__django-15789--none/repro.py"
+    ],
+    "agreement": 1.9933521751055607
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-15789--none/repro.py",
+     "django__django-15789--none/repro.py",
+     "django__django-15789--none/repro.py"
+    ],
+    "agreement": 1.990218606754601
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-15789--none/repro.py",
+     "django__django-15789--none/repro.py",
+     "django__django-15789--none/repro.py"
+    ],
+    "agreement": 1.965530748139444
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-15790",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-15790--none/repro.py",
+     "django__django-15790--none/repro.py",
+     "django__django-15790--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-15790--none/repro.py",
+     "django__django-15790--none/repro.py",
+     "django__django-15790--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-15790--none/repro.py",
+     "django__django-15790--none/repro.py",
+     "django__django-15790--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-15819",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-15819--none/repro.py",
+     "django__django-15819--none/repro.py",
+     "django__django-15819--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-15819--none/repro.py",
+     "django__django-15819--none/repro.py",
+     "django__django-15819--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-15819--none/repro.py",
+     "django__django-15819--none/repro.py",
+     "django__django-15819--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-15902",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-15902--none/repro.py",
+     "django__django-15902--none/repro.py",
+     "django__django-15902--none/repro.py"
+    ],
+    "agreement": 1.1386919532080821
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-15902--none/repro.py",
+     "django__django-15902--none/repro.py",
+     "django__django-15902--none/repro.py"
+    ],
+    "agreement": 0.9539844891536473
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-15902--none/repro.py",
+     "django__django-15902--none/repro.py",
+     "django__django-15902--none/repro.py"
+    ],
+    "agreement": 0.9329971857410881
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16041",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16041--none/repro.py",
+     "django__django-16041--none/repro.py",
+     "django__django-16041--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16041--none/repro.py",
+     "django__django-16041--none/repro.py",
+     "django__django-16041--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16041--none/repro.py",
+     "django__django-16041--none/repro.py",
+     "django__django-16041--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16229",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16229--none/repro.py",
+     "django__django-16229--none/repro.py",
+     "django__django-16229--none/repro.py"
+    ],
+    "agreement": 1.1392904073587384
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16229--none/repro.py",
+     "django__django-16229--none/repro.py",
+     "django__django-16229--none/repro.py"
+    ],
+    "agreement": 1.1392904073587384
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16229--none/repro.py",
+     "django__django-16229--none/repro.py",
+     "django__django-16229--none/repro.py"
+    ],
+    "agreement": 0.35216819973718794
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16255",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16255--none/repro.py",
+     "django__django-16255--none/repro.py",
+     "django__django-16255--none/repro.py"
+    ],
+    "agreement": 1.2302158273381294
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16255--none/repro.py",
+     "django__django-16255--none/repro.py",
+     "django__django-16255--none/repro.py"
+    ],
+    "agreement": 1.2302158273381294
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16255--none/repro.py",
+     "django__django-16255--none/repro.py",
+     "django__django-16255--none/repro.py"
+    ],
+    "agreement": 0.60431654676259
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16379",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16379--none/repro.py",
+     "django__django-16379--none/repro.py",
+     "django__django-16379--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16379--none/repro.py",
+     "django__django-16379--none/repro.py",
+     "django__django-16379--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16379--none/repro.py",
+     "django__django-16379--none/repro.py",
+     "django__django-16379--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16816",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16816--none/repro.py",
+     "django__django-16816--none/repro.py",
+     "django__django-16816--none/repro.py"
+    ],
+    "agreement": 0.07058823529411765
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16816--none/repro.py",
+     "django__django-16816--none/repro.py"
+    ],
+    "agreement": 1.0294117647058822
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16816--none/repro.py",
+     "django__django-16816--none/repro.py"
+    ],
+    "agreement": 1.0294117647058822
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16873",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16873--none/repro.py",
+     "django__django-16873--none/repro.py",
+     "django__django-16873--none/repro.py"
+    ],
+    "agreement": 1.5978998400540438
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16873--none/repro.py",
+     "django__django-16873--none/repro.py",
+     "django__django-16873--none/repro.py"
+    ],
+    "agreement": 1.5464318745822
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16873--none/repro.py",
+     "django__django-16873--none/repro.py",
+     "django__django-16873--none/repro.py"
+    ],
+    "agreement": 1.0150266224796196
+   }
+  ]
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-22835",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-22835--none/repro.py",
+     "matplotlib__matplotlib-22835--none/repro.py",
+     "matplotlib__matplotlib-22835--none/repro.py"
+    ],
+    "agreement": 0.852517048169222
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-22835--none/repro.py",
+     "matplotlib__matplotlib-22835--none/repro.py",
+     "matplotlib__matplotlib-22835--none/repro.py"
+    ],
+    "agreement": 0.8266289194258045
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-22835--none/repro.py",
+     "matplotlib__matplotlib-22835--none/repro.py",
+     "matplotlib__matplotlib-22835--none/repro.py"
+    ],
+    "agreement": 0.6173329158403785
+   }
+  ]
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-23964",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-23964--none/repro.py",
+     "matplotlib__matplotlib-23964--none/repro.py",
+     "matplotlib__matplotlib-23964--none/repro.py"
+    ],
+    "agreement": 1.900473933649289
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-23964--none/repro.py",
+     "matplotlib__matplotlib-23964--none/repro.py",
+     "matplotlib__matplotlib-23964--none/repro.py"
+    ],
+    "agreement": 1.900473933649289
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-23964--none/repro.py",
+     "matplotlib__matplotlib-23964--none/repro.py",
+     "matplotlib__matplotlib-23964--none/repro.py"
+    ],
+    "agreement": 1.838862559241706
+   }
+  ]
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-25442",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-25442--none/repro.py",
+     "matplotlib__matplotlib-25442--none/repro.py",
+     "matplotlib__matplotlib-25442--none/repro.py"
+    ],
+    "agreement": 0.896687861622862
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-25442--none/repro.py",
+     "matplotlib__matplotlib-25442--none/repro.py",
+     "matplotlib__matplotlib-25442--none/repro.py"
+    ],
+    "agreement": 0.7410899084215099
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-25442--none/repro.py",
+     "matplotlib__matplotlib-25442--none/repro.py",
+     "matplotlib__matplotlib-25442--none/repro.py"
+    ],
+    "agreement": 0.3007609976040195
+   }
+  ]
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-26020",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-26020--none/repro.py",
+     "matplotlib__matplotlib-26020--none/repro.py",
+     "matplotlib__matplotlib-26020--none/repro.py"
+    ],
+    "agreement": 1.8873145139013219
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-26020--none/repro.py",
+     "matplotlib__matplotlib-26020--none/repro.py",
+     "matplotlib__matplotlib-26020--none/repro.py"
+    ],
+    "agreement": 1.6764576140425922
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-26020--none/repro.py",
+     "matplotlib__matplotlib-26020--none/repro.py",
+     "matplotlib__matplotlib-26020--none/repro.py"
+    ],
+    "agreement": 1.6613942499463041
+   }
+  ]
+ },
+ {
+  "instance_id": "mwaskom__seaborn-2848",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-2848--none/repro.py",
+     "mwaskom__seaborn-2848--none/repro.py",
+     "mwaskom__seaborn-2848--none/repro.py"
+    ],
+    "agreement": 1.2239194279512227
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-2848--none/repro.py",
+     "mwaskom__seaborn-2848--none/repro.py",
+     "mwaskom__seaborn-2848--none/repro.py"
+    ],
+    "agreement": 1.1586847553666777
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-2848--none/repro.py",
+     "mwaskom__seaborn-2848--none/repro.py",
+     "mwaskom__seaborn-2848--none/repro.py"
+    ],
+    "agreement": 0.7006392633566294
+   }
+  ]
+ },
+ {
+  "instance_id": "mwaskom__seaborn-3010",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-3010--none/repro.py",
+     "mwaskom__seaborn-3010--none/repro.py",
+     "mwaskom__seaborn-3010--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-3010--none/repro.py",
+     "mwaskom__seaborn-3010--none/repro.py",
+     "mwaskom__seaborn-3010--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-3010--none/repro.py",
+     "mwaskom__seaborn-3010--none/repro.py",
+     "mwaskom__seaborn-3010--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "psf__requests-1963",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "psf__requests-1963--none/repro.py",
+     "psf__requests-1963--none/repro.py",
+     "psf__requests-1963--none/repro.py"
+    ],
+    "agreement": 1.307651884246435
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "psf__requests-1963--none/repro.py",
+     "psf__requests-1963--none/repro.py",
+     "psf__requests-1963--none/repro.py"
+    ],
+    "agreement": 1.1776965669988926
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "psf__requests-1963--none/repro.py",
+     "psf__requests-1963--none/repro.py",
+     "psf__requests-1963--none/repro.py"
+    ],
+    "agreement": 1.123288650580876
+   }
+  ]
+ },
+ {
+  "instance_id": "psf__requests-2674",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "psf__requests-2674--none/repro.py",
+     "psf__requests-2674--none/repro.py",
+     "psf__requests-2674--none/repro.py"
+    ],
+    "agreement": 1.6251371603359823
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "psf__requests-2674--none/repro.py",
+     "psf__requests-2674--none/repro.py",
+     "psf__requests-2674--none/repro.py"
+    ],
+    "agreement": 1.360574524952678
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "psf__requests-2674--none/repro.py"
+    ],
+    "agreement": 1.4434436440515468
+   }
+  ]
+ },
+ {
+  "instance_id": "pydata__xarray-3364",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pydata__xarray-3364--none/repro.py",
+     "pydata__xarray-3364--none/repro.py",
+     "pydata__xarray-3364--none/repro.py"
+    ],
+    "agreement": 0.16262696538716945
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pydata__xarray-3364--none/repro.py",
+     "pydata__xarray-3364--none/repro.py"
+    ],
+    "agreement": 0.49482498267133856
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pydata__xarray-3364--none/repro.py",
+     "pydata__xarray-3364--none/repro.py"
+    ],
+    "agreement": 0.45904410914209587
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-11143",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11143--none/repro.py",
+     "pytest-dev__pytest-11143--none/repro.py",
+     "pytest-dev__pytest-11143--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11143--none/repro.py",
+     "pytest-dev__pytest-11143--none/repro.py",
+     "pytest-dev__pytest-11143--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11143--none/repro.py",
+     "pytest-dev__pytest-11143--none/repro.py",
+     "pytest-dev__pytest-11143--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-11148",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11148--none/repro.py",
+     "pytest-dev__pytest-11148--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11148--none/repro.py",
+     "pytest-dev__pytest-11148--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11148--none/repro.py",
+     "pytest-dev__pytest-11148--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-7373",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7373--none/repro.py",
+     "pytest-dev__pytest-7373--none/repro.py",
+     "pytest-dev__pytest-7373--none/repro.py"
+    ],
+    "agreement": 1.96
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7373--none/repro.py",
+     "pytest-dev__pytest-7373--none/repro.py",
+     "pytest-dev__pytest-7373--none/repro.py"
+    ],
+    "agreement": 1.96
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7373--none/repro.py",
+     "pytest-dev__pytest-7373--none/repro.py",
+     "pytest-dev__pytest-7373--none/repro.py"
+    ],
+    "agreement": 1.9176119402985075
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-7432",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7432--none/repro.py",
+     "pytest-dev__pytest-7432--none/repro.py",
+     "pytest-dev__pytest-7432--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7432--none/repro.py",
+     "pytest-dev__pytest-7432--none/repro.py",
+     "pytest-dev__pytest-7432--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7432--none/repro.py",
+     "pytest-dev__pytest-7432--none/repro.py",
+     "pytest-dev__pytest-7432--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-8906",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-8906--none/repro.py",
+     "pytest-dev__pytest-8906--none/repro.py",
+     "pytest-dev__pytest-8906--none/repro.py"
+    ],
+    "agreement": 0.8266985308269712
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-8906--none/repro.py",
+     "pytest-dev__pytest-8906--none/repro.py",
+     "pytest-dev__pytest-8906--none/repro.py"
+    ],
+    "agreement": 0.8261275613909795
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-8906--none/repro.py",
+     "pytest-dev__pytest-8906--none/repro.py",
+     "pytest-dev__pytest-8906--none/repro.py"
+    ],
+    "agreement": 0.20133908008159504
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-10949",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-10949--none/repro.py",
+     "scikit-learn__scikit-learn-10949--none/repro.py",
+     "scikit-learn__scikit-learn-10949--none/repro.py"
+    ],
+    "agreement": 1.4768140028288543
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-10949--none/repro.py",
+     "scikit-learn__scikit-learn-10949--none/repro.py",
+     "scikit-learn__scikit-learn-10949--none/repro.py"
+    ],
+    "agreement": 1.0786294416243654
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-10949--none/repro.py",
+     "scikit-learn__scikit-learn-10949--none/repro.py"
+    ],
+    "agreement": 1.5102204926801601
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-11281",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-11281--none/repro.py",
+     "scikit-learn__scikit-learn-11281--none/repro.py",
+     "scikit-learn__scikit-learn-11281--none/repro.py"
+    ],
+    "agreement": 1.7963392939368246
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-11281--none/repro.py",
+     "scikit-learn__scikit-learn-11281--none/repro.py",
+     "scikit-learn__scikit-learn-11281--none/repro.py"
+    ],
+    "agreement": 1.7271690527732353
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-11281--none/repro.py"
+    ],
+    "agreement": 1.6330177959786423
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-13142",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13142--none/repro.py",
+     "scikit-learn__scikit-learn-13142--none/repro.py",
+     "scikit-learn__scikit-learn-13142--none/repro.py"
+    ],
+    "agreement": 1.6312849162011172
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13142--none/repro.py",
+     "scikit-learn__scikit-learn-13142--none/repro.py",
+     "scikit-learn__scikit-learn-13142--none/repro.py"
+    ],
+    "agreement": 1.6312849162011172
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13142--none/repro.py",
+     "scikit-learn__scikit-learn-13142--none/repro.py",
+     "scikit-learn__scikit-learn-13142--none/repro.py"
+    ],
+    "agreement": 1.3966480446927374
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-13439",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13439--none/repro.py",
+     "scikit-learn__scikit-learn-13439--none/repro.py",
+     "scikit-learn__scikit-learn-13439--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13439--none/repro.py",
+     "scikit-learn__scikit-learn-13439--none/repro.py",
+     "scikit-learn__scikit-learn-13439--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13439--none/repro.py",
+     "scikit-learn__scikit-learn-13439--none/repro.py",
+     "scikit-learn__scikit-learn-13439--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-13584",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13584--none/repro.py",
+     "scikit-learn__scikit-learn-13584--none/repro.py",
+     "scikit-learn__scikit-learn-13584--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13584--none/repro.py",
+     "scikit-learn__scikit-learn-13584--none/repro.py",
+     "scikit-learn__scikit-learn-13584--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13584--none/repro.py",
+     "scikit-learn__scikit-learn-13584--none/repro.py",
+     "scikit-learn__scikit-learn-13584--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-14092",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14092--none/repro.py",
+     "scikit-learn__scikit-learn-14092--none/repro.py",
+     "scikit-learn__scikit-learn-14092--none/repro.py"
+    ],
+    "agreement": 1.9588289754236339
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14092--none/repro.py",
+     "scikit-learn__scikit-learn-14092--none/repro.py",
+     "scikit-learn__scikit-learn-14092--none/repro.py"
+    ],
+    "agreement": 1.3080947782299785
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14092--none/repro.py",
+     "scikit-learn__scikit-learn-14092--none/repro.py",
+     "scikit-learn__scikit-learn-14092--none/repro.py"
+    ],
+    "agreement": 0.86222442831713
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-14894",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14894--none/repro.py",
+     "scikit-learn__scikit-learn-14894--none/repro.py",
+     "scikit-learn__scikit-learn-14894--none/repro.py"
+    ],
+    "agreement": 1.549165120593692
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14894--none/repro.py",
+     "scikit-learn__scikit-learn-14894--none/repro.py",
+     "scikit-learn__scikit-learn-14894--none/repro.py"
+    ],
+    "agreement": 1.549165120593692
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14894--none/repro.py",
+     "scikit-learn__scikit-learn-14894--none/repro.py",
+     "scikit-learn__scikit-learn-14894--none/repro.py"
+    ],
+    "agreement": 1.098330241187384
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-14983",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14983--none/repro.py",
+     "scikit-learn__scikit-learn-14983--none/repro.py",
+     "scikit-learn__scikit-learn-14983--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14983--none/repro.py",
+     "scikit-learn__scikit-learn-14983--none/repro.py",
+     "scikit-learn__scikit-learn-14983--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14983--none/repro.py",
+     "scikit-learn__scikit-learn-14983--none/repro.py",
+     "scikit-learn__scikit-learn-14983--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-15512",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-15512--none/repro.py",
+     "scikit-learn__scikit-learn-15512--none/repro.py",
+     "scikit-learn__scikit-learn-15512--none/repro.py"
+    ],
+    "agreement": 1.7220630372492836
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-15512--none/repro.py",
+     "scikit-learn__scikit-learn-15512--none/repro.py",
+     "scikit-learn__scikit-learn-15512--none/repro.py"
+    ],
+    "agreement": 1.7220630372492836
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-15512--none/repro.py",
+     "scikit-learn__scikit-learn-15512--none/repro.py",
+     "scikit-learn__scikit-learn-15512--none/repro.py"
+    ],
+    "agreement": 1.4441260744985673
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-25500",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-25500--none/repro.py",
+     "scikit-learn__scikit-learn-25500--none/repro.py",
+     "scikit-learn__scikit-learn-25500--none/repro.py"
+    ],
+    "agreement": 1.4877800407331976
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-25500--none/repro.py",
+     "scikit-learn__scikit-learn-25500--none/repro.py",
+     "scikit-learn__scikit-learn-25500--none/repro.py"
+    ],
+    "agreement": 1.4877800407331976
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-25500--none/repro.py",
+     "scikit-learn__scikit-learn-25500--none/repro.py",
+     "scikit-learn__scikit-learn-25500--none/repro.py"
+    ],
+    "agreement": 0.1670061099796334
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-10451",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [],
+    "agreement": 1.2361124530142211
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [],
+    "agreement": 1.2357199832557229
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [],
+    "agreement": 0.9797748488586352
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-11445",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-11445--none/repro.py",
+     "sphinx-doc__sphinx-11445--none/repro.py",
+     "sphinx-doc__sphinx-11445--none/repro.py"
+    ],
+    "agreement": 1.9634146341463414
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-11445--none/repro.py",
+     "sphinx-doc__sphinx-11445--none/repro.py",
+     "sphinx-doc__sphinx-11445--none/repro.py"
+    ],
+    "agreement": 1.9634146341463414
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-11445--none/repro.py",
+     "sphinx-doc__sphinx-11445--none/repro.py",
+     "sphinx-doc__sphinx-11445--none/repro.py"
+    ],
+    "agreement": 1.9268292682926829
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-7686",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7686--none/repro.py"
+    ],
+    "agreement": 1.7433087778388163
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7686--none/repro.py"
+    ],
+    "agreement": 1.6555485268034733
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7686--none/repro.py"
+    ],
+    "agreement": 1.349257250177321
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-7738",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7738--none/repro.py",
+     "sphinx-doc__sphinx-7738--none/repro.py",
+     "sphinx-doc__sphinx-7738--none/repro.py"
+    ],
+    "agreement": 1.7020742843217365
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7738--none/repro.py",
+     "sphinx-doc__sphinx-7738--none/repro.py",
+     "sphinx-doc__sphinx-7738--none/repro.py"
+    ],
+    "agreement": 1.5767137032213991
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7738--none/repro.py",
+     "sphinx-doc__sphinx-7738--none/repro.py",
+     "sphinx-doc__sphinx-7738--none/repro.py"
+    ],
+    "agreement": 1.5259792166266988
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8282",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8282--none/repro.py",
+     "sphinx-doc__sphinx-8282--none/repro.py",
+     "sphinx-doc__sphinx-8282--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8282--none/repro.py",
+     "sphinx-doc__sphinx-8282--none/repro.py",
+     "sphinx-doc__sphinx-8282--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8282--none/repro.py",
+     "sphinx-doc__sphinx-8282--none/repro.py",
+     "sphinx-doc__sphinx-8282--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8627",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8627--none/repro.py",
+     "sphinx-doc__sphinx-8627--none/repro.py",
+     "sphinx-doc__sphinx-8627--none/repro.py"
+    ],
+    "agreement": 0.6997176708198214
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8627--none/repro.py",
+     "sphinx-doc__sphinx-8627--none/repro.py"
+    ],
+    "agreement": 0.784190271437413
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8627--none/repro.py",
+     "sphinx-doc__sphinx-8627--none/repro.py"
+    ],
+    "agreement": 0.4811473316878032
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8721",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8721--none/repro.py",
+     "sphinx-doc__sphinx-8721--none/repro.py",
+     "sphinx-doc__sphinx-8721--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8721--none/repro.py",
+     "sphinx-doc__sphinx-8721--none/repro.py",
+     "sphinx-doc__sphinx-8721--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8721--none/repro.py",
+     "sphinx-doc__sphinx-8721--none/repro.py",
+     "sphinx-doc__sphinx-8721--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8801",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 4,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-11870",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-11870--none/repro.py",
+     "sympy__sympy-11870--none/repro.py",
+     "sympy__sympy-11870--none/repro.py"
+    ],
+    "agreement": 0.5289852321476026
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-11870--none/repro.py",
+     "sympy__sympy-11870--none/repro.py",
+     "sympy__sympy-11870--none/repro.py"
+    ],
+    "agreement": 0.4898319380232413
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-11870--none/repro.py",
+     "sympy__sympy-11870--none/repro.py",
+     "sympy__sympy-11870--none/repro.py"
+    ],
+    "agreement": 0.40150505683105253
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13031",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13031--none/repro.py",
+     "sympy__sympy-13031--none/repro.py",
+     "sympy__sympy-13031--none/repro.py"
+    ],
+    "agreement": 1.9958762886597938
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13031--none/repro.py",
+     "sympy__sympy-13031--none/repro.py",
+     "sympy__sympy-13031--none/repro.py"
+    ],
+    "agreement": 1.9958762886597938
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13031--none/repro.py",
+     "sympy__sympy-13031--none/repro.py",
+     "sympy__sympy-13031--none/repro.py"
+    ],
+    "agreement": 1.9917525773195877
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13146",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13146--none/repro.py",
+     "sympy__sympy-13146--none/repro.py",
+     "sympy__sympy-13146--none/repro.py"
+    ],
+    "agreement": 0.4969440734483765
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13146--none/repro.py",
+     "sympy__sympy-13146--none/repro.py",
+     "sympy__sympy-13146--none/repro.py"
+    ],
+    "agreement": 0.36488134924633353
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13146--none/repro.py",
+     "sympy__sympy-13146--none/repro.py",
+     "sympy__sympy-13146--none/repro.py"
+    ],
+    "agreement": 0.2946327953671756
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13480",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13480--none/repro.py",
+     "sympy__sympy-13480--none/repro.py",
+     "sympy__sympy-13480--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13480--none/repro.py",
+     "sympy__sympy-13480--none/repro.py",
+     "sympy__sympy-13480--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13480--none/repro.py",
+     "sympy__sympy-13480--none/repro.py",
+     "sympy__sympy-13480--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13647",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13647--none/repro.py",
+     "sympy__sympy-13647--none/repro.py",
+     "sympy__sympy-13647--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13647--none/repro.py",
+     "sympy__sympy-13647--none/repro.py",
+     "sympy__sympy-13647--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13647--none/repro.py",
+     "sympy__sympy-13647--none/repro.py",
+     "sympy__sympy-13647--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13895",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 4,
+  "reproductions": 6,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13895--none/repro.py",
+     "sympy__sympy-13895--none/repro.py",
+     "sympy__sympy-13895--none/repro.py"
+    ],
+    "agreement": 1.700554528650647
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13895--none/repro.py",
+     "sympy__sympy-13895--none/repro.py",
+     "sympy__sympy-13895--none/repro.py"
+    ],
+    "agreement": 1.700554528650647
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13895--none/repro.py",
+     "sympy__sympy-13895--none/repro.py",
+     "sympy__sympy-13895--none/repro.py"
+    ],
+    "agreement": 0.066543438077634
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13915",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13915--none/repro.py",
+     "sympy__sympy-13915--none/repro.py",
+     "sympy__sympy-13915--none/repro.py"
+    ],
+    "agreement": 1.972972972972973
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13915--none/repro.py",
+     "sympy__sympy-13915--none/repro.py",
+     "sympy__sympy-13915--none/repro.py"
+    ],
+    "agreement": 1.972972972972973
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13915--none/repro.py",
+     "sympy__sympy-13915--none/repro.py",
+     "sympy__sympy-13915--none/repro.py"
+    ],
+    "agreement": 1.945945945945946
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13971",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13971--none/repro.py",
+     "sympy__sympy-13971--none/repro.py",
+     "sympy__sympy-13971--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13971--none/repro.py",
+     "sympy__sympy-13971--none/repro.py",
+     "sympy__sympy-13971--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13971--none/repro.py",
+     "sympy__sympy-13971--none/repro.py",
+     "sympy__sympy-13971--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-14308",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14308--none/repro.py",
+     "sympy__sympy-14308--none/repro.py",
+     "sympy__sympy-14308--none/repro.py"
+    ],
+    "agreement": 1.7980410074447564
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14308--none/repro.py",
+     "sympy__sympy-14308--none/repro.py",
+     "sympy__sympy-14308--none/repro.py"
+    ],
+    "agreement": 1.7733833150815714
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14308--none/repro.py",
+     "sympy__sympy-14308--none/repro.py",
+     "sympy__sympy-14308--none/repro.py"
+    ],
+    "agreement": 1.7585516791951021
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-14317",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14317--none/repro.py",
+     "sympy__sympy-14317--none/repro.py",
+     "sympy__sympy-14317--none/repro.py"
+    ],
+    "agreement": 0.9976062608163626
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14317--none/repro.py",
+     "sympy__sympy-14317--none/repro.py",
+     "sympy__sympy-14317--none/repro.py"
+    ],
+    "agreement": 0.9674545950708856
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14317--none/repro.py",
+     "sympy__sympy-14317--none/repro.py",
+     "sympy__sympy-14317--none/repro.py"
+    ],
+    "agreement": 0.34681709344041073
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-14396",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14396--none/repro.py",
+     "sympy__sympy-14396--none/repro.py",
+     "sympy__sympy-14396--none/repro.py"
+    ],
+    "agreement": 1.155751229573219
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14396--none/repro.py",
+     "sympy__sympy-14396--none/repro.py",
+     "sympy__sympy-14396--none/repro.py"
+    ],
+    "agreement": 1.1227093037867308
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14396--none/repro.py"
+    ],
+    "agreement": 1.4069324090121316
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-15345",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15345--none/repro.py",
+     "sympy__sympy-15345--none/repro.py",
+     "sympy__sympy-15345--none/repro.py"
+    ],
+    "agreement": 1.374331550802139
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15345--none/repro.py",
+     "sympy__sympy-15345--none/repro.py",
+     "sympy__sympy-15345--none/repro.py"
+    ],
+    "agreement": 1.374331550802139
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15345--none/repro.py",
+     "sympy__sympy-15345--none/repro.py",
+     "sympy__sympy-15345--none/repro.py"
+    ],
+    "agreement": 0.7486631016042781
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-15346",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15346--none/repro.py",
+     "sympy__sympy-15346--none/repro.py",
+     "sympy__sympy-15346--none/repro.py"
+    ],
+    "agreement": 1.8604651162790697
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15346--none/repro.py",
+     "sympy__sympy-15346--none/repro.py",
+     "sympy__sympy-15346--none/repro.py"
+    ],
+    "agreement": 1.8604651162790697
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15346--none/repro.py",
+     "sympy__sympy-15346--none/repro.py",
+     "sympy__sympy-15346--none/repro.py"
+    ],
+    "agreement": 1.7209302325581395
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-15678",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15678--none/repro.py",
+     "sympy__sympy-15678--none/repro.py",
+     "sympy__sympy-15678--none/repro.py"
+    ],
+    "agreement": 1.2903876533024856
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15678--none/repro.py",
+     "sympy__sympy-15678--none/repro.py",
+     "sympy__sympy-15678--none/repro.py"
+    ],
+    "agreement": 1.183259983783205
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15678--none/repro.py",
+     "sympy__sympy-15678--none/repro.py",
+     "sympy__sympy-15678--none/repro.py"
+    ],
+    "agreement": 0.9613019971556165
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-16281",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16281--none/repro.py",
+     "sympy__sympy-16281--none/repro.py",
+     "sympy__sympy-16281--none/repro.py"
+    ],
+    "agreement": 1.4623664443325493
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16281--none/repro.py",
+     "sympy__sympy-16281--none/repro.py",
+     "sympy__sympy-16281--none/repro.py"
+    ],
+    "agreement": 1.460586258786667
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16281--none/repro.py",
+     "sympy__sympy-16281--none/repro.py",
+     "sympy__sympy-16281--none/repro.py"
+    ],
+    "agreement": 1.0870853216192728
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-16988",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16988--none/repro.py",
+     "sympy__sympy-16988--none/repro.py",
+     "sympy__sympy-16988--none/repro.py"
+    ],
+    "agreement": 0.14371272122812162
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16988--none/repro.py",
+     "sympy__sympy-16988--none/repro.py"
+    ],
+    "agreement": 0.5512708409066347
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16988--none/repro.py",
+     "sympy__sympy-16988--none/repro.py"
+    ],
+    "agreement": 0.44076913061875467
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-17139",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17139--none/repro.py",
+     "sympy__sympy-17139--none/repro.py",
+     "sympy__sympy-17139--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17139--none/repro.py",
+     "sympy__sympy-17139--none/repro.py",
+     "sympy__sympy-17139--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17139--none/repro.py",
+     "sympy__sympy-17139--none/repro.py",
+     "sympy__sympy-17139--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-17630",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17630--none/repro.py",
+     "sympy__sympy-17630--none/repro.py",
+     "sympy__sympy-17630--none/repro.py"
+    ],
+    "agreement": 0.9471338970267159
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17630--none/repro.py",
+     "sympy__sympy-17630--none/repro.py",
+     "sympy__sympy-17630--none/repro.py"
+    ],
+    "agreement": 0.8565757233060032
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17630--none/repro.py",
+     "sympy__sympy-17630--none/repro.py",
+     "sympy__sympy-17630--none/repro.py"
+    ],
+    "agreement": 0.8158439900836995
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-18057",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18057--none/repro.py",
+     "sympy__sympy-18057--none/repro.py",
+     "sympy__sympy-18057--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18057--none/repro.py",
+     "sympy__sympy-18057--none/repro.py",
+     "sympy__sympy-18057--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18057--none/repro.py",
+     "sympy__sympy-18057--none/repro.py",
+     "sympy__sympy-18057--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-18087",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18087--none/repro.py",
+     "sympy__sympy-18087--none/repro.py",
+     "sympy__sympy-18087--none/repro.py"
+    ],
+    "agreement": 0.36774014296178426
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18087--none/repro.py",
+     "sympy__sympy-18087--none/repro.py",
+     "sympy__sympy-18087--none/repro.py"
+    ],
+    "agreement": 0.3230623908936557
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18087--none/repro.py",
+     "sympy__sympy-18087--none/repro.py",
+     "sympy__sympy-18087--none/repro.py"
+    ],
+    "agreement": 0.2758231913713154
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-18532",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18532--none/repro.py",
+     "sympy__sympy-18532--none/repro.py",
+     "sympy__sympy-18532--none/repro.py"
+    ],
+    "agreement": 1.8058608058608059
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18532--none/repro.py",
+     "sympy__sympy-18532--none/repro.py",
+     "sympy__sympy-18532--none/repro.py"
+    ],
+    "agreement": 1.8058608058608059
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18532--none/repro.py",
+     "sympy__sympy-18532--none/repro.py",
+     "sympy__sympy-18532--none/repro.py"
+    ],
+    "agreement": 1.6117216117216118
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-18621",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18621--none/repro.py",
+     "sympy__sympy-18621--none/repro.py",
+     "sympy__sympy-18621--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18621--none/repro.py",
+     "sympy__sympy-18621--none/repro.py",
+     "sympy__sympy-18621--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18621--none/repro.py",
+     "sympy__sympy-18621--none/repro.py",
+     "sympy__sympy-18621--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-19007",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19007--none/repro.py",
+     "sympy__sympy-19007--none/repro.py",
+     "sympy__sympy-19007--none/repro.py"
+    ],
+    "agreement": 0.8318442208765257
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19007--none/repro.py",
+     "sympy__sympy-19007--none/repro.py",
+     "sympy__sympy-19007--none/repro.py"
+    ],
+    "agreement": 0.8310616494377516
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19007--none/repro.py",
+     "sympy__sympy-19007--none/repro.py",
+     "sympy__sympy-19007--none/repro.py"
+    ],
+    "agreement": 0.16462367699214084
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-19254",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19254--none/repro.py",
+     "sympy__sympy-19254--none/repro.py",
+     "sympy__sympy-19254--none/repro.py"
+    ],
+    "agreement": 1.4957401450563292
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19254--none/repro.py",
+     "sympy__sympy-19254--none/repro.py",
+     "sympy__sympy-19254--none/repro.py"
+    ],
+    "agreement": 1.4632166285648665
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19254--none/repro.py",
+     "sympy__sympy-19254--none/repro.py",
+     "sympy__sympy-19254--none/repro.py"
+    ],
+    "agreement": 1.4273370989973244
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-19487",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19487--none/repro.py",
+     "sympy__sympy-19487--none/repro.py",
+     "sympy__sympy-19487--none/repro.py"
+    ],
+    "agreement": 1.7660038419604382
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19487--none/repro.py",
+     "sympy__sympy-19487--none/repro.py",
+     "sympy__sympy-19487--none/repro.py"
+    ],
+    "agreement": 1.7630753046375034
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19487--none/repro.py",
+     "sympy__sympy-19487--none/repro.py",
+     "sympy__sympy-19487--none/repro.py"
+    ],
+    "agreement": 1.5504695209294923
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-20049",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20049--none/repro.py",
+     "sympy__sympy-20049--none/repro.py",
+     "sympy__sympy-20049--none/repro.py"
+    ],
+    "agreement": 0.8328671151584627
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20049--none/repro.py",
+     "sympy__sympy-20049--none/repro.py",
+     "sympy__sympy-20049--none/repro.py"
+    ],
+    "agreement": 0.5647317978760202
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20049--none/repro.py",
+     "sympy__sympy-20049--none/repro.py",
+     "sympy__sympy-20049--none/repro.py"
+    ],
+    "agreement": 0.12956107836948694
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-20154",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20154--none/repro.py",
+     "sympy__sympy-20154--none/repro.py",
+     "sympy__sympy-20154--none/repro.py"
+    ],
+    "agreement": 1.972065606361829
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20154--none/repro.py",
+     "sympy__sympy-20154--none/repro.py",
+     "sympy__sympy-20154--none/repro.py"
+    ],
+    "agreement": 1.9671750590981474
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20154--none/repro.py",
+     "sympy__sympy-20154--none/repro.py",
+     "sympy__sympy-20154--none/repro.py"
+    ],
+    "agreement": 1.9611094527363184
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-20212",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20212--none/repro.py",
+     "sympy__sympy-20212--none/repro.py",
+     "sympy__sympy-20212--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20212--none/repro.py",
+     "sympy__sympy-20212--none/repro.py",
+     "sympy__sympy-20212--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20212--none/repro.py",
+     "sympy__sympy-20212--none/repro.py",
+     "sympy__sympy-20212--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-20639",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20639--none/repro.py",
+     "sympy__sympy-20639--none/repro.py",
+     "sympy__sympy-20639--none/repro.py"
+    ],
+    "agreement": 1.9217391304347826
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20639--none/repro.py",
+     "sympy__sympy-20639--none/repro.py",
+     "sympy__sympy-20639--none/repro.py"
+    ],
+    "agreement": 1.9217391304347826
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20639--none/repro.py",
+     "sympy__sympy-20639--none/repro.py",
+     "sympy__sympy-20639--none/repro.py"
+    ],
+    "agreement": 1.8434782608695652
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-21627",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 4,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21627--none/repro.py",
+     "sympy__sympy-21627--none/repro.py",
+     "sympy__sympy-21627--none/repro.py"
+    ],
+    "agreement": 1.309385783298827
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21627--none/repro.py",
+     "sympy__sympy-21627--none/repro.py",
+     "sympy__sympy-21627--none/repro.py"
+    ],
+    "agreement": 1.1230715287517532
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21627--none/repro.py",
+     "sympy__sympy-21627--none/repro.py",
+     "sympy__sympy-21627--none/repro.py"
+    ],
+    "agreement": 1.0163082437275985
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-21847",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21847--none/repro.py",
+     "sympy__sympy-21847--none/repro.py",
+     "sympy__sympy-21847--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21847--none/repro.py",
+     "sympy__sympy-21847--none/repro.py",
+     "sympy__sympy-21847--none/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21847--none/repro.py",
+     "sympy__sympy-21847--none/repro.py",
+     "sympy__sympy-21847--none/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-23262",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-23262--none/repro.py",
+     "sympy__sympy-23262--none/repro.py",
+     "sympy__sympy-23262--none/repro.py"
+    ],
+    "agreement": 1.7775175644028103
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-23262--none/repro.py",
+     "sympy__sympy-23262--none/repro.py",
+     "sympy__sympy-23262--none/repro.py"
+    ],
+    "agreement": 1.7695810564663024
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-23262--none/repro.py",
+     "sympy__sympy-23262--none/repro.py",
+     "sympy__sympy-23262--none/repro.py"
+    ],
+    "agreement": 1.5634920634920635
+   }
+  ]
+ }
+]

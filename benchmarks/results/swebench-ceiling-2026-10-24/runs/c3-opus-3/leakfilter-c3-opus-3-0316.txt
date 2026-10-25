@@ -1,0 +1,3 @@
+200 sessions, 0 transcripts not found, 31 suspicious tool calls
+('sympy__sympy-19487', 'verinoda_guided', 'Bash', '{"command": "cd C:/Users/ozcin/swebench-run/c1-s1/copies/sympy__sympy-19487/verinoda_guided; which python python3 py; ls /c/Windows/py.exe 2>&1", "description": "Locate Python interpreter"}', ['/c/Windows/py.exe'])
+left after the cleared kinds: 1

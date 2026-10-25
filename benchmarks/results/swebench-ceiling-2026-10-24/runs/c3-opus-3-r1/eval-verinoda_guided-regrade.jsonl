@@ -1,0 +1,1 @@
+{"instance_id": "sympy__sympy-17630", "patch_applied": true, "apply": "git apply --verbose", "test_patch_applied": true, "exit": 1, "resolved": false, "resolved_calibrated": false, "f2p_failed": ["test_zero_matrix_add"], "p2p_failed": [], "env_broken": [], "seconds": 3.7}

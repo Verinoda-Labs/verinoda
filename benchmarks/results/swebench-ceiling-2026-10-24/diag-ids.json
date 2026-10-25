@@ -1,0 +1,4 @@
+{
+ "diag-hints": ["sympy__sympy-11870", "sympy__sympy-13146", "sympy__sympy-14308"],
+ "diag-tests": ["sympy__sympy-14317", "sympy__sympy-16988", "sphinx-doc__sphinx-7686"]
+}

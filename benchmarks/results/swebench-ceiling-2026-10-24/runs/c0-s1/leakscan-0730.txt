@@ -1,0 +1,8 @@
+68 sessions, 0 transcripts not found, 7 tool calls flagged, 4 sessions with a flag
+('sympy__sympy-13915', 'none', 'Bash', '{"command": "cd C:/Users/ozcin/swebench-run/c0-s1/copies/sympy__sympy-13915/none; pip download mpmath 2>&1 | tail -1; pip list 2>/dev/null | grep -i -E \\"mpmath|sympy\\"; python --version"}', [])
+('sympy__sympy-13915', 'none', 'Bash', '{"command": "cd C:/Users/ozcin/swebench-run/c0-s1/copies/sympy__sympy-13915/none; git status --short; ls *.whl 2>/dev/null"}', [])
+('sympy__sympy-13915', 'none', 'Bash', '{"command": "cd C:/Users/ozcin/swebench-run/c0-s1/copies/sympy__sympy-13915/none; rm mpmath-1.4.1-py3-none-any.whl; git status --short"}', [])
+('sympy__sympy-13895', 'verinoda_guided', 'Bash', '{"command": "pip download mpmath 2>&1 | tail -1; find / -name \\"mpmath\\" -maxdepth 6 -type d 2>/dev/null | head"}', [])
+('sympy__sympy-13895', 'verinoda_guided', 'Bash', '{"command": "pkill -f \\"pip download\\" ; echo done"}', [])
+('sympy__sympy-18087', 'verinoda_guided', 'Bash', '{"command": "which py python3 python.exe; ls /c/Users/ozcin/AppData/Local/Programs/Python 2>&1 | head"}', ['/c/Users/ozcin/AppData/Local/Programs/Python'])
+('sympy__sympy-13915', 'verinoda_guided', 'Bash', '{"command": "pip download mpmath 2>&1 | tail -1; pip list 2>/dev/null | grep -i -E \\"mpmath|sympy\\"; find / -name \\"mpmath*\\" -maxdepth 6 2>/dev/null | head"}', [])

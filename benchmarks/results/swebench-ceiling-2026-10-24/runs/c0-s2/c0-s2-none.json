@@ -1,0 +1,62 @@
+{
+ "work": "C:/Users/ozcin/swebench-run/c0-s2",
+ "model": "claude-sonnet-5-5",
+ "plugin_dir": "C:/Users/ozcin/Desktop/vwt-ceiling/claude-mods/verinoda-live",
+ "mod_options": {
+  "auto": "nudge"
+ },
+ "verinoda_bin": [
+  "C:/Users/ozcin/Desktop/vwt-ceiling/.venv/Scripts"
+ ],
+ "drop_path": [
+  "C:/Users/ozcin/.local/bin"
+ ],
+ "arms": [
+  "none"
+ ],
+ "arm_workers": {
+  "none": 2,
+  "verinoda_guided": 2
+ },
+ "timeout_s": 2400,
+ "max_turns": 100,
+ "max_budget_usd": 3,
+ "tasks": "C:/Users/ozcin/swebench-data/d184-run/tasks.json",
+ "out": "C:/Users/ozcin/swebench-data/runs/c0-s2",
+ "only": [
+  "sphinx-doc__sphinx-7738",
+  "sympy__sympy-20049",
+  "django__django-14730",
+  "sympy__sympy-17630",
+  "sympy__sympy-21627",
+  "django__django-11019",
+  "django__django-11564",
+  "django__django-16229",
+  "sympy__sympy-13895",
+  "django__django-16816",
+  "sympy__sympy-19254",
+  "sympy__sympy-16281",
+  "sympy__sympy-11870",
+  "sympy__sympy-18087",
+  "sympy__sympy-13146",
+  "sphinx-doc__sphinx-8282",
+  "sympy__sympy-19007",
+  "scikit-learn__scikit-learn-25500",
+  "mwaskom__seaborn-2848",
+  "matplotlib__matplotlib-26020",
+  "matplotlib__matplotlib-22835",
+  "django__django-13768",
+  "sympy__sympy-13915",
+  "django__django-13158",
+  "sympy__sympy-14308",
+  "pydata__xarray-3364",
+  "astropy__astropy-14182",
+  "django__django-16379",
+  "django__django-15819",
+  "pytest-dev__pytest-8906",
+  "scikit-learn__scikit-learn-10949",
+  "sympy__sympy-20639",
+  "sphinx-doc__sphinx-7686",
+  "django__django-11630"
+ ]
+}

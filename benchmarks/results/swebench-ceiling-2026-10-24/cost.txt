@@ -1,0 +1,17 @@
+c0-s1            68 rows      7.49
+c0-s1-r1          2 rows      0.71
+c0-s2            34 rows      2.75
+c1-s1           200 rows     20.70
+c1-s1-r1         14 rows      1.04
+c3-opus-2       200 rows     46.44
+c3-opus-2-r1      5 rows      0.69
+c3-opus-3       200 rows     45.40
+c3-opus-3-r1      2 rows      0.43
+c4-fable        200 rows    129.58
+c4-fable-r1       5 rows      3.06
+c4-opus         200 rows     47.86
+c4-opus-r1       10 rows      2.06
+diag-hints        6 rows      2.48
+diag-tests        6 rows      1.64
+closed-book     299 replies    24.78
+total 337.12

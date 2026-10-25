@@ -1,0 +1,3 @@
+c3-opus-3: resolved by the plain arm and not by the guided arm: 0
+
+c3-opus-3 guided sessions: 100; sessions calling each tool: {'code_check': 98, 'analyze': 98}; analyze calls ended: {'partly_answered': 10, 'partly_answered (budget spent)': 1, 'answered': 50, 'unanswered': 24, 'unanswered (budget spent)': 12, 'answered (budget spent)': 1}
