@@ -1,7 +1,7 @@
 {
  "schema": "verinoda.tq_calibration/1",
  "written": "2026-10-25",
- "commit": "e7896290d3e6+changes",
+ "commit": "31eebcce4df9",
  "gold_files": {
   "tq_gold/held_out.json": "4860547c7c6ce26f0956c71882aa934eec3bc667b4accf1c73eb0202d60e589f",
   "tq_gold2/held_out.json": "c19578ede6befd35354ce8d43dfa6e1589d74e28e21c1e0afb1ee3bfd2f72031"
@@ -12,7 +12,7 @@
  },
  "score_sha": "c932e489945d742a70f2104024465bc2541a4ffae122d4407a9e6986a2b0260e",
  "engine": {
-  "sha": "6f03b73ebd903963827721d84c06ba2ec723fad00f0d539ceb0259331db12ba6",
+  "sha": "a2a5fe27f44f61339eec5da4338d3f906166f32a44a2052dc799f092d328564c",
   "roots": [
    "tq.py",
    "index.py"
