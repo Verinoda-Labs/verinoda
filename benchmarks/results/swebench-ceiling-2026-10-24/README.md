@@ -70,9 +70,12 @@ No legitimate single attempt gets there.
 
 **Repeated attempts also reached one instance without memory.** sympy-13146 was also unsolved by every leaderboard
 submission. Four Opus sessions of C3's later attempts resolved it, three of them in a file the upstream fix does not touch.
+One of the four rows passed only in the quiet regrade. Its patch is byte-identical to that run's plain-arm patch, which
+passed at the first grading.
 
 What is left takes memory of the fix or the information the benchmark withholds. Memory of the fix is contamination, not
-problem solving, and it is the reason OpenAI retired SWE-bench Verified on 2026-02-23.
+problem solving. Contamination is one of the reasons OpenAI gave for retiring SWE-bench Verified on 2026-02-23; flawed
+tests are another. That comes from secondary coverage: the page itself could not be read.
 
 ## Conditions and results
 
@@ -190,7 +193,14 @@ B: the hidden test demands behaviour neither the issue nor the code determines. 
 - **The patches:**
   - three of the four change `sympy/core/basic.py`, a file the upstream fix does not touch (recall 0.00);
   - the fourth changes `sympy/core/operations.py` as upstream does (recall 0.50).
-- **Not from memory:** these are fixes written from the code. Opus's closed-book recall for it is 0.00.
+- **Not from memory, for three of the four:** they change a file the upstream fix does not touch, and Opus's
+  closed-book recall for the instance is 0.00. The fourth writes half of the upstream fix's added lines.
+- **The grades:**
+  - Three rows were resolved at the first grading.
+  - c3-opus-2's Verinoda row first failed `test_evalf_bugs`, then passed in amendment 2's quiet regrade.
+  - That patch is byte-identical to the same run's plain-arm patch, which passed at the first grading.
+  - It is one of the regrade's 4 changed rows. The others are django-16379 twice (C1 plain, C3 attempt 3 plain) and
+    requests-1963 (C3 attempt 3, Verinoda's arm).
 - **Its hints sessions** resolved it in neither arm. By amendment 10, an instance a later session resolves leaves the lists,
   and its diagnostic sessions are reported apart.
 - Graded locally only, like every grade here.
