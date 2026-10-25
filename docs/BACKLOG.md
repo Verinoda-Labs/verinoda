@@ -219,8 +219,10 @@ product work after it left; none came from the survey.
 
 ## 26 - CI on Linux, macOS and Python 3.10 (2026-10-25)
 
-What CI's run on the 0.5.0 release's code (b4f71cf, run 40197425229 on Verinoda-Labs/verinoda) left. Windows passed
-every test on Python 3.12 and 3.13.
+What CI's runs on the 0.5.0 release's code (b4f71cf, run 40197425229, and the release commit d2bb181, run 40202197557,
+on Verinoda-Labs/verinoda) left. Windows passed every test on Python 3.12 and 3.13 in both. The two runs failed the same
+tests, except that `test_recorded_time` passed on macOS with Python 3.13 in the second; the Windows 3.10 job's crash is
+a stack overflow (`Windows fatal exception: stack overflow`) in both.
 
 | id | feature | what | seen in | done when |
 |---|---|---|---|---|
