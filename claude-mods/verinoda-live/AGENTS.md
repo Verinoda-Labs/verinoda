@@ -49,7 +49,7 @@ Run from the repository root.
 
 ```
 claude plugin validate claude-mods/verinoda-live        # ends with "Validation passed"
-claude plugin test claude-mods/verinoda-live            # 102 pass, 0 fail in 6 files (86 in 5 before D189)
+claude plugin test claude-mods/verinoda-live            # 103 pass, 0 fail in 6 files (86 in 5 before D189)
 npx --yes -p typescript tsc -p claude-mods/verinoda-live --noEmit   # exit 0 and no output (without --noEmit it writes .js files beside the sources)
 ```
 
@@ -185,6 +185,17 @@ and never calls them itself.
     are not a list`); a test hands the conversation itself (`$.session.compact({ instructions, messages } as never)`),
     and the hook beneath that answers for core must return at least one message. In a real session the hook fires on
     `/compact` in a `-p` run too (D189 checked it with `VERINODA_USAGE_LOG`); the auto-compact trigger was not exercised.
+
+18. **At the end of a scripted session Claude Code waits for a process the mod is still running.** It does not wait for a
+    loop that is sleeping or for a detached child (D193).
+    - **What the bench saw** (2026-10-24, a process snapshot every 0.25 s). The mod's turn-end `update --fast` ran until
+      3.76, 4.57 and 7.04 s after the last message. Each time the MCP server was gone within 0.3 s of its end, and
+      `claude.exe` within 0.6 s.
+    - **What did not hold the exit.** The graph watch, sleeping between its polls, and the detached build that `update
+      --fast` starts; the build ran on for about 4 s after the exit.
+    - **So:** a process a `background()` hook starts at a turn's end lengthens a scripted session by its whole run.
+    - **Not explained:** in Part B of the own-repository study, on a loaded machine, three guided sessions' servers ended
+      exactly 60.0 s after the last message. What held them was not established.
 
 ## What you cannot check, and must say so
 

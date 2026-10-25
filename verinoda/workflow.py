@@ -254,7 +254,8 @@ def _graph_affected(repo: Path, diff: dict, in_graph: set[str] | None = None) ->
     still rebuilds the whole graph (D68 measured it; not changed).
     An MCP config (``.mcp.json``) whose content, Verinoda's own server entry left out, is what the last
     graph build read does not count either: ``verinoda setup`` rewrites that entry whenever another
-    interpreter runs it, and the graph never has it (:mod:`verinoda.selffiles`, D68).
+    interpreter runs it, and the graph never has it (:mod:`verinoda.selffiles`, D68). Nor does one that left
+    the listing (ignored now) while it still holds nothing but that entry, as the last build read it (D196).
     ``in_graph``: the graph's files when a loaded graph gives them (else graph.json is read)."""
     from verinoda.project_index.detect import FileType, classify_file
 
@@ -264,14 +265,26 @@ def _graph_affected(repo: Path, diff: dict, in_graph: set[str] | None = None) ->
         except Exception:  # noqa: BLE001 - no readable graph: rebuild
             return True
     modified = [f for f in diff["modified"] if f in in_graph]
-    if modified:
-        from verinoda.selffiles import config_digest, is_mcp_config
+    removed = [f for f in diff["removed"] if f in in_graph]
+    if modified or removed:
+        from verinoda.selffiles import config_digest, is_mcp_config, nothing_but_own
 
-        if any(is_mcp_config(f) for f in modified):
+        if any(is_mcp_config(f) for f in modified + removed):
+            from verinoda.paths import contained_path
+
             read = buildlock.recorded_configs(repo)
             modified = [f for f in modified
                         if not (is_mcp_config(f) and f in read and config_digest(repo / f) == read[f])]
-    if modified or any(f in in_graph for f in diff["removed"]):
+
+            def still_own(f: str) -> bool:  # a removed path is the stored snapshot's: read inside the project only
+                p = contained_path(repo, f)
+                return p is not None and nothing_but_own(p) and config_digest(p) == read[f]
+
+            # an ignored config still holding nothing but Verinoda's entry, as the last build read it: its one node
+            # is the file's, and nothing of the project leaves the graph with it. `verinoda setup` writes that file
+            # before it scans, so a project that then ignored it rebuilt its whole graph (D196)
+            removed = [f for f in removed if not (is_mcp_config(f) and f in read and still_own(f))]
+    if modified or removed:
         return True
     from verinoda.project_index.extract import _get_extractor
 

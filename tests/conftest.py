@@ -20,6 +20,8 @@ _CACHE = tempfile.mkdtemp(prefix="verinoda-test-cache-")
 os.environ["VERINODA_CACHE_DIR"] = _CACHE
 # the first build of that index must finish on a loaded machine too (tests that need a cut build set their own)
 os.environ.setdefault("VERINODA_NAME_INDEX_BUDGET_S", "1800")
+# the name check falls back to the activated environment (docs/DESIGN.md D192): the shell's one is not the tests'
+os.environ.pop("VIRTUAL_ENV", None)
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -18927,6 +18927,519 @@ request asks for explicitly is still done.
 command. `tests/test_more_agents.py`: two files of mixed line ends come back byte for byte; its check that the block uses the
 file's line end now reads only what was added.
 
+## 164. The name check's environment: the activated one when the project holds none (D192, 2026-10-24)
+
+### 164.1 Why
+
+In the SWE-bench ceiling study's condition C1 (`benchmarks/agent_compare/DESIGN_SWEBENCH_CEILING.md`, amendments 3 and 4) a
+session runs the project's code in the instance's virtual environment: activated (`VIRTUAL_ENV` set, its `Scripts` first on
+PATH) and outside the checkout (the instance's shared environment, or a venv of the session's own beside the copy). In every
+Verinoda-arm session of the first run, `code_check` judged against Verinoda's own interpreter, standard library only (its
+answer's `python`; django-16873 first): `auto` looked inside the project only (`.venv`, `venv`, `env`), so the environment the
+agent ran the code with was never the one the check read.
+
+### 164.2 Decisions
+
+1. **`auto` takes the activated environment when the project holds none** (`codecheck_env._active_env`): after `--env` and
+   the project's own folders, before Verinoda's interpreter. The variable comes from whoever started the process (the agent's
+   shell, the MCP client), not from the files checked.
+2. **The rule of `auto` holds for it**: the program started is the environment's base interpreter (from `pyvenv.cfg`), which
+   must be a Python installation the system knows and lie outside the project; the environment's own interpreter is never
+   started. Otherwise a note names `VIRTUAL_ENV` and why it was not used, and the check falls back as before.
+3. **Verinoda's own environment is never taken for the project's** (`VIRTUAL_ENV` naming `sys.prefix`): Verinoda run from
+   its own activated venv would otherwise check the project against Verinoda's dependencies.
+4. A project venv still comes first; `--env PATH` and `none` are unchanged; the MCP server (`trusted=False`) gives the same
+   answer, the variable not being the caller's input. The tests no longer see the shell's `VIRTUAL_ENV` (`tests/conftest.py`).
+5. **The environment a check reuses is read again after an install into the activated one** (`codecheck._env_stamp`): the
+   MCP server lives as long as the session, which may install into its environment, and the stamp covered only the
+   project's folders and an explicit `--env`. It now holds the activated environment's `pyvenv.cfg`, site-packages and
+   `.pth` files, and the variable itself.
+
+### 164.3 Measured
+
+- django-16873's Verinoda-arm copy with the session's `VIRTUAL_ENV`, on the file the session changed: the project's
+  environment (Python 3.11.15) is chosen, and the verdicts are those of the standard library only: 250 sites, 89 unknown,
+  0 absent. The unknowns there come from `**kwargs` and parameters, not from the environment: on this copy the change gives
+  the check the right environment and changes no verdict.
+- The study keeps the Verinoda its runs started with (the engine of a7e0c65): no study result is credited to this change.
+- Not measured: a session with the change (that the MCP server a session starts inherits its `VIRTUAL_ENV` was not checked in
+  one); a copy whose changed code uses third-party attributes the environment would decide.
+
+### 164.4 Not done
+
+- **The MCP server's import path.** The study's `.mcp.json` starts the server with `-P`, and the server inherits the session's
+  `PYTHONPATH` (the checkout, or its `src/`): Verinoda's own imports then search the checkout before its environment, and a
+  top-level package of the project named like one of Verinoda's dependencies would shadow it. Not seen (psf/requests-1963's
+  Verinoda-arm session used `analyze` and `code_check`; Verinoda imports no `requests`); `-I`, or a server environment without
+  `PYTHONPATH`, is to be weighed (`-I` also drops the other `PYTHON*` variables).
+
+### 164.5 Tests
+
+`tests/test_codecheck.py::test_the_active_environment_is_used_when_the_project_holds_none`: a project without a venv and an
+activated one outside it give kind `active`, a third-party name found there `exists` and a missing one `absent`;
+`trusted=False` gives `active` too; `VIRTUAL_ENV` naming Verinoda's own environment gives `verinoda`; a base interpreter inside
+the project gives `verinoda` with a note naming `VIRTUAL_ENV`; a project `.venv` still comes first. It fails on the code
+before the change (d610991's `codecheck_env.py`: kind `verinoda`, 2026-10-24).
+`test_the_active_environment_is_read_again_after_an_install`: the environment is reused until a module is added to the
+activated environment's site-packages, then read again; another `VIRTUAL_ENV` gives another answer without a restart. It
+fails on 3696b46's `codecheck.py` (the same environment after the install).
+
+## 165. A scripted session ends with its answer: no re-index for its exit to wait on (D193, 2026-10-24)
+
+### 165.1 Why
+
+Part B of the own-repository study (`benchmarks/agent_compare/DESIGN_OWNREPO.md` on the study's branch, 2026-10-24) ran
+6 fix tasks of the user's Minecraft mod in 2 arms, with Sonnet 5.5. Both arms resolved all 12 sessions. The guided
+sessions took 50.6 s longer on average (215.0 against 164.4 s).
+
+- **48.4 s of the gap lay outside the transcripts.** A session's process time minus its transcript's span had a median of
+  68.3 s guided and 1.9 s plain.
+- **The usage logs put that excess at the exit.** The Verinoda server started 0.1 to 0.5 s before a session's first
+  entry.
+  - In 5 of the 6 sessions it ended 10.0 to 60.0 s after the last message; in three of those, at 60.0 s exactly.
+  - The sixth session's server wrote no end line. A process that is killed writes none.
+- **The edits the mod saw line up with the long waits.** The 5 guided sessions whose edits the mod saw (through Edit or
+  Write) ended 12.7, 67.9, 68.7, 72.3 and 81.9 s after their last message. The one that wrote through Bash ended 19.6 s
+  after.
+
+At the end of the main loop's turn the mod starts a re-index:
+
+1. It runs `update --fast` (8 to 44 s in those sessions).
+2. That update starts a detached graph build.
+3. The mod then watches the graph.
+
+In a scripted session that turn is the session's last. Nobody reads the pane, and an index refreshed then answers no
+question of the session.
+
+### 165.2 Decisions
+
+1. **A scripted session starts nothing it would wait for at its end.** When `isInteractive` is false (`claude -p`, the
+   Agent SDK), the mod starts none of these:
+   - a re-index at a turn's end;
+   - a graph watch after an update;
+   - a look at the graph at session start, which is the pane's.
+
+   Edits are still collected. `/verinoda-update` still runs `update --fast`, without the watch.
+2. **It never calls the index fresh, because it never looked.** Its published state is "graph state unknown", never
+   "fresh" or "checking…". A `/verinoda-update` with no edit pending answers "no edit of this session waits to be indexed"
+   instead of "index already fresh".
+3. **Interactive sessions are unchanged.**
+
+### 165.3 Measured
+
+**The probe** (`exit_probe.py`, 2026-10-24 23:18 to 23:23, a quiet machine).
+
+- **Setup:** one scripted session per arm and round, on a copy of Part B's clone at task 1fb707da's parent, launched as
+  Part B launched its sessions. A guided session started only once the setup's own background build had released the
+  index lock. The arm order rotated over 3 rounds.
+- **The prompt:** one Read, one Edit (a comment line after the package line of `Atlilar.java`), and the word "done".
+
+| Arm | From the last entry to the process's end | The server's end, after the last entry | The mod's `update --fast` |
+|---|---|---|---|
+| Plain | 0.9, 0.9, 0.9 s | no server | none |
+| Old mod (main 0673474, as Part B ran) | 3.6, 3.7, 3.7 s | 3.0, 3.0, 3.0 s | from 0.1 to 3.0 s, each round |
+| New mod (D193) | 0.7, 1.0, 0.8 s | 0.0, 0.0, 0.0 s | none |
+
+- **Every session did the task:** Read then Edit, one line added, the reply "done". Start-up (from the process start to
+  the first entry) was 0.8 to 0.9 s in every arm.
+- **The old mod's sessions ended 0.6 s after its `update --fast` did.** That was before the graph watch's first poll was
+  due; it waits 1 s between polls.
+
+**The bench** (`bench_d193.py`, 2026-10-24 23:37 to 23:50). It ran Part B's six pilot tasks with the old mod and with the
+new one, both guided, in two lanes at once, as Part B ran its two arms.
+
+- **The runner:** Part B's own, unchanged (`own_fix_run.session_with_reruns`: the copy at the parent, setup, prompt and
+  argv). Each session started right after its setup, as Part B's did.
+- **Not graded:** nothing the model reads differs between the two mods. The call rule is a constant, and the turn-end
+  work starts after the last message.
+- **Calls:** no session called a Verinoda tool.
+- **The process samplers:** two ran beside it.
+  - The one built on WMI stalled for 9.6 s over the first two sessions' ends.
+  - A second one, without WMI (`sidecar2.py`: a kernel process snapshot every 0.25 s), covered the last three pairs.
+
+| Task | Old mod: exit | Old mod: server end | Old mod: `update --fast` | New mod: exit | New mod: server end |
+|---|---|---|---|---|---|
+| 1fb707da | 5.2 s | 4.8 s | 0.7 to 4.7 s | 0.5 s | 0.0 s |
+| 21006374 | 0.5 s | 0.0 s | none: its edits went through Bash | 0.4 s | 0.0 s |
+| 267f00c6 | 13.7 s | 13.2 s | 7.0 to 13.2 s | 7.0 s | 6.5 s |
+| 38b9bd58 | 7.5 s | 7.1 s | 0.1 to 7.1 s | 0.4 s | 0.0 s |
+| a9a760e2 | 4.3 s | 3.8 s | 0.1 to 3.8 s | 0.4 s | 0.0 s |
+| f8cdfbf7 | 4.5 s | 4.0 s | 0.1 to 4.0 s | 0.4 s | 0.0 s |
+
+The exit runs from the transcript's last entry to the runner's end; the other times are counted from that same entry.
+
+- **Medians.** Exit: 4.8 s with the old mod, 0.4 s with the new one. Part B's measure (process time minus transcript
+  span, which also counts the start-up): 5.8 s against 1.4 s. In Part B itself it was 68.3 s guided and 1.9 s plain.
+- **The old mod's server ended when its `update --fast` did, in each of the 5 sessions that ran one.** The second sampler
+  shows the order in three of them:
+  - the update ran from 0.34 to 4.57 s, 0.11 to 3.76 s and 0.03 to 7.04 s;
+  - the server was gone at 4.84, 3.76 and 7.04 s;
+  - `claude.exe` was gone at 5.10, 4.02 and 7.30 s.
+
+  The detached build ran on to 8.83, 7.43 and 11.23 s. In the new mod's three, `claude.exe` was gone 0.18 to 0.39 s
+  after the last entry.
+- **No server ended at 60 s.** The machine was quieter than in Part B: setups took 32 to 103 s, against 137 to 411 s.
+- **One slow session with the new mod: 267f00c6 at 7.0 s.** Its server ended at 6.5 s, and none of its Verinoda processes
+  ran then. The old mod's re-index in the same task started only at 7.0 s. That pair ended while the WMI sampler stalled,
+  so what Claude Code did in those seconds was not seen.
+
+**The Verinoda server's own exit, in isolation** (`server_exit.py`, 2026-10-24 23:15, a quiet machine). The server was
+started as the study's `.mcp.json` starts it, on a set-up copy of the study's clone. It was answered `initialize`, given
+one `analyze` call or none, then its stdin was closed:
+
+| | From stdin closed to process exit | Runs |
+|---|---|---|
+| Idle (no tool call) | 0.10 to 0.11 s | 3 |
+| After one `analyze` | 0.30 to 0.35 s | 3 |
+
+The server answered `initialize` 0.86 to 0.90 s after it started. Each `analyze` was its process's first call: 2.72 to
+3.93 s.
+
+The scripts are in the session's scratch folder, and their data is in `ownrepo-data/` beside the study's (neither is in
+the repository). The study keeps the mod its runs started with (main 0673474). No study result is credited to this
+change.
+
+### 165.4 Not done
+
+- **The index is not refreshed after a scripted session's edits.**
+  - **When the next `analyze` refreshes it first:** the project has fewer than 300 files, or at most 200 files changed and
+    the rebuild is estimated at 15 s or less (`analysis.REFRESH_*`).
+  - **Otherwise:** `analyze` answers from the old index, says so, and starts a background update for the next question
+    (`AtlasTools.analyze`).
+  - **What a stale index cost before:** on large projects the stale-index study measured 1.23x input tokens [1.13-1.34],
+    with 57 to 217 files behind (`benchmarks/results/agent-compare-stale-2026-10-02/`).
+  - **What a scripted session leaves behind:** a few files. That cost was not measured.
+  - **A multi-turn SDK session** loses the refresh between its turns the same way.
+- **The alternative that keeps the refresh without holding the exit.** At a turn's end, start only the detached build
+  (`workflow.start_background_update`) instead of the awaited `update --fast` and the watch. Neither the probe nor the
+  bench saw the exit wait for a detached build. No CLI entry starts it alone. Not built.
+- **Part B's 60.0 s server ends and the 7.0 s session were not explained.** What held them was not established.
+
+### 165.5 Tests
+
+`claude-mods/verinoda-live/hooks/features.test.ts`, "a scripted session starts no re-index and no graph watch; its edits
+wait for /verinoda-update". It checks three things:
+
+- no `update` and no `graph-state` runs after an edit and the turn's end;
+- the state reads "graph state unknown";
+- `/verinoda-update` runs one `update` and no watch.
+
+It fails on 0673474's `register.tsx`: an update ran at the turn's end (expected 0, received 1).
+
+## 166. One reading of the working tree per analyze (D194, 2026-10-24)
+
+### 166.1 Why
+
+The own-repository study's Part A guided sessions called `analyze` once each. One MCP `analyze` call on the study's
+clone was profiled (2026-10-24, cProfile; the profile is in the session's scratch folder, not in the repository). It read
+the working tree's state twice:
+
+1. once in `AtlasTools._graph_for_analysis`, to decide whether the kept graph could be handed over;
+2. once at the start of `analysis.analyze`, to decide whether to refresh.
+
+On the stale path it read it three times: `_stale_graph` read it too.
+
+Each reading walks and stats the whole project (`snapshot.current_state`: `list_files` and `hash_files`). With two
+readings that came to 18,334 `stat` calls, 1.2 s of the call's 6.25 s under the profiler.
+
+### 166.2 Decisions
+
+1. **The server reads the tree once per analyze** (`AtlasTools._tree_state`). It hands that reading to the graph choice,
+   to the stale-graph estimate, and to `analysis.analyze` (its new `state` parameter).
+2. **`analysis.analyze` reads it itself when no reading is handed in.** That covers the CLI and the benchmarks. It also
+   covers the server when its own reading failed: analyze then meets the same error and reports it as before.
+3. **`decision_check` uses the same helper.**
+
+### 166.3 Measured
+
+A timing script ran on 2026-10-24 from 23:32 to 23:35, with nothing else running on the machine (the script is in the
+session's scratch folder, not in the repository). It used a clean copy of the study's clone with a fresh index, so it
+measured the fresh path: two readings before, one after. The stale path (three readings before) was not timed.
+
+Each process answered the same six questions of the Part A profiles, each once and then again. Base (76cc774's
+`verinoda/`) and D194 alternated over 3 rounds. q1's first call is its process's cold one (import, graph load).
+
+| Question (kind) | First call, base | First call, D194 | Again, base | Again, D194 |
+|---|---|---|---|---|
+| q1 (when) | 3.22 s | 2.89 s | 1.19 s | 0.94 s |
+| q2 (when) | 1.55 s | 1.12 s | 1.26 s | 0.83 s |
+| q3 (impact) | 2.71 s | 2.38 s | 1.84 s | 1.48 s |
+| q4 (impact) | 1.70 s | 1.33 s | 1.69 s | 1.36 s |
+| q5 (when) | 1.22 s | 0.93 s | 1.17 s | 0.77 s |
+| q6 (references) | 1.47 s | 1.22 s | 1.30 s | 0.94 s |
+
+Medians of 3 runs each.
+
+- **D194 was faster in 35 of 36 paired calls.** The median difference was -0.33 s per call (range -1.78 to +2.12 s). The
+  one slower call took 3.81 s, against 1.36 and 1.11 s in the other two rounds.
+- **Totals:** first calls 36.9 s against 29.9 s (-19 %), repeated calls 25.9 s against 21.4 s (-17 %).
+- **The answers:** every one was "answered", and each question's answer had the same length in all six of its runs (three
+  base, three D194). Their text was not compared.
+
+### 166.4 Not done
+
+- **The store's commits:** one per stored row (24 commits of 6.6 ms in q1, 108 in another question). Batching them would
+  have two costs:
+  - it changes `store.py`, which is in `tq`'s import closure (a tq-audit);
+  - it holds SQLite's write lock through an analyze, and a background build waits on that lock.
+
+  Not done.
+- **A refresh's own update** reads the tree again inside `workflow`.
+- **The question's plan** (`question_plan.draft`: 1.6 s of q1 under the profiler, in `link_mention`) is the largest part
+  left. It is engine semantics and was not touched.
+
+### 166.5 Tests
+
+`tests/test_mcp.py::test_analyze_reads_the_working_tree_once_per_call` checks one reading per call, on an unchanged tree
+and on an edited one. The count is of `snapshot.current_state` as the server and `analysis` call it; workflow's own
+reading during a refresh is not counted. It fails on 76cc774's code: 2 readings on the unchanged tree, where it expects
+1.
+
+## 167. What a review says after an edit task, and two defects it showed (D195, 2026-10-25)
+
+### 167.1 Why
+
+In the own-repository study's Part B and the D193 bench, the model called Verinoda in 0 of 18 edit-task sessions. The
+direction chosen next was for Verinoda to act without being called: after a session's edits, a check that speaks only
+when it finds something.
+
+The mod engine can do that at the Stop event: `classic.Stop` returning `{ block: reason }` hands the model the reason
+and one more step, and the input's `stop_hook_active` keeps it from asking twice. The check it would run is
+`verinoda review`.
+
+Before building the hook, `verinoda review` was replayed on Part B's 12 pilot patches:
+
+- one copy per task at the task's parent, Verinoda set up there as the guided session had it;
+- each arm's patch applied, reviewed and taken back;
+- the script and its outputs are in the session's scratch folder, not in the repository.
+
+The decision rule was written down before any review was read. Build the hook only if all three hold:
+
+- (a) at least one review names a concrete defect, confirmed by hand: a caller left unchanged after a signature
+  change, a removed or renamed symbol still used, or a reference to something that does not exist;
+- (b) at most 1 of the 12 patches gets a finding that looks concrete and is not a defect;
+- (c) a review takes 5 s or less at the median.
+
+All 12 patches had passed their commit's game tests, so the replay could show a cost or a defect those tests do not
+cover, never a gain in resolved tasks.
+
+### 167.2 Measured
+
+The replay ran on 2026-10-25 from 00:06 to 00:13, with main 0673474's Verinoda. Nothing else ran but the SWE-bench
+selector's start.
+
+| Task | Seconds (none, guided) | Exit | What the review said |
+|---|---|---|---|
+| 1fb707da | 2.3, 2.1 | 3, 3 | an entry point reaches the changed method; no test reaches it statically |
+| 21006374 | 4.1, 4.0 | 3, 1 | none: no finding, 3 unknowns; guided: crashed, printed only `error: base_at` |
+| 267f00c6 | 2.3, 2.3 | 3, 3 | no finding; 15 compatible API additions; 3 unknowns |
+| 38b9bd58 | 5.0, 4.7 | 3, 3 | 3 exit guards gone or changed (`statically_verified`); 2 config keys "no longer read" |
+| a9a760e2 | 2.7, 2.7 | 3, 3 | 4 config keys on a changed line |
+| f8cdfbf7 | 3.7, 3.5 | 3, 3 | 2 persistence sinks reached, a command entry point, a code-health drop |
+
+- **(c) holds.** The reviews took 2.1 to 5.0 s, about 3.1 s at the median. `review` reads the last snapshot's graph
+  and refreshes nothing.
+- **(a) fails.** No review names a concrete defect. The defect classes of (a) are compile errors in Java, and all 12
+  patches compiled.
+- **(b) fails.** 2 of the 12 patches, both arms of 38b9bd58, got findings that look concrete and are not defects:
+  - The commit itself (38b9bd58) removed the same exit guards. They are the change the task asked for.
+  - The config findings are false. The patched line still reads both keys (`cift("boss-health", 16)`), as the commit's
+    does.
+- **Exit 3 in all 11 reviews that completed.** Exit 3 means a strong finding, an unknown or an uncovered strong change.
+  Every Java review carries the unknown that the Gradle tests were not run, so a hook keyed on the exit code would
+  always speak.
+- **The arms differ only in layout** (order and line numbers): the same findings.
+
+### 167.3 Decisions
+
+1. **No Stop hook.** The rule set before the replay fails on (a) and (b).
+2. **A preexisting finding without a matched base finding is rendered.**
+   - `_split_delta` labels a finding preexisting when its own rule saw the operation in the base version (`base_had`).
+     It sets `base_at` only when a base finding paired with it.
+   - The text renderer read `base_at` unconditionally, so one such finding made `verinoda review` print nothing but
+     `error: base_at`.
+   - It now prints `(base: line not found)`. The JSON was already right, and the MCP server does not render it.
+   - Run again on that patch with the fix: the review prints, with one preexisting finding (an IO call in a loop
+     that the parent already made).
+3. **"No longer read on the changed line" only when no changed line reads the key.**
+   - The config rule looked for the key on the first changed line of the new version only.
+   - A change of several lines whose key read is not on its first line was reported as no longer reading the key.
+   - It now looks on every changed line of the new version, for the key in quotes.
+   - Run again on both arms of 38b9bd58 with the fix: the two config findings are gone, and the three guard
+     findings remain.
+
+### 167.4 Not done
+
+- **A Stop hook in a Python project.** Not measured. There, a removed name still used is no compile error.
+  - The SWE-bench C3 attempts are a replay set: Python patches, each with tests that decide it.
+- **The exit code.** Every Java review still exits 3 for the Gradle unknown. Not changed: it is the CLI's contract for a
+  gate.
+- **Why the base side made no finding for 21006374's preexisting one.** It is a performance `io-in-loop` finding in
+  `Boss.tick`. The parent already called `state.degisti()` in that loop (its line 686), so "preexisting" is
+  right. The rules run on the base version (the two versions swapped) made no finding for it, so it had no base line.
+  Why that run makes none was not traced.
+
+### 167.5 Tests
+
+- `tests/test_review_delta.py::test_a_preexisting_finding_without_a_matched_base_finding_is_rendered`
+- `tests/test_review.py::test_a_config_key_read_on_a_later_changed_line_is_not_reported_gone`: the key read on a later
+  changed line is not reported; a key that leaves the changed lines still is.
+
+## 168. An ignored config that setup wrote is no graph change (D196, 2026-10-25)
+
+### 168.1 Why
+
+The SWE-bench ceiling study's C1 guided sessions (2026-10-24) each made their first `analyze` call right after the
+runner had set Verinoda up in a fresh copy. The transcripts were counted (the script is in the session's scratch folder,
+not in the repository):
+
+- 98 of the 100 guided sessions called `analyze`.
+- In 93 of them the first answer said "the index predates 1 changed file(s) (.mcp.json); not refreshed", and the server
+  started a background update, a whole graph build, in all 93. The build each answer skipped had taken 23 to 1413 s,
+  median 236 s.
+- The other 5 were small repositories (requests, seaborn, xarray). By the rule their estimate was 15 s or less, so the
+  whole rebuild ran inside the call; the answers' text does not show it.
+
+The steps, read from one copy's store (django-11039):
+
+1. `verinoda setup` writes `.mcp.json` before it scans (D68). The SWE-bench repositories do not ignore that file, so the
+   scan lists it: setup's snapshot holds 6062 files, `.mcp.json` among them.
+2. The extractor gives every MCP config a node of its own file (`mcp_ingest.extract_mcp_config`), also a config that
+   holds only Verinoda's entry. So `.mcp.json` is one of the graph's files.
+3. The runner then appended `.verinoda/`, `.claude/` and `.mcp.json` to `.git/info/exclude`
+   (`swebench_prepare.setup_verinoda`). `.mcp.json` left the listing: the next reading of the tree holds 6061 files.
+4. `workflow._graph_affected` counts every removed file the graph has nodes from. The refresh's estimate became the last
+   build's seconds: above 15 s the refresh was skipped and the server started a background build; at 15 s or less a
+   whole rebuild ran inline.
+
+The own-repository study never met it: that clone's `.gitignore` already ignores `.mcp.json`, and none of Part A's 49
+first calls was stale. A person who runs `verinoda setup` and then adds `.mcp.json` to `.gitignore` meets the same
+rebuild.
+
+D186 had already made an added config that holds nothing but Verinoda's entry no change (`selffiles.nothing_but_own`).
+A removed one still always counted.
+
+### 168.2 Decisions
+
+1. **A removed MCP config is no graph change when it still holds nothing the graph read.** `_graph_affected` leaves it
+   out when both hold:
+   - the file is still on disk and holds no server but Verinoda's own (`selffiles.nothing_but_own`);
+   - its digest, Verinoda's entry left out, is the one the last graph build recorded (`buildlock.recorded_configs`, D68).
+
+   Its one node is then the file's own, and nothing of the project leaves the graph with it. The update takes a new
+   snapshot without the file and keeps the graph and the search index as they are. Both keep the file (its node, its
+   few search units) until the next whole build, which drops it: the file left the corpus because it is ignored now.
+   The new test checks both halves.
+2. **Everything else still rebuilds, as before:** a deleted config, a config that holds another server, and one whose
+   digest differs from the recorded one (the graph read a server that is gone now).
+3. **The removed path is read through `paths.contained_path`.** It is the stored snapshot's, not the file system's, so
+   D186's rule for a path taken from the store applies.
+   - A path that leaves the project is never opened, and it counts as a graph change.
+   - That covers a UNC path, whose resolving would itself be the connection to the share.
+   - The edited configs' check was already safe: an edited file is in the current listing.
+4. **The fix is in the decision, not in setup or the extractor.** Setup still writes `.mcp.json` before its scan, and the
+   extractor still gives an own-only config its file node. Changing the extractor would leave every graph already built
+   with the node: `mcp_ingest.py` is not part of the extraction stamp, so no graph would be rebuilt for it. The decision
+   works on the indexes that exist.
+
+### 168.3 Measured
+
+The C1 sequence ran on two of C1's repositories, on a quiet machine, 2026-10-25 03:40-03:47. The script is in the
+session's scratch folder, not in the repository. Each copy went through these steps:
+1. a copy at the base commit;
+2. `verinoda setup`;
+3. the runner's exclude lines;
+4. the session's own first question, as one MCP `analyze` call in a fresh process (`AtlasTools`, as a session's server
+   makes it);
+5. a second call, after any background build had ended.
+
+One copy per arm: e789629's code (base) and the fix, arms alternating (requests base first, django the fix first).
+
+| Repository | Arm | Setup | First call | Its refresh | The update's index step | "Not refreshed" note | Background build | Second call |
+|---|---|---|---|---|---|---|---|---|
+| requests-1963 | base | 5.8 s | 3.0 s | 1.7 s inline | `full`, 1.25 s | no | none | 0.8 s |
+| requests-1963 | D196 | 5.7 s | 1.8 s | 0.45 s inline | `none` | no | none | 0.8 s |
+| django-13158 | D196 | 119.4 s | 12.5 s | 6.6 s inline | `none`, 0.39 s | no | none | 4.5 s |
+| django-13158 | base | 114.3 s | 5.0 s | skipped ("the last graph build took 65 s") | — | yes | 54.6 s after the answer | 4.6 s |
+
+- **The background build** is counted from the first call's return to the end of the build's process. It was a whole
+  graph build, started by the server after the answer.
+- **On django the fixed first call is slower: 12.5 s against 5.0 s.**
+  - It refreshes inside the answer. The base call answered from the previous index (which differed from the tree only
+    in `.mcp.json`) and left a 55 s whole-graph build to run beside the session.
+  - In C1 that build ran in 93 sessions, each with up to three other sessions beside it.
+  - The second calls take the same time (4.5 and 4.6 s).
+- **On requests the fix is faster: 1.8 s against 3.0 s.** There the base call itself rebuilt the whole graph inline.
+
+The decision rule was written before the code. Its amendment 1, which split rule 2, was written before any test or
+measurement ran. Each rule came out as follows:
+
+1. **Holds.** On both repositories the fixed first call started no background build and carried no "not refreshed"
+   note.
+2. **2a holds:** django's fixed inline refresh took 6.6 s, under the 15 s that `REFRESH_INLINE_SECONDS` allows. **2b
+   holds:** requests' fixed first call took 1.8 s against the base's 3.0 s, which held a whole rebuild of 1.25 s.
+3. **Holds.** The new test fails on e789629 and passes with the fix. The touched test files pass: 136 tests in
+   `test_selffiles`, `test_update_fast`, `test_update_vs_scan`, `test_workflow_index` and `test_analysis`. That
+   count includes the deletion guard, which was added after the measurement.
+4. **Holds.** ruff's finding set on the two changed files is the same with and without the change: 4 findings, all
+   present before.
+5. **Holds.** The tq-audit (`benchmarks/results/tq-audit-2026-10-25-d196`) gives the same cells as
+   `tq-audit-2026-10-25`:
+   - 357 held-out cases, 350 decided (347 right, 3 wrong), 7 unknown;
+   - 2 wrong at a verified status, as before;
+   - only the commit and the engine hash change. `tests/test_tq_measured.py`: 16 passed.
+
+**A finding of its own, as amendment 1 asked: django's fixed refresh took 6.6 s for one removed file.** Its index step
+took 0.39 s. The same first call ran again under cProfile, on a fresh copy taken through the same sequence. The profiler
+stretched the call to 22.1 s, so only the shares count. Of the update's 10.6 s:
+- **`workflow._derive` took 8.0 s (75 %),** though the graph was not rebuilt:
+  - `search_index.update` 3.8 s;
+  - `lexicon.build` 2.2 s;
+  - a load of the 45 MB `graph.json` 1.6 s;
+  - copies and anchors the rest.
+- **Taking and comparing the snapshot** took the remaining 2.5 s (`list_files` 7 times, `hash_files` 3 times).
+
+Apart from the update, the call loads the graph two more times: the server's `_graph` (1.5 s) and `analysis.analyze`
+(1.5 s). That is the amendment's pointer, now measured. The refresh of a change that leaves the graph alone still
+re-derives every derived index from the whole graph. It is BACKLOG 25.7, not part of D196.
+
+### 168.4 Not done
+
+- **The C1 sessions were not run again with the fix.** The effect on resolved tasks is not measured; the arms did not
+  differ in C1 anyway.
+- **How much the background builds slowed C1's first calls is not measured.**
+  - C1's first calls had a median of 31.6 s and took up to 290 s, with up to three other sessions running beside each.
+  - On a quiet machine the base's first call on django took 5.0 s, and the build after it 54.6 s.
+  - In C1 such builds reached the other sessions' calls as load. A quiet run cannot apportion that.
+- **Setup's order** (the config written, then the scan) is unchanged.
+- **BACKLOG 24.2's budget-spent calls:** 14 calls in C1's first run spent the 60 s budget.
+  - Each session's own build started only after its first answer.
+  - Whether another session's build ran beside each of those calls was not checked.
+  - Whether they still spend the budget without the builds is not measured.
+
+  So 24.2 is left as it is.
+
+### 168.5 Tests
+
+- `tests/test_selffiles.py::test_ignoring_the_config_setup_wrote_never_rebuilds_the_graph`:
+  - setup, then `.mcp.json` in `.git/info/exclude`, then `update`;
+  - expected: the file is among the removed and no graph is built;
+  - the freshness check finds nothing, and the next update is a no-op;
+  - a whole build after that drops the file from the graph and from the search index.
+
+  On e789629's code it fails at its first check of the update: `index_mode` is `full`, the whole graph rebuilt, where
+  the fix gives `none`.
+- `tests/test_selffiles.py::test_ignoring_a_config_whose_server_the_graph_read_still_rebuilds_it`: a config holding the
+  user's server that is then ignored still rebuilds the graph. So does one whose server was taken out as the file was
+  ignored. It passes on both codes.
+- `tests/test_selffiles.py::test_a_deleted_config_still_leaves_the_graph`: a deleted config has no file left to keep its
+  node for, so the update still rebuilds the graph and the node goes. It passes on both codes.
+- `tests/test_selffiles.py::test_a_removed_config_is_read_only_inside_the_project`:
+  - checks a parent-relative path and a UNC path;
+  - neither is opened, and both count as a graph change.
+
+  It passes on both codes: the old code never opened a removed config.
+
 ## Sources
 
 - **Retrieval:**

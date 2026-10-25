@@ -4352,12 +4352,13 @@ def _jvm_config(ctx: _Ctx, c: Change, cfg_keys: dict[str, list[str]]) -> list[di
                 if side == "new" and unchanged(line, m):
                     continue
                 if side == "old":
-                    # the key left a changed line: report at the new line of the same statement when there is one
+                    # the key left the changed lines only when none of the new version's quotes it: the first of
+                    # them is not the key's statement when a change spans several lines (D195)
+                    if any(q in code[n - 1] for n in c.new_changed if n <= len(code) for q in (f'"{key}"', f"'{key}'")):
+                        continue
+                    # report at the new line of the same statement when there is one
                     new_ln = min(c.new_changed) if c.new_changed else None
                     at = f"{c.file}:{new_ln}" if new_ln else at
-                    if rr.QUOTED_KEY.search(code[new_ln - 1] if new_ln and new_ln <= len(code) else "") and \
-                            key in (code[new_ln - 1] if new_ln else ""):
-                        continue
                 out.append(_finding("config", "config-key-on-changed-line",
                                     (f"config key `{key}` on a changed line" if side == "new" else
                                      f"config key `{key}` is no longer read on the changed line (base line {ln})")
@@ -5917,7 +5918,9 @@ def render_text(res: dict) -> str:
                    f"preexisting, {dif['fixed']} fixed"
                    + (" - preexisting findings are not listed above (--findings all lists them)" if hidden else ""))
         for f in (dif.get("preexisting_findings") or [])[:4]:
-            out.append(f"  preexisting [{f['status']}] {f['finding']}  at {f['at']} (base {f['base_at']})")
+            # base_at only when a base finding paired with it; its own rule saw it in the base either way (D195)
+            base = f"base {f['base_at']}" if f.get("base_at") else "base: line not found"
+            out.append(f"  preexisting [{f['status']}] {f['finding']}  at {f['at']} ({base})")
         for f in (dif.get("fixed_findings") or [])[:4]:
             out.append(f"  fixed [{f['status']}] {f['finding']}  at base {f['at']}")
     t = res.get("tests") or {}

@@ -466,6 +466,34 @@ describe('re-index robustness', () => {
     await $.turn.complete({ turnId: 't2', answer: '', durationMs: 1, isAborted: false, reason: 'end_turn' } as never)
     expect(of('update').length).toBe(1)
   })
+
+  // A scripted session (claude -p, the SDK) ends with its turn, and its end waits for the re-index the turn's end starts:
+  // in the D193 bench the server closed and the process exited once that update had ended (4.8 s after the last message
+  // at the median, 0.4 s without it; a median 68.3 s in the own-repository study's Part B, on a loaded machine). Nobody
+  // reads the pane there, and an index refreshed at the very end answers no question of the session.
+  test('a scripted session starts no re-index and no graph watch; its edits wait for /verinoda-update', async ($, on) => {
+    const clock = mock.clock(on)
+    mock.store(on)
+    const { of, statuses } = world(on, { start: { locked: true, behind: 1 } })
+    await $.session.start({ cwd: ROOT, surface: null, isInteractive: false } as never)
+    await clock.settle()
+    // it never looks at the graph, so it calls the index neither fresh nor still being checked
+    expect(statuses.at(-1)).toBe('Verinoda: graph state unknown')
+    expect(await $.command.run(run('verinoda-update'))).toEqual(expect.objectContaining({ text: 'no edit of this session waits to be indexed' }))
+    await $.tool.call(edit(`${ROOT}/a.py`))
+    await $.turn.complete(TURN)
+    for (let i = 0; i < 5; i++) await clock.advance(1_000)
+    await clock.settle()
+    expect(of('update').length).toBe(0)
+    expect(of('graph-state').length).toBe(0)
+    const res = await $.command.run(run('verinoda-update'))
+    expect(res).toEqual(expect.objectContaining({ text: expect.stringContaining('text index updated') }))
+    for (let i = 0; i < 5; i++) await clock.advance(1_000)
+    await clock.settle()
+    expect(of('update').length).toBe(1)
+    expect(of('graph-state').length).toBe(0)
+    expect(statuses.at(-1)).toBe('Verinoda: graph state unknown') // the build runs on, and nothing watches it
+  })
 })
 
 describe('pane', () => {

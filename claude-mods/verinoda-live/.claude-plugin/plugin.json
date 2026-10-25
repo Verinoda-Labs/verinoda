@@ -1,6 +1,6 @@
 {
   "name": "verinoda-live",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Verinoda in Claude Code: the Verinoda MCP server's tools listed in front of the model with a one-paragraph call rule, the code index kept fresh while Claude edits, an optional check of each edit for names that do not exist, one-line file cards in place of file contents when the conversation is compacted, an improvement list for you to choose from (/verinoda-improve), and a Turkish pane with an animated mascot.",
   "types": "./types/index.d.ts",
   "userConfig": {
