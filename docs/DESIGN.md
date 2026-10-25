@@ -19285,6 +19285,161 @@ selector's start.
 - `tests/test_review.py::test_a_config_key_read_on_a_later_changed_line_is_not_reported_gone`: the key read on a later
   changed line is not reported; a key that leaves the changed lines still is.
 
+## 168. An ignored config that setup wrote is no graph change (D196, 2026-10-25)
+
+### 168.1 Why
+
+The SWE-bench ceiling study's C1 guided sessions (2026-10-24) each made their first `analyze` call right after the
+runner had set Verinoda up in a fresh copy. The transcripts were counted (the script is in the session's scratch folder,
+not in the repository):
+
+- 98 of the 100 guided sessions called `analyze`.
+- In 93 of them the first answer said "the index predates 1 changed file(s) (.mcp.json); not refreshed", and the server
+  started a background update, a whole graph build, in all 93. The build each answer skipped had taken 23 to 1413 s,
+  median 236 s.
+- The other 5 were small repositories (requests, seaborn, xarray). By the rule their estimate was 15 s or less, so the
+  whole rebuild ran inside the call; the answers' text does not show it.
+
+The steps, read from one copy's store (django-11039):
+
+1. `verinoda setup` writes `.mcp.json` before it scans (D68). The SWE-bench repositories do not ignore that file, so the
+   scan lists it: setup's snapshot holds 6062 files, `.mcp.json` among them.
+2. The extractor gives every MCP config a node of its own file (`mcp_ingest.extract_mcp_config`), also a config that
+   holds only Verinoda's entry. So `.mcp.json` is one of the graph's files.
+3. The runner then appended `.verinoda/`, `.claude/` and `.mcp.json` to `.git/info/exclude`
+   (`swebench_prepare.setup_verinoda`). `.mcp.json` left the listing: the next reading of the tree holds 6061 files.
+4. `workflow._graph_affected` counts every removed file the graph has nodes from. The refresh's estimate became the last
+   build's seconds: above 15 s the refresh was skipped and the server started a background build; at 15 s or less a
+   whole rebuild ran inline.
+
+The own-repository study never met it: that clone's `.gitignore` already ignores `.mcp.json`, and none of Part A's 49
+first calls was stale. A person who runs `verinoda setup` and then adds `.mcp.json` to `.gitignore` meets the same
+rebuild.
+
+D186 had already made an added config that holds nothing but Verinoda's entry no change (`selffiles.nothing_but_own`).
+A removed one still always counted.
+
+### 168.2 Decisions
+
+1. **A removed MCP config is no graph change when it still holds nothing the graph read.** `_graph_affected` leaves it
+   out when both hold:
+   - the file is still on disk and holds no server but Verinoda's own (`selffiles.nothing_but_own`);
+   - its digest, Verinoda's entry left out, is the one the last graph build recorded (`buildlock.recorded_configs`, D68).
+
+   Its one node is then the file's own, and nothing of the project leaves the graph with it. The update takes a new
+   snapshot without the file and keeps the graph and the search index as they are. Both keep the file (its node, its
+   few search units) until the next whole build, which drops it: the file left the corpus because it is ignored now.
+   The new test checks both halves.
+2. **Everything else still rebuilds, as before:** a deleted config, a config that holds another server, and one whose
+   digest differs from the recorded one (the graph read a server that is gone now).
+3. **The removed path is read through `paths.contained_path`.** It is the stored snapshot's, not the file system's, so
+   D186's rule for a path taken from the store applies.
+   - A path that leaves the project is never opened, and it counts as a graph change.
+   - That covers a UNC path, whose resolving would itself be the connection to the share.
+   - The edited configs' check was already safe: an edited file is in the current listing.
+4. **The fix is in the decision, not in setup or the extractor.** Setup still writes `.mcp.json` before its scan, and the
+   extractor still gives an own-only config its file node. Changing the extractor would leave every graph already built
+   with the node: `mcp_ingest.py` is not part of the extraction stamp, so no graph would be rebuilt for it. The decision
+   works on the indexes that exist.
+
+### 168.3 Measured
+
+The C1 sequence ran on two of C1's repositories, on a quiet machine, 2026-10-25 03:40-03:47. The script is in the
+session's scratch folder, not in the repository. Each copy went through these steps:
+1. a copy at the base commit;
+2. `verinoda setup`;
+3. the runner's exclude lines;
+4. the session's own first question, as one MCP `analyze` call in a fresh process (`AtlasTools`, as a session's server
+   makes it);
+5. a second call, after any background build had ended.
+
+One copy per arm: e789629's code (base) and the fix, arms alternating (requests base first, django the fix first).
+
+| Repository | Arm | Setup | First call | Its refresh | The update's index step | "Not refreshed" note | Background build | Second call |
+|---|---|---|---|---|---|---|---|---|
+| requests-1963 | base | 5.8 s | 3.0 s | 1.7 s inline | `full`, 1.25 s | no | none | 0.8 s |
+| requests-1963 | D196 | 5.7 s | 1.8 s | 0.45 s inline | `none` | no | none | 0.8 s |
+| django-13158 | D196 | 119.4 s | 12.5 s | 6.6 s inline | `none`, 0.39 s | no | none | 4.5 s |
+| django-13158 | base | 114.3 s | 5.0 s | skipped ("the last graph build took 65 s") | — | yes | 54.6 s after the answer | 4.6 s |
+
+- **The background build** is counted from the first call's return to the end of the build's process. It was a whole
+  graph build, started by the server after the answer.
+- **On django the fixed first call is slower: 12.5 s against 5.0 s.**
+  - It refreshes inside the answer. The base call answered from the previous index (which differed from the tree only
+    in `.mcp.json`) and left a 55 s whole-graph build to run beside the session.
+  - In C1 that build ran in 93 sessions, each with up to three other sessions beside it.
+  - The second calls take the same time (4.5 and 4.6 s).
+- **On requests the fix is faster: 1.8 s against 3.0 s.** There the base call itself rebuilt the whole graph inline.
+
+The decision rule was written before the code. Its amendment 1, which split rule 2, was written before any test or
+measurement ran. Each rule came out as follows:
+
+1. **Holds.** On both repositories the fixed first call started no background build and carried no "not refreshed"
+   note.
+2. **2a holds:** django's fixed inline refresh took 6.6 s, under the 15 s that `REFRESH_INLINE_SECONDS` allows. **2b
+   holds:** requests' fixed first call took 1.8 s against the base's 3.0 s, which held a whole rebuild of 1.25 s.
+3. **Holds.** The new test fails on e789629 and passes with the fix. The touched test files pass: 136 tests in
+   `test_selffiles`, `test_update_fast`, `test_update_vs_scan`, `test_workflow_index` and `test_analysis`. That
+   count includes the deletion guard, which was added after the measurement.
+4. **Holds.** ruff's finding set on the two changed files is the same with and without the change: 4 findings, all
+   present before.
+5. **Holds.** The tq-audit (`benchmarks/results/tq-audit-2026-10-25-d196`) gives the same cells as
+   `tq-audit-2026-10-25`:
+   - 357 held-out cases, 350 decided (347 right, 3 wrong), 7 unknown;
+   - 2 wrong at a verified status, as before;
+   - only the commit and the engine hash change. `tests/test_tq_measured.py`: 16 passed.
+
+**A finding of its own, as amendment 1 asked: django's fixed refresh took 6.6 s for one removed file.** Its index step
+took 0.39 s. The same first call ran again under cProfile, on a fresh copy taken through the same sequence. The profiler
+stretched the call to 22.1 s, so only the shares count. Of the update's 10.6 s:
+- **`workflow._derive` took 8.0 s (75 %),** though the graph was not rebuilt:
+  - `search_index.update` 3.8 s;
+  - `lexicon.build` 2.2 s;
+  - a load of the 45 MB `graph.json` 1.6 s;
+  - copies and anchors the rest.
+- **Taking and comparing the snapshot** took the remaining 2.5 s (`list_files` 7 times, `hash_files` 3 times).
+
+Apart from the update, the call loads the graph two more times: the server's `_graph` (1.5 s) and `analysis.analyze`
+(1.5 s). That is the amendment's pointer, now measured. The refresh of a change that leaves the graph alone still
+re-derives every derived index from the whole graph. It is BACKLOG 25.7, not part of D196.
+
+### 168.4 Not done
+
+- **The C1 sessions were not run again with the fix.** The effect on resolved tasks is not measured; the arms did not
+  differ in C1 anyway.
+- **How much the background builds slowed C1's first calls is not measured.**
+  - C1's first calls had a median of 31.6 s and took up to 290 s, with up to three other sessions running beside each.
+  - On a quiet machine the base's first call on django took 5.0 s, and the build after it 54.6 s.
+  - In C1 such builds reached the other sessions' calls as load. A quiet run cannot apportion that.
+- **Setup's order** (the config written, then the scan) is unchanged.
+- **BACKLOG 24.2's budget-spent calls:** 14 calls in C1's first run spent the 60 s budget.
+  - Each session's own build started only after its first answer.
+  - Whether another session's build ran beside each of those calls was not checked.
+  - Whether they still spend the budget without the builds is not measured.
+
+  So 24.2 is left as it is.
+
+### 168.5 Tests
+
+- `tests/test_selffiles.py::test_ignoring_the_config_setup_wrote_never_rebuilds_the_graph`:
+  - setup, then `.mcp.json` in `.git/info/exclude`, then `update`;
+  - expected: the file is among the removed and no graph is built;
+  - the freshness check finds nothing, and the next update is a no-op;
+  - a whole build after that drops the file from the graph and from the search index.
+
+  On e789629's code it fails at its first check of the update: `index_mode` is `full`, the whole graph rebuilt, where
+  the fix gives `none`.
+- `tests/test_selffiles.py::test_ignoring_a_config_whose_server_the_graph_read_still_rebuilds_it`: a config holding the
+  user's server that is then ignored still rebuilds the graph. So does one whose server was taken out as the file was
+  ignored. It passes on both codes.
+- `tests/test_selffiles.py::test_a_deleted_config_still_leaves_the_graph`: a deleted config has no file left to keep its
+  node for, so the update still rebuilds the graph and the node goes. It passes on both codes.
+- `tests/test_selffiles.py::test_a_removed_config_is_read_only_inside_the_project`:
+  - checks a parent-relative path and a UNC path;
+  - neither is opened, and both count as a graph change.
+
+  It passes on both codes: the old code never opened a removed config.
+
 ## Sources
 
 - **Retrieval:**

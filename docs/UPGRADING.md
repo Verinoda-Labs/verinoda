@@ -25,7 +25,7 @@ always migrated forward, never silently reset.
 | Exact names, one build at a time, fresh index (D37) | Nothing to migrate. `receiver_calls.json` v2 is recomputed on the first load (its per-file facts are reused); `.verinoda/index/fresh_ignored.json` changed format (v2), and an older one is ignored and rewritten. Output and exit-code changes are listed below. |
 | Upstream (Graphify) base | Maintainers only: `python tools/port_upstream.py <graphify-checkout-at-new-commit>`, review the diff, run `pytest tests` and `pytest tests_upstream`, update `docs/UPSTREAM.md` (commit, test table, inventory). Since D186 the script deletes the upstream surface Verinoda removed, and the upstream tests of it, after the copy (`DELETED` in the script; `docs/UPSTREAM.md`, "Removed in D186"); the test files trimmed by hand must be trimmed again. Check that `index.install_path_identity_memo()` still finds `watch._StoredSourcePaths` (`tests/test_index.py` covers it). |
 
-## Upgrading from 0.4.0 (D137-D195)
+## Upgrading from 0.4.0 (D137-D196)
 
 ### D137: Trigram regex index
 
@@ -808,6 +808,13 @@ Nothing to do.
 - The config rule reports a key as no longer read only when no changed line of the new version reads it.
 
 Section 167 of `docs/DESIGN.md`.
+
+### D196: An ignored `.mcp.json` that setup wrote no longer rebuilds the graph
+
+Nothing to do. Suppose `verinoda setup` wrote a project's `.mcp.json` and the project then ignores the file (in
+`.gitignore` or `.git/info/exclude`). As long as the file holds nothing but Verinoda's server entry, the next `update` or
+`analyze` no longer rebuilds the whole graph. The file's node and search units stay until the next whole build. Section
+168 of `docs/DESIGN.md`.
 
 ## Upgrading from 0.3.2 (D60-D136)
 

@@ -199,6 +199,72 @@ def test_a_change_to_the_users_own_server_still_rebuilds_the_graph(project, tmp_
     assert "docs" in labels and "verinoda" not in labels
 
 
+def _exclude(repo: Path, *rels: str) -> None:
+    """Ignore ``rels`` in .git/info/exclude, as the SWE-bench runner did after `verinoda setup`."""
+    p = repo / ".git" / "info" / "exclude"
+    p.parent.mkdir(exist_ok=True)
+    with p.open("a", encoding="utf-8") as f:
+        f.write("\n" + "\n".join(rels) + "\n")
+
+
+def test_ignoring_the_config_setup_wrote_never_rebuilds_the_graph(project, tmp_path, monkeypatch):
+    """Setup writes .mcp.json before it scans: the scan lists it and the graph has the file's node. A project that
+    then ignores the file (the SWE-bench runner's exclude lines, a person's .gitignore) rebuilt its whole graph on
+    the next update or analyze, for a file that holds nothing of the project (D196)."""
+    _launcher(monkeypatch)
+    setup_mod.setup_project(project, agents="claude", home=tmp_path / "home")
+    assert ".mcp.json" in index.graph_source_files(project)
+    stats = project / ".verinoda" / "index" / buildlock.STATS_NAME
+    at = json.loads(stats.read_text(encoding="utf-8"))["at"]
+    _exclude(project, ".verinoda/", ".claude/", ".mcp.json")
+    res = _update(project)
+    assert res["changed"]["removed"] == [".mcp.json"] and res["index_mode"] == "none", res
+    assert json.loads(stats.read_text(encoding="utf-8"))["at"] == at  # no graph build
+    assert freshness.check(project)["count"] == 0 and _update(project)["mode"] == "noop"
+    # the graph and the search index keep the file until the next whole build drops it (ignored now)
+    _scan(project)
+    assert ".mcp.json" not in index.graph_source_files(project) and ".mcp.json" not in _search_files(project)
+
+
+@pytest.mark.parametrize("rel", ["../elsewhere/.mcp.json", "//host/share/.mcp.json"])
+def test_a_removed_config_is_read_only_inside_the_project(project, monkeypatch, rel):
+    """D196 reads a removed config to tell whether it still holds nothing but Verinoda's entry. The path is the stored
+    snapshot's, so it goes through `paths.contained_path` (D186): one that leaves the project is never opened (a UNC
+    path would be a connection) and still counts as a graph change."""
+    monkeypatch.setattr(buildlock, "recorded_configs", lambda repo: {rel: "j:0"})
+    monkeypatch.setattr(selffiles, "nothing_but_own", lambda p: pytest.fail(f"opened {p}"))
+    assert workflow._graph_affected(project, {"modified": [], "removed": [rel], "added": []}, in_graph={rel})
+
+
+@pytest.mark.parametrize("keep_server", [True, False])
+def test_ignoring_a_config_whose_server_the_graph_read_still_rebuilds_it(project, tmp_path, monkeypatch, keep_server):
+    """The other side of D196: the graph has the nodes of the user's server, so the file's leaving rebuilds it, also
+    when the server was taken out as the file was ignored (the last build recorded the config with it)."""
+    _launcher(monkeypatch)
+    setup_mod.setup_project(project, agents="claude", home=tmp_path / "home")
+    p = project / ".mcp.json"
+    ours = json.loads(p.read_text(encoding="utf-8"))["mcpServers"]
+    docs = {"docs": {"command": "npx", "args": ["-y", "@scope/docs-server"]}}
+    p.write_text(json.dumps({"mcpServers": {**ours, **docs}}, indent=2), encoding="utf-8")
+    assert _update(project)["index_mode"] in ("full", "incremental")
+    if not keep_server:
+        p.write_text(json.dumps({"mcpServers": ours}, indent=2), encoding="utf-8")
+    _exclude(project, ".mcp.json")
+    res = _update(project)
+    assert res["changed"]["removed"] == [".mcp.json"] and res["index_mode"] in ("full", "incremental"), res
+
+
+def test_a_deleted_config_still_leaves_the_graph(project, tmp_path, monkeypatch):
+    """D196 keeps the node of an ignored config that is still on disk; a deleted one has no file left to keep it for,
+    so its leaving rebuilds the graph as before and the node goes."""
+    _launcher(monkeypatch)
+    setup_mod.setup_project(project, agents="claude", home=tmp_path / "home")
+    (project / ".mcp.json").unlink()
+    res = _update(project)
+    assert res["changed"]["removed"] == [".mcp.json"] and res["index_mode"] in ("full", "incremental"), res
+    assert ".mcp.json" not in index.graph_source_files(project)
+
+
 def test_an_existing_index_drops_verinodas_own_files_on_the_next_update(project, tmp_path, monkeypatch):
     """An index built before D68 has nodes, search units and snapshot rows for the skill: the next update
     drops them all, with no file kept by the build's fail-closed rule and nothing reported as changed after."""
