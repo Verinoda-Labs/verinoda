@@ -17,6 +17,15 @@ No password or PyPI token is stored anywhere: PyPI accepts the workflow itself t
    `ozcinax-star/verinoda` (the 0.4.0 files' provenance names it), and the repository moved to the
    `Verinoda-Labs` organisation after that. A publisher for the old owner does not accept a run in the moved
    repository, so the project's settings (*Manage -> Publishing*) need one for `Verinoda-Labs/verinoda`.
+   Until they have one, a release goes out the way 0.5.0 did (2026-10-25): the old address is now a public copy of
+   this repository (creating it that day ended GitHub's redirect to here), archived between releases, its `ci`
+   workflow disabled. Unarchive it, push `main` and the tag there, and its release workflow uploads to PyPI and makes
+   a GitHub release there (run 40214297554 for 0.5.0); attach the same files to this repository's release by hand
+   and archive the copy again. A tag pushed to a repository with no branch starts no workflow: push `main` first.
+   The copy has no `NPM_TOKEN`, so its npm job only warns. With a token, npm would still compare the wrapper's
+   `repository` (this repository) with its provenance's (the copy); not tried. The 0.5.0 wrapper is not published.
+   A run cannot upload a version PyPI already has (the publish step has no `skip-existing`): once 0.5.0 was on PyPI,
+   the failed 0.5.0 run here (40202220488) could not finish even with the publisher added.
 2. **GitHub environments (optional).** GitHub creates `pypi` and `testpypi` the first time the workflow uses
    them. Create them yourself (*Settings -> Environments*) only to add protection: yourself as a required
    reviewer on `pypi` makes every PyPI upload wait for your click.

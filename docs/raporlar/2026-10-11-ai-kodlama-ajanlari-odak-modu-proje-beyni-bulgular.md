@@ -168,4 +168,4 @@ Araştırma raporunun tam kaynak listesi o raporda. Burada bu rapordaki iddialar
 - [Veracode GenAI Code Security Report](https://www.veracode.com/blog/genai-code-security-report/)
 - [AI hallucinations create a new software supply chain threat (SecurityWeek)](https://www.securityweek.com/ai-hallucinations-create-a-new-software-supply-chain-threat/)
 - [METR 2026 developer productivity study (özet)](https://ingenire.com/blog/metr-2026-developer-productivity-study)
-- [Verinoda (GitHub)](https://github.com/ozcinax-star/verinoda)
+- [Verinoda (GitHub)](https://github.com/Verinoda-Labs/verinoda)
