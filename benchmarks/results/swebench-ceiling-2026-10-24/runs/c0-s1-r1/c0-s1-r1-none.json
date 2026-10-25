@@ -1,0 +1,29 @@
+{
+ "work": "C:/Users/ozcin/swebench-run/c0-s1-r1",
+ "model": "claude-sonnet-5-5",
+ "plugin_dir": "C:/Users/ozcin/Desktop/vwt-ceiling/claude-mods/verinoda-live",
+ "mod_options": {
+  "auto": "nudge"
+ },
+ "verinoda_bin": [
+  "C:/Users/ozcin/Desktop/vwt-ceiling/.venv/Scripts"
+ ],
+ "drop_path": [
+  "C:/Users/ozcin/.local/bin"
+ ],
+ "arms": [
+  "none"
+ ],
+ "arm_workers": {
+  "none": 2,
+  "verinoda_guided": 2
+ },
+ "timeout_s": 2400,
+ "max_turns": 100,
+ "max_budget_usd": 3,
+ "tasks": "C:/Users/ozcin/swebench-data/d184-run/tasks.json",
+ "out": "C:/Users/ozcin/swebench-data/runs/c0-s1-r1",
+ "only": [
+  "django__django-11019"
+ ]
+}

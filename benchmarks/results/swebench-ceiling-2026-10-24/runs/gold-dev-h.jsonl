@@ -1,0 +1,1 @@
+{"instance_id": "mwaskom__seaborn-2848", "patch_applied": true, "apply": "git apply --verbose", "test_patch_applied": true, "exit": 1, "resolved": true, "resolved_calibrated": true, "f2p_failed": [], "p2p_failed": [], "env_broken": [], "seconds": 69.7}

@@ -1,0 +1,1 @@
+{"instance_id": "mwaskom__seaborn-2848", "patch_applied": true, "apply": "git apply --verbose", "test_patch_applied": true, "exit": 1, "resolved": false, "resolved_calibrated": false, "f2p_failed": ["tests/test_relational.py::TestScatterPlotter::test_hue_order"], "p2p_failed": [], "env_broken": [], "seconds": 145.2}

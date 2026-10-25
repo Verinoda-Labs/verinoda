@@ -1,0 +1,2 @@
+34 sessions, 0 transcripts not found, 1 tool calls flagged, 1 sessions with a flag
+('sympy__sympy-18087', 'none', 'Bash', '{"command": "cd C:/Users/ozcin && find / -type d -name mpmath -not -path \\"*/proc/*\\" 2>/dev/null | head -3; cd C:/Users/ozcin/swebench-run/c0-s2/copies/sympy__sympy-18087/none && grep -n \\"mpmath\\" -r --include=*.py -l . | head -3; ls"}', ['C:/Users/ozcin'])

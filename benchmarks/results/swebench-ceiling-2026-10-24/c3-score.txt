@@ -1,0 +1,16 @@
+C3 plain: selected resolved 82 of 99 graded (100 lanes; 0 with no candidate patch; 0 selected patches matching no attempt)
+  chosen from attempt 1/2/3: [61, 26, 13]
+  attempt 1 (c4-opus) alone: 84 of 99
+  attempt 2 (c3-opus-2) alone: 84 of 99
+  attempt 3 (c3-opus-3) alone: 83 of 99
+  pass@3 (any attempt resolved; a diagnostic, not a score): 86 of 100
+  recall among the selected resolved: mean 0.75, verbatim 50
+  selection - attempt 1: n 99: 84 vs 82 (discordant 3/1), difference -0.020 [-0.061, +0.020], McNemar p 0.625
+C3 guided: selected resolved 86 of 99 graded (100 lanes; 0 with no candidate patch; 0 selected patches matching no attempt)
+  chosen from attempt 1/2/3: [63, 22, 15]
+  attempt 1 (c4-opus) alone: 85 of 99
+  attempt 2 (c3-opus-2) alone: 88 of 99
+  attempt 3 (c3-opus-3) alone: 87 of 99
+  pass@3 (any attempt resolved; a diagnostic, not a score): 92 of 100
+  recall among the selected resolved: mean 0.79, verbatim 52
+  selection - attempt 1: n 99: 85 vs 86 (discordant 2/3), difference +0.010 [-0.030, +0.051], McNemar p 1.000

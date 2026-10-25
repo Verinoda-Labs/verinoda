@@ -1,0 +1,2 @@
+{"instance_id": "astropy__astropy-14182", "patch_applied": true, "apply": "git apply --verbose", "build_ok": true, "test_patch_applied": true, "exit": 0, "resolved": true, "resolved_calibrated": true, "f2p_failed": [], "p2p_failed": [], "env_broken": [], "seconds": 83.8}
+{"instance_id": "matplotlib__matplotlib-26020", "patch_applied": true, "apply": "git apply --verbose", "build_ok": true, "test_patch_applied": true, "exit": 0, "resolved": true, "resolved_calibrated": true, "f2p_failed": [], "p2p_failed": [], "env_broken": [], "seconds": 103.7}

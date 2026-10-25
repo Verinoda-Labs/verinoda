@@ -1,0 +1,2 @@
+5 sessions, 0 transcripts not found, 1 suspicious tool calls
+left after the cleared kinds: 0

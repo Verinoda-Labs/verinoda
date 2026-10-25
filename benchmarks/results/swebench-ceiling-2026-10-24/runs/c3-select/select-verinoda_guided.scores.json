@@ -1,0 +1,3716 @@
+[
+ {
+  "instance_id": "astropy__astropy-14182",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "astropy__astropy-14182--verinoda_guided/repro.py",
+     "astropy__astropy-14182--verinoda_guided/repro.py",
+     "astropy__astropy-14182--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8036351624045788
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "astropy__astropy-14182--verinoda_guided/repro.py",
+     "astropy__astropy-14182--verinoda_guided/repro.py",
+     "astropy__astropy-14182--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.5394066135145732
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "astropy__astropy-14182--verinoda_guided/repro.py",
+     "astropy__astropy-14182--verinoda_guided/repro.py",
+     "astropy__astropy-14182--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.1931969614749063
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11019",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11019--verinoda_guided/repro.py",
+     "django__django-11019--verinoda_guided/repro.py",
+     "django__django-11019--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3002552645322651
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11019--verinoda_guided/repro.py",
+     "django__django-11019--verinoda_guided/repro.py",
+     "django__django-11019--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.276224907113437
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11019--verinoda_guided/repro.py",
+     "django__django-11019--verinoda_guided/repro.py",
+     "django__django-11019--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.5468525561625874
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11039",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11039--verinoda_guided/repro.py",
+     "django__django-11039--verinoda_guided/repro.py",
+     "django__django-11039--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11039--verinoda_guided/repro.py",
+     "django__django-11039--verinoda_guided/repro.py",
+     "django__django-11039--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11039--verinoda_guided/repro.py",
+     "django__django-11039--verinoda_guided/repro.py",
+     "django__django-11039--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11564",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11564--verinoda_guided/repro.py",
+     "django__django-11564--verinoda_guided/repro.py",
+     "django__django-11564--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9222886421861656
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11564--verinoda_guided/repro.py",
+     "django__django-11564--verinoda_guided/repro.py",
+     "django__django-11564--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9222886421861656
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11564--verinoda_guided/repro.py",
+     "django__django-11564--verinoda_guided/repro.py",
+     "django__django-11564--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8172502134927413
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11620",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11620--verinoda_guided/repro.py",
+     "django__django-11620--verinoda_guided/repro.py",
+     "django__django-11620--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11620--verinoda_guided/repro.py",
+     "django__django-11620--verinoda_guided/repro.py",
+     "django__django-11620--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11620--verinoda_guided/repro.py",
+     "django__django-11620--verinoda_guided/repro.py",
+     "django__django-11620--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11630",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 5,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11630--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11630--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11630--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-11815",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-11815--verinoda_guided/repro.py",
+     "django__django-11815--verinoda_guided/repro.py",
+     "django__django-11815--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4722094896894606
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-11815--verinoda_guided/repro.py",
+     "django__django-11815--verinoda_guided/repro.py",
+     "django__django-11815--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4689963052682224
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-11815--verinoda_guided/repro.py",
+     "django__django-11815--verinoda_guided/repro.py",
+     "django__django-11815--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3583607576896166
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-12286",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-12286--verinoda_guided/repro.py",
+     "django__django-12286--verinoda_guided/repro.py",
+     "django__django-12286--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7923497267759563
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-12286--verinoda_guided/repro.py",
+     "django__django-12286--verinoda_guided/repro.py",
+     "django__django-12286--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7923497267759563
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-12286--verinoda_guided/repro.py",
+     "django__django-12286--verinoda_guided/repro.py",
+     "django__django-12286--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4153005464480874
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-12856",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-12856--verinoda_guided/repro.py",
+     "django__django-12856--verinoda_guided/repro.py",
+     "django__django-12856--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7570172827747683
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-12856--verinoda_guided/repro.py",
+     "django__django-12856--verinoda_guided/repro.py",
+     "django__django-12856--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7224258254091336
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-12856--verinoda_guided/repro.py",
+     "django__django-12856--verinoda_guided/repro.py",
+     "django__django-12856--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4419102717436654
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-12983",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-12983--verinoda_guided/repro.py",
+     "django__django-12983--verinoda_guided/repro.py",
+     "django__django-12983--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-12983--verinoda_guided/repro.py",
+     "django__django-12983--verinoda_guided/repro.py",
+     "django__django-12983--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-12983--verinoda_guided/repro.py",
+     "django__django-12983--verinoda_guided/repro.py",
+     "django__django-12983--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13028",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13028--verinoda_guided/repro.py",
+     "django__django-13028--verinoda_guided/repro.py",
+     "django__django-13028--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13028--verinoda_guided/repro.py",
+     "django__django-13028--verinoda_guided/repro.py",
+     "django__django-13028--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13028--verinoda_guided/repro.py",
+     "django__django-13028--verinoda_guided/repro.py",
+     "django__django-13028--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13158",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13158--verinoda_guided/repro.py",
+     "django__django-13158--verinoda_guided/repro.py",
+     "django__django-13158--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3304709192210802
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13158--verinoda_guided/repro.py",
+     "django__django-13158--verinoda_guided/repro.py",
+     "django__django-13158--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.1154756186511536
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13158--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.7169729680490082
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13315",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13315--verinoda_guided/repro.py",
+     "django__django-13315--verinoda_guided/repro.py",
+     "django__django-13315--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8645833333333335
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13315--verinoda_guided/repro.py",
+     "django__django-13315--verinoda_guided/repro.py",
+     "django__django-13315--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8645833333333335
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13315--verinoda_guided/repro.py",
+     "django__django-13315--verinoda_guided/repro.py",
+     "django__django-13315--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7291666666666667
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13401",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13401--verinoda_guided/repro.py",
+     "django__django-13401--verinoda_guided/repro.py",
+     "django__django-13401--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13401--verinoda_guided/repro.py",
+     "django__django-13401--verinoda_guided/repro.py",
+     "django__django-13401--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13401--verinoda_guided/repro.py",
+     "django__django-13401--verinoda_guided/repro.py",
+     "django__django-13401--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13658",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 0,
+  "reproductions": 0,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13768",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13768--verinoda_guided/repro.py",
+     "django__django-13768--verinoda_guided/repro.py",
+     "django__django-13768--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13768--verinoda_guided/repro.py",
+     "django__django-13768--verinoda_guided/repro.py",
+     "django__django-13768--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13768--verinoda_guided/repro.py",
+     "django__django-13768--verinoda_guided/repro.py",
+     "django__django-13768--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-13925",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-13925--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-13925--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-13925--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14016",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14016--verinoda_guided/repro.py",
+     "django__django-14016--verinoda_guided/repro.py",
+     "django__django-14016--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7220843672456576
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14016--verinoda_guided/repro.py",
+     "django__django-14016--verinoda_guided/repro.py",
+     "django__django-14016--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7220843672456576
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14016--verinoda_guided/repro.py",
+     "django__django-14016--verinoda_guided/repro.py",
+     "django__django-14016--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4441687344913152
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14608",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14608--verinoda_guided/repro.py",
+     "django__django-14608--verinoda_guided/repro.py",
+     "django__django-14608--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.814994122793364
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14608--verinoda_guided/repro.py",
+     "django__django-14608--verinoda_guided/repro.py",
+     "django__django-14608--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7768969422423555
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14608--verinoda_guided/repro.py",
+     "django__django-14608--verinoda_guided/repro.py",
+     "django__django-14608--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7182791861008089
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14667",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14667--verinoda_guided/repro.py",
+     "django__django-14667--verinoda_guided/repro.py",
+     "django__django-14667--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7813897813897814
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14667--verinoda_guided/repro.py",
+     "django__django-14667--verinoda_guided/repro.py",
+     "django__django-14667--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7764703071427719
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14667--verinoda_guided/repro.py",
+     "django__django-14667--verinoda_guided/repro.py",
+     "django__django-14667--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.6855315833418023
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14730",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14730--verinoda_guided/repro.py",
+     "django__django-14730--verinoda_guided/repro.py",
+     "django__django-14730--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.99800796812749
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14730--verinoda_guided/repro.py",
+     "django__django-14730--verinoda_guided/repro.py",
+     "django__django-14730--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.99800796812749
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14730--verinoda_guided/repro.py",
+     "django__django-14730--verinoda_guided/repro.py",
+     "django__django-14730--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.99601593625498
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14752",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14752--verinoda_guided/repro.py",
+     "django__django-14752--verinoda_guided/repro.py",
+     "django__django-14752--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14752--verinoda_guided/repro.py",
+     "django__django-14752--verinoda_guided/repro.py",
+     "django__django-14752--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14752--verinoda_guided/repro.py",
+     "django__django-14752--verinoda_guided/repro.py",
+     "django__django-14752--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14855",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14855--verinoda_guided/repro.py",
+     "django__django-14855--verinoda_guided/repro.py",
+     "django__django-14855--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14855--verinoda_guided/repro.py",
+     "django__django-14855--verinoda_guided/repro.py",
+     "django__django-14855--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14855--verinoda_guided/repro.py",
+     "django__django-14855--verinoda_guided/repro.py",
+     "django__django-14855--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14915",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14915--verinoda_guided/repro.py",
+     "django__django-14915--verinoda_guided/repro.py",
+     "django__django-14915--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14915--verinoda_guided/repro.py",
+     "django__django-14915--verinoda_guided/repro.py",
+     "django__django-14915--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14915--verinoda_guided/repro.py",
+     "django__django-14915--verinoda_guided/repro.py",
+     "django__django-14915--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14997",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14997--verinoda_guided/repro.py",
+     "django__django-14997--verinoda_guided/repro.py",
+     "django__django-14997--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.0666666666666667
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14997--verinoda_guided/repro.py",
+     "django__django-14997--verinoda_guided/repro.py",
+     "django__django-14997--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.0640984483681113
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14997--verinoda_guided/repro.py",
+     "django__django-14997--verinoda_guided/repro.py",
+     "django__django-14997--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.4306260032102729
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-14999",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-14999--verinoda_guided/repro.py",
+     "django__django-14999--verinoda_guided/repro.py",
+     "django__django-14999--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.6510344827586207
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-14999--verinoda_guided/repro.py",
+     "django__django-14999--verinoda_guided/repro.py",
+     "django__django-14999--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.6510344827586207
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-14999--verinoda_guided/repro.py",
+     "django__django-14999--verinoda_guided/repro.py",
+     "django__django-14999--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3020689655172413
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-15789",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-15789--verinoda_guided/repro.py",
+     "django__django-15789--verinoda_guided/repro.py",
+     "django__django-15789--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.6823661945494321
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-15789--verinoda_guided/repro.py",
+     "django__django-15789--verinoda_guided/repro.py",
+     "django__django-15789--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.569495596235831
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-15789--verinoda_guided/repro.py",
+     "django__django-15789--verinoda_guided/repro.py",
+     "django__django-15789--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4254141897079893
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-15790",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-15790--verinoda_guided/repro.py",
+     "django__django-15790--verinoda_guided/repro.py",
+     "django__django-15790--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-15790--verinoda_guided/repro.py",
+     "django__django-15790--verinoda_guided/repro.py",
+     "django__django-15790--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-15790--verinoda_guided/repro.py",
+     "django__django-15790--verinoda_guided/repro.py",
+     "django__django-15790--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-15819",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-15819--verinoda_guided/repro.py",
+     "django__django-15819--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-15819--verinoda_guided/repro.py",
+     "django__django-15819--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-15819--verinoda_guided/repro.py",
+     "django__django-15819--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-15902",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-15902--verinoda_guided/repro.py",
+     "django__django-15902--verinoda_guided/repro.py",
+     "django__django-15902--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.059189780471245
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-15902--verinoda_guided/repro.py",
+     "django__django-15902--verinoda_guided/repro.py",
+     "django__django-15902--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.9093406593406593
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-15902--verinoda_guided/repro.py",
+     "django__django-15902--verinoda_guided/repro.py",
+     "django__django-15902--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.6348101534028308
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16041",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16041--verinoda_guided/repro.py",
+     "django__django-16041--verinoda_guided/repro.py",
+     "django__django-16041--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16041--verinoda_guided/repro.py",
+     "django__django-16041--verinoda_guided/repro.py",
+     "django__django-16041--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16041--verinoda_guided/repro.py",
+     "django__django-16041--verinoda_guided/repro.py",
+     "django__django-16041--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16229",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16229--verinoda_guided/repro.py",
+     "django__django-16229--verinoda_guided/repro.py",
+     "django__django-16229--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.4381276437310608
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16229--verinoda_guided/repro.py",
+     "django__django-16229--verinoda_guided/repro.py",
+     "django__django-16229--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.3819561108051334
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16229--verinoda_guided/repro.py",
+     "django__django-16229--verinoda_guided/repro.py",
+     "django__django-16229--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.3636556179180345
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16255",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16255--verinoda_guided/repro.py",
+     "django__django-16255--verinoda_guided/repro.py",
+     "django__django-16255--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2302158273381294
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16255--verinoda_guided/repro.py",
+     "django__django-16255--verinoda_guided/repro.py",
+     "django__django-16255--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2302158273381294
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16255--verinoda_guided/repro.py",
+     "django__django-16255--verinoda_guided/repro.py",
+     "django__django-16255--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.60431654676259
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16379",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16379--verinoda_guided/repro.py",
+     "django__django-16379--verinoda_guided/repro.py",
+     "django__django-16379--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16379--verinoda_guided/repro.py",
+     "django__django-16379--verinoda_guided/repro.py",
+     "django__django-16379--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16379--verinoda_guided/repro.py",
+     "django__django-16379--verinoda_guided/repro.py",
+     "django__django-16379--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16816",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16816--verinoda_guided/repro.py",
+     "django__django-16816--verinoda_guided/repro.py",
+     "django__django-16816--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16816--verinoda_guided/repro.py",
+     "django__django-16816--verinoda_guided/repro.py",
+     "django__django-16816--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16816--verinoda_guided/repro.py",
+     "django__django-16816--verinoda_guided/repro.py",
+     "django__django-16816--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "django__django-16873",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "django__django-16873--verinoda_guided/repro.py",
+     "django__django-16873--verinoda_guided/repro.py",
+     "django__django-16873--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.5978998400540438
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "django__django-16873--verinoda_guided/repro.py",
+     "django__django-16873--verinoda_guided/repro.py",
+     "django__django-16873--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.5464318745822
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "django__django-16873--verinoda_guided/repro.py",
+     "django__django-16873--verinoda_guided/repro.py",
+     "django__django-16873--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.0150266224796196
+   }
+  ]
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-22835",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-22835--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-22835--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-22835--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8577400080935038
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-22835--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-22835--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-22835--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.849817277624986
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-22835--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-22835--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-22835--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8425236024601404
+   }
+  ]
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-23964",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-23964--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-23964--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-23964--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.900473933649289
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-23964--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-23964--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-23964--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.900473933649289
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-23964--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-23964--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-23964--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.838862559241706
+   }
+  ]
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-25442",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-25442--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-25442--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-25442--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7431184531822344
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-25442--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-25442--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-25442--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.6632071099632926
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-25442--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-25442--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-25442--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.59817899354673
+   }
+  ]
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-26020",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-26020--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-26020--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-26020--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9765051395007343
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-26020--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-26020--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-26020--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9765051395007343
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "matplotlib__matplotlib-26020--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-26020--verinoda_guided/repro.py",
+     "matplotlib__matplotlib-26020--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9530102790014685
+   }
+  ]
+ },
+ {
+  "instance_id": "mwaskom__seaborn-2848",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-2848--verinoda_guided/repro.py",
+     "mwaskom__seaborn-2848--verinoda_guided/repro.py",
+     "mwaskom__seaborn-2848--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.980561555075594
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-2848--verinoda_guided/repro.py",
+     "mwaskom__seaborn-2848--verinoda_guided/repro.py",
+     "mwaskom__seaborn-2848--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.980561555075594
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-2848--verinoda_guided/repro.py",
+     "mwaskom__seaborn-2848--verinoda_guided/repro.py",
+     "mwaskom__seaborn-2848--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.961123110151188
+   }
+  ]
+ },
+ {
+  "instance_id": "mwaskom__seaborn-3010",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-3010--verinoda_guided/repro.py",
+     "mwaskom__seaborn-3010--verinoda_guided/repro.py",
+     "mwaskom__seaborn-3010--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-3010--verinoda_guided/repro.py",
+     "mwaskom__seaborn-3010--verinoda_guided/repro.py",
+     "mwaskom__seaborn-3010--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "mwaskom__seaborn-3010--verinoda_guided/repro.py",
+     "mwaskom__seaborn-3010--verinoda_guided/repro.py",
+     "mwaskom__seaborn-3010--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "psf__requests-1963",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "psf__requests-1963--verinoda_guided/repro.py",
+     "psf__requests-1963--verinoda_guided/repro.py",
+     "psf__requests-1963--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4712477870303586
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "psf__requests-1963--verinoda_guided/repro.py",
+     "psf__requests-1963--verinoda_guided/repro.py",
+     "psf__requests-1963--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3369516506498034
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "psf__requests-1963--verinoda_guided/repro.py",
+     "psf__requests-1963--verinoda_guided/repro.py",
+     "psf__requests-1963--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2443236804883495
+   }
+  ]
+ },
+ {
+  "instance_id": "psf__requests-2674",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "psf__requests-2674--verinoda_guided/repro.py",
+     "psf__requests-2674--verinoda_guided/repro.py",
+     "psf__requests-2674--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2650771388499298
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "psf__requests-2674--verinoda_guided/repro.py",
+     "psf__requests-2674--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8232819074333801
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "psf__requests-2674--verinoda_guided/repro.py",
+     "psf__requests-2674--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8232819074333801
+   }
+  ]
+ },
+ {
+  "instance_id": "pydata__xarray-3364",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pydata__xarray-3364--verinoda_guided/repro.py",
+     "pydata__xarray-3364--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.4491270494180245
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pydata__xarray-3364--verinoda_guided/repro.py",
+     "pydata__xarray-3364--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.26208029951800316
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pydata__xarray-3364--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.47851797320364414
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-11143",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11143--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11143--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11143--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11143--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11143--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11143--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11143--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11143--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11143--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-11148",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11148--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11148--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11148--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11148--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11148--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11148--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-11148--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11148--verinoda_guided/repro.py",
+     "pytest-dev__pytest-11148--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-7373",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7373--verinoda_guided/repro.py",
+     "pytest-dev__pytest-7373--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8728358208955225
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7373--verinoda_guided/repro.py",
+     "pytest-dev__pytest-7373--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8728358208955225
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7373--verinoda_guided/repro.py",
+     "pytest-dev__pytest-7373--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7050746268656716
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-7432",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7432--verinoda_guided/repro.py",
+     "pytest-dev__pytest-7432--verinoda_guided/repro.py",
+     "pytest-dev__pytest-7432--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7432--verinoda_guided/repro.py",
+     "pytest-dev__pytest-7432--verinoda_guided/repro.py",
+     "pytest-dev__pytest-7432--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-7432--verinoda_guided/repro.py",
+     "pytest-dev__pytest-7432--verinoda_guided/repro.py",
+     "pytest-dev__pytest-7432--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "pytest-dev__pytest-8906",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-8906--verinoda_guided/repro.py",
+     "pytest-dev__pytest-8906--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.5805226010617538
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-8906--verinoda_guided/repro.py",
+     "pytest-dev__pytest-8906--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.5003554559475611
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "pytest-dev__pytest-8906--verinoda_guided/repro.py",
+     "pytest-dev__pytest-8906--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.10474165596919127
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-10949",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-10949--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-10949--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-10949--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.438346957988833
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-10949--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-10949--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-10949--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.431014321328424
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-10949--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-10949--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-10949--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.191149787761368
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-11281",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-11281--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-11281--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-11281--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9343825575771105
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-11281--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-11281--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9603847516455297
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-11281--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-11281--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9478238259469771
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-13142",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13142--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13142--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13142--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4810165798862693
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13142--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13142--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13142--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4738609448236575
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13142--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13142--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13142--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3966480446927374
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-13439",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13439--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13439--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13439--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13439--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13439--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13439--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13439--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13439--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13439--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-13584",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13584--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13584--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13584--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.5743243243243243
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13584--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13584--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13584--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.5743243243243243
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-13584--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13584--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-13584--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.1486486486486487
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-14092",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14092--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14092--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14092--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14092--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14092--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14092--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14092--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14092--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14092--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-14894",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14894--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14894--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14894--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9912826899128269
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14894--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14894--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14894--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9912826899128269
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14894--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14894--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14894--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9825653798256537
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-14983",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14983--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14983--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14983--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14983--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14983--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14983--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-14983--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14983--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-14983--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-15512",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-15512--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-15512--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-15512--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.414370729556976
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-15512--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-15512--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-15512--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2687007812839908
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-15512--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-15512--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-15512--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2389454363423993
+   }
+  ]
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-25500",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-25500--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-25500--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-25500--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.0835030549898166
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-25500--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-25500--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-25500--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.0835030549898166
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "scikit-learn__scikit-learn-25500--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-25500--verinoda_guided/repro.py",
+     "scikit-learn__scikit-learn-25500--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.9755600814663951
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-10451",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-10451--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.1574847590229829
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-10451--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.105482108201377
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-10451--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.6572804931380305
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-11445",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-11445--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-11445--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-11445--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9875
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-11445--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-11445--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-11445--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9875
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-11445--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-11445--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-11445--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.975
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-7686",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7686--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.5049800841485692
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7686--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4900130976871977
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7686--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.3246858354834168
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-7738",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7738--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-7738--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.1681887080812257
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7738--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-7738--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.1116890419624657
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-7738--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.40466305214998616
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8282",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8282--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.028056112224449
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8282--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.028056112224449
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8282--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.40080160320641284
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8627",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8627--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8627--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8627--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.8084896584896586
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8627--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8627--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8627--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.7969310592261412
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8627--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8627--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.3997072599531616
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8721",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8721--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8721--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8721--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8721--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8721--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8721--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sphinx-doc__sphinx-8721--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8721--verinoda_guided/repro.py",
+     "sphinx-doc__sphinx-8721--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8801",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-11870",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-11870--verinoda_guided/repro.py",
+     "sympy__sympy-11870--verinoda_guided/repro.py",
+     "sympy__sympy-11870--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.2575828646563463
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-11870--verinoda_guided/repro.py",
+     "sympy__sympy-11870--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.5214314646504126
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-11870--verinoda_guided/repro.py",
+     "sympy__sympy-11870--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.26718332958163166
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13031",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13031--verinoda_guided/repro.py",
+     "sympy__sympy-13031--verinoda_guided/repro.py",
+     "sympy__sympy-13031--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.891175433958939
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13031--verinoda_guided/repro.py",
+     "sympy__sympy-13031--verinoda_guided/repro.py",
+     "sympy__sympy-13031--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8873656503619216
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13031--verinoda_guided/repro.py",
+     "sympy__sympy-13031--verinoda_guided/repro.py",
+     "sympy__sympy-13031--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.8912620476450264
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13146",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 4,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13146--verinoda_guided/repro.py",
+     "sympy__sympy-13146--verinoda_guided/repro.py",
+     "sympy__sympy-13146--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3357664233576643
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13146--verinoda_guided/repro.py",
+     "sympy__sympy-13146--verinoda_guided/repro.py",
+     "sympy__sympy-13146--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3357664233576643
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13146--verinoda_guided/repro.py",
+     "sympy__sympy-13146--verinoda_guided/repro.py",
+     "sympy__sympy-13146--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.13138686131386862
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13480",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13480--verinoda_guided/repro.py",
+     "sympy__sympy-13480--verinoda_guided/repro.py",
+     "sympy__sympy-13480--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13480--verinoda_guided/repro.py",
+     "sympy__sympy-13480--verinoda_guided/repro.py",
+     "sympy__sympy-13480--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13480--verinoda_guided/repro.py",
+     "sympy__sympy-13480--verinoda_guided/repro.py",
+     "sympy__sympy-13480--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13647",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13647--verinoda_guided/repro.py",
+     "sympy__sympy-13647--verinoda_guided/repro.py",
+     "sympy__sympy-13647--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13647--verinoda_guided/repro.py",
+     "sympy__sympy-13647--verinoda_guided/repro.py",
+     "sympy__sympy-13647--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13647--verinoda_guided/repro.py",
+     "sympy__sympy-13647--verinoda_guided/repro.py",
+     "sympy__sympy-13647--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13895",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 4,
+  "reproductions": 4,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13895--verinoda_guided/repro.py",
+     "sympy__sympy-13895--verinoda_guided/repro.py",
+     "sympy__sympy-13895--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.104977375565611
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13895--verinoda_guided/repro.py",
+     "sympy__sympy-13895--verinoda_guided/repro.py",
+     "sympy__sympy-13895--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.104977375565611
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13895--verinoda_guided/repro.py",
+     "sympy__sympy-13895--verinoda_guided/repro.py",
+     "sympy__sympy-13895--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.20633484162895926
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13915",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13915--verinoda_guided/repro.py",
+     "sympy__sympy-13915--verinoda_guided/repro.py",
+     "sympy__sympy-13915--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13915--verinoda_guided/repro.py",
+     "sympy__sympy-13915--verinoda_guided/repro.py",
+     "sympy__sympy-13915--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13915--verinoda_guided/repro.py",
+     "sympy__sympy-13915--verinoda_guided/repro.py",
+     "sympy__sympy-13915--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-13971",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13971--verinoda_guided/repro.py",
+     "sympy__sympy-13971--verinoda_guided/repro.py",
+     "sympy__sympy-13971--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13971--verinoda_guided/repro.py",
+     "sympy__sympy-13971--verinoda_guided/repro.py",
+     "sympy__sympy-13971--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-13971--verinoda_guided/repro.py",
+     "sympy__sympy-13971--verinoda_guided/repro.py",
+     "sympy__sympy-13971--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-14308",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14308--verinoda_guided/repro.py",
+     "sympy__sympy-14308--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.1639829865886513
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14308--verinoda_guided/repro.py",
+     "sympy__sympy-14308--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.129169555104475
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14308--verinoda_guided/repro.py",
+     "sympy__sympy-14308--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.35782537769192535
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-14317",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14317--verinoda_guided/repro.py",
+     "sympy__sympy-14317--verinoda_guided/repro.py",
+     "sympy__sympy-14317--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4425716292144144
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14317--verinoda_guided/repro.py",
+     "sympy__sympy-14317--verinoda_guided/repro.py",
+     "sympy__sympy-14317--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3142495194059292
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14317--verinoda_guided/repro.py",
+     "sympy__sympy-14317--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2145063507154465
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-14396",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14396--verinoda_guided/repro.py",
+     "sympy__sympy-14396--verinoda_guided/repro.py",
+     "sympy__sympy-14396--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9205550028104832
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14396--verinoda_guided/repro.py",
+     "sympy__sympy-14396--verinoda_guided/repro.py",
+     "sympy__sympy-14396--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9166430284432296
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-14396--verinoda_guided/repro.py",
+     "sympy__sympy-14396--verinoda_guided/repro.py",
+     "sympy__sympy-14396--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8422498554077502
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-15345",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15345--verinoda_guided/repro.py",
+     "sympy__sympy-15345--verinoda_guided/repro.py",
+     "sympy__sympy-15345--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.061375449820072
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15345--verinoda_guided/repro.py",
+     "sympy__sympy-15345--verinoda_guided/repro.py",
+     "sympy__sympy-15345--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.0531787285085965
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15345--verinoda_guided/repro.py",
+     "sympy__sympy-15345--verinoda_guided/repro.py",
+     "sympy__sympy-15345--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.024390243902439
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-15346",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15346--verinoda_guided/repro.py",
+     "sympy__sympy-15346--verinoda_guided/repro.py",
+     "sympy__sympy-15346--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15346--verinoda_guided/repro.py",
+     "sympy__sympy-15346--verinoda_guided/repro.py",
+     "sympy__sympy-15346--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15346--verinoda_guided/repro.py",
+     "sympy__sympy-15346--verinoda_guided/repro.py",
+     "sympy__sympy-15346--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-15678",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15678--verinoda_guided/repro.py",
+     "sympy__sympy-15678--verinoda_guided/repro.py",
+     "sympy__sympy-15678--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.718699218004959
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15678--verinoda_guided/repro.py",
+     "sympy__sympy-15678--verinoda_guided/repro.py",
+     "sympy__sympy-15678--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.35428761714476
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-15678--verinoda_guided/repro.py",
+     "sympy__sympy-15678--verinoda_guided/repro.py",
+     "sympy__sympy-15678--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.695401172036686
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-16281",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16281--verinoda_guided/repro.py",
+     "sympy__sympy-16281--verinoda_guided/repro.py",
+     "sympy__sympy-16281--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2281714533121662
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16281--verinoda_guided/repro.py",
+     "sympy__sympy-16281--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.1004700022470226
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16281--verinoda_guided/repro.py",
+     "sympy__sympy-16281--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.0484539387750256
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-16988",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16988--verinoda_guided/repro.py",
+     "sympy__sympy-16988--verinoda_guided/repro.py",
+     "sympy__sympy-16988--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.9629681647940075
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16988--verinoda_guided/repro.py",
+     "sympy__sympy-16988--verinoda_guided/repro.py",
+     "sympy__sympy-16988--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.9023688542188506
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-16988--verinoda_guided/repro.py",
+     "sympy__sympy-16988--verinoda_guided/repro.py",
+     "sympy__sympy-16988--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.5766985138004246
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-17139",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17139--verinoda_guided/repro.py",
+     "sympy__sympy-17139--verinoda_guided/repro.py",
+     "sympy__sympy-17139--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17139--verinoda_guided/repro.py",
+     "sympy__sympy-17139--verinoda_guided/repro.py",
+     "sympy__sympy-17139--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17139--verinoda_guided/repro.py",
+     "sympy__sympy-17139--verinoda_guided/repro.py",
+     "sympy__sympy-17139--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-17630",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17630--verinoda_guided/repro.py",
+     "sympy__sympy-17630--verinoda_guided/repro.py",
+     "sympy__sympy-17630--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.6433944538390972
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17630--verinoda_guided/repro.py",
+     "sympy__sympy-17630--verinoda_guided/repro.py",
+     "sympy__sympy-17630--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.46238689272117295
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-17630--verinoda_guided/repro.py",
+     "sympy__sympy-17630--verinoda_guided/repro.py",
+     "sympy__sympy-17630--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.3439674199382004
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-18057",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18057--verinoda_guided/repro.py",
+     "sympy__sympy-18057--verinoda_guided/repro.py",
+     "sympy__sympy-18057--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2473867595818815
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18057--verinoda_guided/repro.py",
+     "sympy__sympy-18057--verinoda_guided/repro.py",
+     "sympy__sympy-18057--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.2473867595818815
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18057--verinoda_guided/repro.py",
+     "sympy__sympy-18057--verinoda_guided/repro.py",
+     "sympy__sympy-18057--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.5017421602787456
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-18087",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18087--verinoda_guided/repro.py",
+     "sympy__sympy-18087--verinoda_guided/repro.py",
+     "sympy__sympy-18087--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.0624656539031136
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18087--verinoda_guided/repro.py",
+     "sympy__sympy-18087--verinoda_guided/repro.py",
+     "sympy__sympy-18087--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.9516608867757574
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18087--verinoda_guided/repro.py",
+     "sympy__sympy-18087--verinoda_guided/repro.py",
+     "sympy__sympy-18087--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.880844370035065
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-18532",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 4,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18532--verinoda_guided/repro.py",
+     "sympy__sympy-18532--verinoda_guided/repro.py",
+     "sympy__sympy-18532--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.5760709010339733
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18532--verinoda_guided/repro.py",
+     "sympy__sympy-18532--verinoda_guided/repro.py",
+     "sympy__sympy-18532--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.5760709010339733
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18532--verinoda_guided/repro.py",
+     "sympy__sympy-18532--verinoda_guided/repro.py",
+     "sympy__sympy-18532--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.34268833087149186
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-18621",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18621--verinoda_guided/repro.py",
+     "sympy__sympy-18621--verinoda_guided/repro.py",
+     "sympy__sympy-18621--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18621--verinoda_guided/repro.py",
+     "sympy__sympy-18621--verinoda_guided/repro.py",
+     "sympy__sympy-18621--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-18621--verinoda_guided/repro.py",
+     "sympy__sympy-18621--verinoda_guided/repro.py",
+     "sympy__sympy-18621--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-19007",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19007--verinoda_guided/repro.py",
+     "sympy__sympy-19007--verinoda_guided/repro.py",
+     "sympy__sympy-19007--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8887552468856383
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19007--verinoda_guided/repro.py",
+     "sympy__sympy-19007--verinoda_guided/repro.py",
+     "sympy__sympy-19007--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.867850144180979
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19007--verinoda_guided/repro.py",
+     "sympy__sympy-19007--verinoda_guided/repro.py",
+     "sympy__sympy-19007--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.8072073322161382
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-19254",
+  "chosen_run": "c3-att-3",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19254--verinoda_guided/repro.py",
+     "sympy__sympy-19254--verinoda_guided/repro.py",
+     "sympy__sympy-19254--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.6367399651505243
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19254--verinoda_guided/repro.py",
+     "sympy__sympy-19254--verinoda_guided/repro.py",
+     "sympy__sympy-19254--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.5261726281257117
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19254--verinoda_guided/repro.py",
+     "sympy__sympy-19254--verinoda_guided/repro.py",
+     "sympy__sympy-19254--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4849713376794211
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-19487",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19487--verinoda_guided/repro.py",
+     "sympy__sympy-19487--verinoda_guided/repro.py",
+     "sympy__sympy-19487--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.739868130350732
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19487--verinoda_guided/repro.py",
+     "sympy__sympy-19487--verinoda_guided/repro.py",
+     "sympy__sympy-19487--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.424996213842193
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-19487--verinoda_guided/repro.py",
+     "sympy__sympy-19487--verinoda_guided/repro.py",
+     "sympy__sympy-19487--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.0805265654648957
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-20049",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20049--verinoda_guided/repro.py",
+     "sympy__sympy-20049--verinoda_guided/repro.py",
+     "sympy__sympy-20049--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.1547481997328253
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20049--verinoda_guided/repro.py",
+     "sympy__sympy-20049--verinoda_guided/repro.py",
+     "sympy__sympy-20049--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.055105623649439
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20049--verinoda_guided/repro.py",
+     "sympy__sympy-20049--verinoda_guided/repro.py",
+     "sympy__sympy-20049--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.9418612086306724
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-20154",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20154--verinoda_guided/repro.py",
+     "sympy__sympy-20154--verinoda_guided/repro.py",
+     "sympy__sympy-20154--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9885742672627917
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20154--verinoda_guided/repro.py",
+     "sympy__sympy-20154--verinoda_guided/repro.py",
+     "sympy__sympy-20154--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9885742672627917
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20154--verinoda_guided/repro.py",
+     "sympy__sympy-20154--verinoda_guided/repro.py",
+     "sympy__sympy-20154--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9771485345255837
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-20212",
+  "chosen_run": "c3-att-2",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20212--verinoda_guided/repro.py",
+     "sympy__sympy-20212--verinoda_guided/repro.py",
+     "sympy__sympy-20212--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3925233644859814
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20212--verinoda_guided/repro.py",
+     "sympy__sympy-20212--verinoda_guided/repro.py",
+     "sympy__sympy-20212--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.3925233644859814
+   },
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20212--verinoda_guided/repro.py",
+     "sympy__sympy-20212--verinoda_guided/repro.py",
+     "sympy__sympy-20212--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.7850467289719626
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-20639",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20639--verinoda_guided/repro.py",
+     "sympy__sympy-20639--verinoda_guided/repro.py",
+     "sympy__sympy-20639--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9528795811518325
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20639--verinoda_guided/repro.py",
+     "sympy__sympy-20639--verinoda_guided/repro.py",
+     "sympy__sympy-20639--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.9528795811518325
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-20639--verinoda_guided/repro.py",
+     "sympy__sympy-20639--verinoda_guided/repro.py",
+     "sympy__sympy-20639--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.905759162303665
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-21627",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 4,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21627--verinoda_guided/repro.py",
+     "sympy__sympy-21627--verinoda_guided/repro.py",
+     "sympy__sympy-21627--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4649122807017543
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21627--verinoda_guided/repro.py",
+     "sympy__sympy-21627--verinoda_guided/repro.py",
+     "sympy__sympy-21627--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4649122807017543
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21627--verinoda_guided/repro.py",
+     "sympy__sympy-21627--verinoda_guided/repro.py",
+     "sympy__sympy-21627--verinoda_guided/repro.py"
+    ],
+    "agreement": 0.9298245614035088
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-21847",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21847--verinoda_guided/repro.py",
+     "sympy__sympy-21847--verinoda_guided/repro.py",
+     "sympy__sympy-21847--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21847--verinoda_guided/repro.py",
+     "sympy__sympy-21847--verinoda_guided/repro.py",
+     "sympy__sympy-21847--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-21847--verinoda_guided/repro.py",
+     "sympy__sympy-21847--verinoda_guided/repro.py",
+     "sympy__sympy-21847--verinoda_guided/repro.py"
+    ],
+    "agreement": 2.0
+   }
+  ]
+ },
+ {
+  "instance_id": "sympy__sympy-23262",
+  "chosen_run": "c3-att-1",
+  "valid_reproductions": 3,
+  "reproductions": 3,
+  "candidates": [
+   {
+    "run": "c3-att-1",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-23262--verinoda_guided/repro.py",
+     "sympy__sympy-23262--verinoda_guided/repro.py",
+     "sympy__sympy-23262--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7413127413127412
+   },
+   {
+    "run": "c3-att-2",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-23262--verinoda_guided/repro.py",
+     "sympy__sympy-23262--verinoda_guided/repro.py",
+     "sympy__sympy-23262--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.7413127413127412
+   },
+   {
+    "run": "c3-att-3",
+    "applies": true,
+    "passes": [
+     "sympy__sympy-23262--verinoda_guided/repro.py",
+     "sympy__sympy-23262--verinoda_guided/repro.py",
+     "sympy__sympy-23262--verinoda_guided/repro.py"
+    ],
+    "agreement": 1.4826254826254825
+   }
+  ]
+ }
+]
