@@ -275,7 +275,7 @@ def test_when_a_function_was_given_a_behaviour_is_not_its_first_commit(tmp_path)
     assert any(shas[1][:10] in t for t in texts) and not any(shas[0][:10] in t for t in texts), texts
 
 
-# -- the review's cases (each failed on 2129e7c, the first version of D190) -----------------------------------------
+# -- the review's cases (each failed on 4ea6c4c, the first version of D190) -----------------------------------------
 
 SILENT = HERALD.replace("function deliver (text, item) {\n  say(text)",
                        "function deliver (text, item) {\n  if (/\\[SUSKUN\\]/.test(text)) return\n  say(text)")
@@ -407,7 +407,7 @@ def test_the_passages_keep_the_searchs_own_lines():
         "(+1 passage(s) of other files than the question names left out: `verinoda query` gives them)"]
 
 
-# -- the second review's cases (each failed on 718c7d2, the review round) -------------------------------------------
+# -- the second review's cases (each failed on 5952125, the review round) -------------------------------------------
 
 BOT_PY = "MyGame/bot/herald.py"
 HERALD_PY = '''TALK_MS = {"limit": 60000}  # oyuncu -> son cevap zamani (60 sn sohbet pencere)
@@ -518,7 +518,7 @@ def orders(tmp_path_factory):
                                       "Where is the database connection opened?",
                                       "Where is the maximum number of items per order checked?"])
 def test_the_cap_counts_what_the_answer_says_and_leaves_out_function_words(orders, question):
-    # each was met on 2ad768f with a right answer, and capped by the first cap (claims one by one, without their
+    # each was met on f0dfba6 with a right answer, and capped by the first cap (claims one by one, without their
     # text, "after", "every", "per" counted)
     assert _status(_ask(orders, question), "q1") == "met"
 

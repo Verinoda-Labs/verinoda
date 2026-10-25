@@ -54,7 +54,7 @@ to judge anything; its agreement is reported. Tests that fail locally with the g
 
 - C0, noise floor: D184's prompt and harness, more sessions on the dev failures, both arms. What flips here is sampling, and no
   change below is credited with it. Gives pass@k for the unchanged method (a diagnostic, never a resolved share: choosing among k
-  attempts with the hidden tests is not allowed). Amended before any run (same day): the Verinoda installed now is a7e0c65
+  attempts with the hidden tests is not allowed). Amended before any run (same day): the Verinoda installed now is 432ac1f
   (D186-D190), not the code of 2026-10-10 that D184 ran; C0 uses it, so C0 against D184 mixes sampling with that change, and
   C0's own repeats are the noise floor.
 - C1, the official image's working environment, both arms: the instance's venv on PATH with the checkout importable, the base
@@ -155,8 +155,8 @@ determine it).
   character for character, and it fails on one word of the warning the hidden test demands ("i.e." where the test has
   "e.g."). In the Verinoda arm, Verinoda's part is one `analyze` and one `code_check` per session. What is left to move the
   number: the model, more attempts, and information the benchmark withholds.
-- C1's first run (`c1-s1`) runs the code of commit d610991 of the study's branch (Verinoda's engine and the mod as in
-  a7e0c65). Every later run below uses the same Verinoda.
+- C1's first run (`c1-s1`) runs the code of commit ba14427 of the study's branch (Verinoda's engine and the mod as in
+  432ac1f). Every later run below uses the same Verinoda.
 - C2. One defect is seen in C1's transcripts so far: `code_check` checked against Verinoda's interpreter, standard library
   only, in every Verinoda-arm session, because it ignored the activated environment (`VIRTUAL_ENV`). It is fixed in the
   product (docs/DESIGN.md D192). On the copy where it was seen, the check with the fix gives the same verdicts (250 sites,

@@ -11,7 +11,7 @@ folder `C:/vbench-claims-rerun`) do not exist in the repository; the results the
 
 ---
 
-# Redesign ledger — branch symbiosis-redesign-2026-10-12 (cut from benchmark-bulgulari-2026-10-11 @ feae584)
+# Redesign ledger — branch symbiosis-redesign-2026-10-12 (cut from benchmark-bulgulari-2026-10-11 @ 0f9a870)
 
 Goal (user, 2026-10-12): beat graphify AND tool-less Claude on accuracy AND cost; may delete files / change
 architecture; cybersecurity care; decisions delegated to me; no more measurement studies (only cheap re-runs).
@@ -58,15 +58,15 @@ EQUAL accuracy, STRICTLY LOWER cost per session, plus the one measured win (hist
 ## Design
 - Understand workflow wf_a56e79b2-9df done (10 readers; maps in tool-results/ba48rr13y.txt + scratchpad/readers_last3.txt).
 - Spec written: docs/drafts/2026-10-12-verinoda-lean-design.md (D186). Critique workflow wf_ed056517-695 (3 critics) running.
-- Commit 3 (00c89b7): weak claims not answers; dated-document note needs a document.
+- Commit 3 (52e59e6): weak claims not answers; dated-document note needs a document.
 - SWE-bench cost decomposition (fitted prices $2/$4/$0.20/$10 per Mtok): +$0.0494/session = writes 68%, reads 26%,
   output 6%; parity needs: no ToolSearch turn, code_check as silent hook, analyze <= 2.5k chars, leads precise enough
   to displace >= 2 own calls.
 
-- Commit 4 (c5829bd): own files / Verinoda-only .mcp.json not a change; no refresh when nothing changed (analyze
+- Commit 4 (b220a49): own files / Verinoda-only .mcp.json not a change; no refresh when nothing changed (analyze
   on the fastapi copy 5.7 s -> ~1 s). Known gap (advisor): a removed own file still counts (marker check on a
   missing file) — D186 "not done".
-- Commit 5 (36b8e43): spec draft committed; branch pushed to origin (user asked for GitHub uploads twice today).
+- Commit 5 (8b2475e): spec draft committed; branch pushed to origin (user asked for GitHub uploads twice today).
 - Offline re-rank check (scratchpad/rerank.py): §4.1 order -> gold rank1 31->60, top3 46->76, top8 71->86 of 100.
 - tool.describe can target mcp__server__tool and set isDeferred:false and rewrite descriptions (d.ts 12119-12170).
 - Advisor plan order: (a) mod tool.describe + HIGH .venv fix [verify with one claude -p session]; (b) analyze lean
@@ -90,29 +90,29 @@ EQUAL accuracy, STRICTLY LOWER cost per session, plus the one measured win (hist
 
 - Critique workflow wf_ed056517-695 done: cost "does_not_reach_target" (strictly cheaper unreachable by replacing
   search; modelled 1.1-1.2x), accuracy "with changes" (invariant: analyze dict + render_text unchanged; when-question
-  regression found -> fixed ca1f8d3; history rules split; verdict audit baseline 15/22), safety "with changes"
+  regression found -> fixed 1f290c0; history rules split; verdict audit baseline 15/22), safety "with changes"
   (detect.py/export.py top-level imports; tests_upstream 66 files; port tool; extras; gitexec funnel; contained_path
   lexical-first; mod cwd-first lookup; no -P).
-- Commit 7 (ca1f8d3): when-questions claim topic commits else newest, no reason gate; shares_topic().
+- Commit 7 (1f290c0): when-questions claim topic commits else newest, no reason gate; shares_topic().
 - Commit 8: spec revised (honest target: equal accuracy, cost inside plain's interval, history win; §4.1b experiment).
 - Subagent launched: eight-set no-model benchmark on the branch vs compare-2026-10-02/after-fix (scratchpad/bench-branch/).
 
-- Plan committed (4832c0f): docs/drafts/2026-10-12-verinoda-lean-plan.md — 8 tasks, 3 waves.
+- Plan committed (3f9527e): docs/drafts/2026-10-12-verinoda-lean-plan.md — 8 tasks, 3 waves.
 - Wave 1 workflow wf_77d39ded-a45 launched: tasks 1 (mod), 2 (analyze lean), 5 (security helpers), 6 (deletions),
   each implementer in a worktree -> fresh reviewer -> one fix pass. Merge plan: merge each task branch into
   symbiosis-redesign-2026-10-12 with --no-ff, resolve server.py (tasks 2/5) and cli.py (tasks 1/6) conflicts, run the
   affected tests after each merge; then wave 2 (tasks 3, 4) with the same script shape; then wave 3 (7 docs, 8 runs).
-- Eight-set benchmark on the branch at c678d46: no fact lost/gained (284/319, 285/319); analyze tokens -9..-87 on 14 of
-  86 questions. Stored as benchmarks/results/compare-2026-10-12-branch/ (commit fd1abd1, pushed). Task 8 repeats it
+- Eight-set benchmark on the branch at 2b3f6c2: no fact lost/gained (284/319, 285/319); analyze tokens -9..-87 on 14 of
+  86 questions. Stored as benchmarks/results/compare-2026-10-12-branch/ (commit 276343d, pushed). Task 8 repeats it
   after D186 using run_all.sh there.
 
-- Task 8 harness prep done inline (0a6cf78 + fix): guide_text, --tasks/--repeats/--arms, claims_mech_strict.py.
+- Task 8 harness prep done inline (f6a0dd8 + fix): guide_text, --tasks/--repeats/--arms, claims_mech_strict.py.
   Strict baseline on D185 answers: plain 905/216/6 (0.803 confirmed), Verinoda 1047/254/20 (0.793); lenient 0.975/0.958.
 
-- Wave 1 done (wf_77d39ded-a45): tasks 1, 2, 5, 6 merged with --no-ff (f5f6f72, 5f720b0, 7b161cd, 2235ee7), no
+- Wave 1 done (wf_77d39ded-a45): tasks 1, 2, 5, 6 merged with --no-ff (af53bbc, b12ee08, 9291734, 6b9c878), no
   conflicts; mod checks pass on the merged tree (84 tests, tsc, validate). Task 5's fix pass failed (usage limit):
-  its two important findings fixed by me in 583e673 (file-URL share, evidence root on a share) plus the ", so" reason
-  cue (test_history's why-question regression from 6036da0). Worktrees still exist under .claude/worktrees (clean up
+  its two important findings fixed by me in 6069a3d (file-URL share, evidence root on a share) plus the ", so" reason
+  cue (test_history's why-question regression from 8fbc92b). Worktrees still exist under .claude/worktrees (clean up
   after wave 3). Task 6 review minors left: GENEL-BAKIS mentions `verinoda index`, BENCHMARKS.md `pip install anthropic`
   (Task 7). Task 1 minors: graph-state `state` not parsed by the mod (no_index), relative `cli` setting, freshness
   record=False, stale improve-pane comment. Task 2 minors: `_lead_lines` ad-hoc containment (route through
@@ -125,19 +125,19 @@ EQUAL accuracy, STRICTLY LOWER cost per session, plus the one measured win (hist
   Read; 3 API calls; Verinoda output 1,987 chars (was 10,355); answer cites 546dc8b "for security", inference marked;
   $0.124 with a cold prompt cache (24.9k tokens written at call 1); rule section present in the transcript.
 
-- Minors fixed (commit after 583e673): _lead_lines via contained_path (junction test), graph-state record=False, mod
+- Minors fixed (commit after 6069a3d): _lead_lines via contained_path (junction test), graph-state record=False, mod
   no_index state. Deferred minors (final report): relative `cli` setting accepted as a path; improve-pane.tsx stale
   comment; GENEL-BAKIS `verinoda index` mentions and BENCHMARKS.md `pip install anthropic` (Task 7); `:` anywhere
   rejected by escapes_lexically (POSIX name with a colon never indexed; document); daemon tests need the worktree's
   package on the child's path; ARCHITECTURE locate_daemon row (Task 5 review minor - check whether fixed).
 
-- Verdict audit after wave 1 (merged tree, 7fc52be): all 39 cases, wrong_met 1 (forge-maxheat-declared), above_ceiling 0,
+- Verdict audit after wave 1 (merged tree, b66d7b7): all 39 cases, wrong_met 1 (forge-maxheat-declared), above_ceiling 0,
   controls kept 15/22, the same seven lost controls as the HEAD baseline -> no regression. JSON:
   scratchpad/verdict-after-wave1.json (Task 8 copies it into benchmarks/results/verdict-audit-2026-10-12/).
 
-- Wave 2 done (wf_19225926-c2b): Task 3 (3 commits, fix pass done: first_appearance labelled; a7df657 same-second
-  commits) and Task 4 (1 commit, approved; trailer amended to Fable before merge) merged with --no-ff (4b76bfa,
-  f34a223), no conflicts. Task 3 deviations: history_search budget 2,989 chars for 14 real rows (plan's 2,000 was
+- Wave 2 done (wf_19225926-c2b): Task 3 (3 commits, fix pass done: first_appearance labelled; 5acd73a same-second
+  commits) and Task 4 (1 commit, approved; trailer amended to Fable before merge) merged with --no-ff (5efccb9,
+  cfeb10e), no conflicts. Task 3 deviations: history_search budget 2,989 chars for 14 real rows (plan's 2,000 was
   unrealistic: a row is ~100 chars) -> Task 7 restates the budget as measured; when-lead fires only for "when was X
   added/introduced/created". Minors deferred: _run(lock=False) symbol-mode _graph() outside the lock; _pathspec
   absolute path message; quoted cut independent of rows past the cap; agent_RULES.md still old sentence; run_tool
@@ -148,13 +148,13 @@ EQUAL accuracy, STRICTLY LOWER cost per session, plus the one measured win (hist
 - Wave 3a launched: Task 7 docs on sonnet (write -> review -> fix), with the measured-facts list in the prompt and a
   TASK8 placeholder for the re-run numbers. Task 8 runs start after the wave-2 integration tests finish.
 
-- Wave-2 integration tests: 823 passed, 1 skipped, exit 0 (20 files, 7:35). Eight sets after D186 (f34a223): no
-  fact lost/gained; stored benchmarks/results/compare-2026-10-13-after-d186/ (68b2133). Before-D186 verdict audit
-  running in a detached worktree at feae584 (.claude/worktrees/before-d186) -> scratchpad/verdict-before-d186.json.
+- Wave-2 integration tests: 823 passed, 1 skipped, exit 0 (20 files, 7:35). Eight sets after D186 (cfeb10e): no
+  fact lost/gained; stored benchmarks/results/compare-2026-10-13-after-d186/ (27ae3cf). Before-D186 verdict audit
+  running in a detached worktree at 0f9a870 (.claude/worktrees/before-d186) -> scratchpad/verdict-before-d186.json.
 - Task 8 driver (sonnet) launched: D185 re-run 6 tasks x 3 (Verinoda arm) + 24-pair cost sample, judge, strict check,
   results folder benchmarks/results/claims-rerun-2026-10-13/ (uncommitted; I commit after checking).
 
-- Before-D186 audit (feae584) vs after-wave2: summary identical, all 39 rows same verdict/wrong_met/above_ceiling/
+- Before-D186 audit (0f9a870) vs after-wave2: summary identical, all 39 rows same verdict/wrong_met/above_ceiling/
   sub-question statuses; 12 rows' answer text shorter (5 why rows lost the "changed in <sha>" line -> now in the
   unknown; 7 locate/callers rows lost definition/text-match/call lines that did not answer). after-wave1 ==
   after-wave2 minus seconds. Folder benchmarks/results/verdict-audit-2026-10-13/ (README + 3 JSONs) committed.
@@ -184,7 +184,7 @@ EQUAL accuracy, STRICTLY LOWER cost per session, plus the one measured win (hist
 
 - Probe results: B 3/6, B2 (reminder fix) 4/6, B3 (+ "first tool call" wording + analyze description) 5/6 (miss: axios
   when, answered right with git log -S). B2's reminder rewrite verified: the model's deferred list no longer names the
-  three (probe e2). Fix implemented TDD in worktree .claude/worktrees/callrule (branch callrule-d186, commit 380e6a0):
+  three (probe e2). Fix implemented TDD in worktree .claude/worktrees/callrule (branch callrule-d186, commit b66a373):
   mod CALL_RULE (B3 text, ~633 chars) + prompt.attachment hook for deferred_tools_delta + comments/README/AGENTS facts;
   server STATUS_RULE last sentence "On a why, when, which-commit or what-does-it-affect question, call analyze first:
   Grep, Read and git come after it." (skills copied; core instructions 1,734, limit 1,700 -> 1,800); analyze description
@@ -192,17 +192,17 @@ EQUAL accuracy, STRICTLY LOWER cost per session, plus the one measured win (hist
   75, lint equal, tsc, validate. Ruling: merge after the review workflow's mod reviewer finishes (it reads HEAD files).
   Product-config probe (worktree mod + PYTHONPATH=worktree server) running on the 6 tasks.
   Cost note: probe costs are confounded by the cache (B3's 6 concurrent cold sessions $0.12-0.14 vs B2 $0.03-0.05).
-- Product-config probe (worktree mod + worktree server, 380e6a0): 6/6 analyze first (both when-questions included);
+- Product-config probe (worktree mod + worktree server, b66a373): 6/6 analyze first (both when-questions included);
   transcripts carry the new description and the new STATUS_RULE sentence. Cold-cache costs again ($0.12-0.14).
 
-- Call-rule fix merged into the branch (320c0b0; pushed). Docs workflow wf_1135bc68-ca7 done (write, review
-  "fix_then_approve", fix): three commits rebuilt with the Fable trailer (02aaadf, 63e0a61, 22150ef), merged 7869d53
-  (conflict: mod AGENTS.md test count -> 86). Then 72c5e05: DESIGN 158 / BULGULARI 5.2 / OZELLIKLER 158 / UPGRADING tell
+- Call-rule fix merged into the branch (f73613a; pushed). Docs workflow wf_1135bc68-ca7 done (write, review
+  "fix_then_approve", fix): three commits rebuilt with the Fable trailer (22d0115, 83a2b16, 4830dd9), merged 91221d4
+  (conflict: mod AGENTS.md test count -> 86). Then 6baa279: DESIGN 158 / BULGULARI 5.2 / OZELLIKLER 158 / UPGRADING tell
   the zero-call finding and the fix; agent_RULES.md carries the new STATUS_RULE sentence (test_more_agents pin green:
   134 passed + 59 passed). Pushed. Worktrees left: before-d186 only.
 - Subagent split the work folder: results.jsonl = 24 none rows; superseded-zero-call/ holds the 39 Verinoda rows,
   judge.jsonl (27), mechanical.jsonl, logs, README, split-manifest; usage/ files being moved there too. Dry check: the
-  two commands would run exactly the 39 Verinoda sessions. Copies reused (indexed at 68b2133). Waiting for GO.
+  two commands would run exactly the 39 Verinoda sessions. Copies reused (indexed at 27ae3cf). Waiting for GO.
 - Review workflow wf_71fc39cc-feb: all 5 reviewers done (packaging 2, mcp 4, engine 5, mod 4, security 4 findings);
   skeptics running (4 verdicts so far, all Minor by effect). Then: re-grade, one fix pass (TDD), GO.
 - Docs workflow notes to carry into the final report: escapes_lexically rejects every ':' (recorded as a known gap in
@@ -231,7 +231,7 @@ EQUAL accuracy, STRICTLY LOWER cost per session, plus the one measured win (hist
 
 - Final review wf_71fc39cc-feb DONE (24 agents): 18 confirmed (4 security: 2 Critical + 2 Important; engine 4 Important
   + 1 Minor; mcp 2 Important + 2 Minor; packaging 2 Minor; mod 1 Important (SYMBIOSIS.md) + 2 Minor), 1 refuted
-  (register.tsx:43 rule vs STATUS_RULE status sets: by design). All Critical/Important fixed in 575b2a5 (TDD) + SYMBIOSIS.md.
+  (register.tsx:43 rule vs STATUS_RULE status sets: by design). All Critical/Important fixed in 85b85c7 (TDD) + SYMBIOSIS.md.
   Review Focus: items 1,3,4,5 pinned; item 2 "partly" (the analyze time-out test asserts status in DONE_STATUSES, no
   error; the leads-kept part is read, not pinned) -> deferred minor.
   Rulings on the "declined to judge" lists: security 1-2 closed by the fix (core.worktree refusal key; config.worktree
@@ -251,15 +251,15 @@ EQUAL accuracy, STRICTLY LOWER cost per session, plus the one measured win (hist
   repo -> build lock waits, documented, stands; tool.describe in the real host -> verified by the debug-log probe,
   closed; graph-state maps 'atlas.db unreadable' to no_index -> deferred minor; a UNC `cli` setting refused silently
   -> deferred minor.
-- Verdict audit after the fix pass (575b2a5): identical grades/answers to wave 2; orders-why-commit gains the leads
-  unknown (intended). Stored as after-review-575b2a5.json + README line (uncommitted). Eight-set rerun on 575b2a5
+- Verdict audit after the fix pass (85b85c7): identical grades/answers to wave 2; orders-why-commit gains the leads
+  unknown (intended). Stored as after-review-85b85c7.json + README line (uncommitted). Eight-set rerun on 85b85c7
   running into scratchpad/bench-after-review (first attempt failed on the OUT path, nothing ran).
-- Subagent given GO at 575b2a5 (re-run 39 Verinoda sessions, judge all 63, strict, analysis, results folder).
+- Subagent given GO at 85b85c7 (re-run 39 Verinoda sessions, judge all 63, strict, analysis, results folder).
 
-- Re-run done (575b2a5): 37/39 analyze first; 24 pairs 1.10x (+$0.0057 [+0.0023, +0.0085]); fastapi/fzf gold cited 3/3;
+- Re-run done (85b85c7): 37/39 analyze first; 24 pairs 1.10x (+$0.0057 [+0.0023, +0.0085]); fastapi/fzf gold cited 3/3;
   guzzle trap 3/3 false (b58db450; the model's own git log -S overrode the path-free lead); gin: judge 0, hand reading
-  31323f6 as "first". Results folder committed 09a762a (+ probes/ and superseded-zero-call/ appendices); eight sets after
-  the fix pass committed 32c5ae3 (no fact lost/gained); verdict audit after review 3c3a47f; docs filled (DESIGN 158.3,
+  31323f6 as "first". Results folder committed 60a7bb0 (+ probes/ and superseded-zero-call/ appendices); eight sets after
+  the fix pass committed a86529e (no fact lost/gained); verdict audit after review 7924b38; docs filled (DESIGN 158.3,
   BULGULARI 5.2-5.4, OZELLIKLER 158, BACKLOG 22.8/22.9). before-d186 worktree removed. Branch pushed.
 
 ## Pending

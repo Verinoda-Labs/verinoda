@@ -33,7 +33,7 @@ runs beside the agent in a session.
   0 failed; 2026-10-22, D187): the whole
   suite gave 5388 passed and 0 failed, and in a second run 1 failed, the handle test of `tests/test_fswatch.py`, whose cause
   was the test's and was fixed (20 of 20 runs alone since). The clean checkout before D187
-  (fa9d556) had 4 failures, each fixed in D187 (`docs/DESIGN.md` 159). `tests/test_asof.py::test_recorded_time` is a timing
+  (06ed854) had 4 failures, each fixed in D187 (`docs/DESIGN.md` 159). `tests/test_asof.py::test_recorded_time` is a timing
   flake: the store records a claim's transitions to the second (`store.now`), and the test fails when its last two land in the
   same second, as in two of the three D190 whole-suite runs; on D189's code it failed 1 of 12 and 1 of 16 runs in one warm
   process and passed that day's whole suite. `tests/test_history.py::test_a_name_resolves_through_the_index_and_is_never_replaced` failed

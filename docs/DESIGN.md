@@ -17810,7 +17810,7 @@ a narrower target, and D186 sets only that one. It is a target, not a result:
 
 Where each part stands (the sources are in 158.3). *Accuracy*: D185 measured no difference in false facts (+0.011, 95 % interval
 -0.044 to +0.078), which is not equality; the strict citation check is lower for the Verinoda arm (0.793 against 0.803, no interval
-computed); the no-model benchmark did not move, but it ran on `c678d46`, before the lead view. The accuracy of the redesigned tool
+computed); the no-model benchmark did not move, but it ran on `2b3f6c2`, before the lead view. The accuracy of the redesigned tool
 with a model is **not measured**. *Dollars*: modelled only; no session of the redesigned tool has been priced. *History*: one query
 on each of the three study clones, read-only runs, not a scored measure.
 
@@ -18012,7 +18012,7 @@ not a committed result); **modelled** (arithmetic over the fitted prices; here a
 re-derived); **not measured**.
 
 - **The no-model headline did not move (committed).** `benchmarks/results/compare-2026-10-12-branch/`: the eight public sets,
-  `--llm none`, `--repeat 1`, on the branch at `c678d46` (the D185-mechanism commits only, before the waves of this section)
+  `--llm none`, `--repeat 1`, on the branch at `2b3f6c2` (the D185-mechanism commits only, before the waves of this section)
   against `compare-2026-10-02/after-fix`. The `query` approach 284/319 -> 284/319 facts and `analyze` 285/319 -> 285/319, every
   question's found-fact set identical (no fact lost, none gained); `analyze` tokens per question lower on 14 of the 86 questions
   (-9 to -87), higher on none. Python 3.12.0 against the baseline's 3.13.14, Leiden clustering (graspologic-native installed),
@@ -18048,7 +18048,7 @@ re-derived); **not measured**.
   characters; both are arithmetic from the 14-row measurement, not a measurement of a 30-row history. The 2,000 holds for the short
   subjects of the fixture test, which says so in a comment. Nothing was trimmed: of the 525 characters that are neither rows nor
   bodies only `head_lines` (22) and `symbol` (50) could go without the CLI renderer and the tests losing what they read.
-- **Sizes of the agent-facing text (commits b05d29e, 9378fd7, b230c70; the example project `orders_app` with one signature edit,
+- **Sizes of the agent-facing text (commits c1aea1c, dd37d38, b571e93; the example project `orders_app` with one signature edit,
   not a real repository).** Core server instructions 1,303 -> 1,687 characters (the rule is 470, the two clauses it replaces 86;
   limit 1,700), then 1,734 once the rule's last sentence names the first call (the rule 517; limit 1,800); `run_tool` description
   845 -> 590 (limit 600); the four listed descriptions 1,053 -> 686; the core menu on the wire 4,721 -> 4,099 (4,870 -> 4,248 with
@@ -18074,8 +18074,8 @@ re-derived); **not measured**.
   system prompt and the tool descriptions reach the model. The 39 zero-call sessions are kept as measured data beside the
   re-run's results (`superseded-zero-call/`), not as its comparison. A live session with the mod and the server connected
   recorded that the rule section is added exactly when the request's tools name the Verinoda server (one haiku call, commit
-  2bcde62).
-- **The D185 citation check, strict (run over the D185 work folder, outside the repository; output not committed; commit 29d6dec).**
+  e8fdfe7).
+- **The D185 citation check, strict (run over the D185 work folder, outside the repository; output not committed; commit c0b1545).**
   Plain arm 905 confirmed / 216 wrong / 6 missing of 1,127 citations (0.803); Verinoda arm 1,047 / 254 / 20 of 1,321 (0.793); the
   lenient check of D185 gave 0.975 and 0.958. The strict figure is a lower bound as the lenient one is an upper bound (157.3); the
   re-runs report both. The Verinoda arm is the lower in both checks; no interval was computed.
@@ -18087,7 +18087,7 @@ re-derived); **not measured**.
   failed, 5,451 passed, 280 skipped, 1 xfailed); the 38 are failures of the kinds that were there before (an absent terraform
   grammar, Windows file types, a watch test on a deleted working directory, java and markdown cases; `docs/UPSTREAM.md` has the
   account). The Louvain gate, the whole product suite in a venv made from this `pyproject.toml` without graspologic-native (commit
-  f0753cd): 20 failed, 5,285 passed, 21 skipped, 3 deselected in 38:00. Of the 20: five of AGENTS.md's six known failures; the
+  cba8467): 20 failed, 5,285 passed, 21 skipped, 3 deselected in 38:00. Of the 20: five of AGENTS.md's six known failures; the
   trigram race `test_two_searches_at_once_do_not_fail` (it fails about half the time on the committed code too); the handle test of
   `test_fswatch` (a Windows race, passed on two reruns); `test_history.py::test_a_name_resolves_through_the_index_and_is_never_replaced`
   (fails on an untouched HEAD in a venv with graspologic-native, and is not on AGENTS.md's list); and 12 of
@@ -18097,7 +18097,7 @@ re-derived); **not measured**.
   (D183, 63 packages) -> about 185 MB, the second figure from a reviewer's `du`, not re-measured on a fresh install.
 - **Cost, measured on 24 pairs** (`benchmarks/results/claims-rerun-2026-10-13/`; the success rule was fixed before any session:
   the interval of the paired difference excludes +$0.015 and Verinoda's output is at most 4,500 characters per session). The D186
-  configuration (no GUIDE, the mod's call rule naming `analyze` as the first tool call, the lean `analyze`, the code at 575b2a5)
+  configuration (no GUIDE, the mod's call rule naming `analyze` as the first tool call, the lean `analyze`, the code at 85b85c7)
   against plain Claude Code on the same 24 answerable D185 tasks, one repeat, `claude-sonnet-5-5`: plain $0.0576 a session,
   Verinoda $0.0633 (1.10x), paired +$0.0057 with a 10,000-resample bootstrap 95% interval of +$0.0023 to +$0.0085 (Verinoda
   higher in 21 pairs, lower in 3). The interval excludes +$0.015 (the modelled 1.1-1.2x holds) and excludes zero (not parity).
@@ -18109,7 +18109,7 @@ re-derived); **not measured**.
   what-does-it-affect questions whose answer claims list many sites). `show="lead"` was never passed, so 4.1b stays off (its
   rule: own model calls at least 1.5 below plain; measured -0.50). Caveats: the 24 plain sessions ran at 01:16 and the Verinoda
   ones at 02:30 the same day (D185's plain arm agrees with the plain figure within 1.1%); the Verinoda-arm copies were indexed
-  once at 68b2133 and reused; everything that differs between the two configurations differs together, so nothing here says
+  once at 27ae3cf and reused; everything that differs between the two configurations differs together, so nothing here says
   which change did what.
 - **The call, measured.** `analyze` was the first tool in 37 of the 39 Verinoda sessions (why 11 of 11, when 10 of 10, trap 6 of 6,
   what-does-it-affect 10 of 12; the two misses went to Grep first); `run_tool`, `project_query` and ToolSearch were never
@@ -18240,7 +18240,7 @@ ready to use. Asked about the scope, they kept the Minecraft/JVM tools, kept the
 useful, left the docs as they were during the work (this section, the UPGRADING note, the backlog rows and AGENTS.md's test list
 were asked for afterwards) and had the branch merged into main locally. So the work measured where time goes on the paths a
 session runs (the CLI calls of the editor mod and the hooks, `check` after an edit, `analyze`), looked for code nothing reaches,
-and took every test that failed on a clean checkout as a defect to explain: on fa9d556, this machine (Windows 11, Python 3.12),
+and took every test that failed on a clean checkout as a defect to explain: on 06ed854, this machine (Windows 11, Python 3.12),
 `pytest tests` gave 5372 passed and 4 failed. Branch `cleanup-2026-10-22`, 16 commits, merged with `--no-ff` (the merge also
 brought the D185 and D186 branches into main).
 
@@ -18297,11 +18297,11 @@ brought the D185 and D186 branches into main).
 
 ### 159.3 Measured
 
-On this machine (Windows 11, Python 3.12, jedi 0.20.0, parso 0.8.7), idle, the base commit's code (a worktree of fa9d556) and the
+On this machine (Windows 11, Python 3.12, jedi 0.20.0, parso 0.8.7), idle, the base commit's code (a worktree of 06ed854) and the
 branch's run back to back on the same inputs; wall time, the best of 5 (3 for `check` of the small file and `analyze`, 1 for the
 large check):
 
-| | fa9d556 | D187 |
+| | 06ed854 | D187 |
 |---|---|---|
 | `python -c pass` (the floor) | 0.055 s | 0.055 s |
 | `python -c "import verinoda.cli"` | 0.149 s | 0.060 s |
@@ -18317,17 +18317,17 @@ large check):
 - One analysis of the flow question resolved 1,429 paths, 128 of them distinct, before the memo.
 - Opening a new database from 8 threads at once, 10 rounds, before: `atlas.db` failed in 10 rounds ("duplicate column name:
   plan_id"), `search.db` in 7 and `trigram.db` in 3 ("database is locked"); after: none (the trigram test runs 20 rounds).
-- An `atlas.db` the installed 0.4.0 tool wrote (schema v9) opened by fa9d556's code and by D187's: the same `sqlite_master` (33
+- An `atlas.db` the installed 0.4.0 tool wrote (schema v9) opened by 06ed854's code and by D187's: the same `sqlite_master` (33
   tables), the same row count in every table, `schema_version` 10 in both; only `schema_written_by` names the build. The new
   migration path makes the same schema from v0 as `executescript` did (a test).
-- `pytest tests`: fa9d556 5372 passed, 4 failed; at d9e8402 5388 passed, 0 failed; at 921465f 5389 passed, 1 failed (the fswatch
+- `pytest tests`: 06ed854 5372 passed, 4 failed; at 10fd971 5388 passed, 0 failed; at 5119046 5389 passed, 1 failed (the fswatch
   handle test, fixed in the test since: 20 of 20 runs alone). `pytest tests_upstream`: 37 failed, 3,646 passed, 130 skipped
-  (3,813 collected), the same 37 on fa9d556. `pytest tests/test_packaging.py -m slow` passed. Every CLI command run once on the
+  (3,813 collected), the same 37 on 06ed854. `pytest tests/test_packaging.py -m slow` passed. Every CLI command run once on the
   example projects (`orders_app`, `glow_mod`, `forge_mod`; 124 runs): no traceback, no time-out.
 - tq-audit: 357 held-out cases, 347 right, 3 wrong (2 at a verified status), 7 unknown; 22 cells, 3 shown, as on 2026-10-02.
 - Not measured: any agent session (the cost or accuracy of a session with Verinoda is D186's figure, not re-run); the MCP
   server's analyze on repositories other than the one above; Linux and macOS (every timing here is this machine's); install size
-  (the dependencies did not change). The whole suite's wall time (44 min on fa9d556, 36-39 min after) is not a comparison: the
+  (the dependencies did not change). The whole suite's wall time (44 min on 06ed854, 36-39 min after) is not a comparison: the
   first run shared the machine.
 
 ### 159.4 Not done
@@ -18431,7 +18431,7 @@ connected to, and the server is registered at user scope, so that is every sessi
 
 ### 160.3 Measured
 
-Tokens counted by `/context` (installed 318fa0b against this branch, the same machine and session settings):
+Tokens counted by `/context` (installed 03b833c against this branch, the same machine and session settings):
 
 | | before | D188 |
 |---|---|---|
@@ -18453,7 +18453,7 @@ Tokens counted by `/context` (installed 318fa0b against this branch, the same ma
   `test_mcp.py`, `test_mcp_projects.py`, `test_paths.py`, `test_update_fast.py`, `test_tq_measured.py` and `test_tq.py` 240
   passed. `paths.py` and `workflow.py` are in tq's engine: `verinoda benchmark tq-audit` was run again
   (`benchmarks/results/tq-audit-2026-10-23/`): 357 held-out cases, 347 right, 3 wrong, 7 unknown, the same 22 cells and 3 shown
-  as on 2026-10-22. Lint finding sets unchanged per file. The whole suite at c7ae87d: 5395 passed, 20 skipped, 3 deselected,
+  as on 2026-10-22. Lint finding sets unchanged per file. The whole suite at b84c71e: 5395 passed, 20 skipped, 3 deselected,
   0 failed (32 minutes, alone on the machine).
 - Not measured: an agent session with these changes (cost, model calls, accuracy); a billed count (every count here is the
   tokenizer's through `/context`); whether the shorter description changes when the skill is loaded.
@@ -18565,7 +18565,7 @@ Measured first, on the person's five largest sessions on this machine (`docs/dra
 - Tests: `tests/test_cards.py` 10 passed; `test_cards`, `test_cli` and `test_docs` together 90 passed; the mod 102 pass, 0 fail
   in 6 files, `claude plugin validate` passed, `tsc --noEmit` clean; disabling the hook made four wiring tests fail. Paths with
   spaces and Turkish letters ("Büyük Patlama anı.jpeg", "Eski silahlar/tools/...") passed through a list-argv child
-  as `$.process.run` starts it come back byte for byte, their cards right. The whole suite at a0d2807 (the Python side of
+  as `$.process.run` starts it come back byte for byte, their cards right. The whole suite at 0a7ca31 (the Python side of
   D189; the review's fix changed only the mod and this section): 5405 passed, 20 skipped, 3 deselected, 0 failed.
 - Not measured: an agent session over many compactions (whether summaries keep the cards, the re-reads they save, the cost);
   the auto-compact trigger with the hook (only `/compact` was run); how the 400k window changes answers.
@@ -18697,8 +18697,8 @@ same, so the failure is the engine's, not chance:
   commit, bot-c3, the commit that brought the window, and the note that `talk` carries only 'window'; "what depends on
   it" is unmet ("ask `what calls talk?`"). The MCP response (`lead_view`, compact JSON): 5,271 -> 4,129 characters, and it
   names `herald.js` only (before: fxrun.py and two design notes as well).
-- **The review** of the first version (2129e7c; a fresh reviewer on the strong model, each finding reproduced on a small
-  repository on 2ad768f and 2129e7c): one critical, one high and six important findings. (1) The line's claim made a why met
+- **The review** of the first version (4ea6c4c; a fresh reviewer on the strong model, each finding reproduced on a small
+  repository on f0dfba6 and 4ea6c4c): one critical, one high and six important findings. (1) The line's claim made a why met
   with no stated reason, through its own wording. (2) An anaphor in another part ("found by its title") met it with the
   wrong code once the fence had removed the right link. (3) "When was X changed after it was added" took the creation
   commit. (4) The other parts of a message lost their correct answers to the fence ("where is the spell duration in seconds
@@ -18707,11 +18707,11 @@ same, so the failure is the engine's, not chance:
   the file made the case look newer than the line. (8) The one-sentence form ("In <file>, when was the ... window
   introduced?") was still met with the helper: the path counted as naming code. Security: no finding (the case term and the
   path reach git as one argument each, behind `--literal-pathspecs`; the gate's line read follows an indexed symbol). Each
-  finding has a test (162.5). The review's 37 sub-questions, run again on the fix and on 2ad768f: four verdicts or answers
+  finding has a test (162.5). The review's 37 sub-questions, run again on the fix and on f0dfba6: four verdicts or answers
   differ, all meant - the two English and the Turkish window questions now about `talk`, and "Compare <bot> and
   <fxrun.py>. When was the window lookup introduced?" at met_with_inference ('lookup' is not in `find_window`'s name) - and
-  the other 33 are as on 2ad768f, the answers included.
-- **The second review** of the review round (718c7d2; another fresh reviewer on the strong model, the same way): two paths
+  the other 33 are as on f0dfba6, the answers included.
+- **The second review** of the review round (5952125; another fresh reviewer on the strong model, the same way): two paths
   to a wrong met and two lowered answers. (1) A callers or impact part was seeded with the named file's candidates and
   took them for its targets ("what calls the game window capture" met with `relay()` calls `deliver()`). (2) "When was
   the retry limit of 6 introduced" was met with the subject's first commit alone. (3) The cap lowered 4 of 20 right answers
@@ -18720,22 +18720,22 @@ same, so the failure is the engine's, not chance:
   a why listed the line's commit twice, two named files did not share a word's candidates, a followed move lost the case's
   place, and the decision-record rule had changed whys that name no file. Security: no finding; the line scan cost about
   0.05 s a word on a 925 KB named file. Each finding has a test (162.5). Its scenarios on the fix: the 20 orders
-  questions, the callers (12), value (6) and slash (4) cases as on 2ad768f; of its 5 basename questions, the bot named
+  questions, the callers (12), value (6) and slash (4) cases as on f0dfba6; of its 5 basename questions, the bot named
   three ways is answered by `talk` and the helper named two ways is capped (one word of three). The first review's 37:
-  four differ from 2ad768f as above (the three window questions now met: the fixture's commit says "conversation window").
+  four differ from f0dfba6 as above (the three window questions now met: the fixture's commit says "conversation window").
 - **The verdict audit** (`verinoda benchmark verdict-audit --split all`, 39 cases): every verdict and every unknown as on
-  2ad768f (wrong met 1, controls kept 15 of 22, as before). The earlier versions changed unknowns of two not_supported
+  f0dfba6 (wrong met 1, controls kept 15 of 22, as before). The earlier versions changed unknowns of two not_supported
   cases (a callers part seeded from the named file; "not" counted as a word of the subject); a first version capped "Where
   is an order written to the database?" (a control) through the definition of `load_settings()`, a side claim.
 - **tq**: `tq-audit` rerun after each version, into `benchmarks/results/tq-audit-2026-10-23-d190/`, `-d190b/` and
   `-d190c/` (question_plan, verdict_gate, history and lexicon are in its engine hash): every cell and count as on D188's
   run, only the commit and the engine sha changed (its exit 1 is the two wrong answers at statically_verified, 154 of 156,
   as before).
-- **The whole suite** at 634d0ed (the code as merged): 5434 passed, 0 failed, 20 skipped, 3 deselected (37 min). At
-  c7bbe36 it gave 5423 passed and 1 failed, at 88bd302 5411 passed and the same 1 failed:
+- **The whole suite** at 6a9b60b (the code as merged): 5434 passed, 0 failed, 20 skipped, 3 deselected (37 min). At
+  07cdcce it gave 5423 passed and 1 failed, at 7731aef 5411 passed and the same 1 failed:
   `tests/test_asof.py::test_recorded_time`, a timing flake: the store records a
-  claim's transitions to the second, and the test fails when its last two land in the same second. On 2ad768f the same day
-  it failed 1 of 12 and 1 of 16 runs in one warm process (0 of 12 at c7bbe36), and the whole suite there passed it (5406
+  claim's transitions to the second, and the test fails when its last two land in the same second. On f0dfba6 the same day
+  it failed 1 of 12 and 1 of 16 runs in one warm process (0 of 12 at 07cdcce), and the whole suite there passed it (5406
   passed); the test files before it in the suite's order, run twice on each commit, passed it every time.
 - Not measured: an agent session on the fixed version (whether it calls Verinoda more, or trusts it); a message that names
   two files or a file and a folder on a real repository; a shared basename (the first review declined to judge it); the
@@ -18772,8 +18772,8 @@ review: a callers part takes no seed from the named file; a when about a value k
 file named by its basename does not meet a one-word subject; a plan link is printed where the answer is; two named files share
 a word's candidates; the cap lets three right answers of the orders example stay met; a why that names no file keeps its
 record, and "None/dict" is no path; a why lists the line's commit once, and a case seen before a move keeps its place. Each
-test failed before its fix: those of the first version on 2ad768f, those of the first review and of the narrowed
-introduction rule on 2129e7c, those of the second review on 718c7d2.
+test failed before its fix: those of the first version on f0dfba6, those of the first review and of the narrowed
+introduction rule on 4ea6c4c, those of the second review on 5952125.
 
 ## 163. The question rule: a user-scope install puts it in ~/.claude/CLAUDE.md (D191, 2026-10-23)
 
@@ -18852,12 +18852,12 @@ is installed.
     unchanged.
   - `benchmarks/agent_compare/guard_run.py` starts `claude -p` without `--setting-sources` at all.
 - **Tests.** `tests/test_agents.py`: 96 passed and 1 skipped, the symbolic link, which this Windows account may not make.
-  22 of the 97 are new (75 on a7e0c65). With `test_more_agents` (two new cases), `test_setup`, `test_selffiles`,
+  22 of the 97 are new (75 on 432ac1f). With `test_more_agents` (two new cases), `test_setup`, `test_selffiles`,
   `test_doctor` and `test_docs`: 203 passed, 2 skipped.
-  - The first version's tests failed on a7e0c65, except the guard that a project install writes no CLAUDE.md.
-  - The review's tests failed on f8e19d3, 11 of them. Two passed there, the dry run's and a later text's, which pin what
+  - The first version's tests failed on 432ac1f, except the guard that a project install writes no CLAUDE.md.
+  - The review's tests failed on b603c80, 11 of them. Two passed there, the dry run's and a later text's, which pin what
     the review found right. The symbolic link's was skipped.
-  - Each changed file's ruff findings are the same as on a7e0c65.
+  - Each changed file's ruff findings are the same as on 432ac1f.
 - **Not measured.**
   - Whether the rule changes how often, or how well, Claude asks: no session was run with it.
   - A symbolic link here: the test is skipped; the hard link was run.
@@ -18865,7 +18865,7 @@ is installed.
 
 ### 163.4 Review
 
-A fresh reviewer on the strong model read f8e19d3 and reproduced each finding but the rule text's in temporary folders.
+A fresh reviewer on the strong model read b603c80 and reproduced each finding but the rule text's in temporary folders.
 
 1. **High.** A read-only CLAUDE.md made every user-scope install fail. The replace failed, and the server entry was never
    added. On uninstall, the manifest was dropped with the block still in the file.
@@ -18961,7 +18961,7 @@ agent ran the code with was never the one the check read.
   environment (Python 3.11.15) is chosen, and the verdicts are those of the standard library only: 250 sites, 89 unknown,
   0 absent. The unknowns there come from `**kwargs` and parameters, not from the environment: on this copy the change gives
   the check the right environment and changes no verdict.
-- The study keeps the Verinoda its runs started with (the engine of a7e0c65): no study result is credited to this change.
+- The study keeps the Verinoda its runs started with (the engine of 432ac1f): no study result is credited to this change.
 - Not measured: a session with the change (that the MCP server a session starts inherits its `VIRTUAL_ENV` was not checked in
   one); a copy whose changed code uses third-party attributes the environment would decide.
 
@@ -18979,10 +18979,10 @@ agent ran the code with was never the one the check read.
 activated one outside it give kind `active`, a third-party name found there `exists` and a missing one `absent`;
 `trusted=False` gives `active` too; `VIRTUAL_ENV` naming Verinoda's own environment gives `verinoda`; a base interpreter inside
 the project gives `verinoda` with a note naming `VIRTUAL_ENV`; a project `.venv` still comes first. It fails on the code
-before the change (d610991's `codecheck_env.py`: kind `verinoda`, 2026-10-24).
+before the change (ba14427's `codecheck_env.py`: kind `verinoda`, 2026-10-24).
 `test_the_active_environment_is_read_again_after_an_install`: the environment is reused until a module is added to the
 activated environment's site-packages, then read again; another `VIRTUAL_ENV` gives another answer without a restart. It
-fails on 3696b46's `codecheck.py` (the same environment after the install).
+fails on 17395c0's `codecheck.py` (the same environment after the install).
 
 ## 165. A scripted session ends with its answer: no re-index for its exit to wait on (D193, 2026-10-24)
 
@@ -19037,7 +19037,7 @@ question of the session.
 | Arm | From the last entry to the process's end | The server's end, after the last entry | The mod's `update --fast` |
 |---|---|---|---|
 | Plain | 0.9, 0.9, 0.9 s | no server | none |
-| Old mod (main 0673474, as Part B ran) | 3.6, 3.7, 3.7 s | 3.0, 3.0, 3.0 s | from 0.1 to 3.0 s, each round |
+| Old mod (main 9c7db65, as Part B ran) | 3.6, 3.7, 3.7 s | 3.0, 3.0, 3.0 s | from 0.1 to 3.0 s, each round |
 | New mod (D193) | 0.7, 1.0, 0.8 s | 0.0, 0.0, 0.0 s | none |
 
 - **Every session did the task:** Read then Edit, one line added, the reply "done". Start-up (from the process start to
@@ -19096,7 +19096,7 @@ The server answered `initialize` 0.86 to 0.90 s after it started. Each `analyze`
 3.93 s.
 
 The scripts are in the session's scratch folder, and their data is in `ownrepo-data/` beside the study's (neither is in
-the repository). The study keeps the mod its runs started with (main 0673474). No study result is credited to this
+the repository). The study keeps the mod its runs started with (main 9c7db65). No study result is credited to this
 change.
 
 ### 165.4 Not done
@@ -19124,7 +19124,7 @@ wait for /verinoda-update". It checks three things:
 - the state reads "graph state unknown";
 - `/verinoda-update` runs one `update` and no watch.
 
-It fails on 0673474's `register.tsx`: an update ran at the turn's end (expected 0, received 1).
+It fails on 9c7db65's `register.tsx`: an update ran at the turn's end (expected 0, received 1).
 
 ## 166. One reading of the working tree per analyze (D194, 2026-10-24)
 
@@ -19156,7 +19156,7 @@ A timing script ran on 2026-10-24 from 23:32 to 23:35, with nothing else running
 session's scratch folder, not in the repository). It used a clean copy of the study's clone with a fresh index, so it
 measured the fresh path: two readings before, one after. The stale path (three readings before) was not timed.
 
-Each process answered the same six questions of the Part A profiles, each once and then again. Base (76cc774's
+Each process answered the same six questions of the Part A profiles, each once and then again. Base (87dc62c's
 `verinoda/`) and D194 alternated over 3 rounds. q1's first call is its process's cold one (import, graph load).
 
 | Question (kind) | First call, base | First call, D194 | Again, base | Again, D194 |
@@ -19192,7 +19192,7 @@ Medians of 3 runs each.
 
 `tests/test_mcp.py::test_analyze_reads_the_working_tree_once_per_call` checks one reading per call, on an unchanged tree
 and on an edited one. The count is of `snapshot.current_state` as the server and `analysis` call it; workflow's own
-reading during a refresh is not counted. It fails on 76cc774's code: 2 readings on the unchanged tree, where it expects
+reading during a refresh is not counted. It fails on 87dc62c's code: 2 readings on the unchanged tree, where it expects
 1.
 
 ## 167. What a review says after an edit task, and two defects it showed (D195, 2026-10-25)
@@ -19225,7 +19225,7 @@ cover, never a gain in resolved tasks.
 
 ### 167.2 Measured
 
-The replay ran on 2026-10-25 from 00:06 to 00:13, with main 0673474's Verinoda. Nothing else ran but the SWE-bench
+The replay ran on 2026-10-25 from 00:06 to 00:13, with main 9c7db65's Verinoda. Nothing else ran but the SWE-bench
 selector's start.
 
 | Task | Seconds (none, guided) | Exit | What the review said |
@@ -19353,7 +19353,7 @@ session's scratch folder, not in the repository. Each copy went through these st
    makes it);
 5. a second call, after any background build had ended.
 
-One copy per arm: e789629's code (base) and the fix, arms alternating (requests base first, django the fix first).
+One copy per arm: 88f9f22's code (base) and the fix, arms alternating (requests base first, django the fix first).
 
 | Repository | Arm | Setup | First call | Its refresh | The update's index step | "Not refreshed" note | Background build | Second call |
 |---|---|---|---|---|---|---|---|---|
@@ -19378,7 +19378,7 @@ measurement ran. Each rule came out as follows:
    note.
 2. **2a holds:** django's fixed inline refresh took 6.6 s, under the 15 s that `REFRESH_INLINE_SECONDS` allows. **2b
    holds:** requests' fixed first call took 1.8 s against the base's 3.0 s, which held a whole rebuild of 1.25 s.
-3. **Holds.** The new test fails on e789629 and passes with the fix. The touched test files pass: 136 tests in
+3. **Holds.** The new test fails on 88f9f22 and passes with the fix. The touched test files pass: 136 tests in
    `test_selffiles`, `test_update_fast`, `test_update_vs_scan`, `test_workflow_index` and `test_analysis`. That
    count includes the deletion guard, which was added after the measurement.
 4. **Holds.** ruff's finding set on the two changed files is the same with and without the change: 4 findings, all
@@ -19427,7 +19427,7 @@ re-derives every derived index from the whole graph. It is BACKLOG 25.7, not par
   - the freshness check finds nothing, and the next update is a no-op;
   - a whole build after that drops the file from the graph and from the search index.
 
-  On e789629's code it fails at its first check of the update: `index_mode` is `full`, the whole graph rebuilt, where
+  On 88f9f22's code it fails at its first check of the update: `index_mode` is `full`, the whole graph rebuilt, where
   the fix gives `none`.
 - `tests/test_selffiles.py::test_ignoring_a_config_whose_server_the_graph_read_still_rebuilds_it`: a config holding the
   user's server that is then ignored still rebuilds the graph. So does one whose server was taken out as the file was

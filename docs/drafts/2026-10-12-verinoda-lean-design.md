@@ -76,7 +76,7 @@ with a 2,500-char result; the plain agent has 1.31 search-only calls to displace
 displace a Read (§4.1b), or it is not reached. These numbers are modelled, not measured; §8 says what the re-runs
 can resolve.
 
-## 3. What is already done on this branch (b1da5ef, 6036da0, 00c89b7, c5829bd, c447343, ca1f8d3)
+## 3. What is already done on this branch (9e510e3, 8fbc92b, 52e59e6, b220a49, 8c75d1b, 1f290c0)
 
 - `cap_response` keeps both ends of a commit list and names every dropped commit as `sha date` (the D185 gold
   commit was position 11 of 14 and was cut silently).
@@ -85,7 +85,7 @@ can resolve.
   name excluded); the others are leads, one line each, in an unknown whose next step names `git show` and
   `history_search`. A when-question (intent `history`, the same handler) claims the commits about the question's
   words, else the newest, with no reason asked (the review found the reason gate had reached when-questions on the
-  branch; fixed in ca1f8d3; the when-handler stays shared, see §4.3).
+  branch; fixed in 1f290c0; the when-handler stays shared, see §4.3).
 - The top-level status is derived from the sub-questions: `answered`, `partly_answered`, `unanswered` (it was the
   literal "answered" in 220 of 220 study calls). A claim the verdict gate set aside is not listed as an answer; the
   "documents state intent" note needs a document.
@@ -250,7 +250,7 @@ first search), the session-start `check --stdin` warm-up, the locate daemon star
 hooks, the commit-review guard on every git shell command. The check-after-edit becomes opt-in (`check: true`): 0
 notes in 65 edits in the guard study; when on, it is a hook that writes nothing unless a name is absent, a type
 mismatches or the file no longer parses. The `tool.describe` hook for the assist tools goes in the same commit
-that adds nothing new: the MCP-tool hook already exists (c447343), so the mechanism never disappears.
+that adds nothing new: the MCP-tool hook already exists (8c75d1b), so the mechanism never disappears.
 Kept untouched: the improvement checklist pane, the language pane and the mascot (person-facing, no token cost by
 default, the owner's recent work).
 

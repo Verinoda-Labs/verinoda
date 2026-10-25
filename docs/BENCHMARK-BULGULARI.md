@@ -189,7 +189,7 @@ Verinoda çağrısının sonucuyla birlikte maliyetinden azdır.
 Aşağıdakilerden yalnız yeniden koşu (son madde) yeniden tasarlanan aracın maliyetinin ve ajan davranışının puanlı bir ölçümüdür:
 tek oturumluk denemeler gözlemdir, katı atıf kontrolü D185'in (eski araçla verilmiş) cevaplarını puanlar.
 
-- **Modelsiz benchmark, sekiz küme (işlenmiş sonuç: `benchmarks/results/compare-2026-10-12-branch/`):** dalın c678d46
+- **Modelsiz benchmark, sekiz küme (işlenmiş sonuç: `benchmarks/results/compare-2026-10-12-branch/`):** dalın 2b3f6c2
   sürümünde olgu kaybı da kazancı da yok (sorgu 284/319 → 284/319, analyze 285/319 → 285/319); `analyze` soru başına token'ı
   86 sorunun 14'ünde düştü (-9 ile -87), hiçbirinde artmadı. D186'nın tamamından sonraki koşu (`compare-2026-10-13-after-d186/`)
   ve son incelemenin düzeltmelerinden sonraki koşu (`compare-2026-10-13-after-review/`) da olgu kaybı ve kazancı göstermedi.
@@ -223,7 +223,7 @@ tek oturumluk denemeler gözlemdir, katı atıf kontrolü D185'in (eski araçla 
   daha önce de başarısız olan türden), 3.645 geçti, 130 atlandı; Louvain kapısı (graspologic-native'siz tüm ürün takımı): 20
   başarısız, hiçbiri Louvain'den değil.
 - **Yeniden koşu (`benchmarks/results/claims-rerun-2026-10-13/`; `claude-sonnet-5-5`, 63 oturum, 0 hata):** düzeltilmiş kuralla
-  (575b2a5) Verinoda kolunun 39 oturumunun 37'sinde ilk araç çağrısı `analyze` oldu (neden 11/11, ne zaman 10/10, tuzak 6/6,
+  (85b85c7) Verinoda kolunun 39 oturumunun 37'sinde ilk araç çağrısı `analyze` oldu (neden 11/11, ne zaman 10/10, tuzak 6/6,
   neyi-etkiler 10/12); ilk kuralla aynı yapı 39 oturumda sıfır çağrı yapmıştı (klasörün `superseded-zero-call/` eki). 24 çiftlik
   maliyet örneği: düz 0,0576 $, Verinoda 0,0633 $ (1,10 kat); eşleştirilmiş fark +0,0057 $, %95 aralık +0,0023 ile +0,0085
   (aralık tasarımın +0,015 çizgisini dışlıyor; sıfırı da dışlıyor, yani eşitlik değil); D185 yapılandırması aynı görevlerde
@@ -241,7 +241,7 @@ tek oturumluk denemeler gözlemdir, katı atıf kontrolü D185'in (eski araçla 
 - **Doğruluk eşitliği.** Yeniden tasarlanan aracın bir modelle doğruluğunun düz Claude'a eşit ya da farklı olduğu bu koşudan
   çıkmaz: 27 ayrı görev (maliyet örneğinin 24'ü ve altılının 3'ü daha; 21'i tek, 6'sı üç tekrar), düz kolda 2 yanlış olgulu
   cevap. Tek bir değişikliğin etkisi de ölçülmedi: iki yapılandırma
-  birlikte farklıdır (GUIDE'sız istem, çağrı kuralı, yalın `analyze`, 575b2a5 kodu). Dolar 24 çiftte ölçüldü (yukarıda); 1,1-1,2
+  birlikte farklıdır (GUIDE'sız istem, çağrı kuralı, yalın `analyze`, 85b85c7 kodu). Dolar 24 çiftte ölçüldü (yukarıda); 1,1-1,2
   katlık model tuttu.
 - Modelin ilk Read'inin 1. ipucunu izleyip izlemediği; `show="lead"`'in etkisi (kapalı; Verinoda kolunun kendi model çağrıları
   düz kolunkinden en az 1,5 az değilse kapalı kalır); modelin kısalmış metinle ne yaptığı; metin boyutlarının gerçek bir depoda

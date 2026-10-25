@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.12 standard library only (as every script in this folder); `claude -p` as a subprocess; git; pytest for the tests (`tests/test_claims_study.py`, loaded with the `_load` pattern of `tests/test_agent_compare.py`).
 
-**Spec:** `benchmarks/agent_compare/DESIGN_CLAIMS.md` (committed `b537d08`, plus the amendment of 2026-10-11 that replaces the guided arm's paragraph with one that loads the tools first). Amendments go at its end, dated; it is never edited in place.
+**Spec:** `benchmarks/agent_compare/DESIGN_CLAIMS.md` (committed `c13685a`, plus the amendment of 2026-10-11 that replaces the guided arm's paragraph with one that loads the tools first). Amendments go at its end, dated; it is never edited in place.
 
 **Lint:** every commit step runs `ruff check` on the files it adds. The test snippets below are written to pass it: one import per line, no `a; b` on one line, no unused import. An implementer who pastes a snippet keeps that.
 
