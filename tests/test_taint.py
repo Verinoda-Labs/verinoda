@@ -7,14 +7,14 @@ import os
 
 os.environ.setdefault("GRAPHIFY_OUT", ".verinoda/index")
 
-import json  # noqa: E402
-import shutil  # noqa: E402
-import subprocess  # noqa: E402
-from pathlib import Path  # noqa: E402
+import json
+import shutil
+import subprocess
+from pathlib import Path
 
-import pytest  # noqa: E402
+import pytest
 
-from verinoda import taint  # noqa: E402
+from verinoda import taint
 
 WEB = '''import os
 import shlex
@@ -458,7 +458,9 @@ def _line_of(repo: Path, rel: str, text: str) -> int:
 def test_every_call_in_a_caller_is_followed(round2):
     repo, res = round2
     at = {f["source"]["at"] for f in res["findings"] if f["sink"]["at"] == f"lib.py:{_line_of(repo, 'lib.py', 'os.system(cmd)')}"}
-    assert f"main.py:{_line_of(repo, 'main.py', 'run(request.args[\"c\"])')}" in at
+    # The quoted key goes through a name: before Python 3.12 an f-string expression may hold no backslash.
+    call_line = _line_of(repo, "main.py", 'run(request.args["c"])')
+    assert f"main.py:{call_line}" in at
     assert f"main.py:{_line_of(repo, 'main.py', 'or run(request.args')}" in at
 
 
@@ -504,8 +506,8 @@ def test_safe_keyword_values_and_several_sources_into_one_sink(round2):
     repo, res = round2
     assert not [f for f in res["findings"] if "SafeLoader" in f["sink"]["call"]]
     assert [f for f in res["findings"] if f["sink"]["call"].startswith("pickle.loads")]
-    srcs = {f["source"]["match"] for f in res["findings"]
-            if f["sink"]["at"] == f"main.py:{_line_of(repo, 'main.py', 'request.args[\"a\"] + y')}"}
+    sink_line = _line_of(repo, "main.py", 'request.args["a"] + y')
+    srcs = {f["source"]["match"] for f in res["findings"] if f["sink"]["at"] == f"main.py:{sink_line}"}
     assert srcs == {"request.args", "request.form"}
 
 

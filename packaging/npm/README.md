@@ -23,4 +23,4 @@ How it runs the Python package, in order: `uvx` (recommended: it also fetches a 
 (kept in the user's cache folder). `VERINODA_NPM_RUNNER=uvx|pipx|venv` forces one of them.
 
 Installing Verinoda directly is simpler when you do not need npm: `uv tool install "verinoda[precise]"`
-or `pipx install "verinoda[precise]"`. Documentation: https://github.com/ozcinax-star/verinoda
+or `pipx install "verinoda[precise]"`. Documentation: https://github.com/Verinoda-Labs/verinoda

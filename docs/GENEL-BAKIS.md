@@ -1190,13 +1190,13 @@ uygun bir Python indirir.
 ```powershell
 # Windows (PowerShell ya da cmd)
 winget install --id astral-sh.uv -e   # yalnızca `uv --version` çalışmıyorsa; sonra yeni bir terminal açın
-uv tool install --force --reinstall-package verinoda --link-mode copy "verinoda[precise] @ https://github.com/ozcinax-star/verinoda/archive/main.zip"
+uv tool install --force --reinstall-package verinoda --link-mode copy "verinoda[precise] @ https://github.com/Verinoda-Labs/verinoda/archive/main.zip"
 uv tool update-shell                  # bir kez: verinoda'yı yeni terminaller için PATH'e ekler
 ```
 
 ```bash
 # macOS / Linux (Windows'ta Git Bash da olur)
-curl -LsSf https://raw.githubusercontent.com/ozcinax-star/verinoda/main/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/Verinoda-Labs/verinoda/main/install.sh | sh
 ```
 
 İkisi de GitHub arşivinden (zip), `precise` ekiyle ve kopyalama moduyla
@@ -1248,7 +1248,7 @@ uv tool install --link-mode copy "verinoda[precise]"                 # PyPI
 npx -y verinoda --version                                           # npm (Node kullananlar)
 uv tool install --link-mode copy .                                  # Windows'ta Codex için --link-mode copy şart
 uv tool install --link-mode copy --with "jedi>=0.19.2,<0.21" .      # kesin çözümleme (precise) ile
-uv tool install --link-mode copy "verinoda[precise] @ git+https://github.com/ozcinax-star/verinoda"   # git ile
+uv tool install --link-mode copy "verinoda[precise] @ git+https://github.com/Verinoda-Labs/verinoda"   # git ile
 pip install ".[precise]"                                            # ya da mevcut bir venv'e
 
 verinoda doctor
@@ -1274,7 +1274,7 @@ Linux'ta henüz denenmedi. `winget install --id astral-sh.uv` satırı yalnızca
 paketin winget'te bulunduğu kontrol edilerek eklendi; bu makinede uv zaten
 kurulu olduğu için çalıştırılmadı.
 
-Depo herkese açıktır (https://github.com/ozcinax-star/verinoda); paket PyPI'da ve npm'de
+Depo herkese açıktır (https://github.com/Verinoda-Labs/verinoda); paket PyPI'da ve npm'de
 `verinoda` adıyla yayımlanmıştır (0.4.0, beta). Graphify'ın (`graphifyy`) ayrıca kurulması gerekmez.
 
 ---

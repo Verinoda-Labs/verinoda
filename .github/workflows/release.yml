@@ -5,7 +5,7 @@
 #   - "Run workflow" by hand: a rehearsal on TestPyPI (target=testpypi, the default) or PyPI.
 #
 # One-time setup by the maintainer (see docs/RELEASING.md): a pending Trusted Publisher on pypi.org (and
-# test.pypi.org) for project "verinoda", owner ozcinax-star, repository verinoda, workflow release.yml,
+# test.pypi.org) for project "verinoda", owner Verinoda-Labs, repository verinoda, workflow release.yml,
 # environments "pypi" / "testpypi"; an npm automation token as the repository secret NPM_TOKEN.
 name: release
 

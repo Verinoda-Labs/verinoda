@@ -1,6 +1,6 @@
 {
   "name": "verinoda",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Evidence-first codebase analysis for coding agents (runs the Python package verinoda through uvx, pipx or a private venv)",
   "bin": {
     "verinoda": "bin/verinoda.js"
@@ -14,13 +14,13 @@
   },
   "keywords": ["code-analysis", "knowledge-graph", "mcp", "claude-code", "codex", "evidence", "tree-sitter"],
   "license": "Apache-2.0",
-  "homepage": "https://github.com/ozcinax-star/verinoda#readme",
+  "homepage": "https://github.com/Verinoda-Labs/verinoda#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ozcinax-star/verinoda.git",
+    "url": "git+https://github.com/Verinoda-Labs/verinoda.git",
     "directory": "packaging/npm"
   },
   "bugs": {
-    "url": "https://github.com/ozcinax-star/verinoda/issues"
+    "url": "https://github.com/Verinoda-Labs/verinoda/issues"
   }
 }

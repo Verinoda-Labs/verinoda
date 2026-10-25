@@ -219,7 +219,7 @@ def test_docs_do_not_recommend_a_powershell_download_cradle():
         code = "\n".join(text.split("```")[1::2])  # fenced blocks only: prose may name the pattern
         assert "| iex" not in code and "iex (" not in code and "DownloadString" not in code
         assert ('uv tool install --force --reinstall-package verinoda --link-mode copy '
-                '"verinoda[precise] @ https://github.com/ozcinax-star/verinoda/archive/main.zip"') in code
+                '"verinoda[precise] @ https://github.com/Verinoda-Labs/verinoda/archive/main.zip"') in code
 
 
 @pytest.mark.slow

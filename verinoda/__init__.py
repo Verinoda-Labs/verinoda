@@ -13,6 +13,6 @@ def __getattr__(name: str) -> str:
 
         value = _v("verinoda")
     except Exception:  # pragma: no cover - running from a source tree
-        value = "0.4.0"
+        value = "0.5.0"
     globals()["__version__"] = value
     return value

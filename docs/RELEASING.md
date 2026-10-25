@@ -11,8 +11,12 @@ No password or PyPI token is stored anywhere: PyPI accepts the workflow itself t
 ## One-time setup (the maintainer)
 
 1. **PyPI.** Sign in at https://pypi.org, then *Your account -> Publishing -> Add a new pending publisher*:
-   PyPI project name `verinoda`, owner `ozcinax-star`, repository `verinoda`, workflow `release.yml`,
+   PyPI project name `verinoda`, owner `Verinoda-Labs`, repository `verinoda`, workflow `release.yml`,
    environment `pypi`. Do the same at https://test.pypi.org with environment `testpypi` (for rehearsals).
+   The project's publisher names the repository the workflow runs in: 0.1.0 to 0.4.0 were published from
+   `ozcinax-star/verinoda` (the 0.4.0 files' provenance names it), and the repository moved to the
+   `Verinoda-Labs` organisation after that. A publisher for the old owner does not accept a run in the moved
+   repository, so the project's settings (*Manage -> Publishing*) need one for `Verinoda-Labs/verinoda`.
 2. **GitHub environments (optional).** GitHub creates `pypi` and `testpypi` the first time the workflow uses
    them. Create them yourself (*Settings -> Environments*) only to add protection: yourself as a required
    reviewer on `pypi` makes every PyPI upload wait for your click.

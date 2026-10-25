@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # Formerly developed under the working name "RepoAtlas" (see docs/NAMING.md).
 # Published by .github/workflows/release.yml (a tag v<version>); docs/RELEASING.md.
 name = "verinoda"
-version = "0.4.0"
+version = "0.5.0"
 description = "Evidence-first codebase analysis for coding agents: knowledge graph, architecture map, claims with evidence, critique and experiments. Derived from Graphify."
 readme = "README.md"
 license = "Apache-2.0"
@@ -188,11 +188,11 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ozcinax-star/verinoda"
-Documentation = "https://github.com/ozcinax-star/verinoda#readme"
-Source = "https://github.com/ozcinax-star/verinoda"
-Issues = "https://github.com/ozcinax-star/verinoda/issues"
-Changelog = "https://github.com/ozcinax-star/verinoda/blob/main/docs/UPGRADING.md"
+Homepage = "https://github.com/Verinoda-Labs/verinoda"
+Documentation = "https://github.com/Verinoda-Labs/verinoda#readme"
+Source = "https://github.com/Verinoda-Labs/verinoda"
+Issues = "https://github.com/Verinoda-Labs/verinoda/issues"
+Changelog = "https://github.com/Verinoda-Labs/verinoda/blob/main/docs/UPGRADING.md"
 
 [project.scripts]
 verinoda = "verinoda.cli:main"

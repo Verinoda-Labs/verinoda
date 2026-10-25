@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verinoda installer for macOS and Linux (also works in Git Bash on Windows).
 #
-#   curl -LsSf https://raw.githubusercontent.com/ozcinax-star/verinoda/main/install.sh | sh
+#   curl -LsSf https://raw.githubusercontent.com/Verinoda-Labs/verinoda/main/install.sh | sh
 #
 # What it does, in order (read it before running it - that is good practice for any piped script):
 #   1. uses `uv` if it is on PATH, otherwise installs uv with its official installer (https://astral.sh/uv);
@@ -24,7 +24,7 @@ set -eu
 
 say() { printf 'verinoda-install: %s\n' "$*"; }
 
-REPO_URL="https://github.com/ozcinax-star/verinoda"
+REPO_URL="https://github.com/Verinoda-Labs/verinoda"
 REF="${VERINODA_REF:-main}"
 EXTRAS="${VERINODA_EXTRAS-precise}"
 
